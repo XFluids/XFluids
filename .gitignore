@@ -31,8 +31,14 @@
 *.out
 *.app
 
-#data
+EulerSYCL
+
 *.plt
 *.dat
+./obj
+./outdata/*
+./outdata/*
 
-EulerSYCL
+
+
+
