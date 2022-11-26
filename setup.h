@@ -10,16 +10,16 @@ typedef float Real;
 #define NumFluid 1
 
 #define DIM_X 1
-#define DIM_Y 0
+#define DIM_Y 1
 #define DIM_Z 0
 //Block configure
 //maximum number of inside cells in each block in different directions
-#define X_inner 128			//224 	//x direction
-#define Y_inner 1			//224 	//y direction
+#define X_inner 3072			//224 	//x direction
+#define Y_inner 3072			//224 	//y direction
 #define Z_inner 1					//224 	//z direction
 //width of boundaries of one block
 #define Bwidth_X 4 	//x direction
-#define Bwidth_Y 0 	//y direction
+#define Bwidth_Y 4 	//y direction
 #define Bwidth_Z 0 	//z direction
 
 const Real DOMAIN_length =	1.0;//maxium
@@ -64,8 +64,8 @@ const int cellbytes = Emax*bytes;
 
 const int BlockSize = 4;
 
-const int dim_block_x = DIM_X ? BlockSize/2 : 1;
-const int dim_block_y = DIM_Y ? BlockSize/2 : 1;
+const int dim_block_x = DIM_X ? BlockSize : 1;
+const int dim_block_y = DIM_Y ? BlockSize : 1;
 const int dim_block_z = DIM_Z ? BlockSize : 1;
 
 constexpr Real Gamma = 1.4;//1.666667;
@@ -97,7 +97,7 @@ const Real BandforLevelset	= 6.0L;		//half-width of level set narrow band
 //--- Courant Friedrichs Lewy Number ------------------------
 const Real CFLnumber =	0.6;
 
-const Real EndTime = 0.024;//0.2;
+const Real EndTime = 0.2;
 
 constexpr Real dt = 0.002;
 constexpr Real dx = 0.01;

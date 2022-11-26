@@ -55,6 +55,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 {
 	d_material_property = static_cast<MaterialProperty *>(malloc_device(sizeof(MaterialProperty), q));
 
+	q.memcpy(d_material_property, &material_property, sizeof(MaterialProperty)).wait();
+
   	d_U  = static_cast<Real *>(malloc_device(cellbytes, q));
   	d_U1 = static_cast<Real *>(malloc_device(cellbytes, q));
   	d_LU = static_cast<Real *>(malloc_device(cellbytes, q));
@@ -72,6 +74,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_wallFluxF  = static_cast<Real *>(malloc_device(cellbytes, q));
 	d_wallFluxG  = static_cast<Real *>(malloc_device(cellbytes, q));
 	d_wallFluxH  = static_cast<Real *>(malloc_device(cellbytes, q));
+	// shared
+	uvw_c_max  = static_cast<Real *>(malloc_shared(3*sizeof(Real), q));
 
 	cout << "Memory Usage: " << (Real)((long)10*cellbytes + (long)7*bytes)/(Real)(1024*1024*1024)<< " GB\n";
 
@@ -97,69 +101,41 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 
 void FluidSYCL::InitialU(sycl::queue &q, Real dx, Real dy, Real dz)
 {
-	// auto *U = d_U;
-	FlowData *fdata = &d_fstate;
-	auto *U = d_U;
-	auto *U1 = d_U1;
-	auto *LU = d_LU;
-	auto *FF = d_FluxF;
-	auto *GG = d_FluxG;
-	auto *HH = d_FluxH;
-	auto *Fw = d_wallFluxF;
-	auto *Gw = d_wallFluxG;
-	auto *Hw = d_wallFluxH;
-	auto *eigen = d_eigen_local;
-
-	Real *rho = d_fstate.rho;
-	Real *p = d_fstate.p;
-	Real *H = d_fstate.H;
-	Real *c = d_fstate.c;
-	Real *u = d_fstate.u;
-	Real *v = d_fstate.v;
-	Real *w = d_fstate.w;
-
-	MaterialProperty *mp = d_material_property;
-
 	InitializeFluidStates(q, WGSize, WISize, d_material_property, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH, dx, dy, dz);
-
-	// auto local_ndrange = range<3>(WGSize.at(0), WGSize.at(1), WGSize.at(2));	// size of workgroup
-	// auto global_ndrange = range<3>(WISize.at(0), WISize.at(1), WISize.at(2));
-
-	// q.submit([&](sycl::handler &h){
-	// 	h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=, this](sycl::nd_item<3> index){
-    // 		// 利用get_global_id获得全局指标
-    // 		int i = index.get_global_id(0) + Bwidth_X - 1;
-    // 		int j = index.get_global_id(1) + Bwidth_Y;
-	// 		int k = index.get_global_id(2) + Bwidth_Z;
-
-	// 		// SYCL不允许在lambda函数里出现结构体成员
-	// 		// InitialStatesKernel(i, j, k, mp, U, U1, LU, FF, GG, HH, Fw, Gw, Hw, u, v, w, rho, p, H, c, dx, dy, dz);
-	// 		// testkernel(i,j,k, d_U, F, Fw, eigen, u,v,w, rho, p, H,c, 0.1, 0.1, 0.1);
-	// 	});
-	// });
 }
 
-void FluidSYCL::test(sycl::queue &q)
+Real FluidSYCL::GetFluidDt(sycl::queue &q)
 {
-	auto *U = d_U;
-	auto *F = d_FluxF;
-	auto *Fw = d_wallFluxF;
-	auto *eigen = d_eigen_local;
-	FlowData *fs = &d_fstate;
+	return GetDt(q, d_fstate, uvw_c_max, dx, dy, dz);
+}
 
-  	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z);
-  	// global_ndrange：工作项的大小 = 1024*1024
-  	auto global_ndrange = range<3>(X_inner+local_ndrange[0], Y_inner, Z_inner);
-		q.submit([&](sycl::handler &h){
-			//Deviceptr
-			h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index){
-    			// 利用get_global_id获得全局指标
-    			int i = index.get_global_id(0) + Bwidth_X - 1;
-    			int j = index.get_global_id(1) + Bwidth_Y;
-				int k = index.get_global_id(2) + Bwidth_Z;
+void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
+{
+    if (flag == 0)
+        FluidBoundaryCondition(q, BCs, d_U);
+    else
+        FluidBoundaryCondition(q, BCs, d_U1);
+}
 
-				ReconstructFluxX(i, j, k, U, F, Fw, eigen, fs->rho, fs->u, fs->v, fs->w, fs->H, 0.01, 0.01);
-			});
-		});
+void FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
+{
+    if (flag == 0)
+        UpdateFluidStateFlux(q, d_U, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+    else
+        UpdateFluidStateFlux(q, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+}
 
+void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, Real const dt)
+{
+	UpdateURK3rd(q, d_U, d_U1, d_LU, dt, flag);
+}
+
+void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
+{
+    if (flag == 0)
+        GetLU(q, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH, 
+			material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local, dx, dy, dz);
+    else
+        GetLU(q, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH, 
+			material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local, dx, dy, dz);
 }

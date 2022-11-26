@@ -145,8 +145,8 @@ void InitialStatesKernel(int i, int j, int k, MaterialProperty* material, Real* 
 
 // add "sycl::nd_item<3> item" for get_global_id
 // add "stream const s" for output
-extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Real* eigen_local, Real* rho, Real* u, Real* v, 
-                                            Real* w, Real* H, Real dx)
+void ReconstructFluxX(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Real* eigen_local, Real* rho, Real* u, Real* v, 
+                                            Real* w, Real* H, Real const dx)
 {
     int id_l = Xmax*Ymax*k + Xmax*j + i;
     int id_r = Xmax*Ymax*k + Xmax*j + i + 1;
@@ -233,6 +233,177 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Real* UI, Real* 
             fluxx += _p[n1][n];
 		}
         Fxwall[Emax*id_l+n] = fluxx;
+	}
+}
+
+void ReconstructFluxY(int i, int j, int k, Real* UI, Real* Fy, Real* Fywall, Real* eigen_local, Real* rho, Real* u, Real* v, 
+                                            Real* w, Real* H, Real const dy)
+{
+    int id_l = Xmax*Ymax*k + Xmax*j + i;
+    int id_r = Xmax*Ymax*k + Xmax*(j+ 1) + i;
+
+    if(j>= Y_inner+Bwidth_Y)
+        return;
+
+    Real eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+
+    //preparing some interval value for roe average
+    Real D	=	sqrt(rho[id_r]/rho[id_l]);
+    #if USE_DP
+	Real D1	=	1.0 / (D + 1.0);
+    #else
+    Real D1	=	1.0f / (D + 1.0f);
+    #endif
+    Real _u	=	(u[id_l] + D*u[id_r])*D1;
+    Real _v	=	(v[id_l] + D*v[id_r])*D1;
+    Real _w	=	(w[id_l] + D*w[id_r])*D1;
+    Real _H	=	(H[id_l] + D*H[id_r])*D1;
+    Real _rho = sqrt(rho[id_r]*rho[id_l]);
+
+    RoeAverage_y(eigen_l, eigen_r, _rho, _u, _v, _w, _H, D, D1);
+
+    Real ug[10], gg[10], pp[10], mm[10];
+    Real g_flux, _p[Emax][Emax];
+
+    //construct the right value & the left value scalar equations by characteristic reduction			
+	// at j+1/2 in y direction
+	for(int n=0; n<Emax; n++){
+        #if USE_DP
+        Real eigen_local_max = 0.0;
+        #else
+        Real eigen_local_max = 0.0f;
+        #endif
+
+        for(int m=-2; m<=3; m++){
+            int id_local = Xmax*Ymax*k + Xmax*(j + m) + i;
+            eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax*id_local+n]));//local lax-friedrichs	
+        }
+
+		for(int m=j-3; m<=j+4; m++){	// 3rd oder and can be modified
+            int id_local = Xmax*Ymax*k + Xmax*m + i;
+            #if USE_DP
+			ug[m-j+3] = 0.0;
+			gg[m-j+3] = 0.0;
+            #else
+			ug[m-j+3] = 0.0f;
+			gg[m-j+3] = 0.0f;
+            #endif
+
+			for(int n1=0; n1<Emax; n1++){
+				ug[m-j+3] = ug[m-j+3] + UI[Emax*id_local+n1]*eigen_l[n][n1];
+				gg[m-j+3] = gg[m-j+3] + Fy[Emax*id_local+n1]*eigen_l[n][n1];
+			}
+			//for local speed
+			pp[m-j+3] = 0.5f*(gg[m-j+3] + eigen_local_max*ug[m-j+3]); 
+			mm[m-j+3] = 0.5f*(gg[m-j+3] - eigen_local_max*ug[m-j+3]); 
+        }
+		// calculate the scalar numerical flux at y direction
+        #if USE_DP
+        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy))/6.0;
+        #else
+        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy))/6.0f;
+        #endif
+
+		// get Gp
+		for(int n1=0; n1<Emax; n1++)
+			_p[n][n1] = g_flux*eigen_r[n1][n];
+    }
+	// reconstruction the G-flux terms
+	for(int n=0; n<Emax; n++){
+        #if USE_DP
+        Real fluxy = 0.0;
+        #else
+        Real fluxy = 0.0f;
+        #endif
+		for(int n1=0; n1<Emax; n1++){
+            fluxy += _p[n1][n];
+		}
+        Fywall[Emax*id_l+n] = fluxy;
+	}
+}
+
+void ReconstructFluxZ(int i, int j, int k, Real* UI, Real* Fz, Real* Fzwall, Real* eigen_local, Real* rho, Real*  u, Real* v, 
+                                            Real* w, Real* H, Real const dz)
+{
+    int id_l = Xmax*Ymax*k + Xmax*j + i;
+    int id_r = Xmax*Ymax*(k+1) + Xmax*j + i;
+
+    if(k>= Z_inner+Bwidth_Z)
+        return;
+
+    Real eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+
+    //preparing some interval value for roe average
+    Real D	=	sqrt(rho[id_r]/rho[id_l]);
+    #if USE_DP
+	Real D1	=	1.0 / (D + 1.0);
+    #else
+    Real D1	=	1.0f / (D + 1.0f);
+    #endif
+    Real _u	=	(u[id_l] + D*u[id_r])*D1;
+    Real _v	=	(v[id_l] + D*v[id_r])*D1;
+    Real _w	=	(w[id_l] + D*w[id_r])*D1;
+    Real _H	=	(H[id_l] + D*H[id_r])*D1;
+    Real _rho = sqrt(rho[id_r]*rho[id_l]);
+
+    RoeAverage_z(eigen_l, eigen_r, _rho, _u, _v, _w, _H, D, D1);
+
+    Real uh[10], hh[10], pp[10], mm[10];
+    Real h_flux, _p[Emax][Emax];
+
+	//construct the right value & the left value scalar equations by characteristic reduction
+	// at k+1/2 in z direction
+	for(int n=0; n<Emax; n++){
+        #if USE_DP
+        Real eigen_local_max = 0.0;
+        #else
+        Real eigen_local_max = 0.0f;
+        #endif
+
+        for(int m=-2; m<=3; m++){
+            int id_local = Xmax*Ymax*(k + m) + Xmax*j + i;
+            eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax*id_local+n]));//local lax-friedrichs	
+        }
+		for(int m=k-3; m<=k+4; m++){
+            int id_local = Xmax*Ymax*m + Xmax*j + i;
+            #if USE_DP
+			uh[m-k+3] = 0.0;
+			hh[m-k+3] = 0.0;
+            #else
+			uh[m-k+3] = 0.0f;
+			hh[m-k+3] = 0.0f;
+            #endif
+
+			for(int n1=0; n1<Emax; n1++){
+				uh[m-k+3] = uh[m-k+3] + UI[Emax*id_local+n1]*eigen_l[n][n1];
+				hh[m-k+3] = hh[m-k+3] + Fz[Emax*id_local+n1]*eigen_l[n][n1];
+			}
+			//for local speed
+			pp[m-k+3] = 0.5f*(hh[m-k+3] + eigen_local_max*uh[m-k+3]);  
+			mm[m-k+3] = 0.5f*(hh[m-k+3] - eigen_local_max*uh[m-k+3]); 
+        }
+		// calculate the scalar numerical flux at y direction
+        #if USE_DOUBLE
+        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz))/6.0;
+        #else
+        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz))/6.0f;
+        #endif
+		
+		// get Gp
+		for(int n1=0; n1<Emax; n1++)
+            _p[n][n1] = h_flux*eigen_r[n1][n];
+    }
+	// reconstruction the H-flux terms
+	for(int n=0; n<Emax; n++){
+        #if USE_DP
+        Real fluxz = 0.0;
+        #else
+        Real fluxz = 0.0f;
+        #endif
+		for(int n1=0; n1<Emax; n1++){
+            fluxz +=  _p[n1][n];
+        }
+        Fzwall[Emax*id_l+n]  = fluxz;
 	}
 }
 

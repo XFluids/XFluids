@@ -3,6 +3,7 @@
         "*.tcc": "cpp",
         "array": "cpp",
         "string_view": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "limits": "cpp"
     }
 }

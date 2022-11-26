@@ -46,7 +46,7 @@ Real GetDt(sycl::queue &q, FlowData &fdata, Real* uvw_c_max, Real const dx, Real
 	Real *v = fdata.v;
 	Real *w = fdata.w;
 
-	auto local_ndrange = range<1>(4);	// size of workgroup
+	auto local_ndrange = range<1>(BlockSize);	// size of workgroup
 	auto global_ndrange = range<1>(Xmax*Ymax*Zmax);
     
 	for(int n=0; n<3; n++)
@@ -145,11 +145,13 @@ void GetLU(sycl::queue &q, Real* UI, Real* LU, Real* FluxF, Real* FluxG, Real* F
 	auto global_ndrange_max = range<3>(Xmax, Ymax, Zmax);
 	auto global_ndrange_inner = range<3>(X_inner, Y_inner, Z_inner);
 
+	event e;
+
 	#if DIM_X
 	//proceed at x directiom and get F-flux terms at node wall
   	auto global_ndrange_x = range<3>(X_inner+local_ndrange[0], Y_inner, Z_inner);
 	
-	auto e = q.submit([&](sycl::handler &h){
+	e = q.submit([&](sycl::handler &h){
 		h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index){
     		int i = index.get_global_id(0);
     		int j = index.get_global_id(1);
@@ -166,30 +168,62 @@ void GetLU(sycl::queue &q, Real* UI, Real* LU, Real* FluxF, Real* FluxG, Real* F
 			int k = index.get_global_id(2) + Bwidth_Z;
 			ReconstructFluxX(i, j, k, UI, FluxF, FluxFw, eigen_local, rho, u, v, w, H, dx);
 		});
-	}).wait();
+	});
+	
+	q.wait();
 	#endif
 
-	// #if DIM_Y
-	// //proceed at y directiom and get G-flux terms at node wall
-    // GetLocalEigen<<<dim_grid_max, dim_blk>>>(0.0, 1.0, 0.0, eigen_local, fdata.u, fdata.v, fdata.w, fdata.c);
-    // CheckCUDAErrors(cudaGetLastError());
-    // // dim3 dim_grid_y(dim_grid.x, dim_grid.y + 1, dim_grid.z);
-    // // ReconstructFluxY<<<dim_grid_y, dim_blk>>>(UI, FluxG, FluxGw, eigen_local, fdata.rho, fdata.u, fdata.v, fdata.w, fdata.H, dy);
-    // blocksize = is_3d ?  dim3(WarpSize,WarpSize/2, 1)  : dim_blk;
-    // gridsize = is_3d ? dim3(X_inner/blocksize.x, Y_inner/blocksize.y+1, Z_inner/blocksize.z) : dim3(dim_grid.x, dim_grid.y + 1, dim_grid.z);
-    // ReconstructFluxY<<<gridsize, blocksize>>>(UI, FluxG, FluxGw, phi, tag_bnd_xt, Rgn_ind, Gamma, Mtrl_ind, eigen_local, fdata.rho, fdata.u, fdata.v, fdata.w, fdata.H, fdata.c, dy);
-	// #endif
+	#if DIM_Y
+	//proceed at y directiom and get G-flux terms at node wall
+	auto global_ndrange_y = range<3>(X_inner, Y_inner+local_ndrange[1], Z_inner);
 
-	// #if DIM_Z
-	// //proceed at y directiom and get G-flux terms at node wall
-    // GetLocalEigen<<<dim_grid_max, dim_blk>>>(0.0, 0.0, 1.0, eigen_local, fdata.u, fdata.v, fdata.w, fdata.c);
-    // CheckCUDAErrors(cudaGetLastError());
-    // // dim3 dim_grid_z(dim_grid.x, dim_grid.y, dim_grid.z + 1);
-    // // ReconstructFluxZ<<<dim_grid_z, dim_blk>>>(UI, FluxH, FluxHw, eigen_local, fdata.rho, fdata.u, fdata.v, fdata.w, fdata.H, dz);
-    // blocksize = is_3d ?  dim3(WarpSize/2, 1, WarpSize)  : dim_blk;
-    // gridsize = is_3d ? dim3(X_inner/blocksize.x, Y_inner/blocksize.y, Z_inner/blocksize.z+1) : dim3(dim_grid.x, dim_grid.y, dim_grid.z + 1);
-    // ReconstructFluxZ<<<gridsize, blocksize>>>(UI, FluxH, FluxHw, phi, tag_bnd_xt, Rgn_ind, Gamma, eigen_local, fdata.rho, fdata.u, fdata.v, fdata.w, fdata.H, dz);
-	// #endif
+	e = q.submit([&](sycl::handler &h){
+		h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index){
+    		int i = index.get_global_id(0);
+    		int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+			GetLocalEigen(i, j, k, 0.0, 1.0, 0.0, eigen_local, u, v, w, c);
+		});
+	});
+
+	q.submit([&](sycl::handler &h){
+		h.depends_on(e);
+		h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index){
+    		int i = index.get_global_id(0) + Bwidth_X;
+    		int j = index.get_global_id(1) + Bwidth_Y - 1;
+			int k = index.get_global_id(2) + Bwidth_Z;
+			ReconstructFluxY(i, j, k, UI, FluxG, FluxGw, eigen_local, rho, u, v, w, H, dy);
+		});
+	});
+	
+	q.wait();
+ 	#endif
+
+	#if DIM_Z
+	//proceed at y directiom and get G-flux terms at node wall
+	auto global_ndrange_z = range<3>(X_inner, Y_inner, Z_inner+local_ndrange[2]);
+
+	e = q.submit([&](sycl::handler &h){
+		h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index){
+    		int i = index.get_global_id(0);
+    		int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+			GetLocalEigen(i, j, k, 0.0, 0.0, 1.0, eigen_local, u, v, w, c);
+		});
+	});
+
+	q.submit([&](sycl::handler &h){
+		h.depends_on(e);
+		h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index){
+    		int i = index.get_global_id(0) + Bwidth_X;
+    		int j = index.get_global_id(1) + Bwidth_Y;
+			int k = index.get_global_id(2) + Bwidth_Z - 1;
+			ReconstructFluxZ(i, j, k, UI, FluxH, FluxHw, eigen_local, rho, u, v, w, H, dz);
+		});
+	});
+	
+	q.wait();
+	#endif
 
 	//update LU from cell-face fluxes
     #if NumFluid == 2

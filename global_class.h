@@ -22,7 +22,7 @@ public:
 
     std::array<int, 3> WGSize, WISize;
 
-    float *d_uvw_c_max;
+    Real *uvw_c_max;
 
     Real dx, dy, dz, dl, dt;
 
@@ -54,17 +54,17 @@ public:
 
     void initialize(int n);
     void InitialU(sycl::queue &q, Real dx, Real dy, Real dz);
-    void test(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
-
+    void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
+    void UpdateFluidStates(sycl::queue &q, int flag);
+    Real GetFluidDt(sycl::queue &q);
+    void UpdateFluidURK3(sycl::queue &q, int flag, Real const dt);
+    void ComputeFluidLU(sycl::queue &q, int flag);
 };
 
 class SYCLSolver{
 
 public:
-
-    // range<3> local_range = range<3>(dim_block_x, dim_block_y, dim_block_z);
-    // range<3> global_range = range<3>(X_inner+local_range[0], Y_inner, Z_inner);
 
     std::array<int, 3> workgroup_size, workitem_size;
 
@@ -72,13 +72,23 @@ public:
     Real dx, dy, dz, dl, dt;
     BConditions  BCs[6]; //boundary condition indicators
 
+    BConditions *d_BCs;
+
     FluidSYCL *fluids[NumFluid];
 
     SYCLSolver(sycl::queue &q);
     ~SYCLSolver(){};
+    void Evolution(sycl::queue &q);
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
     void Output(Real Time);
+    void BoundaryCondition(sycl::queue &q, int flag);
+    void UpdateStates(sycl::queue &q, int flag);
+    Real ComputeTimeStep(sycl::queue &q);
+    void SinglePhaseSolverRK3rd(sycl::queue &q);
+    void RungeKuttaSP3rd(sycl::queue &q, int flag);
+    void UpdateU(sycl::queue &q,int flag);
+    void ComputeLU(sycl::queue &q, int flag);
 };
 

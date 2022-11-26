@@ -15,8 +15,15 @@ void InitialStatesKernel(int i, int j, int k, MaterialProperty* material, Real* 
 
 extern SYCL_EXTERNAL 
 void ReconstructFluxX(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Real* eigen_local, Real* rho, Real* u, Real* v, 
-                                            Real* w, Real* H, Real dx);
+                                            Real* w, Real* H, Real const dx);
 
+extern SYCL_EXTERNAL 
+void ReconstructFluxY(int i, int j, int k, Real* UI, Real* Fy, Real* Fywall, Real* eigen_local, Real* rho, Real* u, Real* v, 
+                                            Real* w, Real* H, Real const dy);
+
+extern SYCL_EXTERNAL 
+void ReconstructFluxZ(int i, int j, int k, Real* UI, Real* Fz, Real* Fzwall, Real* eigen_local, Real* rho, Real*  u, Real* v, 
+                                            Real* w, Real* H, Real const dz);
 
 extern SYCL_EXTERNAL 
 void testkernel(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Real* eigen_local, Real*  u, Real*  v, Real*  w, Real*  rho,

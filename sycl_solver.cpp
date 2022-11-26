@@ -12,10 +12,9 @@ SYCLSolver::SYCLSolver(sycl::queue &q)
 	// Print device name and version
     std::cout << "Device: "<< q.get_device().get_info<sycl::info::device::name>() 
 						<< ",  version = "<<q.get_device().get_info<sycl::info::device::version>() << "\n";
-
 	
 	workgroup_size = {dim_block_x, dim_block_y, dim_block_z};
-	workitem_size = {X_inner+workgroup_size.at(0), Y_inner, Z_inner};
+	workitem_size = {X_inner, Y_inner, Z_inner};
 
 	// --------------------------------------------------------------------------------------
 	// Geo setup, BC
@@ -58,8 +57,125 @@ SYCLSolver::SYCLSolver(sycl::queue &q)
 	// levelset = new LevelsetGPU(dx,dy,dz,dl, dim_blk, dim_grid);
 }
 
+void SYCLSolver::Evolution(sycl::queue &q)
+{
+	Real physicalTime = 0.0;
+	int Iteration = 0;
+
+	double duration = 0.0;
+	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+
+	// RK3
+	while(physicalTime < EndTime) {
+
+		//get minmum dt
+		dt = ComputeTimeStep(q);//5.0e-5;//0.001;//
+
+		if(physicalTime + dt > EndTime) dt = EndTime - physicalTime;
+		
+    	//solved the fluid with 3rd order Runge-Kutta method
+		SinglePhaseSolverRK3rd(q);
+
+		physicalTime = physicalTime + dt;
+		Iteration++;
+
+		//screen output
+		// if(Iteration%10 == 0)
+	        cout<<"N="<<std::setw(6)<<Iteration<<" physicalTime: "<<std::setw(10)<<std::setprecision(8)<<physicalTime<<"	dt: "<<dt<<"\n";
+
+		if(Iteration%100 == 0){
+			CopyDataFromDevice(q);
+			Output(physicalTime);
+		}
+
+		if(Iteration == 10)
+		break;
+	}
+
+	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
+	printf("GPU runtime : %12.8f s\n", duration/1000.0f);
+	
+	CopyDataFromDevice(q);
+    Output(physicalTime);
+}
+
+void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
+{
+	RungeKuttaSP3rd(q, 1);
+    RungeKuttaSP3rd(q, 2);
+    RungeKuttaSP3rd(q, 3);
+}
+
+void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
+{
+	switch(flag) {
+        case 1:
+            //the fisrt step
+            BoundaryCondition(q, 0);
+            UpdateStates(q, 0);
+            ComputeLU(q, 0);
+            UpdateU(q, 1);
+        break;
+        case 2:
+            //the second step
+            BoundaryCondition(q, 1);
+            UpdateStates(q, 1);
+            ComputeLU(q, 1);
+            UpdateU(q, 2);
+        break;
+        case 3:
+            //the third step
+            BoundaryCondition(q, 1);
+            UpdateStates(q, 1);
+            ComputeLU(q, 1);
+            UpdateU(q, 3);
+        break;
+    }
+}
+
+Real SYCLSolver::ComputeTimeStep(sycl::queue &q)
+{
+	Real dt_ref = 10e10;
+	#if NumFluid == 1
+	dt_ref = fluids[0]->GetFluidDt(q);
+	#elif NumFluid == 2
+	// dt_ref = fluids[0]->GetFluidDt(levelset);
+	// dt_ref = min(dt_ref, fluids[1]->GetFluidDt(levelset));
+	#endif
+
+	return dt_ref;
+}
+
+void SYCLSolver::ComputeLU(sycl::queue &q, int flag)
+{
+	fluids[0]->ComputeFluidLU(q, flag);
+}
+
+void SYCLSolver::UpdateU(sycl::queue &q,int flag)
+{
+	for(int n=0; n<NumFluid; n++)
+		fluids[n]->UpdateFluidURK3(q, flag, dt);
+}
+
+void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
+{
+	for(int n=0; n<NumFluid; n++)
+		fluids[n]->BoundaryCondition(q, BCs, flag);
+}
+
+void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
+{
+	for(int n=0; n<NumFluid; n++)
+		fluids[n]->UpdateFluidStates(q, flag);
+}
+
 void SYCLSolver::AllocateMemory(sycl::queue &q)
 {
+	d_BCs = static_cast<BConditions *>(malloc_device(6*sizeof(BConditions), q));
+
+	q.memcpy(d_BCs, BCs, 6*sizeof(BConditions)).wait();
+
 	//host arrays for each fluid
 	for(int n=0; n<NumFluid; n++)
 		fluids[n]->AllocateFluidMemory(q);
@@ -81,7 +197,6 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 {
 	// copy mem from device to host
 	for(int n=0; n<NumFluid; n++){
-		// q.memcpy(h_U, d_U, sizeof(MaterialProperty));
 		q.memcpy(fluids[n]->h_fstate.rho, fluids[n]->d_fstate.rho, bytes);
 		q.memcpy(fluids[n]->h_fstate.p, fluids[n]->d_fstate.p, bytes);
 		q.memcpy(fluids[n]->h_fstate.c, fluids[n]->d_fstate.c, bytes);
@@ -257,50 +372,3 @@ void SYCLSolver::Output(Real Time)
 
 	out.close();
 }
-
-// void SYCLSolver::Evolution()
-// {
-// 	Real physicalTime = 0.0;
-// 	int Iteration = 0;
-
-// 	double start0 = omp_get_wtime();
-// 	// RK3
-// 	while(physicalTime < EndTime) {
-
-// 		#if NumFluid == 2
-// 		for(int n=0; n<NumFluid; n++)
-// 			fluids[n]->UpdateFluidStatesMP(0,levelset);
-
-// 		if(Iteration > 0){
-// 			Extend();
-// 			RenewU(0);
-// 		}
-// 		Interaction();
-// 		#endif
-
-// 		//get minmum dt
-// 		dt = Get_dt();//0.001;//5.0e-5;//
-
-// 		if(physicalTime + dt > EndTime) dt = EndTime - physicalTime;
-		
-//      //solved the fluid with 3rd order Runge-Kutta method
-// 		SinglePhaseSolverRK3rd();
-
-// 		physicalTime = physicalTime + dt;
-// 		Iteration++;
-
-// 		//screen output
-// 		// if(Iteration%10 == 0)
-// 	        cout<<"N="<<setw(6)<<Iteration<<" physicalTime: "<<setw(10)<<setprecision(8)<<physicalTime<<"	dt: "<<dt<<"\n";
-
-// 		if(Iteration%100 == 0)
-// 			Output(physicalTime);
-
-//         // if(Iteration == 500)
-//         //         break;
-// 	}
-// 	double stop0 = omp_get_wtime();
-// 	printf("CPU runtime : %12.8f s\n", (stop0 - start0));
-	
-//     Output(physicalTime);
-// }

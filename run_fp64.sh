@@ -3,6 +3,6 @@ export OverrideDefaultFP64Settings=1
 
 make clean
 
-make USE_DP=1
+make USE_DP=1 -j
 
 ./EulerSYCL
