@@ -54,7 +54,7 @@ int main()
 	// Logger logger;
 	// logger.LogSolverInfo();
 
-	auto device = sycl::platform::get_platforms()[2].get_devices()[0];
+	auto device = sycl::platform::get_platforms()[0].get_devices()[0];
 	// accelerator_selector device;
 	queue q(device, dpc_common::exception_handler);
 

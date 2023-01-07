@@ -10,7 +10,8 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CCFILES := $(call rwildcard,./,*.cpp)
 
 #C++ compiler
-CXX := dpcpp#icpc
+CXX := clang++ -fsycl -fsycl-targets=nvptx64-nvidia-cuda \
+  	-Xsycl-target-backend --cuda-gpu-arch=sm_86 #dpcpp#icpc
 
 #C++ compiler flags
 ifeq ($(dbg),1)
