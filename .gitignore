@@ -35,8 +35,10 @@ EulerSYCL
 
 *.plt
 *.dat
-./obj
-./outdata/*
+/obj
+/outdata
+build
+build/*
 
 
 

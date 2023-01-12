@@ -10,8 +10,7 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CCFILES := $(call rwildcard,./,*.cpp)
 
 #C++ compiler
-CXX := clang++ -fsycl -fsycl-targets=nvptx64-nvidia-cuda \
-  	-Xsycl-target-backend --cuda-gpu-arch=sm_86 #dpcpp#icpc
+CXX := clang++ -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend --cuda-gpu-arch=sm_86 #dpcpp#icpc
 
 #C++ compiler flags
 ifeq ($(dbg),1)
@@ -24,7 +23,7 @@ TARGET    := release
 LIBPARALLEL = -ltbb -ltbbmalloc
 endif 
 # openmp flags
-CCFLAGS   += -fopenmp 
+#CCFLAGS   += #-fopenmp 
 
 # double precsion flag
 ifeq ($(USE_DP),1)
@@ -32,7 +31,7 @@ CCFLAGS   += -DUSE_DP
 endif
 
 # Extra user flags
-CXXFLAGS   := -DUNIX -std=c++20#17
+CXXFLAGS   := -DUNIX -std=c++17#20#17
 
 # PREPARE AND COMPILE:
 CXXFLAGS += $(CCFLAGS)
@@ -40,7 +39,7 @@ CXXFLAGS += $(CCFLAGS)
 LIBS := -L/usr/lib/ -lrt
 
 # Common LD_flags
-LD_FLAGS       :=  -lOpenCL -lsycl $(LIBPARALLEL)#$(LIBS) -lrt
+LD_FLAGS       :=  #-lOpenCL #-lsycl #$(LIBPARALLEL)#$(LIBS) -lrt
 
 # Location of output and obj files
 OUTDATADIR      ?= ./outdata
