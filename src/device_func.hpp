@@ -3,8 +3,7 @@
 #include <CL/sycl.hpp>
 #include "dpc_common.hpp"
 
-#include "setup.h"
-#include "fun.h"
+#include "include/global_class.h"
 
 using namespace std;
 using namespace sycl;

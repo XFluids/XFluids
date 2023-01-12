@@ -1,7 +1,7 @@
 #include <math.h>
-#include "global_class.h"
-#include "global_function.h"
-#include "block_sycl.h"
+#include "include/global_class.h"
+#include "global_function.hpp"
+#include "block_sycl.hpp"
 
 using namespace std;
 using namespace sycl;

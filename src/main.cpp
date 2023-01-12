@@ -42,9 +42,7 @@
 #include <float.h>
 #include <ctime>
 
-#include "setup.h"
-#include "fun.h"
-#include "global_class.h"
+#include "include/global_class.h"
 
 //-------------------------------------------------------------------------------------------------
 //							main

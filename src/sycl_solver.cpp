@@ -4,8 +4,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "setup.h"
-#include "global_class.h"
+#include "include/global_class.h"
 
 SYCLSolver::SYCLSolver(sycl::queue &q)
 {
