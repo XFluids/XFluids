@@ -1,9 +1,3 @@
 {
-    "files.associations": {
-        "*.tcc": "cpp",
-        "array": "cpp",
-        "string_view": "cpp",
-        "numbers": "cpp",
-        "limits": "cpp"
-    }
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
 }

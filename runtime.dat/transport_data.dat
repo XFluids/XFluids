@@ -1,0 +1,42 @@
+#---------------- data copied from ChemKin -----------------
+# source file referenced: /Installed/ChemKin/.../data/grimech30_transport.dat, part of GRI-Mech 
+#
+# Species, eps/kB (K), sigma (ang), alpha (D), alpha (ang^3), Zrot@298 K
+#   - geo:        polar, 0:monoatom,1:nonpolar(linear) molecule,2:polar molecule
+#   - epsilon_kB: Lennard-Jones potential well depth, epsilon over kB with kB the Boltzmann constant(kB = 1.3806549 * 1.0e-16, unit:erg/K=10e-7 J/K), unit:Kelvin
+#   - d(sigma):   Lennard-Jones collision diameter, unit: angstroms,10e-10m
+#   - mue:        dipole moment, unit:Debye(m);
+#   - alpha:      polarizability, unit:cubic angstrom(10-30m^3)
+#   - Zrot_298:   rotationnal relaxation collision number at 298 Kelvin
+#
+#---------------------------------------------------------------------
+Xe                 0   282.290     3.892     0.000     0.000     0.000 ! referenced: https://doi.org/10.1016/j.combustflame.2022.112085
+AR                 0   136.500     3.330     0.000     0.000     0.000
+HE                 0    10.200     2.576     0.000     0.000     0.000 ! *
+H2                 1    38.000     2.920     0.000     0.790   280.000
+O2                 1   107.400     3.458     0.000     1.600     3.800
+O                  0    80.000     2.750     0.000     0.000     0.000
+H                  0   145.000     2.050     0.000     0.000     0.000
+OH                 1    80.000     2.750     0.000     0.000     0.000
+HO2                2   107.400     3.458     0.000     0.000     1.000 ! *
+H2O2               2   107.400     3.458     0.000     0.000     3.800
+H2O                2   572.400     2.605     1.844     0.000     4.000
+H2NO               2   116.700     3.492     0.000     0.000     1.000 ! JAM
+HNNO               2   232.400     3.828     0.000     0.000     1.000 ! *
+HNO                2   116.700     3.492     0.000     0.000     1.000 ! *
+HNOH               2   116.700     3.492     0.000     0.000     1.000 ! JAM
+HO2                2   107.400     3.458     0.000     0.000     1.000 ! *
+N                  0    71.400     3.298     0.000     0.000     0.000 ! *
+N2                 1    97.530     3.621     0.000     1.760     4.000
+N2H2               2    71.400     3.798     0.000     0.000     1.000 ! *
+N2H3               2   200.000     3.900     0.000     0.000     1.000 ! *
+N2H4               2   205.000     4.230     0.000     4.260     1.500
+N2O                1   232.400     3.828     0.000     0.000     1.000 ! *
+NH                 1    80.000     2.650     0.000     0.000     4.000
+NH2                2    80.000     2.650     0.000     2.260     4.000
+NH3                2   481.000     2.920     1.470     0.000    10.000
+NNH                2    71.400     3.798     0.000     0.000     1.000 ! *
+NO                 1    97.530     3.621     0.000     1.760     4.000
+NCNO               2   232.400     3.828     0.000     0.000     1.000 ! OIS
+NO2                2   200.000     3.500     0.000     0.000     1.000 ! *
+CH4                2   141.400     3.746     0.000     2.600    13.000
