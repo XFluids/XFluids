@@ -54,7 +54,7 @@ int main()
 
 	auto device = sycl::platform::get_platforms()[0].get_devices()[0];
 	// accelerator_selector device;
-	queue q(device, dpc_common::exception_handler);
+	queue q(device); //, dpc_common::exception_handler);
 
 	SYCLSolver syclsolver(q);
 	syclsolver.AllocateMemory(q);

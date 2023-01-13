@@ -3,8 +3,8 @@
 #include "setup.h"
 
 // SYCL head files
-#include <CL/sycl.hpp>
-#include "dpc_common.hpp"
+#include <sycl/sycl.hpp>
+// #include <dpc_common.hpp>
 
 using namespace std;
 using namespace sycl;
