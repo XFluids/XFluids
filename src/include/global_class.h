@@ -1,6 +1,6 @@
 #pragma once
 
-#include "setup.h" //#include "../read_ini/setupini.h" //#include "setup.h"//
+#include "../read_ini/setupini.h" //#include "setup.h"//
 //  C++ headers
 #include <ctime>
 #include <math.h>
@@ -19,15 +19,15 @@ using namespace sycl;
 
 typedef struct
 {
-    Real *rho, *p, *c, *H, *u, *v, *w;
+    real_t *rho, *p, *c, *H, *u, *v, *w;
 } FlowData;
 
 typedef struct
 {
     int Mtrl_ind;
-    Real Rgn_ind;           // indicator for region: inside interface, -1.0 or outside 1.0
-    Real Gamma, A, B, rho0; // Eos Parameters and maxium sound speed
-    Real R_0, lambda_0;     // gas constant and heat conductivity
+    real_t Rgn_ind;           // indicator for region: inside interface, -1.0 or outside 1.0
+    real_t Gamma, A, B, rho0; // Eos Parameters and maxium sound speed
+    real_t R_0, lambda_0;     // gas constant and heat conductivity
 } MaterialProperty;
 
 //-------------------------------------------------------------------------------------------------
@@ -36,75 +36,54 @@ typedef struct
 class FluidSYCL; class SYCLSolver;
 
 class FluidSYCL{
+    Setup Fs;
 
 public:
-
-    std::array<int, 3> WGSize, WISize;
-
-    Real *uvw_c_max;
-
-    Real dx, dy, dz, dl, dt;
-
-    Real *d_U, *d_U1, *d_LU;
-    // Real *d_CnsrvU, *d_CnsrvU1;
-    Real *d_eigen_local;
-
-    Real *d_FluxF, *d_FluxG, *d_FluxH;
-    Real *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
-
+    real_t *uvw_c_max;
+    real_t *d_U, *d_U1, *d_LU;
+    real_t *d_eigen_local;
+    real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
     FlowData d_fstate;
 
-	Real *h_U, *h_U1, *h_LU;
-	Real *h_eigen_local;
+    real_t *h_U, *h_U1, *h_LU;
+    real_t *h_eigen_local;
+    real_t *h_FluxF, *h_FluxG, *h_FluxH, *h_wallFluxF, *h_wallFluxG, *h_wallFluxH;
+    FlowData h_fstate;
 
-	Real *h_FluxF, *h_FluxG, *h_FluxH;
-	Real *h_wallFluxF, *h_wallFluxG, *h_wallFluxH;
-
-	FlowData h_fstate;
-
-	char Fluid_name[128]; 		//name of the fluid
+    std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
-
     MaterialProperty *d_material_property;
 
-    FluidSYCL(){};
-    ~FluidSYCL(){};
-    FluidSYCL(Real Dx, Real Dy, Real Dz, Real Dl, Real Dt, std::array<int, 3> workitem_size, std::array<int, 3> workgroup_size);
+    FluidSYCL(Setup &setup) : Fs(setup){};
 
     void initialize(int n);
-    void InitialU(sycl::queue &q, Real dx, Real dy, Real dz);
+    void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
     void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
     void UpdateFluidStates(sycl::queue &q, int flag);
-    Real GetFluidDt(sycl::queue &q);
-    void UpdateFluidURK3(sycl::queue &q, int flag, Real const dt);
+    real_t GetFluidDt(sycl::queue &q);
+    void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
 };
 
 class SYCLSolver{
+    Setup Ss;
+    real_t dt;
 
 public:
-
-    std::array<int, 3> workgroup_size, workitem_size;
-
-    Real domain_length, domain_width, domain_height;
-    Real dx, dy, dz, dl, dt;
-    BConditions  BCs[6]; //boundary condition indicators
-
-    BConditions *d_BCs;
-
+    BConditions *d_BCs; // boundary condition indicators
     FluidSYCL *fluids[NumFluid];
 
-    SYCLSolver(sycl::queue &q);
+    SYCLSolver(sycl::queue &q, Setup &setup);
     ~SYCLSolver(){};
     void Evolution(sycl::queue &q);
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
-    void Output(Real Time);
+    void Output(real_t Time);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
-    Real ComputeTimeStep(sycl::queue &q);
+    real_t ComputeTimeStep(sycl::queue &q);
     void SinglePhaseSolverRK3rd(sycl::queue &q);
     void RungeKuttaSP3rd(sycl::queue &q, int flag);
     void UpdateU(sycl::queue &q,int flag);

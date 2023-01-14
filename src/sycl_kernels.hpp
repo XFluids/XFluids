@@ -3,79 +3,34 @@
 #include "device_func.hpp"
 
 // 被SYCL内核调用的函数需要加"extern SYCL_EXTERNAL"
-extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, MaterialProperty *material, Real *U, Real *U1, Real *LU,
-                                              Real *FluxF, Real *FluxG, Real *FluxH,
-                                              Real *FluxFw, Real *FluxGw, Real *FluxHw,
-                                              Real *u, Real *v, Real *w, Real *rho,
-                                              Real *p, Real *H, Real *c,
-                                              Real dx, Real dy, Real dz);
-
-extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Real *UI, Real *Fx, Real *Fxwall, Real *eigen_local, Real *rho, Real *u, Real *v,
-                                           Real *w, Real *H, Real const dx);
-
-extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Real *UI, Real *Fy, Real *Fywall, Real *eigen_local, Real *rho, Real *u, Real *v,
-                                           Real *w, Real *H, Real const dy);
-
-extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Real *UI, Real *Fz, Real *Fzwall, Real *eigen_local, Real *rho, Real *u, Real *v,
-                                           Real *w, Real *H, Real const dz);
-
-extern SYCL_EXTERNAL void testkernel(int i, int j, int k, Real *UI, Real *Fx, Real *Fxwall, Real *eigen_local, Real *u, Real *v, Real *w, Real *rho,
-                                     Real *p, Real *H, Real *c, Real const dx, Real const dy, Real const dz);
-
-extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, BConditions const BC, Real *d_UI, int const mirror_offset, int const index_inner, int const sign);
-
-extern SYCL_EXTERNAL void FluidBCKernelY(int i, int j, int k, BConditions const BC, Real *d_UI, int const mirror_offset, int const index_inner, int const sign);
-
-extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, BConditions const BC, Real *d_UI, int const mirror_offset, int const index_inner, int const sign);
-
-extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Real *UI, Real *FluxF, Real *FluxG, Real *FluxH, Real *rho, Real *p, Real *c, Real *H, Real *u, Real *v, Real *w, Real const Gamma);
-
-extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Real *U, Real *U1, Real *LU, Real const dt, int flag);
-
-extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Real *LU, Real *FluxFw, Real *FluxGw, Real *FluxHw,
-                                        Real const dx, Real const dy, Real const dz);
-
-extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Real AA, Real BB, Real CC, Real *eigen_local, Real *u, Real *v, Real *w, Real *c);
-
-void InitialStatesKernel(int i, int j, int k, MaterialProperty* material, Real*  U, Real*  U1, Real*  LU, 
-                                                    Real*  FluxF, Real*  FluxG, Real*  FluxH, 
-                                                    Real*  FluxFw, Real*  FluxGw, Real*  FluxHw,
-                                                    Real*  u, Real*  v, Real*  w, Real*  rho,
-                                                    Real*  p, Real*  H, Real*  c,
-                                                    Real dx, Real dy, Real dz)
+extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, MaterialProperty *material, real_t *U, real_t *U1, real_t *LU,
+                                              real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
+                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *H, real_t *c)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    real_t dx = bl.dx;
+    real_t dy = bl.dy;
+    real_t dz = bl.dz;
+    real_t dl = bl.dl;
+
     int id = Xmax*Ymax*k + Xmax*j + i;
 
-    // #if DIM_X
-    // if(i >= Xmax)
-    //     return;
-    // #endif
-    // #if DIM_Y
-    // if(j >= Ymax)
-    //     return;
-    // #endif
-    // #if DIM_Z
-    // if(k >= Zmax)
-    //     return;
-    // #endif
-
-	#if USE_DP
-	Real one_float = 1.0;
-	Real half_float = 0.5;
-	Real zero_float = 0.0;
-	#else
-	Real one_float = 1.0f;
-	Real half_float = 0.5f;
-	Real zero_float = 0.0f;
-	#endif
-
-    Real x = (i-Bwidth_X)*dx + half_float*dx;
-    Real y = (j-Bwidth_Y)*dy + half_float*dy;
-    Real z = (k-Bwidth_Z)*dz + half_float*dz;
+    real_t x = (i - Bwidth_X) * dx + half_float * dx;
+    real_t y = (j - Bwidth_Y) * dy + half_float * dy;
+    real_t z = (k - Bwidth_Z) * dz + half_float * dz;
 
     // 1d shock tube case
     #if USE_DP
-    if(x < 0.5*DOMAIN_length) {
+    if (x < 0.5 * 1)
+    {
         rho[id] = 1.0;
         u[id] = 0.0;
         v[id] = 0.0;
@@ -90,7 +45,8 @@ void InitialStatesKernel(int i, int j, int k, MaterialProperty* material, Real* 
         p[id] = 0.1;
     }
     #else
-    if(x < 0.5f*DOMAIN_length) {
+    if (x < 0.5f * 1)
+    {
         rho[id] = 1.0f;
         u[id] = 0.0f;
         v[id] = 0.0f;
@@ -162,7 +118,7 @@ void InitialStatesKernel(int i, int j, int k, MaterialProperty* material, Real* 
     FluxH[Emax*id+3] = U[Emax*id+3]*w[id] + p[id];
     FluxH[Emax*id+4] = (U[Emax*id+4] + p[id])*w[id];
 
-    // Real fraction = material->Rgn_ind > 0.5 ? vof[id] : 1.0 - vof[id];
+    // real_t fraction = material->Rgn_ind > 0.5 ? vof[id] : 1.0 - vof[id];
 
     //give intial value for the interval matrixes
     for(int n=0; n<Emax; n++){
@@ -180,9 +136,19 @@ void InitialStatesKernel(int i, int j, int k, MaterialProperty* material, Real* 
 
 // add "sycl::nd_item<3> item" for get_global_id
 // add "stream const s" for output
-void ReconstructFluxX(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Real* eigen_local, Real* rho, Real* u, Real* v, 
-                                            Real* w, Real* H, Real const dx)
+extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, real_t *UI, real_t *Fx, real_t *Fxwall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v,
+                                           real_t *w, real_t *H)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    real_t dx = bl.dx;
     int id_l = Xmax*Ymax*k + Xmax*j + i;
     int id_r = Xmax*Ymax*k + Xmax*j + i + 1;
 
@@ -192,35 +158,35 @@ void ReconstructFluxX(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Rea
     if(i>= X_inner+Bwidth_X)
         return;
 
-    Real eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
 
-	//preparing some interval value for roe average
-	Real D	=	sqrt(rho[id_r]/rho[id_l]);
-	#if USE_DP
-	Real D1	=	1.0 / (D + 1.0);
-	#else
-	Real D1	=	1.0f / (D + 1.0f);
-	#endif
-	Real _u	=	(u[id_l] + D*u[id_r])*D1;
-	Real _v	=	(v[id_l] + D*v[id_r])*D1;
-	Real _w	=	(w[id_l] + D*w[id_r])*D1;
-	Real _H	=	(H[id_l] + D*H[id_r])*D1;
-	Real _rho = sqrt(rho[id_r]*rho[id_l]);
+    // preparing some interval value for roe average
+    real_t D = sqrt(rho[id_r] / rho[id_l]);
+#if USE_DP
+    real_t D1 = 1.0 / (D + 1.0);
+#else
+    real_t D1 = 1.0f / (D + 1.0f);
+#endif
+    real_t _u = (u[id_l] + D * u[id_r]) * D1;
+    real_t _v = (v[id_l] + D * v[id_r]) * D1;
+    real_t _w = (w[id_l] + D * w[id_r]) * D1;
+    real_t _H = (H[id_l] + D * H[id_r]) * D1;
+    real_t _rho = sqrt(rho[id_r] * rho[id_l]);
 
     RoeAverage_x(eigen_l, eigen_r, _rho, _u, _v, _w, _H, D, D1);
 
-    Real uf[10],  ff[10], pp[10], mm[10];
-    Real f_flux, _p[Emax][Emax];
+    real_t uf[10], ff[10], pp[10], mm[10];
+    real_t f_flux, _p[Emax][Emax];
 
-	// construct the right value & the left value scalar equations by characteristic reduction			
+    // construct the right value & the left value scalar equations by characteristic reduction			
 	// at i+1/2 in x direction
     // #pragma unroll Emax
 	for(int n=0; n<Emax; n++){
         #if USE_DP
-        Real eigen_local_max = 0.0;
-        #else
-        Real eigen_local_max = 0.0f;
-        #endif
+        real_t eigen_local_max = 0.0;
+#else
+        real_t eigen_local_max = 0.0f;
+#endif
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*k + Xmax*j + i + m;
             eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax*id_local+n]));//local lax-friedrichs	
@@ -260,10 +226,10 @@ void ReconstructFluxX(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Rea
 	// reconstruction the F-flux terms
 	for(int n=0; n<Emax; n++){
         #if USE_DP
-        Real fluxx = 0.0;
-        #else
-        Real fluxx = 0.0f;
-        #endif
+        real_t fluxx = 0.0;
+#else
+        real_t fluxx = 0.0f;
+#endif
 		for(int n1=0; n1<Emax; n1++) {
             fluxx += _p[n1][n];
 		}
@@ -271,43 +237,53 @@ void ReconstructFluxX(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Rea
 	}
 }
 
-void ReconstructFluxY(int i, int j, int k, Real* UI, Real* Fy, Real* Fywall, Real* eigen_local, Real* rho, Real* u, Real* v, 
-                                            Real* w, Real* H, Real const dy)
+extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, real_t *UI, real_t *Fy, real_t *Fywall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v,
+                                           real_t *w, real_t *H)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    real_t dy = bl.dy;
     int id_l = Xmax*Ymax*k + Xmax*j + i;
     int id_r = Xmax*Ymax*k + Xmax*(j+ 1) + i;
 
     if(j>= Y_inner+Bwidth_Y)
         return;
 
-    Real eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
 
     //preparing some interval value for roe average
-    Real D	=	sqrt(rho[id_r]/rho[id_l]);
-    #if USE_DP
-	Real D1	=	1.0 / (D + 1.0);
-    #else
-    Real D1	=	1.0f / (D + 1.0f);
-    #endif
-    Real _u	=	(u[id_l] + D*u[id_r])*D1;
-    Real _v	=	(v[id_l] + D*v[id_r])*D1;
-    Real _w	=	(w[id_l] + D*w[id_r])*D1;
-    Real _H	=	(H[id_l] + D*H[id_r])*D1;
-    Real _rho = sqrt(rho[id_r]*rho[id_l]);
+    real_t D = sqrt(rho[id_r] / rho[id_l]);
+#if USE_DP
+    real_t D1 = 1.0 / (D + 1.0);
+#else
+    real_t D1 = 1.0f / (D + 1.0f);
+#endif
+    real_t _u = (u[id_l] + D * u[id_r]) * D1;
+    real_t _v = (v[id_l] + D * v[id_r]) * D1;
+    real_t _w = (w[id_l] + D * w[id_r]) * D1;
+    real_t _H = (H[id_l] + D * H[id_r]) * D1;
+    real_t _rho = sqrt(rho[id_r] * rho[id_l]);
 
     RoeAverage_y(eigen_l, eigen_r, _rho, _u, _v, _w, _H, D, D1);
 
-    Real ug[10], gg[10], pp[10], mm[10];
-    Real g_flux, _p[Emax][Emax];
+    real_t ug[10], gg[10], pp[10], mm[10];
+    real_t g_flux, _p[Emax][Emax];
 
     //construct the right value & the left value scalar equations by characteristic reduction			
 	// at j+1/2 in y direction
 	for(int n=0; n<Emax; n++){
         #if USE_DP
-        Real eigen_local_max = 0.0;
-        #else
-        Real eigen_local_max = 0.0f;
-        #endif
+        real_t eigen_local_max = 0.0;
+#else
+        real_t eigen_local_max = 0.0f;
+#endif
 
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*k + Xmax*(j + m) + i;
@@ -346,10 +322,10 @@ void ReconstructFluxY(int i, int j, int k, Real* UI, Real* Fy, Real* Fywall, Rea
 	// reconstruction the G-flux terms
 	for(int n=0; n<Emax; n++){
         #if USE_DP
-        Real fluxy = 0.0;
-        #else
-        Real fluxy = 0.0f;
-        #endif
+        real_t fluxy = 0.0;
+#else
+        real_t fluxy = 0.0f;
+#endif
 		for(int n1=0; n1<Emax; n1++){
             fluxy += _p[n1][n];
 		}
@@ -357,43 +333,53 @@ void ReconstructFluxY(int i, int j, int k, Real* UI, Real* Fy, Real* Fywall, Rea
 	}
 }
 
-void ReconstructFluxZ(int i, int j, int k, Real* UI, Real* Fz, Real* Fzwall, Real* eigen_local, Real* rho, Real*  u, Real* v, 
-                                            Real* w, Real* H, Real const dz)
+extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, real_t *UI, real_t *Fz, real_t *Fzwall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v,
+                                           real_t *w, real_t *H)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    real_t dz = bl.dz;
     int id_l = Xmax*Ymax*k + Xmax*j + i;
     int id_r = Xmax*Ymax*(k+1) + Xmax*j + i;
 
     if(k>= Z_inner+Bwidth_Z)
         return;
 
-    Real eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
 
     //preparing some interval value for roe average
-    Real D	=	sqrt(rho[id_r]/rho[id_l]);
-    #if USE_DP
-	Real D1	=	1.0 / (D + 1.0);
-    #else
-    Real D1	=	1.0f / (D + 1.0f);
-    #endif
-    Real _u	=	(u[id_l] + D*u[id_r])*D1;
-    Real _v	=	(v[id_l] + D*v[id_r])*D1;
-    Real _w	=	(w[id_l] + D*w[id_r])*D1;
-    Real _H	=	(H[id_l] + D*H[id_r])*D1;
-    Real _rho = sqrt(rho[id_r]*rho[id_l]);
+    real_t D = sqrt(rho[id_r] / rho[id_l]);
+#if USE_DP
+    real_t D1 = 1.0 / (D + 1.0);
+#else
+    real_t D1 = 1.0f / (D + 1.0f);
+#endif
+    real_t _u = (u[id_l] + D * u[id_r]) * D1;
+    real_t _v = (v[id_l] + D * v[id_r]) * D1;
+    real_t _w = (w[id_l] + D * w[id_r]) * D1;
+    real_t _H = (H[id_l] + D * H[id_r]) * D1;
+    real_t _rho = sqrt(rho[id_r] * rho[id_l]);
 
     RoeAverage_z(eigen_l, eigen_r, _rho, _u, _v, _w, _H, D, D1);
 
-    Real uh[10], hh[10], pp[10], mm[10];
-    Real h_flux, _p[Emax][Emax];
+    real_t uh[10], hh[10], pp[10], mm[10];
+    real_t h_flux, _p[Emax][Emax];
 
-	//construct the right value & the left value scalar equations by characteristic reduction
+    //construct the right value & the left value scalar equations by characteristic reduction
 	// at k+1/2 in z direction
 	for(int n=0; n<Emax; n++){
         #if USE_DP
-        Real eigen_local_max = 0.0;
-        #else
-        Real eigen_local_max = 0.0f;
-        #endif
+        real_t eigen_local_max = 0.0;
+#else
+        real_t eigen_local_max = 0.0f;
+#endif
 
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*(k + m) + Xmax*j + i;
@@ -431,10 +417,10 @@ void ReconstructFluxZ(int i, int j, int k, Real* UI, Real* Fz, Real* Fzwall, Rea
 	// reconstruction the H-flux terms
 	for(int n=0; n<Emax; n++){
         #if USE_DP
-        Real fluxz = 0.0;
-        #else
-        Real fluxz = 0.0f;
-        #endif
+        real_t fluxz = 0.0;
+#else
+        real_t fluxz = 0.0f;
+#endif
 		for(int n1=0; n1<Emax; n1++){
             fluxz +=  _p[n1][n];
         }
@@ -442,8 +428,14 @@ void ReconstructFluxZ(int i, int j, int k, Real* UI, Real* Fz, Real* Fzwall, Rea
 	}
 }
 
-void GetLocalEigen(int i, int j, int k, Real AA, Real BB, Real CC, Real* eigen_local, Real* u, Real* v, Real* w, Real* c)
+extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA, real_t BB, real_t CC, real_t *eigen_local, real_t *u, real_t *v, real_t *w, real_t *c)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
     int id = Xmax*Ymax*k + Xmax*j + i;
 
     #if DIM_X
@@ -459,9 +451,9 @@ void GetLocalEigen(int i, int j, int k, Real AA, Real BB, Real CC, Real* eigen_l
     return;
     #endif
 
-    Real	uu = AA*u[id] + BB*v[id] + CC*w[id];
-    Real	uuPc = uu + c[id];
-    Real	uuMc = uu - c[id];
+    real_t uu = AA * u[id] + BB * v[id] + CC * w[id];
+    real_t uuPc = uu + c[id];
+    real_t uuMc = uu - c[id];
     //local eigen values
     eigen_local[Emax*id+0] = uuMc;
     eigen_local[Emax*id+1] = uu;
@@ -470,9 +462,17 @@ void GetLocalEigen(int i, int j, int k, Real AA, Real BB, Real CC, Real* eigen_l
     eigen_local[Emax*id+4] = uuPc;
 }
 
-void UpdateFluidLU(int i, int j, int k, Real* LU, Real* FluxFw, Real* FluxGw, Real* FluxHw, 
-                    Real const dx, Real const dy, Real const dz)
+extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    real_t dx = bl.dx;
+    real_t dy = bl.dy;
+    real_t dz = bl.dz;
     int id = Xmax*Ymax*k + Xmax*j + i;
 
     #if DIM_X
@@ -487,10 +487,10 @@ void UpdateFluidLU(int i, int j, int k, Real* LU, Real* FluxFw, Real* FluxGw, Re
 
     for(int n=0; n<Emax; n++){
         #if USE_DP
-        Real LU0 = 0.0;
-        #else
-        Real LU0 = 0.0f;
-        #endif
+    real_t LU0 = 0.0;
+#else
+        real_t LU0 = 0.0f;
+#endif
         
         #if DIM_X
         LU0 += (FluxFw[Emax*id_im+n] - FluxFw[Emax*id+n])/dx;
@@ -505,23 +505,15 @@ void UpdateFluidLU(int i, int j, int k, Real* LU, Real* FluxFw, Real* FluxGw, Re
     }
 }
 
-extern SYCL_EXTERNAL void testkernel(int i, int j, int k, Real* UI, Real* Fx, Real* Fxwall, Real* eigen_local, Real*  u, Real*  v, Real*  w, Real*  rho,
-                                                    Real*  p, Real*  H, Real*  c, Real const dx, Real const dy, Real const dz)
+extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+                                                 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t const Gamma)
 {
-   int id_l = Xmax*Ymax*k + Xmax*j + i;
-    int id_r = Xmax*Ymax*k + Xmax*j + i + 1;
-
-	// cout<<"i,j,k = "<<i<<", "<<j<<", "<<k<<", "<<Emax*(Xmax*j + i-2)+0<<"\n";
-	// printf("%f", UI[0]);
-
-    if(i>= X_inner+Bwidth_X)
-        return;
-
-}
-
-void UpdateFuidStatesKernel(int i, int j, int k, Real*  UI, Real*  FluxF, Real*  FluxG, Real*  FluxH, 
-                                                            Real*  rho, Real*  p, Real*  c, Real*  H, Real*  u, Real*  v, Real*  w, Real const Gamma)
-{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
     int id = Xmax*Ymax*k + Xmax*j + i;
 
     #if DIM_X
@@ -537,18 +529,24 @@ void UpdateFuidStatesKernel(int i, int j, int k, Real*  UI, Real*  FluxF, Real* 
         return;
     #endif
 
-    Real U[Emax] = {UI[Emax*id+0], UI[Emax*id+1], UI[Emax*id+2], UI[Emax*id+3], UI[Emax*id+4]};
+    real_t U[Emax] = {UI[Emax * id + 0], UI[Emax * id + 1], UI[Emax * id + 2], UI[Emax * id + 3], UI[Emax * id + 4]};
 
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], Gamma);
 
-    Real *Fx = &(FluxF[Emax*id]);
-    Real *Fy = &(FluxG[Emax*id]);
-    Real *Fz = &(FluxH[Emax*id]);
+    real_t *Fx = &(FluxF[Emax * id]);
+    real_t *Fy = &(FluxG[Emax * id]);
+    real_t *Fz = &(FluxH[Emax * id]);
     GetPhysFlux(U, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
 }
 
-void UpdateURK3rdKernel(int i, int j, int k, Real* U, Real* U1, Real* LU, Real const dt, int flag)
+extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
     int id = Xmax*Ymax*k + Xmax*j + i;
 
     switch(flag) {
@@ -577,8 +575,17 @@ void UpdateURK3rdKernel(int i, int j, int k, Real* U, Real* U1, Real* LU, Real c
     }
 }
 
-void FluidBCKernelX(int i, int j, int k, BConditions  const BC, Real* d_UI, int const mirror_offset, int const index_inner, int const sign)
+extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
     int id = Xmax*Ymax*k + Xmax*j + i;
 
     #if DIM_Y
@@ -631,8 +638,17 @@ void FluidBCKernelX(int i, int j, int k, BConditions  const BC, Real* d_UI, int 
     }
 }
 
-void FluidBCKernelY(int i, int j, int k, BConditions const BC, Real* d_UI, int const mirror_offset, int const index_inner, int const sign)
+extern SYCL_EXTERNAL void FluidBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
     int id = Xmax*Ymax*k + Xmax*j + i;
 
     #if DIM_X
@@ -685,8 +701,17 @@ void FluidBCKernelY(int i, int j, int k, BConditions const BC, Real* d_UI, int c
     }
 }
 
-void FluidBCKernelZ(int i, int j, int k, BConditions const BC, Real* d_UI, int const  mirror_offset, int const index_inner, int const sign)
+extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
     int id = Xmax*Ymax*k + Xmax*j + i;
 
     #if DIM_X

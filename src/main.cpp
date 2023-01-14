@@ -37,16 +37,18 @@
 //-------------------------------------------------------------------------------------------------
 //							main
 //-------------------------------------------------------------------------------------------------
-int main()
+int main(int argc, char *argv[])
 {
 	// Logger logger;
 	// logger.LogSolverInfo();
-
-	auto device = sycl::platform::get_platforms()[2].get_devices()[0];
+	std::string input_flie = std::string(argv[1]);
+	ConfigMap configMap = broadcast_parameters(input_flie);
 	// accelerator_selector device;
-	queue q(device); //, dpc_common::exception_handler);
+	auto device = sycl::platform::get_platforms()[2].get_devices()[0];
+	sycl::queue q(device);
+	Setup setup(configMap, q);
 
-	SYCLSolver syclsolver(q);
+	SYCLSolver syclsolver(q, setup);
 	syclsolver.AllocateMemory(q);
 	syclsolver.InitialCondition(q);
 	//  boundary conditions

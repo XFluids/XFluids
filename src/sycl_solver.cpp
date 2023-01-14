@@ -1,74 +1,35 @@
 #include "include/global_class.h"
 
-SYCLSolver::SYCLSolver(sycl::queue &q)
+SYCLSolver::SYCLSolver(sycl::queue &q, Setup &setup) : Ss(setup)
 {
 	// Print device name and version
 	std::cout << "Device: " << q.get_device().get_info<sycl::info::device::name>()
 			  << ",  version = " << q.get_device().get_info<sycl::info::device::version>() << "\n";
-
-	workgroup_size = {dim_block_x, dim_block_y, dim_block_z};
-	workitem_size = {X_inner, Y_inner, Z_inner};
-
-	// --------------------------------------------------------------------------------------
-	// Geo setup, BC
-	// --------------------------------------------------------------------------------------
-	int Nmax = std::max(BLOCK_ratio[0], BLOCK_ratio[1]);
-	Nmax = std::max(Nmax, BLOCK_ratio[2]);
-	// Domain sizes
-	domain_length = DOMAIN_length * BLOCK_ratio[0] / Nmax;
-	domain_width = DOMAIN_length * BLOCK_ratio[1] / Nmax;
-	domain_height = DOMAIN_length * BLOCK_ratio[2] / Nmax;
-
-	dx = DIM_X ? domain_length / (Real)(X_inner) : 0;
-	dy = DIM_Y ? domain_width / (Real)(Y_inner) : 0;
-	dz = DIM_Z ? domain_height / (Real)(Z_inner) : 0;
-
-	dl = std::max(std::max(domain_length, domain_width), domain_height);
-
-#if DIM_X
-	dl = std::min(dl, dx);
-#endif
-#if DIM_Y
-	dl = std::min(dl, dy);
-#endif
-#if DIM_Z
-	dl = std::min(dl, dz);
-#endif
-	dt = 0;
-
-	// Outer domain boundary conditions
-	for (int n = 0; n < 6; n++)
-		BCs[n] = Boundarys[n];
-	// display domain sizes
-	cout << "\n\n Domain sizes are: " << domain_length << "*" << domain_width << "*" << domain_height << "\n";
-
 	// display the information of fluid materials
 	for (int n = 0; n < NumFluid; n++)
 	{
-		fluids[n] = new FluidSYCL(dx, dy, dz, dl, dt, workitem_size, workgroup_size);
+		fluids[n] = new FluidSYCL(setup);
 		fluids[n]->initialize(n);
 	}
-
-	// levelset = new LevelsetGPU(dx,dy,dz,dl, dim_blk, dim_grid);
 }
 
 void SYCLSolver::Evolution(sycl::queue &q)
 {
-	Real physicalTime = 0.0;
+	real_t physicalTime = 0.0;
 	int Iteration = 0;
 
 	double duration = 0.0;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 
 	// RK3
-	while (physicalTime < EndTime)
+	while (physicalTime < Ss.EndTime)
 	{
 
 		// get minmum dt
 		dt = ComputeTimeStep(q); // 5.0e-5;//0.001;//
 
-		if (physicalTime + dt > EndTime)
-			dt = EndTime - physicalTime;
+		if (physicalTime + dt > Ss.EndTime)
+			dt = Ss.EndTime - physicalTime;
 
 		// solved the fluid with 3rd order Runge-Kutta method
 		SinglePhaseSolverRK3rd(q);
@@ -133,9 +94,9 @@ void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
 	}
 }
 
-Real SYCLSolver::ComputeTimeStep(sycl::queue &q)
+real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
 {
-	Real dt_ref = 10e10;
+	real_t dt_ref = 10e10;
 #if NumFluid == 1
 	dt_ref = fluids[0]->GetFluidDt(q);
 #elif NumFluid == 2
@@ -160,7 +121,7 @@ void SYCLSolver::UpdateU(sycl::queue &q, int flag)
 void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 {
 	for (int n = 0; n < NumFluid; n++)
-		fluids[n]->BoundaryCondition(q, BCs, flag);
+		fluids[n]->BoundaryCondition(q, Ss.Boundarys, flag);
 }
 
 void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
@@ -173,7 +134,7 @@ void SYCLSolver::AllocateMemory(sycl::queue &q)
 {
 	d_BCs = static_cast<BConditions *>(malloc_device(6 * sizeof(BConditions), q));
 
-	q.memcpy(d_BCs, BCs, 6 * sizeof(BConditions)).wait();
+	q.memcpy(d_BCs, Ss.Boundarys, 6 * sizeof(BConditions)).wait();
 
 	// host arrays for each fluid
 	for (int n = 0; n < NumFluid; n++)
@@ -189,12 +150,13 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 	// #endif
 
 	for (int n = 0; n < NumFluid; n++)
-		fluids[n]->InitialU(q, dx, dy, dz);
+		fluids[n]->InitialU(q);
 }
 
 void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 {
 	// copy mem from device to host
+	int bytes = Ss.bytes;
 	for (int n = 0; n < NumFluid; n++)
 	{
 		q.memcpy(fluids[n]->h_fstate.rho, fluids[n]->d_fstate.rho, bytes);
@@ -208,9 +170,22 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 	q.wait();
 }
 
-void SYCLSolver::Output(Real Time)
+void SYCLSolver::Output(real_t Time)
 {
-	Real Itime;
+	int Xmax = Ss.BlSz.Xmax;
+	int Ymax = Ss.BlSz.Ymax;
+	int Zmax = Ss.BlSz.Zmax;
+	int X_inner = Ss.BlSz.X_inner;
+	int Y_inner = Ss.BlSz.Y_inner;
+	int Z_inner = Ss.BlSz.Z_inner;
+	int Bwidth_X = Ss.BlSz.Bwidth_X;
+	int Bwidth_Y = Ss.BlSz.Bwidth_Y;
+	int Bwidth_Z = Ss.BlSz.Bwidth_Z;
+	real_t dx = Ss.BlSz.dx;
+	real_t dy = Ss.BlSz.dy;
+	real_t dz = Ss.BlSz.dz;
+
+	real_t Itime;
 	char file_name[50], file_list[50];
 
 	// produce output file name

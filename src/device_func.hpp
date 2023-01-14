@@ -8,13 +8,13 @@ using namespace sycl;
 /**
  * @brief Obtain state at a grid point
  */
-void GetStates(Real UI[Emax], Real &rho, Real &u, Real &v, Real &w, Real &p, Real &H, Real &c, Real const Gamma)
+void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c, real_t const Gamma)
 {
 	rho	=	UI[0];
 	#if USE_DP
-	Real rho1 =	1.0/rho;
+	real_t rho1 =	1.0/rho;
 	#else
-	Real rho1 =	1.0f/rho;
+	real_t rho1 =	1.0f/rho;
 	#endif
 	u	=	UI[1]*rho1;
 	v	=	UI[2]*rho1;
@@ -33,7 +33,7 @@ void GetStates(Real UI[Emax], Real &rho, Real &u, Real &v, Real &w, Real &p, Rea
 /**
  * @brief  Obtain fluxes at a grid point
  */
-void GetPhysFlux(Real UI[Emax], Real *FluxF, Real *FluxG, Real *FluxH, Real const rho, Real const u, Real const v, Real const w, Real const p, Real const H, Real const c)
+void GetPhysFlux(real_t UI[Emax], real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const rho, real_t const u, real_t const v, real_t const w, real_t const p, real_t const H, real_t const c)
 {
 	FluxF[0] = UI[1];
 	// *(FluxF+0) = UI[1];
@@ -55,28 +55,18 @@ void GetPhysFlux(Real UI[Emax], Real *FluxF, Real *FluxG, Real *FluxH, Real cons
 	FluxH[4] = (UI[4] + p)*w;
 }
 
-inline void RoeAverage_x(Real eigen_l[Emax][Emax], Real eigen_r[Emax][Emax], Real const _rho, Real const _u, Real const _v, Real const _w, 
-	Real const _H, Real const D, Real const D1)
+inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t const _rho, real_t const _u, real_t const _v, real_t const _w, 
+	real_t const _H, real_t const D, real_t const D1)
 {
-	//preparing some interval value
-	#if USE_DP
-	Real one_float = 1.0;
-	Real half_float = 0.5;
-	Real zero_float = 0.0;
-	#else
-	Real one_float = 1.0f;
-	Real half_float = 0.5f;
-	Real zero_float = 0.0f;
-	#endif
 
-	Real _Gamma = Gamma - one_float;
-	Real _rho1 = one_float / _rho;
-	Real q2 = _u*_u + _v*_v + _w*_w;
-	Real c2 = _Gamma*(_H - half_float*q2);
-	Real _c = sqrt(c2);
-	Real _c1_rho = half_float*_rho / _c;
-	Real c21_Gamma = _Gamma / c2;
-	Real _c1_rho1_Gamma = _Gamma*_rho1 / _c;
+	real_t _Gamma = Gamma - one_float;
+	real_t _rho1 = one_float / _rho;
+	real_t q2 = _u*_u + _v*_v + _w*_w;
+	real_t c2 = _Gamma*(_H - half_float*q2);
+	real_t _c = sqrt(c2);
+	real_t _c1_rho = half_float*_rho / _c;
+	real_t c21_Gamma = _Gamma / c2;
+	real_t _c1_rho1_Gamma = _Gamma*_rho1 / _c;
 
 	// left eigen vectors
 	eigen_l[0][0] = one_float - half_float*c21_Gamma*q2;
@@ -141,28 +131,18 @@ inline void RoeAverage_x(Real eigen_l[Emax][Emax], Real eigen_r[Emax][Emax], Rea
 	eigen_r[4][4] = _c1_rho*(_H - _u*_c);
 }
 
-inline void RoeAverage_y(Real eigen_l[Emax][Emax], Real eigen_r[Emax][Emax], Real const _rho, Real const _u, Real const _v, Real const _w, 
-	Real const _H, Real const D, Real const D1)
+inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t const _rho, real_t const _u, real_t const _v, real_t const _w, 
+	real_t const _H, real_t const D, real_t const D1)
 {
-	//preparing some interval value
-	#if USE_DP
-	Real one_float = 1.0;
-	Real half_float = 0.5;
-	Real zero_float = 0.0;
-	#else
-	Real one_float = 1.0f;
-	Real half_float = 0.5f;
-	Real zero_float = 0.0f;
-	#endif
 
-	Real _Gamma = Gamma - one_float;
-	Real _rho1 = one_float / _rho;
-	Real q2 = _u*_u + _v*_v + _w*_w;
-	Real c2 = _Gamma*(_H - half_float*q2);
-	Real _c = sqrt(c2);
-	Real _c1_rho = half_float*_rho / _c;
-	Real c21_Gamma = _Gamma / c2;
-	Real _c1_rho1_Gamma = _Gamma*_rho1 / _c;
+	real_t _Gamma = Gamma - one_float;
+	real_t _rho1 = one_float / _rho;
+	real_t q2 = _u*_u + _v*_v + _w*_w;
+	real_t c2 = _Gamma*(_H - half_float*q2);
+	real_t _c = sqrt(c2);
+	real_t _c1_rho = half_float*_rho / _c;
+	real_t c21_Gamma = _Gamma / c2;
+	real_t _c1_rho1_Gamma = _Gamma*_rho1 / _c;
 
 	// left eigen vectors 
 	eigen_l[0][0] = _w*_rho1;
@@ -227,28 +207,19 @@ inline void RoeAverage_y(Real eigen_l[Emax][Emax], Real eigen_r[Emax][Emax], Rea
 	eigen_r[4][4] = _c1_rho*(_H - _v*_c);
 }
 
-inline void RoeAverage_z(Real eigen_l[Emax][Emax], Real eigen_r[Emax][Emax], Real const _rho, Real const _u, Real const _v, Real const _w, 
-	Real const _H, Real const D, Real const D1)
+inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t const _rho, real_t const _u, real_t const _v, real_t const _w, 
+	real_t const _H, real_t const D, real_t const D1)
 {
-	//preparing some interval value
-	#if USE_DP
-	Real one_float = 1.0;
-	Real half_float = 0.5;
-	Real zero_float = 0.0;
-	#else
-	Real one_float = 1.0f;
-	Real half_float = 0.5f;
-	Real zero_float = 0.0f;
-	#endif
+	// preparing some interval value
 
-	Real _Gamma = Gamma - one_float;
-	Real _rho1 = one_float / _rho;
-	Real q2 = _u*_u + _v*_v + _w*_w;
-	Real c2 = _Gamma*(_H - half_float*q2);
-	Real _c = sqrt(c2);
-	Real _c1_rho = half_float*_rho / _c;
-	Real c21_Gamma = _Gamma / c2;
-	Real _c1_rho1_Gamma = _Gamma*_rho1 / _c;
+	real_t _Gamma = Gamma - one_float;
+	real_t _rho1 = one_float / _rho;
+	real_t q2 = _u*_u + _v*_v + _w*_w;
+	real_t c2 = _Gamma*(_H - half_float*q2);
+	real_t _c = sqrt(c2);
+	real_t _c1_rho = half_float*_rho / _c;
+	real_t c21_Gamma = _Gamma / c2;
+	real_t _c1_rho1_Gamma = _Gamma*_rho1 / _c;
 
 	// left eigen vectors 
 	eigen_l[0][0] = - _v*_rho1;
@@ -318,14 +289,14 @@ inline void RoeAverage_z(Real eigen_l[Emax][Emax], Real eigen_r[Emax][Emax], Rea
  * 
  * @param f 
  * @param delta 
- * @return Real 
+ * @return real_t 
  */
-Real weno5old_P(Real *f, Real delta)
+real_t weno5old_P(real_t *f, real_t delta)
 {
 	int k;
-	Real v1, v2, v3, v4, v5;
-	Real a1, a2, a3;
-//	Real w1, w2, w3;
+	real_t v1, v2, v3, v4, v5;
+	real_t a1, a2, a3;
+//	real_t w1, w2, w3;
 
 	//assign value to v1, v2,...
 	k = 0;
@@ -336,18 +307,18 @@ Real weno5old_P(Real *f, Real delta)
 	v5 = *(f + k + 2);
 
 	//smoothness indicator
-//	Real s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3) 
+//	real_t s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3) 
 //	   + 3.0*(v1 - 4.0*v2 + 3.0*v3)*(v1 - 4.0*v2 + 3.0*v3);
-//	Real s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4) 
+//	real_t s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4) 
 //	   + 3.0*(v2 - v4)*(v2 - v4);
-//	Real s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5) 
+//	real_t s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5) 
 //	   + 3.0*(3.0*v3 - 4.0*v4 + v5)*(3.0*v3 - 4.0*v4 + v5);
 	
         //weights
 //      a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
 //      a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
 //      a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-//      Real tw1 = 1.0/(a1 + a2 +a3); 
+//      real_t tw1 = 1.0/(a1 + a2 +a3); 
 //      w1 = a1*tw1;
 //      w2 = a2*tw1;
 //      w3 = a3*tw1;
@@ -365,28 +336,28 @@ Real weno5old_P(Real *f, Real delta)
 
 		#if USE_DP
 		a1 = v1 - 2.0*v2 + v3;
-        Real s1 = 13.0*a1*a1;
+        real_t s1 = 13.0*a1*a1;
         a1 = v1 - 4.0*v2 + 3.0*v3;
         s1 += 3.0*a1*a1;
         a1 = v2 - 2.0*v3 + v4;
-        Real s2 = 13.0*a1*a1;
+        real_t s2 = 13.0*a1*a1;
         a1 = v2 - v4;
         s2 += 3.0*a1*a1;
         a1 = v3 - 2.0*v4 + v5;
-        Real s3 = 13.0*a1*a1;
+        real_t s3 = 13.0*a1*a1;
         a1 = 3.0*v3 - 4.0*v4 + v5;
         s3 += 3.0*a1*a1;
 		#else
 		a1 = v1 - 2.0f*v2 + v3;
-        Real s1 = 13.0f*a1*a1;
+        real_t s1 = 13.0f*a1*a1;
         a1 = v1 - 4.0f*v2 + 3.0f*v3;
         s1 += 3.0f*a1*a1;
         a1 = v2 - 2.0f*v3 + v4;
-        Real s2 = 13.0f*a1*a1;
+        real_t s2 = 13.0f*a1*a1;
         a1 = v2 - v4;
         s2 += 3.0f*a1*a1;
         a1 = v3 - 2.0f*v4 + v5;
-        Real s3 = 13.0f*a1*a1;
+        real_t s3 = 13.0f*a1*a1;
         a1 = 3.0f*v3 - 4.0f*v4 + v5;
         s3 += 3.0f*a1*a1;
 		#endif
@@ -394,21 +365,21 @@ Real weno5old_P(Real *f, Real delta)
     	// a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
     	// a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
     	// a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-    	// Real tw1 = 1.0/(a1 + a2 +a3); 
+    	// real_t tw1 = 1.0/(a1 + a2 +a3); 
     	// a1 = a1*tw1;
     	// a2 = a2*tw1;
     	// a3 = a3*tw1;
-        Real tol = 1.0e-6;
+        real_t tol = 1.0e-6;
 		#if USE_DP
         a1 = 0.1*(tol + s2)*(tol + s2)*(tol + s3)*(tol + s3);
         a2 = 0.2*(tol + s1)*(tol + s1)*(tol + s3)*(tol + s3);
         a3 = 0.3*(tol + s1)*(tol + s1)*(tol + s2)*(tol + s2);
-        Real tw1 = 1.0/(a1 + a2 +a3);
+        real_t tw1 = 1.0/(a1 + a2 +a3);
 		#else
         a1 = 0.1f*(tol + s2)*(tol + s2)*(tol + s3)*(tol + s3);
         a2 = 0.2f*(tol + s1)*(tol + s1)*(tol + s3)*(tol + s3);
         a3 = 0.3f*(tol + s1)*(tol + s1)*(tol + s2)*(tol + s2);
-        Real tw1 = 1.0f/(a1 + a2 +a3);
+        real_t tw1 = 1.0f/(a1 + a2 +a3);
 		#endif
 
     	a1 = a1*tw1;
@@ -431,7 +402,7 @@ Real weno5old_P(Real *f, Real delta)
         // a1 = (1.0e-6 + s1)*(1.0e-6 + s1);
         // a2 = (1.0e-6 + s2)*(1.0e-6 + s2);
         // a3 = (1.0e-6 + s3)*(1.0e-6 + s3);
-        // Real tw1 = 6.0*(a1 + a2 + a3);
+        // real_t tw1 = 6.0*(a1 + a2 + a3);
         // return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
 }
 /**
@@ -439,14 +410,14 @@ Real weno5old_P(Real *f, Real delta)
  * 
  * @param f 
  * @param delta 
- * @return Real 
+ * @return real_t 
  */
-Real weno5old_M(Real *f, Real delta)
+real_t weno5old_M(real_t *f, real_t delta)
 {
 	int k;
-	Real v1, v2, v3, v4, v5;
-	Real a1, a2, a3;
-//	Real w1, w2, w3;
+	real_t v1, v2, v3, v4, v5;
+	real_t a1, a2, a3;
+//	real_t w1, w2, w3;
 
 	//assign value to v1, v2,...
 	k = 1;
@@ -457,18 +428,18 @@ Real weno5old_M(Real *f, Real delta)
 	v5 = *(f + k - 2);
 
 	//smoothness indicator
-//	Real s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3) 
+//	real_t s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3) 
 //	   + 3.0*(v1 - 4.0*v2 + 3.0*v3)*(v1 - 4.0*v2 + 3.0*v3);
-//	Real s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4) 
+//	real_t s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4) 
 //	   + 3.0*(v2 - v4)*(v2 - v4);
-//	Real s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5) 
+//	real_t s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5) 
 //	   + 3.0*(3.0*v3 - 4.0*v4 + v5)*(3.0*v3 - 4.0*v4 + v5);
 
         //weights
 //      a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
 //      a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
 //      a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-//      Real tw1 = 1.0/(a1 + a2 +a3); 
+//      real_t tw1 = 1.0/(a1 + a2 +a3); 
 //      w1 = a1*tw1;
 //      w2 = a2*tw1;
 //      w3 = a3*tw1;
@@ -486,28 +457,28 @@ Real weno5old_M(Real *f, Real delta)
 
 		#if USE_DP
         a1 = v1 - 2.0*v2 + v3;
-        Real s1 = 13.0*a1*a1;
+        real_t s1 = 13.0*a1*a1;
         a1 = v1 - 4.0*v2 + 3.0*v3;
         s1 += 3.0*a1*a1;
         a1 = v2 - 2.0*v3 + v4;
-        Real s2 = 13.0*a1*a1;
+        real_t s2 = 13.0*a1*a1;
         a1 = v2 - v4;
         s2 += 3.0*a1*a1;
         a1 = v3 - 2.0*v4 + v5;
-        Real s3 = 13.0*a1*a1;
+        real_t s3 = 13.0*a1*a1;
         a1 = 3.0*v3 - 4.0*v4 + v5;
         s3 += 3.0*a1*a1;
 		#else
         a1 = v1 - 2.0f*v2 + v3;
-        Real s1 = 13.0f*a1*a1;
+        real_t s1 = 13.0f*a1*a1;
         a1 = v1 - 4.0f*v2 + 3.0f*v3;
         s1 += 3.0f*a1*a1;
         a1 = v2 - 2.0f*v3 + v4;
-        Real s2 = 13.0f*a1*a1;
+        real_t s2 = 13.0f*a1*a1;
         a1 = v2 - v4;
         s2 += 3.0f*a1*a1;
         a1 = v3 - 2.0f*v4 + v5;
-        Real s3 = 13.0f*a1*a1;
+        real_t s3 = 13.0f*a1*a1;
         a1 = 3.0f*v3 - 4.0f*v4 + v5;
         s3 += 3.0f*a1*a1;
 		#endif
@@ -515,21 +486,21 @@ Real weno5old_M(Real *f, Real delta)
 		//  a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
 		//  a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
 		//  a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-		//  Real tw1 = 1.0/(a1 + a2 +a3); 
+		//  real_t tw1 = 1.0/(a1 + a2 +a3); 
 		//  a1 = a1*tw1;
 		//  a2 = a2*tw1;
 		//  a3 = a3*tw1;
-        Real tol = 1.0e-6;
+        real_t tol = 1.0e-6;
 		#if USE_DP
 		a1 = 0.1*(tol+ s2)*(tol + s2)*(tol + s3)*(tol + s3);
         a2 = 0.2*(tol + s1)*(tol + s1)*(tol + s3)*(tol + s3);
         a3 = 0.3*(tol + s1)*(tol + s1)*(tol + s2)*(tol + s2);
-        Real tw1 = 1.0/(a1 + a2 +a3);
+        real_t tw1 = 1.0/(a1 + a2 +a3);
 		#else
 		a1 = 0.1f*(tol+ s2)*(tol + s2)*(tol + s3)*(tol + s3);
         a2 = 0.2f*(tol + s1)*(tol + s1)*(tol + s3)*(tol + s3);
         a3 = 0.3f*(tol + s1)*(tol + s1)*(tol + s2)*(tol + s2);
-        Real tw1 = 1.0f/(a1 + a2 +a3);
+        real_t tw1 = 1.0f/(a1 + a2 +a3);
 		#endif
          a1 = a1*tw1;
          a2 = a2*tw1;
@@ -551,6 +522,6 @@ Real weno5old_M(Real *f, Real delta)
         //  a1 = (1.0e-6 + s1)*(1.0e-6 + s1);
         //  a2 = (1.0e-6 + s2)*(1.0e-6 + s2);
         //  a3 = (1.0e-6 + s3)*(1.0e-6 + s3);
-        //  Real tw1 = 6.0*(a1 + a2 + a3);
+        //  real_t tw1 = 6.0*(a1 + a2 + a3);
         //  return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
 }
