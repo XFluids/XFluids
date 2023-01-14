@@ -4,7 +4,12 @@
         "array": "cpp",
         "string_view": "cpp",
         "numbers": "cpp",
-        "limits": "cpp"
+        "limits": "cpp",
+        "iomanip": "cpp",
+        "iostream": "cpp",
+        "fstream": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }

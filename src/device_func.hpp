@@ -1,8 +1,5 @@
 #pragma once
 
-#include <CL/sycl.hpp>
-#include "dpc_common.hpp"
-
 #include "include/global_class.h"
 
 using namespace std;

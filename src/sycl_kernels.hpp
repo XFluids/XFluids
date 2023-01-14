@@ -2,9 +2,6 @@
 #include "include/global_class.h"
 #include "device_func.hpp"
 
-#include <CL/sycl.hpp>
-#include "dpc_common.hpp"
-
 // 被SYCL内核调用的函数需要加"extern SYCL_EXTERNAL"
 extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, MaterialProperty *material, Real *U, Real *U1, Real *LU,
                                               Real *FluxF, Real *FluxG, Real *FluxH,

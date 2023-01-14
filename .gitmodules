@@ -1,0 +1,4 @@
+[submodule "src/read_ini"]
+	path = src/read_ini
+	url = https://gitee.com/jiuxiaoyun/read_ini
+	branch = for-com-sycl

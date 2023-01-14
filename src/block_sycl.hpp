@@ -1,10 +1,6 @@
 #include "include/global_class.h"
 #include "sycl_kernels.hpp"
 
-// SYCL head files
-#include <CL/sycl.hpp>
-#include "dpc_common.hpp"
-
 using namespace std;
 using namespace sycl;
 

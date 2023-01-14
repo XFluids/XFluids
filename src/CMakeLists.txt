@@ -8,14 +8,9 @@ target_compile_features(cxxsrc
     PRIVATE
         cxx_std_17
 )
-#add_subdirectory(gpusrc)
 #add_subdirectory(read_ini)#添加读取文件、mpi支持等的使用
 ##add libs
 target_link_libraries(${PROJECT_NAME}
   PRIVATE
     cxxsrc                                                              #自编C++源代码库
-    #/opt/intel/oneapi/compiler/2023.0.0/linux/lib/libsycl.so
-    #/opt/intel/oneapi/compiler/2023.0.0/linux/lib/libpi_opencl.so
-    #gpusrc                                                             #自编CUDA源代码库
-    #readini                                                              #第三方来源库
 )

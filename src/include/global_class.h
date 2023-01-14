@@ -1,10 +1,18 @@
 #pragma once
 
-#include "setup.h"
-
-// SYCL head files
+#include "setup.h" //#include "../read_ini/setupini.h" //#include "setup.h"//
+//  C++ headers
+#include <ctime>
+#include <math.h>
+#include <cstdio>
+#include <iomanip>
+#include <cstdlib>
+#include <float.h>
+#include <fstream>
+#include <string.h>
+#include <iostream>
+// SYCL headers
 #include <sycl/sycl.hpp>
-// #include <dpc_common.hpp>
 
 using namespace std;
 using namespace sycl;

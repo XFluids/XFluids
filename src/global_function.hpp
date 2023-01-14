@@ -1,6 +1,4 @@
 #pragma once
-
-#include <math.h>
 #include "include/global_class.h"
 
 using namespace std;
