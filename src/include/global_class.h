@@ -17,6 +17,8 @@
 using namespace std;
 using namespace sycl;
 
+constexpr real_t Gamma = 1.4; // 1.666667;
+
 typedef struct
 {
     real_t *rho, *p, *c, *H, *u, *v, *w;

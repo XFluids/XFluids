@@ -1,6 +1,6 @@
 #include "include/global_class.h"
 
-SYCLSolver::SYCLSolver(sycl::queue &q, Setup &setup) : Ss(setup)
+SYCLSolver::SYCLSolver(sycl::queue &q, Setup &setup) : Ss(setup), dt(setup.dt)
 {
 	// Print device name and version
 	std::cout << "Device: " << q.get_device().get_info<sycl::info::device::name>()
@@ -17,6 +17,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 {
 	real_t physicalTime = 0.0;
 	int Iteration = 0;
+	int OutNum = 1;
 
 	double duration = 0.0;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
@@ -24,7 +25,16 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	// RK3
 	while (physicalTime < Ss.EndTime)
 	{
+		if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
+		{
+			CopyDataFromDevice(q);
+			Output(physicalTime);
+			OutNum++;
+			std::cout << "Output at Step = " << Iteration << std::endl;
+		}
 
+		if (Iteration == Ss.nStepmax)
+			break;
 		// get minmum dt
 		dt = ComputeTimeStep(q); // 5.0e-5;//0.001;//
 
@@ -40,15 +50,6 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		// screen output
 		//  if(Iteration%10 == 0)
 		cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
-
-		if (Iteration % 100 == 0)
-		{
-			CopyDataFromDevice(q);
-			Output(physicalTime);
-		}
-
-		if (Iteration == 10)
-			break;
 	}
 
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
@@ -194,7 +195,6 @@ void SYCLSolver::Output(real_t Time)
 	sprintf(file_list, "%d", (int)Itime);
 	strcat(file_name, file_list);
 	strcat(file_name, ".plt");
-
 	ofstream out(file_name);
 	// defining header for tecplot(plot software)
 	out << "title='View'"
