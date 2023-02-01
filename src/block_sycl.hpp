@@ -4,25 +4,7 @@
 using namespace std;
 using namespace sycl;
 
-// void InitializeFluidStates(sycl::queue &q, array<int, 3> WG, Block bl, MaterialProperty *material, FlowData &fdata,
-// 						   real_t *U, real_t *U1, real_t *LU,
-// 						   real_t *FluxF, real_t *FluxG, real_t *FluxH,
-// 						   real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-// 						   real_t const dx, real_t const dy, real_t const dz);
-
-// void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t *d_UI);
-
-// void UpdateFluidStateFlux(sycl::queue &q, Block bl, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma);
-
-// void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag);
-
-// void GetLU(sycl::queue &q, Block bl, real_t *UI, real_t *LU, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-// 		   real_t *FluxFw, real_t *FluxGw, real_t *FluxHw, real_t const Gamma, int const Mtrl_ind,
-// 		   FlowData &fdata, real_t *eigen_local, real_t const dx, real_t const dy, real_t const dz);
-
-// real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_t const dx, real_t const dy, real_t const dz);
-
-void InitializeFluidStates(sycl::queue &q, Block bl, MaterialProperty *material, FlowData &fdata, real_t *U, real_t *U1, real_t *LU,
+void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal, FlowData &fdata, real_t *U, real_t *U1, real_t *LU,
 						   real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
 // real_t const dx, real_t const dy, real_t const dz
 {
@@ -36,6 +18,8 @@ void InitializeFluidStates(sycl::queue &q, Block bl, MaterialProperty *material,
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
+	real_t *y = fdata.y;
+	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
 			 {
@@ -46,7 +30,7 @@ void InitializeFluidStates(sycl::queue &q, Block bl, MaterialProperty *material,
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
 
-			InitialStatesKernel(i, j, k, bl, material, U, U1, LU, FluxF, FluxG, FluxH, FluxFw, FluxGw, FluxHw, u, v, w, rho, p, H, c);
+			InitialStatesKernel(i, j, k, bl, ini, material, thermal, U, U1, LU, FluxF, FluxG, FluxH, FluxFw, FluxGw, FluxHw, u, v, w, rho, p, y, T, H, c);
 		}); });
 }
 
@@ -96,7 +80,7 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 	return bl.CFLnumber / dtref;
 }
 
-void UpdateFluidStateFlux(sycl::queue &q, Block bl, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma)
+void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma)
 {
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
@@ -108,6 +92,8 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, real_t *UI, FlowData &fdata,
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
+	real_t *y = fdata.y;
+	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
@@ -116,7 +102,7 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, real_t *UI, FlowData &fdata,
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
 
-			UpdateFuidStatesKernel(i, j, k, bl, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, Gamma); }); });
+			UpdateFuidStatesKernel(i, j, k, bl,thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w,y,T, Gamma); }); });
 
 	q.wait();
 }
@@ -138,7 +124,8 @@ void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, r
 	q.wait();
 }
 
-void GetLU(sycl::queue &q, Block bl, real_t *UI, real_t *LU, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
+void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+		   real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
 		   real_t const Gamma, int const Mtrl_ind, FlowData &fdata, real_t *eigen_local)
 {
 	real_t *rho = fdata.rho;
@@ -148,6 +135,8 @@ void GetLU(sycl::queue &q, Block bl, real_t *UI, real_t *LU, real_t *FluxF, real
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
+	real_t *y = fdata.y;
+	real_t *T = fdata.T;
 
 	bool is_3d = DIM_X * DIM_Y * DIM_Z ? true : false;
 
@@ -177,7 +166,7 @@ void GetLU(sycl::queue &q, Block bl, real_t *UI, real_t *LU, real_t *FluxF, real
     		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxX(i, j, k, bl, UI, FluxF, FluxFw, eigen_local, rho, u, v, w, H); }); });
+			ReconstructFluxX(i, j, k, bl,thermal,Gamma, UI, FluxF, FluxFw, eigen_local, rho, u, v, w,y,T, H); }); });
 
 	q.wait();
 #endif
@@ -202,7 +191,7 @@ void GetLU(sycl::queue &q, Block bl, real_t *UI, real_t *LU, real_t *FluxF, real
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxY(i, j, k, bl, UI, FluxG, FluxGw, eigen_local, rho, u, v, w, H); }); });
+			ReconstructFluxY(i, j, k, bl,thermal,Gamma,UI, FluxG, FluxGw, eigen_local, rho, u, v, w,y,T, H); }); });
 
 	q.wait();
 #endif
@@ -227,7 +216,7 @@ void GetLU(sycl::queue &q, Block bl, real_t *UI, real_t *LU, real_t *FluxF, real
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			ReconstructFluxZ(i, j, k, bl, UI, FluxH, FluxHw, eigen_local, rho, u, v, w, H); }); });
+			ReconstructFluxZ(i, j, k, bl, thermal, Gamma, UI, FluxH, FluxHw, eigen_local, rho, u, v, w, y, T, H); }); });
 
 	q.wait();
 #endif

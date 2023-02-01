@@ -19,7 +19,7 @@ option(DIM_Y "if enable dim_y" ON)
 option(DIM_Z "if enable dim_z" OFF)
 option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
-option(React "if enable chemical recation, based on COP=ON" ON)
+option (React "if enable chemical recation, based on COP=ON" OFF)
 set(ReaType "0")#define which reaction to caculate, 0 for H2+O2
 set(DeSelect "nvidia")#"define which platform and devices for compile options:nvidia,amd,intel,host" 
 option(ENABLE_OPENMP "if need openmp" OFF)
@@ -28,5 +28,5 @@ option(USE_MPI "if enable mpi" OFF)
 
 ##cmake modules
 include(init_options)
-##add main exec
+# #add main exec
 add_subdirectory(src)

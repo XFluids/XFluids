@@ -38,6 +38,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.u = static_cast<real_t *>(malloc_device(bytes, q));
 	d_fstate.v = static_cast<real_t *>(malloc_device(bytes, q));
 	d_fstate.w = static_cast<real_t *>(malloc_device(bytes, q));
+	d_fstate.y = static_cast<real_t *>(malloc_device(NUM_COP * bytes, q));
+	d_fstate.T = static_cast<real_t *>(malloc_device(bytes, q));
 	d_FluxF = static_cast<real_t *>(malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(malloc_device(cellbytes, q));
 	d_FluxH = static_cast<real_t *>(malloc_device(cellbytes, q));
@@ -61,6 +63,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.u = static_cast<real_t *>(malloc(bytes));
 	h_fstate.v = static_cast<real_t *>(malloc(bytes));
 	h_fstate.w = static_cast<real_t *>(malloc(bytes));
+	h_fstate.y = static_cast<real_t *>(malloc_device(NUM_COP * bytes, q));
+	h_fstate.T = static_cast<real_t *>(malloc_device(bytes, q));
 	h_FluxF = static_cast<real_t *>(malloc(cellbytes));
 	h_FluxG = static_cast<real_t *>(malloc(cellbytes));
 	h_FluxH = static_cast<real_t *>(malloc(cellbytes));
@@ -71,7 +75,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 
 void FluidSYCL::InitialU(sycl::queue &q)
 {
-	InitializeFluidStates(q, Fs.BlSz, d_material_property, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
+	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
 }
 
 real_t FluidSYCL::GetFluidDt(sycl::queue &q)
@@ -90,9 +94,9 @@ void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 void FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 {
 	if (flag == 0)
-		UpdateFluidStateFlux(q, Fs.BlSz, d_U, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+		UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 	else
-		UpdateFluidStateFlux(q, Fs.BlSz, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+		UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 }
 
 void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
@@ -103,9 +107,9 @@ void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
 void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 {
 	if (flag == 0)
-		GetLU(q, Fs.BlSz, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 	else
-		GetLU(q, Fs.BlSz, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 }
