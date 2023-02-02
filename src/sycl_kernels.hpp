@@ -67,7 +67,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 #endif
 
 #if 1 == NumFluid
-    // 1d shock tube case
+    // 1d shock tube case： no bubble
     if (d2 < ini.blast_center_x)
     {
         rho[id] = ini.blast_density_in;
@@ -77,6 +77,12 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         p[id] = ini.blast_pressure_in;
 #ifdef COP
         _y[id * NUM_COP + 0] = ini.cop_y1_out;
+#ifdef React
+        for (size_t i = 0; i < NUM_COP; i++)
+        { //
+            _y[id * NUM_COP + i] = thermal->species_ratio_out[i];
+        }
+#endif // end React
 #endif // COP
     }
     else
@@ -88,22 +94,40 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         w[id] = ini.blast_w_out;
 #ifdef COP
         if (dy2 < copBin) //|| dy2 == (n - 1) * (n - 1) * dx * dx)
-        {
+        {                 // in the bubble
             rho[id] = ini.cop_density_in;         // 气泡内单独赋值密度以和气泡外区分
             p[id] = ini.cop_pressure_in;          // 气泡内单独赋值压力以和气泡外区分
             _y[id * NUM_COP + 0] = ini.cop_y1_in; // 组分气泡必须在激波下游
+#ifdef React
+            for (size_t i = 0; i < NUM_COP; i++)
+            { // set the last specie in .dat as fliud
+                _y[id * NUM_COP + i] = thermal->species_ratio_in[i];
+            }
+#endif // end React
         }
         else if (dy2 > copBout)
-        {
+        { // out of bubble
             rho[id] = ini.blast_density_out;
             p[id] = ini.blast_pressure_out;
             _y[id * NUM_COP + 0] = ini.cop_y1_out;
+#ifdef React
+            for (size_t i = 0; i < NUM_COP; i++)
+            {
+                _y[id * NUM_COP + i] = thermal->species_ratio_out[i];
+            }
+#endif // end React
         }
         else
-        {
+        { // boundary of bubble && shock
             rho[id] = 0.5 * (ini.cop_density_in + ini.blast_density_out);
             p[id] = 0.5 * (ini.cop_pressure_in + ini.blast_pressure_out);
-            _y[id * NUM_COP + 0] = 0.5 * (ini.cop_y1_out + ini.cop_y1_in);
+            _y[id * NUM_COP + 0] = half_float * (ini.cop_y1_out + ini.cop_y1_in);
+#ifdef React
+            for (size_t i = 0; i < NUM_COP; i++)
+            {
+                _y[id * NUM_COP + i] = half_float * (thermal->species_ratio_in[i] + thermal->species_ratio_out[i]);
+            }
+#endif // end React
         }
 #endif // COP
     }

@@ -28,8 +28,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	{
 		if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
 		{
-			CopyDataFromDevice(q);
-			Output_vti(rank, Iteration, physicalTime); // Output(physicalTime); //
+			Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
 			OutNum++;
 			std::cout << "Output at Step = " << Iteration << std::endl;
 		}
@@ -62,8 +61,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
 	printf("GPU runtime : %12.8f s\n", duration / 1000.0f);
 
-	CopyDataFromDevice(q);
-	Output_vti(rank, Iteration, physicalTime); // Output(physicalTime); //
+	// Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -193,8 +191,9 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 	q.wait();
 }
 
-void SYCLSolver::Output_vti(int rank, int interation, real_t Time)
+void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Time)
 {
+	CopyDataFromDevice(q); // only copy when output
 	real_t Itime = Time * 1.0e8;
 	// Write time in string timeFormat
 	std::ostringstream timeFormat;
@@ -564,8 +563,9 @@ void SYCLSolver::Output_vti(int rank, int interation, real_t Time)
 	outFile.close();
 }
 
-void SYCLSolver::Output(real_t Time)
+void SYCLSolver::Output(sycl::queue &q, real_t Time)
 {
+	CopyDataFromDevice(q); // only copy when output
 	int Xmax = Ss.BlSz.Xmax;
 	int Ymax = Ss.BlSz.Ymax;
 	int Zmax = Ss.BlSz.Zmax;

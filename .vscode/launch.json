@@ -45,7 +45,7 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "gdb-oneapi",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/bin/gdb-oneapi",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

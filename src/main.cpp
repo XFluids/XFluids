@@ -64,8 +64,6 @@ int main(int argc, char *argv[])
 	syclsolver.BoundaryCondition(q, 0);
 	// update states by U
 	syclsolver.UpdateStates(q, 0);
-	// copy data to host
-	syclsolver.CopyDataFromDevice(q);
 	// time marching by SYCL device
 	syclsolver.Evolution(q);
 	return 0;

@@ -86,8 +86,8 @@ public:
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
-    void Output(real_t Time);
-    void Output_vti(int rank, int interation, real_t Time);
+    void Output(sycl::queue &q, real_t Time);
+    void Output_vti(sycl::queue &q, int rank, int interation, real_t Time);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);
