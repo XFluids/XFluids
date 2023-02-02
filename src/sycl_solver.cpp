@@ -44,6 +44,11 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 		// solved the fluid with 3rd order Runge-Kutta method
 		SinglePhaseSolverRK3rd(q);
+#ifdef COP
+#ifdef React
+		Reaction(q, dt);
+#endif // React
+#endif // COP
 
 		physicalTime = physicalTime + dt;
 		Iteration++;
@@ -154,6 +159,18 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->InitialU(q);
 }
+
+#ifdef COP
+#ifdef React
+void SYCLSolver::Reaction(sycl::queue &q, real_t Time)
+{
+	UpdateStates(q, 0);
+	fluids[0]->ODESolver(q, Time);
+	BoundaryCondition(q, 0);
+	UpdateStates(q, 0);
+}
+#endif // React
+#endif // COP
 
 void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 {

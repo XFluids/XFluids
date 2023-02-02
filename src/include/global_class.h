@@ -66,6 +66,11 @@ public:
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
+#ifdef COP
+#ifdef React
+    void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
+#endif                                           // React
+#endif                                           // COP
 };
 
 class SYCLSolver{
@@ -96,5 +101,10 @@ public:
         const int i = 1;
         return ((*(char *)&i) == 0);
     }
+#ifdef COP
+#ifdef React
+    void Reaction(sycl::queue &q, real_t Time);
+#endif // React
+#endif // COP
 };
 

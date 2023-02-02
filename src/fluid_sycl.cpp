@@ -117,3 +117,8 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 }
+
+void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
+{
+	FluidODESolver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
+}

@@ -293,3 +293,30 @@ void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t
 			FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); });
 #endif
 }
+
+void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata, real_t *UI, Reaction *react, const real_t dt)
+{
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+
+	real_t *rho = fdata.rho;
+	real_t *p = fdata.p;
+	real_t *H = fdata.H;
+	real_t *c = fdata.c;
+	real_t *u = fdata.u;
+	real_t *v = fdata.v;
+	real_t *w = fdata.w;
+	real_t *y = fdata.y;
+	real_t *T = fdata.T;
+
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0);
+    		int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+
+			FluidODESolverKernel(i ,j ,k ,bl ,thermal ,react ,UI ,y ,rho , T, dt); }); });
+
+	q.wait();
+}

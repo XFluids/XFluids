@@ -1082,3 +1082,34 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
         break;
     }
 }
+
+extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Thermal *thermal, Reaction *react, real_t *UI, real_t *y, real_t *rho, real_t *T, const real_t dt)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int id = Xmax * Ymax * k + Xmax * j + i;
+
+    real_t yi[NUM_SPECIES], Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP];
+    get_yi(y, yi, id);
+    get_KbKf(Kf, Kb, react->Rargus, thermal->species_chara, thermal->Hia, thermal->Hib, react->Nu_d_, T[id]); // get_e
+    for (size_t n = 0; n < Emax - NUM_COP; n++)
+    {
+            U[n] = UI[Emax * id + n];
+    }
+    real_t rho1 = one_float / U[0];
+    real_t u = U[1] * rho1;
+    real_t v = U[2] * rho1;
+    real_t w = U[3] * rho1;
+    real_t e = U[4] * rho1 - half_float * (u * u + v * v + w * w);
+    Chemeq2(thermal, Kf, Kb, react->React_ThirdCoef, react->Rargus, react->Nu_b_, react->Nu_f_, react->Nu_d_, react->third_ind,
+            react->reaction_list, react->reactant_list, react->product_list, react->rns, react->rts, react->pls, yi, dt, T[id], rho[id], e);
+    // update partial density according to C0
+    for (int n = Emax - NUM_COP; n < NUM_SPECIES; n++)
+    {
+            UI[Emax * id + n] = yi[n + NUM_SPECIES - Emax] * rho[id];
+    }
+}

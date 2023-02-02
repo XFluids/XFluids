@@ -35,7 +35,7 @@ real_t get_CopR(real_t *species_chara, real_t yi[NUM_SPECIES])
 /**
  * @brief calculate Cpi of the specie at given point
  */
-real_t get_Cpi(real_t *__restrict__ Hia, const real_t T0, const real_t Ri, const int n)
+real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
 	real_t T = T0, Cpi = zero_float; // NOTE:注意由Hia和Hib计算得到的Cp单位是J/kg/K
 	if (T < (200.0 / Tref))
@@ -193,7 +193,7 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	// get_hi at T>200
 	if (TT < 200.0 / Tref)
 	{
-		real_t Cpi = get_Cpi(Hia, 200.0 / Tref, Ri, n); // get_Cpi(real_t *__restrict__ Hia, const real_t T0, const real_t Ri, const int n)
+		real_t Cpi = get_Cpi(Hia, 200.0 / Tref, Ri, n); // get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 		hi += Cpi * (TT - 200.0 / Tref);
 		// printf("hi[%d] = %lf , Cpi[%d]=%lf \n", ii, hi[ii], ii, Cpi[ii]);
 	}
@@ -1114,4 +1114,274 @@ real_t weno5old_M(real_t *f, real_t delta)
 	//  a3 = (1.0e-6 + s3)*(1.0e-6 + s3);
 	//  real_t tw1 = 6.0*(a1 + a2 + a3);
 	//  return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
+}
+
+/**
+ * @brief get_KbKf
+ */
+void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, real_t *Hia, real_t *Hib, int *Nu_d_, const real_t T)
+{
+	for (size_t m = 0; m < NUM_REA; m++)
+	{
+		real_t A = Rargus[m * 6 + 0], B = Rargus[m * 6 + 1], E = Rargus[m * 6 + 2];
+#ifdef CJ
+		Kf[m] = sycl::min((20 * one_float), A * sycl::pow(T, B) * sycl::exp(-E / T));
+		Kb[m] = zero_float;
+#else
+		Kf[m] = get_Kf_ArrheniusLaw(A, B, E, T);
+		real_t Kck = get_Kc(species_chara, Hia, Hib, Nu_d_, T, m);
+		Kb[m] = Kf[m] / Kck;
+#endif // CJ
+	}
+}
+
+/**
+ * @brief QSSAFun
+ */
+void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, real_t yi[NUM_SPECIES], real_t *species_chara, real_t *React_ThirdCoef,
+			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
+			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
+{
+	real_t C[NUM_SPECIES] = {zero_float};
+	for (int n = 0; n < NUM_SPECIES; n++)
+		C[n] = rho * yi[n] / species_chara[n * SPCH_Sz + 6];
+
+	for (int n = 0; n < NUM_SPECIES; n++)
+	{
+		q[n] = zero_float;
+		d[n] = zero_float;
+		for (int iter = 0; iter < rns[n]; iter++)
+		{
+			int react_id = reaction_list[n][iter];
+			// third-body collision effect
+			real_t tb = zero_float;
+			if (1 == third_ind[react_id])
+			{
+				for (int it = 0; it < NUM_SPECIES; it++)
+					tb += React_ThirdCoef[react_id * NUM_SPECIES + it] * C[it];
+			}
+			else
+				tb = 1.0;
+			double RPf = Kf[react_id], RPb = Kb[react_id];
+			// forward
+			for (int it = 0; it < rts[react_id]; it++)
+			{
+				int specie_id = reactant_list[react_id][it];
+				int nu_f = Nu_f_[react_id * NUM_SPECIES + specie_id];
+				RPf *= sycl::pow<real_t>(C[specie_id], nu_f);
+			}
+			// backward
+			for (int it = 0; it < pls[react_id]; it++)
+			{
+				int specie_id = product_list[react_id][it];
+				int nu_b = Nu_b_[react_id * NUM_SPECIES + specie_id];
+				RPb *= sycl::pow<real_t>(C[specie_id], nu_b);
+			}
+			q[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPf + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPb;
+			d[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPb + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPf;
+		}
+		q[n] *= species_chara[n * SPCH_Sz + 6] / rho * 1e6; // TODO:check out species[n].Wi/rho*1e3
+		d[n] *= species_chara[n * SPCH_Sz + 6] / rho * 1e6;
+	}
+}
+
+/**
+ * @brief sign for one argus
+ */
+real_t sign(real_t a)
+{
+	if (a > 0)
+		return one_float;
+	else if (0 == a)
+		return zero_float;
+	else
+		return -one_float;
+}
+
+/**
+ * @brief sign for two argus
+ */
+real_t sign(real_t a, real_t b)
+{
+	return sign(b) * abs(a);
+}
+
+/**
+ * @brief Chemeq2
+ */
+void Chemeq2(Thermal *material, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
+			 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
+			 real_t y[NUM_SPECIES], const real_t dtg, real_t &TT, const real_t rho, const real_t e)
+{
+	// parameter
+	int itermax = 1;
+	real_t epscl = real_t(100.0);  // 1/epsmin, intermediate variable used to avoid repeated divisions
+	real_t tfd = real_t(1.000008); // round-off parameter used to determine when integration is complete
+	real_t dtmin = real_t(1.0e-20);
+	real_t sqreps = half_float; // 5*sqrt(\eps, parameter used to calculate initial timestep in Eq.(52) and (53),
+								// || \delta y_i^{c(Nc-1)} ||/||\delta y_i^{c(Nc)} ||
+	real_t epsmax = real_t(10.0), epsmin = real_t(1.0e-4);
+	real_t ymin = real_t(1.0e-20); // minimum concentration allowed for species i
+	real_t scrtch = real_t(1e-25);
+	real_t eps;
+	real_t rhoi[NUM_SPECIES];
+	real_t qs[NUM_SPECIES];
+	real_t ys[NUM_SPECIES]; // y_i^0 in Eq. (35) and {36}
+	real_t y0[NUM_SPECIES]; // y_i^0 in Eq (2), intial concentrations for the global timestep passed to Chemeq
+	real_t y1[NUM_SPECIES]; // y_i^p, predicted value from Eq. (35)
+	real_t rtau[NUM_SPECIES], rtaus[NUM_SPECIES], scrarray[NUM_SPECIES];
+	real_t q[NUM_SPECIES] = {zero_float}, d[NUM_SPECIES] = {zero_float}; // production and loss rate
+	int gcount = 0, rcount = 0;
+	int iter;
+	real_t dt = zero_float;
+	real_t tn = zero_float; // t-t^0, current value of the independent variable relative to the start of the global timestep
+	real_t ts;				// independent variable at the start of the global timestep
+	real_t TTn = TT;
+	real_t TTs, TT0;
+	// save the initial inputs
+	TT0 = TTn;
+	for (int i = 0; i < NUM_SPECIES; i++)
+	{
+		y0[i] = y[i];
+		y[i] = sycl::max(y[i], ymin);
+		// rhoi[i] = y[i]*species[i].Wi*1e3;
+		rhoi[i] = y[i] * rho;
+	}
+	real_t *species_chara = material->species_chara, *Hia = material->Hia, *Hib = material->Hib;
+	//=========================================================
+	// to initilize the first 'dt', q, d
+	get_KbKf(Kf, Kb, Rargus, species_chara, Hia, Hib, Nu_d_, TT);
+	QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+	gcount++;
+
+	real_t ascr = zero_float, scr1 = zero_float, scr2 = zero_float; // scratch (temporary) variable
+	for (int i = 0; i < NUM_SPECIES; i++)
+	{
+		ascr = sycl::abs(q[i]);
+		scr2 = sign(one_float / y[i], real_t(.1) * epsmin * ascr - d[i]);
+		scr1 = scr2 * d[i];
+		scrtch = sycl::max(scr1, scrtch);
+		scrtch = sycl::max(scrtch, -sycl::abs(ascr - d[i]) * scr2);
+	}
+	dt = sycl::min(sqreps / scrtch, dtg);
+
+//==========================================================
+flag1:
+	int num_iter = 0;
+
+	ts = tn;
+	TTs = TTn;
+	for (int i = 0; i < NUM_SPECIES; i++)
+	{
+		rtau[i] = dt * d[i] / y[i];
+		// store the 0-subscript state using s
+		ys[i] = y[i];
+		qs[i] = q[i];
+		rtaus[i] = rtau[i];
+	}
+
+flag2:
+	num_iter++;
+	// prediction
+	for (int i = 0; i < NUM_SPECIES; i++)
+	{
+		real_t alpha = (real_t(180.0) + rtau[i] * (real_t(60.0) + rtau[i] * (real_t(11.0) + rtau[i]))) / (real_t(360.0) + rtau[i] * (real_t(60.0) + rtau[i] * (real_t(12.0) + rtau[i])));
+		scrarray[i] = (q[i] - d[i]) / (one_float + alpha * rtau[i]);
+	}
+	iter = 1;
+	while (iter <= itermax)
+	{
+		for (int i = 0; i < NUM_SPECIES; i++)
+		{
+			y[i] = sycl::max(ys[i] + dt * scrarray[i], ymin); // predicted y
+			rhoi[i] = y[i] * rho;
+		}
+		TTn = get_T(material, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // predicted T
+		// GetKfKb(TTn);
+		if (iter == 1)
+		{
+			tn = ts + dt;
+			for (int i = 0; i < NUM_SPECIES; i++)
+				y1[i] = y[i]; // prediction results stored by y1
+		}
+		QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+		gcount++;
+		eps = 1.0e-10;
+		for (int i = 0; i < NUM_SPECIES; i++)
+		{
+			real_t rtaub = 0.5 * (rtaus[i] + dt * d[i] / y[i]);
+			real_t alpha = (180.0 + rtaub * (60.0 + rtaub * (11.0 + rtaub))) / (360.0 + rtaub * (60.0 + rtaub * (12.0 + rtaub)));
+			real_t qt = (1.0 - alpha) * qs[i] + alpha * q[i];
+			real_t pb = rtaub / dt;
+			scrarray[i] = (qt - ys[i] * pb) / (1.0 + alpha * rtaub); // to get the correction y
+		}
+		iter++;
+	}
+	// get new dt & check convergence
+	for (int i = 0; i < NUM_SPECIES; i++)
+	{
+		scr2 = sycl::max(ys[i] + dt * scrarray[i], zero_float);
+		scr1 = sycl::abs(scr2 - y1[i]);
+		y[i] = sycl::max(scr2, ymin); // new y
+		// rhoi[i] = y[i]*species[i].Wi*1e3;
+		rhoi[i] = y[i] * rho;
+		if (half_float * half_float * (ys[i] + y[i]) > ymin)
+		{
+			scr1 = scr1 / y[i];
+			eps = sycl::max(half_float * (scr1 + sycl::min(sycl::abs(q[i] - d[i]) / (q[i] + d[i] + real_t(1.0e-30)), scr1)), eps);
+		}
+	}
+	eps = eps * epscl;
+	if (eps < epsmax)
+	{
+		if (dtg < (tn * tfd))
+		{
+			for (int i = 0; i < NUM_SPECIES; i++)
+				rhoi[i] = y[i] * rho;
+			TT = get_T(material, y, e, TTs); //  UpdateTemperature(-1, rhoi, rho, e, TTs); // final T
+											 // GetKfKb(TT);
+			return;
+		}
+	}
+	else
+	{
+		tn = ts;
+	}
+	real_t rteps = 0.5 * (eps + 1.0);
+	rteps = 0.5 * (rteps + eps / rteps);
+	rteps = 0.5 * (rteps + eps / rteps);
+	real_t dto = dt;
+	dt = sycl::min(dt * (1.0 / rteps + real_t(0.005)), tfd * (dtg - tn)); // new dt
+	if (eps > epsmax)
+	{
+		rcount++;
+		// // hybrid
+		// if(num_iter > 5){
+		// 	real_t C0[num_species];
+		// 	for(int i=0; i<num_species; i++)
+		// 		C0[i] = rho*ys[i]/species[i].Wi*1e-3;
+		// 	for(int m=0; m<num_reactions; m++)
+		// 		AnalyticalSolution(0, m, dt, C0);
+		// 	//SplitSolver(C0, dt);
+		// 	for(int n=0; n<num_species; n++){
+		// 		rhoi[n] = C0[n]*species[n].Wi*1e3;
+		// 		y[n] = std::max(rhoi[n]/rho,ymin);
+		// 	}
+		// 	goto flag3;
+		// }
+		//
+		dto = dt / dto;
+		for (int i = 0; i < NUM_SPECIES; i++)
+			rtaus[i] = rtaus[i] * dto;
+		goto flag2;
+	}
+
+flag3:
+	for (int i = 0; i < NUM_SPECIES; i++)
+		rhoi[i] = y[i] * rho;
+	TTn = get_T(material, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // new T
+	// GetKfKb(TTn);
+	QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+	gcount++;
+	goto flag1;
 }
