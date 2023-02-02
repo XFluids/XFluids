@@ -33,6 +33,8 @@ ELSEIF(${DeSelect} MATCHES "amd")
   include(init_hip)
 ELSEIF(${DeSelect} MATCHES "intel")
   include(init_intel)
+ELSEIF (${DeSelect} MATCHES "host")
+  include (init_host)
 ENDIF(${DeSelect} MATCHES "nvidia")
 
 

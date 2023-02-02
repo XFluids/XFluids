@@ -18,6 +18,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	real_t physicalTime = 0.0;
 	int Iteration = 0;
 	int OutNum = 1;
+	int rank = 0;
 
 	double duration = 0.0;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
@@ -28,7 +29,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
 		{
 			CopyDataFromDevice(q);
-			Output(physicalTime);
+			Output_vti(rank, Iteration, physicalTime); // Output(physicalTime); //
 			OutNum++;
 			std::cout << "Output at Step = " << Iteration << std::endl;
 		}
@@ -57,7 +58,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	printf("GPU runtime : %12.8f s\n", duration / 1000.0f);
 
 	CopyDataFromDevice(q);
-	Output(physicalTime);
+	Output_vti(rank, Iteration, physicalTime); // Output(physicalTime); //
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -167,8 +168,383 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 		q.memcpy(fluids[n]->h_fstate.u, fluids[n]->d_fstate.u, bytes);
 		q.memcpy(fluids[n]->h_fstate.v, fluids[n]->d_fstate.v, bytes);
 		q.memcpy(fluids[n]->h_fstate.w, fluids[n]->d_fstate.w, bytes);
+#ifdef COP
+		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, NUM_COP * bytes);
+		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
+#endif // COP
 	}
 	q.wait();
+}
+
+void SYCLSolver::Output_vti(int rank, int interation, real_t Time)
+{
+	real_t Itime = Time * 1.0e8;
+	// Write time in string timeFormat
+	std::ostringstream timeFormat;
+	timeFormat.width(4);
+	timeFormat.fill('0');
+	timeFormat << Itime;
+	// Write istep in string stepFormat
+	std::ostringstream stepFormat;
+	stepFormat.width(7);
+	stepFormat.fill('0');
+	stepFormat << interation;
+	// Write Mpi Rank in string rankFormat
+	std::ostringstream rankFormat;
+	rankFormat.width(5);
+	rankFormat.fill('0');
+	rankFormat << rank;
+
+	int xmin, ymin, xmax, ymax, zmin, zmax, mx, my, mz;
+	int OnbX, OnbY, OnbZ, OminX, OminY, OminZ, OmaxX, OmaxY, OmaxZ;
+	real_t dx, dy, dz;
+
+	if (Ss.OutBoundary) //(Ss.Runtime_debug)
+	{
+		OnbX = Ss.BlSz.Xmax;
+		OminX = 0;
+		OmaxX = Ss.BlSz.Xmax;
+
+		OnbY = Ss.BlSz.Ymax;
+		OminY = 0;
+		OmaxY = Ss.BlSz.Ymax;
+
+		OnbZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax : 1;
+		OminZ = (3 == DIM_X + DIM_Y + DIM_Z) ? 0 : 0;
+		OmaxZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax : 1;
+	}
+	else
+	{
+		OnbX = Ss.BlSz.X_inner;
+		OminX = Ss.BlSz.Bwidth_X;
+		OmaxX = Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X;
+
+		OnbY = Ss.BlSz.Y_inner;
+		OminY = Ss.BlSz.Bwidth_Y;
+		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
+
+		OnbZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax : 1;
+		OminZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Bwidth_Z : 0;
+		OmaxZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z : 1;
+	}
+	xmin = Ss.myMpiPos[0] * OnbX;
+	xmax = Ss.myMpiPos[0] * OnbX + OnbX;
+	ymin = Ss.myMpiPos[1] * OnbY;
+	ymax = Ss.myMpiPos[1] * OnbY + OnbY;
+	zmin = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.myMpiPos[2] * OnbZ) : 0;
+	zmax = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.myMpiPos[2] * OnbZ + OnbZ) : 0;
+	dx = Ss.BlSz.dx;
+	dy = Ss.BlSz.dy;
+	dz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.dz : 0.0;
+	// Init var names
+	int Onbvar = (2 == NumFluid) ? 7 : Emax + 1;
+	std::map<int, std::string> variables_names;
+	variables_names[0] = "rho";
+	variables_names[1] = "P";
+	variables_names[2] = "u";
+	variables_names[3] = "v";
+	variables_names[4] = "w";
+#ifdef COP
+	for (size_t ii = 5; ii < Emax; ii++)
+	{
+		variables_names[ii] = "y" + std::to_string(ii - 4);
+	}
+	variables_names[Onbvar - 1] = "T";
+#endif // COP
+#if 2 == NumFluid
+	variables_names[5] = "phi";
+#endif
+	bool useDouble = (sizeof(real_t) == sizeof(double)) ? true : false;
+
+	std::string file_name;
+	std::string headerfile_name;
+	std::string outputPrefix = "FlowField";
+#ifdef USE_MPI
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_mpi_" + rankFormat.str() + ".vti"; //"_Time" + timeFormat.str() +
+	headerfile_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
+	// std::cout << file_name << "of rank " << rank << std::endl;
+#else
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".vti";
+#endif
+#ifdef USE_MPI
+	mx = Ss.mx;
+	my = Ss.my;
+	mz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.mz : 0;
+	if (0 == rank) // write header
+	{
+		std::fstream outHeader;
+		// dummy string here, when using the full VTK API, data can be compressed
+		// here, no compression used
+		std::string compressor("");
+		// open pvti header file
+		outHeader.open(headerfile_name.c_str(), std::ios_base::out);
+		outHeader << "<?xml version=\"1.0\"?>" << std::endl;
+		if (isBigEndian())
+			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"BigEndian\"" << compressor << ">" << std::endl;
+		else
+			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
+		outHeader << "  <PImageData WholeExtent=\"";
+		outHeader << 0 << " " << mx * OnbX << " ";
+		outHeader << 0 << " " << my * OnbY << " ";
+		outHeader << 0 << " " << mz * OnbZ << "\" GhostLevel=\"0\" "
+				  << "Origin=\""
+				  << Ss.Domain_xmin << " " << Ss.Domain_ymin << " " << Ss.Domain_zmin << "\" "
+				  << "Spacing=\""
+				  << dx << " " << dy << " " << dz << "\">"
+				  << std::endl;
+		outHeader << "    <PCellData Scalars=\"Scalars_\">" << std::endl;
+		for (int iVar = 0; iVar < Onbvar; iVar++)
+		{
+			if (useDouble)
+				outHeader << "      <PDataArray type=\"Float64\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+			else
+				outHeader << "      <PDataArray type=\"Float32\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+		}
+		outHeader << "    </PCellData>" << std::endl;
+		// Out put for 2D && 3D;
+		for (int iPiece = 0; iPiece < Ss.nProcs; ++iPiece)
+		{
+			std::ostringstream pieceFormat;
+			pieceFormat.width(5);
+			pieceFormat.fill('0');
+			pieceFormat << iPiece;
+			std::string pieceFilename = "./" + outputPrefix + "_Step_" + stepFormat.str() + "_mpi_" + pieceFormat.str() + ".vti";
+// get MPI coords corresponding to MPI rank iPiece
+#if 3 == DIM_X + DIM_Y + DIM_Z
+			int coords[3];
+#else
+			int coords[2];
+#endif
+			Ss.communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
+			outHeader << " <Piece Extent=\"";
+			// pieces in first line of column are different (due to the special
+			// pvti file format with overlapping by 1 cell)
+			if (coords[0] == 0)
+				outHeader << 0 << " " << OnbX << " ";
+			else
+				outHeader << coords[0] * OnbX << " " << coords[0] * OnbX + OnbX << " ";
+
+			if (coords[1] == 0)
+				outHeader << 0 << " " << OnbY << " ";
+			else
+				outHeader << coords[1] * OnbY << " " << coords[1] * OnbY + OnbY << " ";
+#if 3 == DIM_X + DIM_Y + DIM_Z
+			if (coords[2] == 0)
+				outHeader << 0 << " " << OnbZ << " ";
+			else
+				outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
+#else
+			outHeader << 0 << " " << 0;
+#endif
+			outHeader << "\" Source=\"";
+			outHeader << pieceFilename << "\"/>" << std::endl;
+		}
+		outHeader << "</PImageData>" << std::endl;
+		outHeader << "</VTKFile>" << std::endl;
+		// close header file
+		outHeader.close();
+	} // end writing pvti header
+#endif
+	std::fstream outFile;
+	outFile.open(file_name.c_str(), std::ios_base::out);
+	// write xml data header
+	if (isBigEndian())
+	{
+		outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
+	}
+	else
+	{
+		outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+	}
+
+	outFile << "  <ImageData WholeExtent=\""
+			<< xmin << " " << xmax << " "
+			<< ymin << " " << ymax << " "
+			<< zmin << " " << zmax << "\" "
+			<< "Origin=\""
+			<< Ss.Domain_xmin << " " << Ss.Domain_ymin << " " << Ss.Domain_zmin << "\" "
+			<< "Spacing=\""
+			<< dx << " " << dy << " " << dz << "\">" << std::endl;
+	outFile << "  <Piece Extent=\""
+			<< xmin << " " << xmax << " "
+			<< ymin << " " << ymax << " "
+			<< zmin << " " << zmax << ""
+			<< "\">" << std::endl;
+	outFile << "    <PointData>\n";
+	outFile << "    </PointData>\n";
+	// write data in binary format
+	outFile << "    <CellData>" << std::endl;
+	for (int iVar = 0; iVar < Onbvar; iVar++)
+	{
+		if (useDouble)
+		{
+			outFile << "     <DataArray type=\"Float64\" Name=\"";
+		}
+		else
+		{
+			outFile << "     <DataArray type=\"Float32\" Name=\"";
+		}
+		outFile << variables_names.at(iVar)
+				<< "\" format=\"appended\" offset=\""
+				<< iVar * OnbX * OnbY * OnbZ * sizeof(real_t) + iVar * sizeof(unsigned int)
+				<< "\" />" << std::endl;
+	}
+	outFile << "    </CellData>" << std::endl;
+	outFile << "  </Piece>" << std::endl;
+	outFile << "  </ImageData>" << std::endl;
+	outFile << "  <AppendedData encoding=\"raw\">" << std::endl;
+	// write the leading undescore
+	outFile << "_";
+	// then write heavy data (column major format)
+	unsigned int nbOfWords = OnbX * OnbY * OnbZ * sizeof(real_t);
+	{
+		//[0]rho
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.rho[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+				  //[1]P
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.p[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.p[id] : fluids[1]->h_fstate.p[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+				  //[2]u
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.u[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.u[id] : fluids[1]->h_fstate.u[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+				  //[3]v
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.v[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.v[id] : fluids[1]->h_fstate.v[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+				  //[4]w
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.w[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.w[id] : fluids[1]->h_fstate.w[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+#ifdef COP
+		  //[5]yii
+		for (int ii = 0; ii < NUM_COP; ii++)
+		{
+			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+			for (int k = OminZ; k < OmaxZ; k++)
+			{
+				for (int j = OminY; j < OmaxY; j++)
+				{
+					for (int i = OminX; i < OmaxX; i++)
+					{
+						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+						real_t tmp = fluids[0]->h_fstate.y[id * NUM_COP + ii];
+						outFile.write((char *)&tmp, sizeof(real_t));
+					} // for i
+				}	  // for j
+			}		  // for k
+		}			  // for yii
+#endif				  // COP
+					  //[6]T
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.T[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.T[id] : fluids[1]->h_fstate.T[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+#if 2 == NumFluid
+		  //[5]phi
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = levelset->h_phi[id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+#endif
+	} // End Var Output
+	outFile << "  </AppendedData>" << std::endl;
+	outFile << "</VTKFile>" << std::endl;
+	outFile.close();
 }
 
 void SYCLSolver::Output(real_t Time)

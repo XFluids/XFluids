@@ -38,8 +38,10 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.u = static_cast<real_t *>(malloc_device(bytes, q));
 	d_fstate.v = static_cast<real_t *>(malloc_device(bytes, q));
 	d_fstate.w = static_cast<real_t *>(malloc_device(bytes, q));
+#ifdef COP
 	d_fstate.y = static_cast<real_t *>(malloc_device(NUM_COP * bytes, q));
 	d_fstate.T = static_cast<real_t *>(malloc_device(bytes, q));
+#endif // COP
 	d_FluxF = static_cast<real_t *>(malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(malloc_device(cellbytes, q));
 	d_FluxH = static_cast<real_t *>(malloc_device(cellbytes, q));
@@ -63,8 +65,10 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.u = static_cast<real_t *>(malloc(bytes));
 	h_fstate.v = static_cast<real_t *>(malloc(bytes));
 	h_fstate.w = static_cast<real_t *>(malloc(bytes));
-	h_fstate.y = static_cast<real_t *>(malloc_device(NUM_COP * bytes, q));
-	h_fstate.T = static_cast<real_t *>(malloc_device(bytes, q));
+#ifdef COP
+	h_fstate.y = static_cast<real_t *>(malloc(NUM_COP * bytes));
+	h_fstate.T = static_cast<real_t *>(malloc(bytes));
+#endif // COP
 	h_FluxF = static_cast<real_t *>(malloc(cellbytes));
 	h_FluxG = static_cast<real_t *>(malloc(cellbytes));
 	h_FluxH = static_cast<real_t *>(malloc(cellbytes));

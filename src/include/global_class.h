@@ -83,6 +83,7 @@ public:
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
     void Output(real_t Time);
+    void Output_vti(int rank, int interation, real_t Time);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);
@@ -90,5 +91,10 @@ public:
     void RungeKuttaSP3rd(sycl::queue &q, int flag);
     void UpdateU(sycl::queue &q,int flag);
     void ComputeLU(sycl::queue &q, int flag);
+    static bool isBigEndian()
+    {
+        const int i = 1;
+        return ((*(char *)&i) == 0);
+    }
 };
 

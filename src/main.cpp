@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	std::string input_flie = std::string(argv[1]);
 	ConfigMap configMap = broadcast_parameters(input_flie);
 	// accelerator_selector device;
-	auto device = sycl::platform::get_platforms()[2].get_devices()[0];
+	auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
 	sycl::queue q(device);
 	Setup setup(configMap, q);
 

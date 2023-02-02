@@ -51,7 +51,7 @@ real_t get_Cpi(real_t *__restrict__ Hia, const real_t T0, const real_t Ri, const
 	}
 	else
 	{
-		printf("T=%lf , Cpi=%lf , T > 15000 K,please check!!!NO Cpi[n] for T>15000 K \n", T, Cpi);
+		// TODO printf("T=%lf , Cpi=%lf , T > 15000 K,please check!!!NO Cpi[n] for T>15000 K \n", T, Cpi);
 	}
 #else
 	// Cpi[n)/R = a1 + a2*T + a3*T^2 + a4*T^3 + a5*T^4
@@ -107,7 +107,7 @@ real_t get_CopGamma(Thermal *material, real_t yi[NUM_SPECIES], const real_t T)
 	}
 	else
 	{
-		printf("CopGamma calculate error: CopGamma=%lf,Yi of qloc =%lf,%lf,Cp=%lf,CopW=%lf\n", _CopGamma, yi[0], yi[1], Cp, CopW);
+		// TODO printf("CopGamma calculate error: CopGamma=%lf,Yi of qloc =%lf,%lf,Cp=%lf,CopW=%lf\n", _CopGamma, yi[0], yi[1], Cp, CopW);
 		return 0;
 	}
 }
@@ -180,7 +180,7 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	}
 	else
 	{
-		printf("T=%lf,T > 15000 K,please check!!!NO h for T>15000 K. \n", T * Tref);
+		// TODO printf("T=%lf,T > 15000 K,please check!!!NO h for T>15000 K. \n", T * Tref);
 	}
 #else
 	// H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
@@ -248,7 +248,7 @@ real_t get_T(Thermal *thermal, real_t yi[NUM_SPECIES], const real_t e, const rea
 			break;
 		if (i == 100)
 		{
-			printf("Temperature: Newton_Ramphson iteration failured, try Bisection Metho...d\n");
+			// TODO printf("Temperature: Newton_Ramphson iteration failured, try Bisection Metho...d\n");
 			sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
 			f_mid = func_T;
 			sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);

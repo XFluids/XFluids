@@ -1,20 +1,17 @@
 {
-    // 使用 IntelliSense 了解相关属性。 
-    // 悬停以查看现有属性的描述。
-    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Updatebuild",
+            "name": "Rebuild",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "CMake: build",
+            "preLaunchTask": "CMake: clean rebuild",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/EulerSYCL",
+            "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "./setup.ini",
+                "${workspaceFolder}/setup.ini",
             ],
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
@@ -34,21 +31,21 @@
             ]
         },
         {
-            "name": "Rebuild",
+            "name": "Usually Run",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "CMake: clean rebuild",
+            "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/EulerSYCL",
+            "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "./setup.ini",
+                "${workspaceFolder}/setup.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/bin/gdb-oneapi",
+            "miDebuggerPath": "gdb-oneapi",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
