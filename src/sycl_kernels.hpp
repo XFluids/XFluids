@@ -198,140 +198,6 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     }
 }
 
-/*
-// 被SYCL内核调用的函数需要加"extern SYCL_EXTERNAL"
-extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, MaterialProperty *material, real_t *U, real_t *U1, real_t *LU,
-                                              real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *H, real_t *c)
-{
-    int Xmax = bl.Xmax;
-    int Ymax = bl.Ymax;
-    int Zmax = bl.Zmax;
-    int X_inner = bl.X_inner;
-    int Y_inner = bl.Y_inner;
-    int Z_inner = bl.Z_inner;
-    int Bwidth_X = bl.Bwidth_X;
-    int Bwidth_Y = bl.Bwidth_Y;
-    int Bwidth_Z = bl.Bwidth_Z;
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-    real_t dl = bl.dl;
-
-    int id = Xmax*Ymax*k + Xmax*j + i;
-
-    real_t x = (i - Bwidth_X) * dx + half_float * dx;
-    real_t y = (j - Bwidth_Y) * dy + half_float * dy;
-    real_t z = (k - Bwidth_Z) * dz + half_float * dz;
-
-    // 1d shock tube case
-    #if USE_DP
-    if (x < 0.5 * 1)
-    {
-        rho[id] = 1.0;
-        u[id] = 0.0;
-        v[id] = 0.0;
-        w[id] = 0.0;
-        p[id] = 1.0;
-    }
-    else{
-        rho[id] = 0.125;
-        u[id] = 0.0;
-        v[id] = 0.0;
-        w[id] = 0.0;
-        p[id] = 0.1;
-    }
-    #else
-    if (x < 0.5f * 1)
-    {
-        rho[id] = 1.0f;
-        u[id] = 0.0f;
-        v[id] = 0.0f;
-        w[id] = 0.0f;
-        p[id] = 1.0f;
-    }
-    else{
-        rho[id] = 0.125f;
-        u[id] = 0.0f;
-        v[id] = 0.0f;
-        w[id] = 0.0f;
-        p[id] = 0.1f;
-    }
-    #endif
-
-    // // 2d sod case
-    // d_rho[id] = 1.0; d_u[id] = 0;
-    // d_v[id] = 0;		d_p[id] = 4.0e-13;
-    // if(x<=dx && y<=dy)
-    // 	d_p[id] = 9.79264/dx/dy*10000.0;
-
-    // // two-phase
-    // if(material.Rgn_ind>0.5){
-    //     rho[id] = 0.125;
-    //     u[id] = 0.0;
-    //     v[id] = 0.0;
-    //     w[id] = 0.0;
-    //     p[id] = 0.1;
-    // }
-    // else
-    // {
-    //     rho[id] = 1.0;
-    //     u[id] = 0.0;
-    //     v[id] = 0.0;
-    //     w[id] = 0.0;
-    //     p[id] = 1.0;
-    // }
-
-    U[Emax*id+0] = rho[id];
-    U[Emax*id+1] = rho[id]*u[id];
-    U[Emax*id+2] = rho[id]*v[id];
-    U[Emax*id+3] = rho[id]*w[id];
-    //EOS was included
-    if(material->Mtrl_ind == 0)
-        U[Emax*id+4] = p[id] /(material->Gamma-one_float) + half_float*rho[id]*(u[id]*u[id] + v[id]*v[id] + w[id]*w[id]);
-    else
-        U[Emax*id+4] = (p[id] + material->Gamma*(material->B-material->A))/(material->Gamma-one_float)
-                                            + half_float*rho[id]*(u[id]*u[id] + v[id]*v[id] + w[id]*w[id]);
-
-    H[id]		= (U[Emax*id+4] + p[id])/rho[id];
-    c[id]		= material->Mtrl_ind == 0 ? sqrt(material->Gamma*p[id]/rho[id]) : sqrt(material->Gamma*(p[id] + material->B - material->A)/rho[id]);
-
-    //initial flux terms F, G, H
-    FluxF[Emax*id+0] = U[Emax*id+1];
-    FluxF[Emax*id+1] = U[Emax*id+1]*u[id] + p[id];
-    FluxF[Emax*id+2] = U[Emax*id+1]*v[id];
-    FluxF[Emax*id+3] = U[Emax*id+1]*w[id];
-    FluxF[Emax*id+4] = (U[Emax*id+4] + p[id])*u[id];
-
-    FluxG[Emax*id+0] = U[Emax*id+2];
-    FluxG[Emax*id+1] = U[Emax*id+2]*u[id];
-    FluxG[Emax*id+2] = U[Emax*id+2]*v[id] + p[id];
-    FluxG[Emax*id+3] = U[Emax*id+2]*w[id];
-    FluxG[Emax*id+4] = (U[Emax*id+4] + p[id])*v[id];
-
-    FluxH[Emax*id+0] = U[Emax*id+3];
-    FluxH[Emax*id+1] = U[Emax*id+3]*u[id];
-    FluxH[Emax*id+2] = U[Emax*id+3]*v[id];
-    FluxH[Emax*id+3] = U[Emax*id+3]*w[id] + p[id];
-    FluxH[Emax*id+4] = (U[Emax*id+4] + p[id])*w[id];
-
-    // real_t fraction = material->Rgn_ind > 0.5 ? vof[id] : 1.0 - vof[id];
-
-    //give intial value for the interval matrixes
-    for(int n=0; n<Emax; n++){
-        LU[Emax*id+n] = 0.0; //incremental of one time step
-        U1[Emax*id+n] = U[Emax*id+n]; //intermediate conwervatives
-
-        // CnsrvU[Emax*id+n] = U[Emax*id+n]*fraction;
-        // CnsrvU1[Emax*id+n] = CnsrvU[Emax*id+n];
-
-        FluxFw[Emax*id+n] = 0.0; //numerical flux F
-        FluxGw[Emax*id+n] = 0.0; //numerical flux G
-        FluxHw[Emax*id+n] = 0.0; //numerical flux H
-    }
-}
-*/
-
 /**
  * @brief calculate c^2 of the mixture at given point
  */
@@ -1083,6 +949,7 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
     }
 }
 
+#ifdef React
 extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Thermal *thermal, Reaction *react, real_t *UI, real_t *y, real_t *rho, real_t *T, const real_t dt)
 {
     int Xmax = bl.Xmax;
@@ -1113,3 +980,4 @@ extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Th
             UI[Emax * id + n] = yi[n + NUM_SPECIES - Emax] * rho[id];
     }
 }
+#endif // React

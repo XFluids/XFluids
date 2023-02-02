@@ -1116,6 +1116,60 @@ real_t weno5old_M(real_t *f, real_t delta)
 	//  return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
 }
 
+#ifdef React
+/**
+ * @brief get_Kf
+ */
+real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
+{
+	return A * pow(T, B) * exp(-E * 4.184 / Ru / T);
+}
+
+/**
+ * @brief get_Entropy //S
+ */
+real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t Ri, const real_t T, const int n)
+{
+	real_t S = zero_float;
+#if Thermo
+	if (T > 1000) // Hia[n * 7 * 3 + 0 * 3 + 1]//Hib[n * 2 * 3 + 0 * 3 + 1]
+		S = Ri * (-half_float * Hia[n * 7 * 3 + 0 * 3 + 1] / T / T - Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 1] * T + half_float * Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 1] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 1]);
+	else
+		S = Ri * (-half_float * Hia[n * 7 * 3 + 0 * 3 + 0] / T / T - Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 0] * T + half_float * Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 0]);
+#else
+	if (T > 1000)
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + half_float * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
+	else
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + half_float * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
+#endif // Thermo
+	return S;
+}
+
+/**
+ * @brief get_Gibson
+ */
+real_t get_Gibson(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t T, const real_t Ri, const int n)
+{
+	return get_Entropy(Hia, Hib, Ri, T, n) / Ri - get_Enthalpy(Hia, Hib, T, Ri, n) / Ri / T;
+}
+
+/**
+ * @brief get_Kc
+ */
+real_t get_Kc(real_t *__restrict__ species_chara, real_t *__restrict__ Hia, real_t *__restrict__ Hib, int *__restrict__ Nu_d_, const real_t T, const int m)
+{
+	real_t Kck = zero_float, Nu_sum = zero_float;
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+	{
+		real_t Ri = Ru / species_chara[n * SPCH_Sz + 6];
+		Kck += Nu_d_[m * NUM_SPECIES + n] * get_Gibson(Hia, Hib, T, Ri, n);
+		Nu_sum += Nu_d_[m * NUM_SPECIES + n];
+	}
+	Kck = exp(Kck);
+	Kck *= pow(p_atm / Ru / T * 1e-6, Nu_sum); // TODO:check 1e-6: m^-3 -> cm^-3
+	return Kck;
+}
+
 /**
  * @brief get_KbKf
  */
@@ -1385,3 +1439,4 @@ flag3:
 	gcount++;
 	goto flag1;
 }
+#endif // React

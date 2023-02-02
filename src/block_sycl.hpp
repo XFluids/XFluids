@@ -294,6 +294,7 @@ void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t
 #endif
 }
 
+#ifdef React
 void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata, real_t *UI, Reaction *react, const real_t dt)
 {
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
@@ -320,3 +321,4 @@ void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata,
 
 	q.wait();
 }
+#endif // React

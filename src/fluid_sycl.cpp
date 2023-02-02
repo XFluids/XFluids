@@ -25,8 +25,6 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 {
 	int bytes = Fs.bytes;
 	int cellbytes = Fs.cellbytes;
-	d_material_property = static_cast<MaterialProperty *>(malloc_device(sizeof(MaterialProperty), q));
-	q.memcpy(d_material_property, &material_property, sizeof(MaterialProperty)).wait();
 	d_U = static_cast<real_t *>(malloc_device(cellbytes, q));
 	d_U1 = static_cast<real_t *>(malloc_device(cellbytes, q));
 	d_LU = static_cast<real_t *>(malloc_device(cellbytes, q));
@@ -118,7 +116,9 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 }
 
+#ifdef React
 void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
 {
 	FluidODESolver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
 }
+#endif // React

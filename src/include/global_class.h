@@ -54,7 +54,6 @@ public:
 
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
-    MaterialProperty *d_material_property;
 
     FluidSYCL(Setup &setup) : Fs(setup){};
 
