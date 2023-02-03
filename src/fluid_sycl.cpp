@@ -49,7 +49,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	// shared
 	uvw_c_max = static_cast<real_t *>(malloc_shared(3 * sizeof(real_t), q));
 
-	cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(*1024 * 1024) + (long)(8 + NUM_COP) * bytes / real_t(*1024 * 1024)) / (real_t)(1024) << " GB\n";
+	cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_COP) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n";
 
 	// 主机内存
 	h_U = static_cast<real_t *>(malloc(cellbytes));

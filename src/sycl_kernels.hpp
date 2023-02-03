@@ -19,7 +19,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t dy = bl.dy;
     real_t dz = bl.dz;
 
-    int id = k * Ymax * Zmax + j * Ymax + i;
+    int id = Xmax * Ymax * k + Xmax * j + i;
 
 #if DIM_X
     if (i >= Xmax)
@@ -153,6 +153,8 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         p[id] = 1.0;
     }
 #endif // 2==NumFluid
+    // printf("id= %d, i=%d, j=%d, k=%d，rho=%lf, u=%lf, v=%lf, w=%lf, p=%lf, y1= %lf, y2= %lf.\n", id, i, j, k, rho[id], u[id], v[id], w[id], p[id], _y[id * NUM_COP + 0], _y[id * NUM_COP + 1]);
+
     U[Emax * id + 0] = rho[id];
     U[Emax * id + 1] = rho[id] * u[id];
     U[Emax * id + 2] = rho[id] * v[id];

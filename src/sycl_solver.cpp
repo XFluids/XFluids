@@ -22,27 +22,25 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 	double duration = 0.0;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
-
 	// RK3
 	while (physicalTime < Ss.EndTime)
 	{
+		cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
 		if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
 		{
 			Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
 			OutNum++;
-			std::cout << "Output at Step = " << Iteration << std::endl;
 		}
 
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt
 		dt = ComputeTimeStep(q); // 5.0e-5;//0.001;//
-
 		if (physicalTime + dt > Ss.EndTime)
 			dt = Ss.EndTime - physicalTime;
-
 		// solved the fluid with 3rd order Runge-Kutta method
 		SinglePhaseSolverRK3rd(q);
+
 #ifdef COP
 #ifdef React
 		Reaction(q, dt);
@@ -51,17 +49,10 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 		physicalTime = physicalTime + dt;
 		Iteration++;
-
-		// screen output
-		//  if(Iteration%10 == 0)
-		cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
 	}
-
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
 	printf("GPU runtime : %12.8f s\n", duration / 1000.0f);
-
-	// Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -561,6 +552,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	outFile << "  </AppendedData>" << std::endl;
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
+	std::cout << "Output has been done at Step = " << interation << std::endl;
 }
 
 void SYCLSolver::Output(sycl::queue &q, real_t Time)
