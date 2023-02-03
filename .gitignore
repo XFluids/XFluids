@@ -39,6 +39,7 @@ EulerSYCL
 /outdata
 build
 build/*
+/*.ini
 
 
 
