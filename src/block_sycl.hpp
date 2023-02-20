@@ -18,7 +18,7 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t *y = fdata.y;
+	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
@@ -92,7 +92,7 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t *y = fdata.y;
+	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
@@ -135,7 +135,7 @@ void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, r
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t *y = fdata.y;
+	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	bool is_3d = DIM_X * DIM_Y * DIM_Z ? true : false;
@@ -394,7 +394,7 @@ void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata,
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t *y = fdata.y;
+	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)

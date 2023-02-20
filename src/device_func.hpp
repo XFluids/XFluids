@@ -8,15 +8,12 @@ using namespace sycl;
 /**
  *@brief calculate yi
  */
-void get_yi(real_t *y, real_t yi[NUM_SPECIES], const int id)
+void get_yi(real_t **y, real_t yi[NUM_SPECIES], const int id)
 {
-	yi[0] = 1;
-	for (size_t i = 1; i < NUM_SPECIES; i++)
+	for (size_t i = 0; i < NUM_SPECIES; i++)
 	{
-		yi[i] = y[NUM_COP * id + i - 1];
-		yi[0] += -yi[i];
+		yi[i] = y[id][i];
 	}
-	// printf("%lf,%lf\n", yi[0], yi[1]);
 }
 
 /**
@@ -393,7 +390,6 @@ PHI(real_t *specie_k, real_t *specie_j, double T) // equation 5-50
 void GetPhysFlux(real_t UI[Emax], real_t yi[NUM_COP], real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const rho, real_t const u, real_t const v, real_t const w, real_t const p, real_t const H, real_t const c)
 {
 	FluxF[0] = UI[1];
-	// *(FluxF+0) = UI[1];
 	FluxF[1] = UI[1]*u + p;
 	FluxF[2] = UI[1]*v;
 	FluxF[3] = UI[1]*w;
@@ -414,9 +410,9 @@ void GetPhysFlux(real_t UI[Emax], real_t yi[NUM_COP], real_t *FluxF, real_t *Flu
 #ifdef COP
 	for (size_t ii = (Emax - NUM_COP); ii < Emax; ii++)
 	{
-		FluxF[ii] = UI[1] * yi[ii - (Emax - NUM_SPECIES)];
-		FluxG[ii] = UI[2] * yi[ii - (Emax - NUM_SPECIES)];
-		FluxH[ii] = UI[3] * yi[ii - (Emax - NUM_SPECIES)];
+		FluxF[ii] = UI[1] * yi[ii - (Emax - NUM_COP)];
+		FluxG[ii] = UI[2] * yi[ii - (Emax - NUM_COP)];
+		FluxH[ii] = UI[3] * yi[ii - (Emax - NUM_COP)];
 	}
 #endif
 }

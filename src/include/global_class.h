@@ -34,7 +34,7 @@ enum VdeType
 
 typedef struct
 {
-    real_t *rho, *p, *c, *H, *u, *v, *w, *y, *T, *Vde[9];
+    real_t *rho, *p, *c, *H, *u, *v, *w, *y[NUM_SPECIES], *T, *Vde[9];
 } FlowData;
 
 typedef struct

@@ -4,7 +4,7 @@
 
 extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal, real_t *U, real_t *U1, real_t *LU,
                                               real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
+                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t **_y, real_t *T, real_t *H, real_t *c)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -76,11 +76,11 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         w[id] = ini.blast_w_in;
         p[id] = ini.blast_pressure_in;
 #ifdef COP
-        _y[id * NUM_COP + 0] = ini.cop_y1_out;
+        _y[id][0] = ini.cop_y1_out;
 #ifdef React
-        for (size_t i = 0; i < NUM_COP; i++)
+        for (size_t i = 0; i < NUM_SPECIES; i++)
         { //
-            _y[id * NUM_COP + i] = thermal->species_ratio_out[i];
+            _y[id][i] = thermal->species_ratio_out[i];
         }
 #endif // end React
 #endif // COP
@@ -97,11 +97,11 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         {                 // in the bubble
             rho[id] = ini.cop_density_in;         // 气泡内单独赋值密度以和气泡外区分
             p[id] = ini.cop_pressure_in;          // 气泡内单独赋值压力以和气泡外区分
-            _y[id * NUM_COP + 0] = ini.cop_y1_in; // 组分气泡必须在激波下游
+            _y[id][0] = ini.cop_y1_in;            // 组分气泡必须在激波下游
 #ifdef React
-            for (size_t i = 0; i < NUM_COP; i++)
+            for (size_t i = 0; i < NUM_SPECIES; i++)
             { // set the last specie in .dat as fliud
-                _y[id * NUM_COP + i] = thermal->species_ratio_in[i];
+                _y[id][i] = thermal->species_ratio_in[i];
             }
 #endif // end React
         }
@@ -109,11 +109,11 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         { // out of bubble
             rho[id] = ini.blast_density_out;
             p[id] = ini.blast_pressure_out;
-            _y[id * NUM_COP + 0] = ini.cop_y1_out;
+            _y[id][0] = ini.cop_y1_out;
 #ifdef React
-            for (size_t i = 0; i < NUM_COP; i++)
+            for (size_t i = 0; i < NUM_SPECIES; i++)
             {
-                _y[id * NUM_COP + i] = thermal->species_ratio_out[i];
+                _y[id][i] = thermal->species_ratio_out[i];
             }
 #endif // end React
         }
@@ -121,11 +121,11 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         { // boundary of bubble && shock
             rho[id] = 0.5 * (ini.cop_density_in + ini.blast_density_out);
             p[id] = 0.5 * (ini.cop_pressure_in + ini.blast_pressure_out);
-            _y[id * NUM_COP + 0] = _DF(0.5) * (ini.cop_y1_out + ini.cop_y1_in);
+            _y[id][0] = _DF(0.5) * (ini.cop_y1_out + ini.cop_y1_in);
 #ifdef React
-            for (size_t i = 0; i < NUM_COP; i++)
+            for (size_t i = 0; i < NUM_SPECIES; i++)
             {
-                _y[id * NUM_COP + i] = _DF(0.5) * (thermal->species_ratio_in[i] + thermal->species_ratio_out[i]);
+                _y[id][i] = _DF(0.5) * (thermal->species_ratio_in[i] + thermal->species_ratio_out[i]);
             }
 #endif // end React
         }
@@ -171,10 +171,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // printf("for %d=%d,%d,%d,R=%lf,T=%lf,yi=%lf,%lf,h of Ini=%lf,U[4]=%lf \n", id, i, j, k, R, T[id], yi[0], yi[1], h, U[Emax * id + 4]);
     for (size_t ii = 5; ii < Emax; ii++)
     {
-        U[Emax * id + ii] = rho[id] * _y[id * NUM_COP + ii - 5];
-        FluxF[Emax * id + ii] = rho[id] * u[id] * _y[id * NUM_COP + ii - 5];
-        FluxG[Emax * id + ii] = rho[id] * v[id] * _y[id * NUM_COP + ii - 5];
-        FluxH[Emax * id + ii] = rho[id] * w[id] * _y[id * NUM_COP + ii - 5];
+        U[Emax * id + ii] = rho[id] * yi[ii - 5];
+        FluxF[Emax * id + ii] = rho[id] * u[id] * yi[ii - 5];
+        FluxG[Emax * id + ii] = rho[id] * v[id] * yi[ii - 5];
+        FluxH[Emax * id + ii] = rho[id] * w[id] * yi[ii - 5];
     }
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 #else
@@ -250,7 +250,7 @@ real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, real_t yi[NUM_SPECIES]
 // add "stream const s" for output
 extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fx,
                                            real_t *Fxwall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v, real_t *w,
-                                           real_t *y, real_t *T, real_t *H)
+                                           real_t **y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -376,7 +376,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fy,
                                            real_t *Fywall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v, real_t *w,
-                                           real_t *y, real_t *T, real_t *H)
+                                           real_t **y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -498,7 +498,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 
 extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fz,
                                            real_t *Fzwall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v, real_t *w,
-                                           real_t *y, real_t *T, real_t *H)
+                                           real_t **y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -704,7 +704,7 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
 }
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-                                                 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y, real_t *T,
+                                                 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t **_y, real_t *T,
                                                  real_t const Gamma)
 {
     int Xmax = bl.Xmax;
@@ -729,17 +729,17 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     #endif
 
     real_t U[Emax], yi[NUM_SPECIES];
-    yi[0] = 1;
     for (size_t n = 0; n < Emax; n++)
     {
         U[n] = UI[Emax * id + n];
     }
     for (size_t ii = 0; ii < NUM_COP; ii++)
     { // calculate yi
-        yi[ii + 1] = real_t(U[Emax - NUM_COP + ii]) / real_t(U[0]);
-        _y[id * NUM_COP + ii] = yi[ii + 1];
-        yi[0] += -yi[ii + 1];
+        yi[ii] = real_t(U[Emax - NUM_COP + ii]) / real_t(U[0]);
+        _y[id][ii] = yi[ii];
+        yi[NUM_COP] += -yi[ii];
     }
+    _y[id][NUM_COP] = yi[NUM_COP];
     // printf("U at [%d],[%d][%d][%d] before upate=%lf,%lf,%lf,%lf,%lf,%lf\n", id, i, j, k, U[0], U[1], U[2], U[3], U[4], U[5]);
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
 
@@ -1278,7 +1278,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxesKernelX(sycl::nd_item<3> index, Bl
 #endif // Visc
 
 #ifdef React
-extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Thermal *thermal, Reaction *react, real_t *UI, real_t *y, real_t *rho, real_t *T, const real_t dt)
+extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Thermal *thermal, Reaction *react, real_t *UI, real_t **y, real_t *rho, real_t *T, const real_t dt)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;

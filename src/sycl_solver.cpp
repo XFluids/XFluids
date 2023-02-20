@@ -171,7 +171,10 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 		q.memcpy(fluids[n]->h_fstate.v, fluids[n]->d_fstate.v, bytes);
 		q.memcpy(fluids[n]->h_fstate.w, fluids[n]->d_fstate.w, bytes);
 #ifdef COP
-		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, NUM_COP * bytes);
+		for (size_t n = 0; n < NUM_SPECIES; n++)
+		{
+			q.memcpy(fluids[n]->h_fstate.y[n], fluids[n]->d_fstate.y[n], bytes);
+		}
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 #endif // COP
 	}
@@ -250,7 +253,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 #ifdef COP
 	for (size_t ii = 5; ii < Emax; ii++)
 	{
-		variables_names[ii] = "y" + std::to_string(ii - 4);
+		variables_names[ii] = Ss.species_name[ii - 5];
 	}
 	variables_names[Onbvar - 1] = "T";
 #endif // COP
@@ -503,7 +506,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 					for (int i = OminX; i < OmaxX; i++)
 					{
 						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.y[id * NUM_COP + ii];
+						real_t tmp = fluids[0]->h_fstate.y[id][ii];
 						outFile.write((char *)&tmp, sizeof(real_t));
 					} // for i
 				}	  // for j

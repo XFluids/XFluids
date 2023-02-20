@@ -37,7 +37,10 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.v = static_cast<real_t *>(malloc_device(bytes, q));
 	d_fstate.w = static_cast<real_t *>(malloc_device(bytes, q));
 #ifdef COP
-	d_fstate.y = static_cast<real_t *>(malloc_device(NUM_COP * bytes, q));
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+	{
+		d_fstate.y[n] = static_cast<real_t *>(malloc_device(bytes, q));
+	}
 	d_fstate.T = static_cast<real_t *>(malloc_device(bytes, q));
 #endif // COP
 	d_FluxF = static_cast<real_t *>(malloc_device(cellbytes, q));
@@ -49,7 +52,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	// shared
 	uvw_c_max = static_cast<real_t *>(malloc_shared(3 * sizeof(real_t), q));
 
-	cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_COP) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n";
+	cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n";
 
 	// 主机内存
 	h_U = static_cast<real_t *>(malloc(cellbytes));
@@ -64,7 +67,10 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.v = static_cast<real_t *>(malloc(bytes));
 	h_fstate.w = static_cast<real_t *>(malloc(bytes));
 #ifdef COP
-	h_fstate.y = static_cast<real_t *>(malloc(NUM_COP * bytes));
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+	{
+		h_fstate.y[n] = static_cast<real_t *>(malloc(bytes));
+	}
 	h_fstate.T = static_cast<real_t *>(malloc(bytes));
 #endif // COP
 	h_FluxF = static_cast<real_t *>(malloc(cellbytes));
