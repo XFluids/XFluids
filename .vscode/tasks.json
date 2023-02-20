@@ -8,10 +8,18 @@
 			"targets": [
 				"all"
 			],
+			//"dependsOn": "env",
 			"group": "build",
 			"problemMatcher": [],
 			"detail": "CMake template clean rebuild task"
 		},
+		// {
+		// 	"type": "shell",
+		// 	"label": "env",
+		// 	"command": "source /opt/intel/oneapi/setvars.sh --force --include-intel-llvm",
+		// 	"group": "build",
+		// 	"problemMatcher": [],
+		// },
 		{
 			"type": "cmake",
 			"label": "CMake: build",

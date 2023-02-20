@@ -37,7 +37,7 @@ real_t get_CopR(real_t *species_chara, real_t yi[NUM_SPECIES])
  */
 real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
-	real_t T = T0, Cpi = zero_float; // NOTE:注意由Hia和Hib计算得到的Cp单位是J/kg/K
+	real_t T = T0, Cpi = _DF(0.0); // NOTE:注意由Hia和Hib计算得到的Cp单位是J/kg/K
 	if (T < (200.0 / Tref))
 		T = 200.0 / Tref;
 #if Thermo
@@ -89,7 +89,7 @@ real_t get_CopW(Thermal *material, real_t yi[NUM_SPECIES])
 		_W += yi[ii] / (material->species_chara[ii * SPCH_Sz + 6]); // Wi
 	}
 	// printf("W=%lf \n", 1.0 / _W);
-	return one_float / _W;
+	return _DF(1.0) / _W;
 }
 
 /**
@@ -119,7 +119,7 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 {
 	real_t T = T0;
 	real_t TT = 30000.0 / Tref;
-	real_t hi = zero_float;
+	real_t hi = _DF(0.0);
 #if Thermo
 	// NOTE：Non_dim of Hia && Hib*3+only for h&Cp not for S ATTENTATION
 	//  200K~1000K
@@ -295,14 +295,14 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 			   real_t &T, Thermal *thermal, real_t yi[NUM_SPECIES], real_t const Gamma0)
 {
 	rho = UI[0];
-	real_t rho1 = one_float / rho;
+	real_t rho1 = _DF(1.0) / rho;
 	u = UI[1] * rho1;
 	v = UI[2] * rho1;
 	w = UI[3] * rho1;
 
 // EOS was included
 #ifdef COP
-	real_t e = UI[4] * rho1 - half_float * (u * u + v * v + w * w);
+	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 	T = get_T(thermal, yi, e, T);
 	real_t R = get_CopR(thermal->species_chara, yi);
 	p = rho * R * T; // 对所有气体都适用
@@ -310,12 +310,82 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	// printf("UI[0]=%lf,UI[4]=%lf,T2=%lf, e=%lf, yi=%lf, %lf, R=%lf,p=%lf,gamma=%lf\n", rho, UI[4], T, e, yi[0], yi[1], R, p, Gamma);
 #else
 	real_t Gamma = Gamma0;
-	p = (Gamma - one_float) * (UI[4] - half_float * rho * (u * u + v * v + w * w));
+	p = (Gamma - _DF(1.0)) * (UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
 #endif // COP
 	H = (UI[4] + p) * rho1;
 	c = sqrt(Gamma * p * rho1);
 	// printf("rho=%lf , p=%lf , c=%lf \n", rho, p, c);
 }
+
+/**
+ * @brief get Phi value
+ */
+real_t get_specie_Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const real_t T) // miu meas Viscosity of species
+{
+	double viscosity = fitted_coefficients_visc[order_polynominal_fitted - 1];
+	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
+		viscosity = viscosity * log(T) + fitted_coefficients_visc[i];
+	return exp(viscosity);
+}
+
+/**
+ * @brief get Phi value
+ */
+real_t
+PHI(real_t *specie_k, real_t *specie_j, double T) // equation 5-50
+{
+	real_t phi = _DF(0.0);
+	phi = pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * pow(specie_k[Viscosity] / specie_j[Viscosity], _DF(0.5));
+	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sqrt(_DF(2.0));
+	phi = phi * pow(_DF(1.0) + specie_k[Wi] / specie_j[Wi], _DF(-0.5));
+	return phi;
+}
+
+// /**
+//  * @brief Get coeff relating with visc at a grid point
+//  */
+// void Gettransport_coeff_aver(real_t *species_chara, real_t X[NUM_SPECIES], real_t viscosity_aver, const real_t T)
+// {
+// 	// calculate viscosity_aver via equattion(5-49)//
+// 	real_t *species[NUM_SPECIES];
+// 	for (size_t n = 0; n < NUM_SPECIES; n++)
+// 	{
+// 		species[n] = &(species_chara[n * SPCH_Sz]);
+// 		species[n][SID] = real_t(n);
+// 	}
+// 	viscosity_aver = _DF(0.0);
+// 	real_t denominator = _DF(0.0);
+// 	for (int k = 0; k < NUM_SPECIES; k++)
+// 	{
+// 		denominator = _DF(0.0);
+// 		for (int i = k; i < NUM_SPECIES; i++)
+// 			denominator = denominator + X[i] * PHI(species[k], species[i], T);
+// 		viscosity_aver = viscosity_aver + X[k] * species[k][Viscosity] / denominator; // Pa.s=kg/(m.s)
+// 	}
+// 	// calculate thermal_conduct via equattion(5-51)//
+// 	double temp1 = _DF(0.0), temp2 = _DF(0.0);
+// 	for (int k = 0; k < NUM_SPECIES; k++)
+// 	{
+// 		temp1 = X[k] * chemi.species[k].Thermal_conductivity(T);
+// 		temp2 = X[k] / chemi.species[k].Thermal_conductivity(T);
+// 	}
+// 	thermal_conduct_aver = 0.5 * (temp1 + 1.0 / temp2); // unit: W/(m.K)
+// 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
+// 	for (int k = 0; k < NUM_SPECIES; k++)
+// 	{
+// 		temp1 = _DF(0.0);
+// 		temp2 = _DF(0.0);
+// 		for (int i = 0; i < NUM_SPECIES; i++)
+// 		{
+// 			if (i != k)
+// 			{
+// 				temp1 = temp1 + X[i] * chemi.species[i].Wi;
+// 				temp2 = temp2 + X[i] / trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k]);
+// 			}
+// 		}
+// 		Dkm_aver[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
+// 	}
+// }
 
 /**
  * @brief  Obtain fluxes at a grid point
@@ -356,81 +426,81 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 						 real_t const _H, real_t const D, real_t const D1, real_t Gamma)
 {
 
-	real_t _Gamma = Gamma - one_float;
+	real_t _Gamma = Gamma - _DF(1.0);
 	real_t q2 = _u * _u + _v * _v + _w * _w;
-	// real_t c2 = _Gamma * (_H - half_float * q2);
+	// real_t c2 = _Gamma * (_H - _DF(0.5) * q2);
 	real_t _c = sqrt(c2);
 	real_t c21_Gamma = _Gamma / c2;
 
 #ifdef COP
 	real_t b1 = c21_Gamma;
-	real_t b2 = one_float + c21_Gamma * q2 - c21_Gamma * _H;
-	real_t b3 = zero_float;
+	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
+	real_t b3 = _DF(0.0);
 	for (size_t i = 1; i < NUM_SPECIES; i++)
 	{
 		b3 += b1 * yi[i] * z[i];
 	}
-	real_t _c1 = one_float / _c;
+	real_t _c1 = _DF(1.0) / _c;
 	// printf("b1=%lf,b2=%lf,b3=%lf,_c=%lf,yi[]=%lf,%lf,z[]=%lf,%lf\n", b1, b2, b3, _c, yi[0], yi[1], z[0], z[1]);
-	eigen_l[0][0] = half_float * (b2 + _u / _c + b3);
-	eigen_l[0][1] = -half_float * (b1 * _u + _c1);
-	eigen_l[0][2] = -half_float * (b1 * _v);
-	eigen_l[0][3] = -half_float * (b1 * _w);
-	eigen_l[0][4] = half_float * b1;
+	eigen_l[0][0] = _DF(0.5) * (b2 + _u / _c + b3);
+	eigen_l[0][1] = -_DF(0.5) * (b1 * _u + _c1);
+	eigen_l[0][2] = -_DF(0.5) * (b1 * _v);
+	eigen_l[0][3] = -_DF(0.5) * (b1 * _w);
+	eigen_l[0][4] = _DF(0.5) * b1;
 
-	eigen_l[1][0] = (one_float - b2 - b3) / b1;
+	eigen_l[1][0] = (_DF(1.0) - b2 - b3) / b1;
 	eigen_l[1][1] = _u;
 	eigen_l[1][2] = _v;
 	eigen_l[1][3] = _w;
-	eigen_l[1][4] = -one_float;
+	eigen_l[1][4] = -_DF(1.0);
 
 	eigen_l[2][0] = _v;
-	eigen_l[2][1] = zero_float;
-	eigen_l[2][2] = -one_float;
-	eigen_l[2][3] = zero_float;
-	eigen_l[2][4] = zero_float;
+	eigen_l[2][1] = _DF(0.0);
+	eigen_l[2][2] = -_DF(1.0);
+	eigen_l[2][3] = _DF(0.0);
+	eigen_l[2][4] = _DF(0.0);
 
 	eigen_l[3][0] = -_w;
-	eigen_l[3][1] = zero_float;
-	eigen_l[3][2] = zero_float;
-	eigen_l[3][3] = one_float;
-	eigen_l[3][4] = zero_float;
+	eigen_l[3][1] = _DF(0.0);
+	eigen_l[3][2] = _DF(0.0);
+	eigen_l[3][3] = _DF(1.0);
+	eigen_l[3][4] = _DF(0.0);
 
-	eigen_l[Emax - 1][0] = half_float * (b2 - _u / _c + b3);
-	eigen_l[Emax - 1][1] = half_float * (-b1 * _u + _c1);
-	eigen_l[Emax - 1][2] = half_float * (-b1 * _v);
-	eigen_l[Emax - 1][3] = half_float * (-b1 * _w);
-	eigen_l[Emax - 1][4] = half_float * b1;
+	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _u / _c + b3);
+	eigen_l[Emax - 1][1] = _DF(0.5) * (-b1 * _u + _c1);
+	eigen_l[Emax - 1][2] = _DF(0.5) * (-b1 * _v);
+	eigen_l[Emax - 1][3] = _DF(0.5) * (-b1 * _w);
+	eigen_l[Emax - 1][4] = _DF(0.5) * b1;
 
 	// right eigen vectors
-	eigen_r[0][0] = one_float;
+	eigen_r[0][0] = _DF(1.0);
 	eigen_r[0][1] = b1;
-	eigen_r[0][2] = zero_float;
-	eigen_r[0][3] = zero_float;
+	eigen_r[0][2] = _DF(0.0);
+	eigen_r[0][3] = _DF(0.0);
 	// for (int n = 0; n < NUM_COP; n++)
-	// 	eigen_r[0][Emax - NUM_COP + n - 1] = zero_float;
-	eigen_r[0][Emax - 1] = one_float;
+	// 	eigen_r[0][Emax - NUM_COP + n - 1] = _DF(0.0);
+	eigen_r[0][Emax - 1] = _DF(1.0);
 
 	eigen_r[1][0] = _u - _c;
 	eigen_r[1][1] = _u * b1;
-	eigen_r[1][2] = zero_float;
-	eigen_r[1][3] = zero_float;
+	eigen_r[1][2] = _DF(0.0);
+	eigen_r[1][3] = _DF(0.0);
 	eigen_r[1][Emax - 1] = _u + _c;
 
 	eigen_r[2][0] = _v;
 	eigen_r[2][1] = _v * b1;
-	eigen_r[2][2] = -one_float;
-	eigen_r[2][3] = zero_float;
+	eigen_r[2][2] = -_DF(1.0);
+	eigen_r[2][3] = _DF(0.0);
 	eigen_r[2][Emax - 1] = _v;
 
 	eigen_r[3][0] = _w;
 	eigen_r[3][1] = _w * b1;
-	eigen_r[3][2] = zero_float;
-	eigen_r[3][3] = one_float;
+	eigen_r[3][2] = _DF(0.0);
+	eigen_r[3][3] = _DF(1.0);
 	eigen_r[3][Emax - 1] = _w;
 
 	eigen_r[4][0] = _H - _u * _c;
-	eigen_r[4][1] = _H * b1 - one_float;
+	eigen_r[4][1] = _H * b1 - _DF(1.0);
 	eigen_r[4][2] = -_v;
 	eigen_r[4][3] = _w;
 	eigen_r[4][Emax - 1] = _H + _u * _c;
@@ -438,103 +508,103 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		eigen_l[0][n + Emax - NUM_COP] = -half_float * b1 * z[n + 1];
+		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
 		eigen_l[1][n + Emax - NUM_COP] = z[n + 1];
 		eigen_l[2][n + Emax - NUM_COP] = 0;
 		eigen_l[3][n + Emax - NUM_COP] = 0;
-		eigen_l[Emax - 1][n + Emax - NUM_COP] = -half_float * b1 * z[n + 1];
+		eigen_l[Emax - 1][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
 		eigen_l[m + Emax - NUM_SPECIES][0] = -yi[m + 1];
-		eigen_l[m + Emax - NUM_SPECIES][1] = zero_float;
-		eigen_l[m + Emax - NUM_SPECIES][2] = zero_float;
-		eigen_l[m + Emax - NUM_SPECIES][3] = zero_float;
-		eigen_l[m + Emax - NUM_SPECIES][4] = zero_float;
+		eigen_l[m + Emax - NUM_SPECIES][1] = _DF(0.0);
+		eigen_l[m + Emax - NUM_SPECIES][2] = _DF(0.0);
+		eigen_l[m + Emax - NUM_SPECIES][3] = _DF(0.0);
+		eigen_l[m + Emax - NUM_SPECIES][4] = _DF(0.0);
 		for (int n = 0; n < NUM_COP; n++)
-			eigen_l[m + Emax - NUM_SPECIES][n + Emax - NUM_COP] = (m == n) ? one_float : zero_float;
+			eigen_l[m + Emax - NUM_SPECIES][n + Emax - NUM_COP] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
 	// right eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		eigen_r[0][Emax - NUM_COP + n - 1] = zero_float;
-		eigen_r[1][Emax - NUM_COP + n - 1] = zero_float;
-		eigen_r[2][Emax - NUM_COP + n - 1] = zero_float;
-		eigen_r[3][Emax - NUM_COP + n - 1] = zero_float;
+		eigen_r[0][Emax - NUM_COP + n - 1] = _DF(0.0);
+		eigen_r[1][Emax - NUM_COP + n - 1] = _DF(0.0);
+		eigen_r[2][Emax - NUM_COP + n - 1] = _DF(0.0);
+		eigen_r[3][Emax - NUM_COP + n - 1] = _DF(0.0);
 		eigen_r[4][Emax - NUM_COP + n - 1] = z[n + 1];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
 		eigen_r[m + Emax - NUM_COP][0] = yi[m + 1];
 		eigen_r[m + Emax - NUM_COP][1] = b1 * yi[m + 1];
-		eigen_r[m + Emax - NUM_COP][2] = zero_float;
-		eigen_r[m + Emax - NUM_COP][3] = zero_float;
+		eigen_r[m + Emax - NUM_COP][2] = _DF(0.0);
+		eigen_r[m + Emax - NUM_COP][3] = _DF(0.0);
 		eigen_r[m + Emax - NUM_COP][Emax - 1] = yi[m + 1];
 		for (int n = 0; n < NUM_COP; n++)
-			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? one_float : zero_float;
+			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
 #else
-	real_t _rho1 = one_float / _rho;
-	real_t _c1_rho = half_float * _rho / _c;
+	real_t _rho1 = _DF(1.0) / _rho;
+	real_t _c1_rho = _DF(0.5) * _rho / _c;
 	real_t _c1_rho1_Gamma = _Gamma * _rho1 / _c;
 
 	// left eigen vectors
-	eigen_l[0][0] = one_float - half_float * c21_Gamma * q2;
+	eigen_l[0][0] = _DF(1.0) - _DF(0.5) * c21_Gamma * q2;
 	eigen_l[0][1] = c21_Gamma * _u;
 	eigen_l[0][2] = c21_Gamma * _v;
 	eigen_l[0][3] = c21_Gamma * _w;
 	eigen_l[0][4] = -c21_Gamma;
 
 	eigen_l[1][0] = -_w * _rho1;
-	eigen_l[1][1] = zero_float;
-	eigen_l[1][2] = zero_float;
+	eigen_l[1][1] = _DF(0.0);
+	eigen_l[1][2] = _DF(0.0);
 	eigen_l[1][3] = _rho1;
-	eigen_l[1][4] = zero_float;
+	eigen_l[1][4] = _DF(0.0);
 
 	eigen_l[2][0] = _v * _rho1;
-	eigen_l[2][1] = zero_float;
+	eigen_l[2][1] = _DF(0.0);
 	eigen_l[2][2] = -_rho1;
-	eigen_l[2][3] = zero_float;
-	eigen_l[2][4] = zero_float;
+	eigen_l[2][3] = _DF(0.0);
+	eigen_l[2][4] = _DF(0.0);
 
-	eigen_l[3][0] = half_float * _c1_rho1_Gamma * q2 - _u * _rho1;
+	eigen_l[3][0] = _DF(0.5) * _c1_rho1_Gamma * q2 - _u * _rho1;
 	eigen_l[3][1] = -_c1_rho1_Gamma * _u + _rho1;
 	eigen_l[3][2] = -_c1_rho1_Gamma * _v;
 	eigen_l[3][3] = -_c1_rho1_Gamma * _w;
 	eigen_l[3][4] = _c1_rho1_Gamma;
 
-	eigen_l[4][0] = half_float * _c1_rho1_Gamma * q2 + _u * _rho1;
+	eigen_l[4][0] = _DF(0.5) * _c1_rho1_Gamma * q2 + _u * _rho1;
 	eigen_l[4][1] = -_c1_rho1_Gamma * _u - _rho1;
 	eigen_l[4][2] = -_c1_rho1_Gamma * _v;
 	eigen_l[4][3] = -_c1_rho1_Gamma * _w;
 	eigen_l[4][4] = _c1_rho1_Gamma;
 
 	// right eigen vectors
-	eigen_r[0][0] = one_float;
-	eigen_r[0][1] = zero_float;
-	eigen_r[0][2] = zero_float;
+	eigen_r[0][0] = _DF(1.0);
+	eigen_r[0][1] = _DF(0.0);
+	eigen_r[0][2] = _DF(0.0);
 	eigen_r[0][3] = _c1_rho;
 	eigen_r[0][4] = _c1_rho;
 
 	eigen_r[1][0] = _u;
-	eigen_r[1][1] = zero_float;
-	eigen_r[1][2] = zero_float;
+	eigen_r[1][1] = _DF(0.0);
+	eigen_r[1][2] = _DF(0.0);
 	eigen_r[1][3] = _c1_rho * (_u + _c);
 	eigen_r[1][4] = _c1_rho * (_u - _c);
 
 	eigen_r[2][0] = _v;
-	eigen_r[2][1] = zero_float;
+	eigen_r[2][1] = _DF(0.0);
 	eigen_r[2][2] = -_rho;
 	eigen_r[2][3] = _c1_rho * _v;
 	eigen_r[2][4] = _c1_rho * _v;
 
 	eigen_r[3][0] = _w;
 	eigen_r[3][1] = _rho;
-	eigen_r[3][2] = zero_float;
+	eigen_r[3][2] = _DF(0.0);
 	eigen_r[3][3] = _c1_rho * _w;
 	eigen_r[3][4] = _c1_rho * _w;
 
-	eigen_r[4][0] = half_float * q2;
+	eigen_r[4][0] = _DF(0.5) * q2;
 	eigen_r[4][1] = _rho * _w;
 	eigen_r[4][2] = -_rho * _v;
 	eigen_r[4][3] = _c1_rho * (_H + _u * _c);
@@ -548,137 +618,137 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 						 real_t const _H, real_t const D, real_t const D1, real_t const Gamma)
 {
 
-	real_t _Gamma = Gamma - one_float;
+	real_t _Gamma = Gamma - _DF(1.0);
 	real_t q2 = _u*_u + _v*_v + _w*_w;
-	// real_t c2 = _Gamma*(_H - half_float*q2);
+	// real_t c2 = _Gamma*(_H - _DF(0.5)*q2);
 	real_t _c = sqrt(c2);
 	real_t c21_Gamma = _Gamma / c2;
 
 #ifdef COP
 	real_t b1 = c21_Gamma;
-	real_t b2 = one_float + c21_Gamma * q2 - c21_Gamma * _H;
-	real_t b3 = zero_float;
+	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
+	real_t b3 = _DF(0.0);
 	for (size_t i = 1; i < NUM_SPECIES; i++)
 	{
 		b3 += b1 * yi[i] * z[i];
 	}
-	real_t _c1 = one_float / _c;
+	real_t _c1 = _DF(1.0) / _c;
 	// printf("b1=%lf,b2=%lf,b3=%lf,_c=%lf,yi[]=%lf,%lf,z[]=%lf,%lf\n", b1, b2, b3, _c, yi[0], yi[1], z[0], z[1]);
 	// left eigen vectors
-	eigen_l[0][0] = half_float * (b2 + _v / _c + b3);
-	eigen_l[0][1] = -half_float * (b1 * _u);
-	eigen_l[0][2] = -half_float * (b1 * _v + _c1);
-	eigen_l[0][3] = -half_float * (b1 * _w);
-	eigen_l[0][4] = half_float * b1;
+	eigen_l[0][0] = _DF(0.5) * (b2 + _v / _c + b3);
+	eigen_l[0][1] = -_DF(0.5) * (b1 * _u);
+	eigen_l[0][2] = -_DF(0.5) * (b1 * _v + _c1);
+	eigen_l[0][3] = -_DF(0.5) * (b1 * _w);
+	eigen_l[0][4] = _DF(0.5) * b1;
 
 	eigen_l[1][0] = -_u;
-	eigen_l[1][1] = one_float;
-	eigen_l[1][2] = zero_float;
-	eigen_l[1][3] = zero_float;
-	eigen_l[1][4] = zero_float;
+	eigen_l[1][1] = _DF(1.0);
+	eigen_l[1][2] = _DF(0.0);
+	eigen_l[1][3] = _DF(0.0);
+	eigen_l[1][4] = _DF(0.0);
 
-	eigen_l[2][0] = (one_float - b2 - b3) / b1;
+	eigen_l[2][0] = (_DF(1.0) - b2 - b3) / b1;
 	eigen_l[2][1] = _u;
 	eigen_l[2][2] = _v;
 	eigen_l[2][3] = _w;
-	eigen_l[2][4] = -one_float;
+	eigen_l[2][4] = -_DF(1.0);
 
 	eigen_l[3][0] = _w;
-	eigen_l[3][1] = zero_float;
-	eigen_l[3][2] = zero_float;
-	eigen_l[3][3] = -one_float;
-	eigen_l[3][4] = zero_float;
+	eigen_l[3][1] = _DF(0.0);
+	eigen_l[3][2] = _DF(0.0);
+	eigen_l[3][3] = -_DF(1.0);
+	eigen_l[3][4] = _DF(0.0);
 
-	eigen_l[Emax - 1][0] = half_float * (b2 - _v / _c + b3);
-	eigen_l[Emax - 1][1] = half_float * (-b1 * _u);
-	eigen_l[Emax - 1][2] = half_float * (-b1 * _v + _c1);
-	eigen_l[Emax - 1][3] = half_float * (-b1 * _w);
-	eigen_l[Emax - 1][4] = half_float * b1;
+	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _v / _c + b3);
+	eigen_l[Emax - 1][1] = _DF(0.5) * (-b1 * _u);
+	eigen_l[Emax - 1][2] = _DF(0.5) * (-b1 * _v + _c1);
+	eigen_l[Emax - 1][3] = _DF(0.5) * (-b1 * _w);
+	eigen_l[Emax - 1][4] = _DF(0.5) * b1;
 
 	// right eigen vectors
-	eigen_r[0][0] = one_float;
-	eigen_r[0][1] = zero_float;
+	eigen_r[0][0] = _DF(1.0);
+	eigen_r[0][1] = _DF(0.0);
 	eigen_r[0][2] = b1;
-	eigen_r[0][3] = zero_float;
+	eigen_r[0][3] = _DF(0.0);
 	// for (int n = 0; n < num_species - 1; n++)
-	// 	eigen_r[0][Emax - NUM_COP + n - 1] = zero_float;
-	eigen_r[0][Emax - 1] = one_float;
+	// 	eigen_r[0][Emax - NUM_COP + n - 1] = _DF(0.0);
+	eigen_r[0][Emax - 1] = _DF(1.0);
 
 	eigen_r[1][0] = _u;
-	eigen_r[1][1] = one_float;
+	eigen_r[1][1] = _DF(1.0);
 	eigen_r[1][2] = _u * b1;
-	eigen_r[1][3] = zero_float;
+	eigen_r[1][3] = _DF(0.0);
 	eigen_r[1][Emax - 1] = _u;
 
 	eigen_r[2][0] = _v - _c;
-	eigen_r[2][1] = zero_float;
+	eigen_r[2][1] = _DF(0.0);
 	eigen_r[2][2] = _v * b1;
-	eigen_r[2][3] = zero_float;
+	eigen_r[2][3] = _DF(0.0);
 	eigen_r[2][Emax - 1] = _v + _c;
 
 	eigen_r[3][0] = _w;
-	eigen_r[3][1] = zero_float;
+	eigen_r[3][1] = _DF(0.0);
 	eigen_r[3][2] = _w * b1;
-	eigen_r[3][3] = -one_float;
+	eigen_r[3][3] = -_DF(1.0);
 	eigen_r[3][Emax - 1] = _w;
 
 	eigen_r[4][0] = _H - _v * _c;
 	eigen_r[4][1] = _u;
-	eigen_r[4][2] = _H * b1 - one_float;
+	eigen_r[4][2] = _H * b1 - _DF(1.0);
 	eigen_r[4][3] = -_w;
 	eigen_r[4][Emax - 1] = _H + _v * _c;
 
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		eigen_l[0][n + Emax - NUM_COP] = -half_float * b1 * z[n + 1];
-		eigen_l[1][n + Emax - NUM_COP] = zero_float;
+		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
+		eigen_l[1][n + Emax - NUM_COP] = _DF(0.0);
 		eigen_l[2][n + Emax - NUM_COP] = z[n + 1];
-		eigen_l[3][n + Emax - NUM_COP] = zero_float;
-		eigen_l[Emax - 1][n + Emax - NUM_COP] = -half_float * b1 * z[n + 1];
+		eigen_l[3][n + Emax - NUM_COP] = _DF(0.0);
+		eigen_l[Emax - 1][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
 		eigen_l[m + Emax - NUM_SPECIES][0] = -yi[m + 1];
-		eigen_l[m + Emax - NUM_SPECIES][1] = zero_float;
-		eigen_l[m + Emax - NUM_SPECIES][2] = zero_float;
-		eigen_l[m + Emax - NUM_SPECIES][3] = zero_float;
-		eigen_l[m + Emax - NUM_SPECIES][4] = zero_float;
+		eigen_l[m + Emax - NUM_SPECIES][1] = _DF(0.0);
+		eigen_l[m + Emax - NUM_SPECIES][2] = _DF(0.0);
+		eigen_l[m + Emax - NUM_SPECIES][3] = _DF(0.0);
+		eigen_l[m + Emax - NUM_SPECIES][4] = _DF(0.0);
 		for (int n = 0; n < NUM_COP; n++)
-			eigen_l[m + Emax - NUM_SPECIES][n + Emax - NUM_COP] = (m == n) ? one_float : zero_float;
+			eigen_l[m + Emax - NUM_SPECIES][n + Emax - NUM_COP] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
 	// right eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		eigen_r[0][Emax - NUM_COP + n - 1] = zero_float;
-		eigen_r[1][Emax - NUM_COP + n - 1] = zero_float;
-		eigen_r[2][Emax - NUM_COP + n - 1] = zero_float;
-		eigen_r[3][Emax - NUM_COP + n - 1] = zero_float;
+		eigen_r[0][Emax - NUM_COP + n - 1] = _DF(0.0);
+		eigen_r[1][Emax - NUM_COP + n - 1] = _DF(0.0);
+		eigen_r[2][Emax - NUM_COP + n - 1] = _DF(0.0);
+		eigen_r[3][Emax - NUM_COP + n - 1] = _DF(0.0);
 		eigen_r[4][Emax - NUM_COP + n - 1] = z[n + 1];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
 		eigen_r[m + Emax - NUM_COP][0] = yi[m + 1];
-		eigen_r[m + Emax - NUM_COP][1] = zero_float;
+		eigen_r[m + Emax - NUM_COP][1] = _DF(0.0);
 		eigen_r[m + Emax - NUM_COP][2] = b1 * yi[m + 1];
-		eigen_r[m + Emax - NUM_COP][3] = zero_float;
+		eigen_r[m + Emax - NUM_COP][3] = _DF(0.0);
 		eigen_r[m + Emax - NUM_COP][Emax - 1] = yi[m + 1];
 		for (int n = 0; n < NUM_COP; n++)
-			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? one_float : zero_float;
+			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
 #else
 
-	real_t _rho1 = one_float / _rho;
-	real_t _c1_rho = half_float * _rho / _c;
+	real_t _rho1 = _DF(1.0) / _rho;
+	real_t _c1_rho = _DF(0.5) * _rho / _c;
 	real_t _c1_rho1_Gamma = _Gamma * _rho1 / _c;
 	// left eigen vectors 
 	eigen_l[0][0] = _w*_rho1;
-	eigen_l[0][1] = zero_float;
-	eigen_l[0][2] = zero_float;
+	eigen_l[0][1] = _DF(0.0);
+	eigen_l[0][2] = _DF(0.0);
 	eigen_l[0][3] = - _rho1;
-	eigen_l[0][4] = zero_float;
-	
-	eigen_l[1][0] = one_float - half_float*c21_Gamma*q2;
+	eigen_l[0][4] = _DF(0.0);
+
+	eigen_l[1][0] = _DF(1.0) - _DF(0.5) * c21_Gamma * q2;
 	eigen_l[1][1] = c21_Gamma*_u;
 	eigen_l[1][2] = c21_Gamma*_v;
 	eigen_l[1][3] = c21_Gamma*_w;
@@ -686,49 +756,49 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 
 	eigen_l[2][0] = - _u*_rho1;
 	eigen_l[2][1] = _rho1;
-	eigen_l[2][2] = zero_float;
-	eigen_l[2][3] = zero_float;
-	eigen_l[2][4] = zero_float;
+	eigen_l[2][2] = _DF(0.0);
+	eigen_l[2][3] = _DF(0.0);
+	eigen_l[2][4] = _DF(0.0);
 
-	eigen_l[3][0] = half_float*_c1_rho1_Gamma*q2 - _v*_rho1;
+	eigen_l[3][0] = _DF(0.5) * _c1_rho1_Gamma * q2 - _v * _rho1;
 	eigen_l[3][1] = -_c1_rho1_Gamma*_u;
 	eigen_l[3][2] = -_c1_rho1_Gamma*_v + _rho1;
 	eigen_l[3][3] = -_c1_rho1_Gamma*_w;
 	eigen_l[3][4] = _c1_rho1_Gamma;
 
-	eigen_l[4][0] = half_float*_c1_rho1_Gamma*q2 + _v*_rho1;
+	eigen_l[4][0] = _DF(0.5) * _c1_rho1_Gamma * q2 + _v * _rho1;
 	eigen_l[4][1] = -_c1_rho1_Gamma*_u;
 	eigen_l[4][2] = -_c1_rho1_Gamma*_v - _rho1;
 	eigen_l[4][3] = -_c1_rho1_Gamma*_w;
 	eigen_l[4][4] = _c1_rho1_Gamma;
 
 	//right eigen vectors
-	eigen_r[0][0] = zero_float;
-	eigen_r[0][1] = one_float;
-	eigen_r[0][2] = zero_float;
+	eigen_r[0][0] = _DF(0.0);
+	eigen_r[0][1] = _DF(1.0);
+	eigen_r[0][2] = _DF(0.0);
 	eigen_r[0][3] = _c1_rho;
 	eigen_r[0][4] = _c1_rho;
-	
-	eigen_r[1][0] = zero_float;
+
+	eigen_r[1][0] = _DF(0.0);
 	eigen_r[1][1] = _u;
 	eigen_r[1][2] = _rho;
 	eigen_r[1][3] = _c1_rho*_u;
 	eigen_r[1][4] = _c1_rho*_u;
 
-	eigen_r[2][0] = zero_float;
+	eigen_r[2][0] = _DF(0.0);
 	eigen_r[2][1] = _v;
-	eigen_r[2][2] = zero_float;
+	eigen_r[2][2] = _DF(0.0);
 	eigen_r[2][3] = _c1_rho*(_v + _c);
 	eigen_r[2][4] = _c1_rho*(_v - _c);
 
 	eigen_r[3][0] = - _rho;
 	eigen_r[3][1] = _w;
-	eigen_r[3][2] = zero_float;
+	eigen_r[3][2] = _DF(0.0);
 	eigen_r[3][3] = _c1_rho*_w;
 	eigen_r[3][4] = _c1_rho*_w;
 
 	eigen_r[4][0] = - _rho*_w;
-	eigen_r[4][1] = half_float*q2;
+	eigen_r[4][1] = _DF(0.5) * q2;
 	eigen_r[4][2] = _rho*_u;
 	eigen_r[4][3] = _c1_rho*(_H + _v*_c);
 	eigen_r[4][4] = _c1_rho*(_H - _v*_c);
@@ -742,21 +812,21 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 {
 	// preparing some interval value
 
-	real_t _Gamma = Gamma - one_float;
+	real_t _Gamma = Gamma - _DF(1.0);
 	real_t q2 = _u*_u + _v*_v + _w*_w;
-	// real_t c2 = _Gamma*(_H - half_float*q2);
+	// real_t c2 = _Gamma*(_H - _DF(0.5)*q2);
 	real_t _c = sqrt(c2);
 	real_t c21_Gamma = _Gamma / c2;
 
 #ifdef COP
 	real_t b1 = c21_Gamma;
-	real_t b2 = one_float + c21_Gamma * q2 - c21_Gamma * _H;
-	real_t b3 = zero_float;
+	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
+	real_t b3 = _DF(0.0);
 	for (size_t i = 1; i < NUM_SPECIES; i++)
 	{
 		b3 += b1 * yi[i] * z[i];
 	}
-	real_t _c1 = one_float / _c;
+	real_t _c1 = _DF(1.0) / _c;
 	// printf("b1=%lf,b2=%lf,b3=%lf,_c=%lf,yi[]=%lf,%lf,z[]=%lf,%lf\n", b1, b2, b3, _c, yi[0], yi[1], z[0], z[1]);
 	// // printf("b2=%lf , b3=%lf \n", b2, b3);
 	// // printf("b2=%lf , b3=%lf , z1=%lf \n", b2, b3, z[1]);
@@ -807,68 +877,68 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	// 	eigen_r[Emax - NUM_SPECIES][nn] = z[nn - 2];
 	// }
 #else
-	real_t _rho1 = one_float / _rho;
-	real_t _c1_rho = half_float * _rho / _c;
+	real_t _rho1 = _DF(1.0) / _rho;
+	real_t _c1_rho = _DF(0.5) * _rho / _c;
 	real_t _c1_rho1_Gamma = _Gamma * _rho1 / _c;
 	// left eigen vectors 
 	eigen_l[0][0] = - _v*_rho1;
-	eigen_l[0][1] = zero_float;
+	eigen_l[0][1] = _DF(0.0);
 	eigen_l[0][2] = _rho1;
-	eigen_l[0][3] = zero_float;
-	eigen_l[0][4] = zero_float;
-	
+	eigen_l[0][3] = _DF(0.0);
+	eigen_l[0][4] = _DF(0.0);
+
 	eigen_l[1][0] = _u*_rho1;
 	eigen_l[1][1] = - _rho1;
-	eigen_l[1][2] = zero_float;
-	eigen_l[1][3] = zero_float;
-	eigen_l[1][4] = zero_float;
+	eigen_l[1][2] = _DF(0.0);
+	eigen_l[1][3] = _DF(0.0);
+	eigen_l[1][4] = _DF(0.0);
 
-	eigen_l[2][0] = one_float - half_float*c21_Gamma*q2; 
+	eigen_l[2][0] = _DF(1.0) - _DF(0.5) * c21_Gamma * q2;
 	eigen_l[2][1] = c21_Gamma*_u; 
 	eigen_l[2][2] = c21_Gamma*_v; 
 	eigen_l[2][3] = c21_Gamma*_w; 
 	eigen_l[2][4] = - c21_Gamma;
 
-	eigen_l[3][0] = half_float*_c1_rho1_Gamma*q2 - _w*_rho1;
+	eigen_l[3][0] = _DF(0.5) * _c1_rho1_Gamma * q2 - _w * _rho1;
 	eigen_l[3][1] = -_c1_rho1_Gamma*_u;
 	eigen_l[3][2] = -_c1_rho1_Gamma*_v;
 	eigen_l[3][3] = -_c1_rho1_Gamma*_w + _rho1;
 	eigen_l[3][4] = _c1_rho1_Gamma;
 
-	eigen_l[4][0] = half_float*_c1_rho1_Gamma*q2 + _w*_rho1;
+	eigen_l[4][0] = _DF(0.5) * _c1_rho1_Gamma * q2 + _w * _rho1;
 	eigen_l[4][1] = -_c1_rho1_Gamma*_u;
 	eigen_l[4][2] = -_c1_rho1_Gamma*_v;
 	eigen_l[4][3] = -_c1_rho1_Gamma*_w - _rho1;
 	eigen_l[4][4] = _c1_rho1_Gamma;
 
 	//right eigen vectors
-	eigen_r[0][0] = zero_float;
-	eigen_r[0][1] = zero_float;
-	eigen_r[0][2] = one_float;
+	eigen_r[0][0] = _DF(0.0);
+	eigen_r[0][1] = _DF(0.0);
+	eigen_r[0][2] = _DF(1.0);
 	eigen_r[0][3] = _c1_rho;
 	eigen_r[0][4] = _c1_rho;
-	
-	eigen_r[1][0] = zero_float;
+
+	eigen_r[1][0] = _DF(0.0);
 	eigen_r[1][1] = - _rho;
 	eigen_r[1][2] = _u;
 	eigen_r[1][3] = _c1_rho*_u;
 	eigen_r[1][4] = _c1_rho*_u;
 
 	eigen_r[2][0] = _rho;
-	eigen_r[2][1] = zero_float;
+	eigen_r[2][1] = _DF(0.0);
 	eigen_r[2][2] = _v;
 	eigen_r[2][3] = _c1_rho*_v;
 	eigen_r[2][4] = _c1_rho*_v;
 
-	eigen_r[3][0] = zero_float;
-	eigen_r[3][1] = zero_float;
+	eigen_r[3][0] = _DF(0.0);
+	eigen_r[3][1] = _DF(0.0);
 	eigen_r[3][2] = _w;
 	eigen_r[3][3] = _c1_rho*(_w + _c);
 	eigen_r[3][4] = _c1_rho*(_w - _c);
 
 	eigen_r[4][0] = _rho*_v;
 	eigen_r[4][1] = -_rho*_u;
-	eigen_r[4][2] = half_float*q2;
+	eigen_r[4][2] = _DF(0.5) * q2;
 	eigen_r[4][3] = _c1_rho*(_H + _w*_c);
 	eigen_r[4][4] = _c1_rho*(_H - _w*_c);
 #endif // COP
@@ -1130,17 +1200,17 @@ real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const
  */
 real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t Ri, const real_t T, const int n)
 {
-	real_t S = zero_float;
+	real_t S = _DF(0.0);
 #if Thermo
 	if (T > 1000) // Hia[n * 7 * 3 + 0 * 3 + 1]//Hib[n * 2 * 3 + 0 * 3 + 1]
-		S = Ri * (-half_float * Hia[n * 7 * 3 + 0 * 3 + 1] / T / T - Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 1] * T + half_float * Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 1] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 1]);
+		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 1] / T / T - Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 1] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 1]);
 	else
-		S = Ri * (-half_float * Hia[n * 7 * 3 + 0 * 3 + 0] / T / T - Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 0] * T + half_float * Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 0]);
+		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 0] / T / T - Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 0]);
 #else
 	if (T > 1000)
-		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + half_float * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
 	else
-		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + half_float * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
 #endif // Thermo
 	return S;
 }
@@ -1158,7 +1228,7 @@ real_t get_Gibson(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real
  */
 real_t get_Kc(real_t *__restrict__ species_chara, real_t *__restrict__ Hia, real_t *__restrict__ Hib, int *__restrict__ Nu_d_, const real_t T, const int m)
 {
-	real_t Kck = zero_float, Nu_sum = zero_float;
+	real_t Kck = _DF(0.0), Nu_sum = _DF(0.0);
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 	{
 		real_t Ri = Ru / species_chara[n * SPCH_Sz + 6];
@@ -1179,8 +1249,8 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, rea
 	{
 		real_t A = Rargus[m * 6 + 0], B = Rargus[m * 6 + 1], E = Rargus[m * 6 + 2];
 #ifdef CJ
-		Kf[m] = sycl::min((20 * one_float), A * sycl::pow(T, B) * sycl::exp(-E / T));
-		Kb[m] = zero_float;
+		Kf[m] = sycl::min<real_t>((20 * _DF(1.0)), A * sycl::pow(T, B) * sycl::exp(-E / T));
+		Kb[m] = _DF(0.0);
 #else
 		Kf[m] = get_Kf_ArrheniusLaw(A, B, E, T);
 		real_t Kck = get_Kc(species_chara, Hia, Hib, Nu_d_, T, m);
@@ -1196,19 +1266,19 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, real_t yi[NUM_SPECIES
 			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
 {
-	real_t C[NUM_SPECIES] = {zero_float};
+	real_t C[NUM_SPECIES] = {_DF(0.0)};
 	for (int n = 0; n < NUM_SPECIES; n++)
-		C[n] = rho * yi[n] / species_chara[n * SPCH_Sz + 6];
+		C[n] = rho * yi[n] / species_chara[n * SPCH_Sz + 6] * 1e-6;
 
 	for (int n = 0; n < NUM_SPECIES; n++)
 	{
-		q[n] = zero_float;
-		d[n] = zero_float;
+		q[n] = _DF(0.0);
+		d[n] = _DF(0.0);
 		for (int iter = 0; iter < rns[n]; iter++)
 		{
 			int react_id = reaction_list[n][iter];
 			// third-body collision effect
-			real_t tb = zero_float;
+			real_t tb = _DF(0.0);
 			if (1 == third_ind[react_id])
 			{
 				for (int it = 0; it < NUM_SPECIES; it++)
@@ -1234,7 +1304,7 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, real_t yi[NUM_SPECIES
 			q[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPf + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPb;
 			d[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPb + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPf;
 		}
-		q[n] *= species_chara[n * SPCH_Sz + 6] / rho * 1e6; // TODO:check out species[n].Wi/rho*1e3
+		q[n] *= species_chara[n * SPCH_Sz + 6] / rho * 1e6;
 		d[n] *= species_chara[n * SPCH_Sz + 6] / rho * 1e6;
 	}
 }
@@ -1245,11 +1315,11 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, real_t yi[NUM_SPECIES
 real_t sign(real_t a)
 {
 	if (a > 0)
-		return one_float;
+		return _DF(1.0);
 	else if (0 == a)
-		return zero_float;
+		return _DF(0.0);
 	else
-		return -one_float;
+		return -_DF(1.0);
 }
 
 /**
@@ -1269,14 +1339,14 @@ void Chemeq2(Thermal *material, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef,
 {
 	// parameter
 	int itermax = 1;
-	real_t epscl = real_t(100.0);  // 1/epsmin, intermediate variable used to avoid repeated divisions
-	real_t tfd = real_t(1.000008); // round-off parameter used to determine when integration is complete
-	real_t dtmin = real_t(1.0e-20);
-	real_t sqreps = half_float; // 5*sqrt(\eps, parameter used to calculate initial timestep in Eq.(52) and (53),
-								// || \delta y_i^{c(Nc-1)} ||/||\delta y_i^{c(Nc)} ||
-	real_t epsmax = real_t(10.0), epsmin = real_t(1.0e-4);
-	real_t ymin = real_t(1.0e-20); // minimum concentration allowed for species i
-	real_t scrtch = real_t(1e-25);
+	real_t epscl = _DF(100.0);	// 1/epsmin, intermediate variable used to avoid repeated divisions
+	real_t tfd = _DF(1.000008); // round-off parameter used to determine when integration is complete
+	real_t dtmin = _DF(1.0e-20);
+	real_t sqreps = _DF(0.5); // 5*sqrt(\eps, parameter used to calculate initial timestep in Eq.(52) and (53),
+							  // || \delta y_i^{c(Nc-1)} ||/||\delta y_i^{c(Nc)} ||
+	real_t epsmax = _DF(10.0), epsmin = _DF(1.0e-4);
+	real_t ymin = _DF(1.0e-20); // minimum concentration allowed for species i
+	real_t scrtch = _DF(1e-25);
 	real_t eps;
 	real_t rhoi[NUM_SPECIES];
 	real_t qs[NUM_SPECIES];
@@ -1284,11 +1354,11 @@ void Chemeq2(Thermal *material, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef,
 	real_t y0[NUM_SPECIES]; // y_i^0 in Eq (2), intial concentrations for the global timestep passed to Chemeq
 	real_t y1[NUM_SPECIES]; // y_i^p, predicted value from Eq. (35)
 	real_t rtau[NUM_SPECIES], rtaus[NUM_SPECIES], scrarray[NUM_SPECIES];
-	real_t q[NUM_SPECIES] = {zero_float}, d[NUM_SPECIES] = {zero_float}; // production and loss rate
+	real_t q[NUM_SPECIES] = {_DF(0.0)}, d[NUM_SPECIES] = {_DF(0.0)}; // production and loss rate
 	int gcount = 0, rcount = 0;
 	int iter;
-	real_t dt = zero_float;
-	real_t tn = zero_float; // t-t^0, current value of the independent variable relative to the start of the global timestep
+	real_t dt = _DF(0.0);
+	real_t tn = _DF(0.0);	// t-t^0, current value of the independent variable relative to the start of the global timestep
 	real_t ts;				// independent variable at the start of the global timestep
 	real_t TTn = TT;
 	real_t TTs, TT0;
@@ -1304,15 +1374,15 @@ void Chemeq2(Thermal *material, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef,
 	real_t *species_chara = material->species_chara, *Hia = material->Hia, *Hib = material->Hib;
 	//=========================================================
 	// to initilize the first 'dt', q, d
-	get_KbKf(Kf, Kb, Rargus, species_chara, Hia, Hib, Nu_d_, TT);
+	get_KbKf(Kf, Kb, Rargus, species_chara, Hia, Hib, Nu_d_, TTn);
 	QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	gcount++;
 
-	real_t ascr = zero_float, scr1 = zero_float, scr2 = zero_float; // scratch (temporary) variable
+	real_t ascr = _DF(0.0), scr1 = _DF(0.0), scr2 = _DF(0.0); // scratch (temporary) variable
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
 		ascr = sycl::abs(q[i]);
-		scr2 = sign(one_float / y[i], real_t(.1) * epsmin * ascr - d[i]);
+		scr2 = sign(_DF(1.0) / y[i], _DF(.1) * epsmin * ascr - d[i]);
 		scr1 = scr2 * d[i];
 		scrtch = sycl::max(scr1, scrtch);
 		scrtch = sycl::max(scrtch, -sycl::abs(ascr - d[i]) * scr2);
@@ -1340,7 +1410,7 @@ flag2:
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
 		real_t alpha = (real_t(180.0) + rtau[i] * (real_t(60.0) + rtau[i] * (real_t(11.0) + rtau[i]))) / (real_t(360.0) + rtau[i] * (real_t(60.0) + rtau[i] * (real_t(12.0) + rtau[i])));
-		scrarray[i] = (q[i] - d[i]) / (one_float + alpha * rtau[i]);
+		scrarray[i] = (q[i] - d[i]) / (_DF(1.0) + alpha * rtau[i]);
 	}
 	iter = 1;
 	while (iter <= itermax)
@@ -1374,15 +1444,15 @@ flag2:
 	// get new dt & check convergence
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		scr2 = sycl::max(ys[i] + dt * scrarray[i], zero_float);
+		scr2 = sycl::max(ys[i] + dt * scrarray[i], _DF(0.0));
 		scr1 = sycl::abs(scr2 - y1[i]);
 		y[i] = sycl::max(scr2, ymin); // new y
 		// rhoi[i] = y[i]*species[i].Wi*1e3;
 		rhoi[i] = y[i] * rho;
-		if (half_float * half_float * (ys[i] + y[i]) > ymin)
+		if (_DF(0.5) * _DF(0.5) * (ys[i] + y[i]) > ymin)
 		{
 			scr1 = scr1 / y[i];
-			eps = sycl::max(half_float * (scr1 + sycl::min(sycl::abs(q[i] - d[i]) / (q[i] + d[i] + real_t(1.0e-30)), scr1)), eps);
+			eps = sycl::max(_DF(0.5) * (scr1 + sycl::min(sycl::abs(q[i] - d[i]) / (q[i] + d[i] + real_t(1.0e-30)), scr1)), eps);
 		}
 	}
 	eps = eps * epscl;

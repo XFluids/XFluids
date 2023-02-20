@@ -19,9 +19,22 @@ using namespace sycl;
 
 constexpr real_t Gamma = 1.4; // 1.666667;
 
+enum VdeType
+{
+    ducx = 0,
+    dvcx = 1,
+    dwcx = 2,
+    ducy = 3,
+    dvcy = 4,
+    dwcy = 5,
+    ducz = 6,
+    dvcz = 7,
+    dwcz = 8
+};
+
 typedef struct
 {
-    real_t *rho, *p, *c, *H, *u, *v, *w, *y, *T;
+    real_t *rho, *p, *c, *H, *u, *v, *w, *y, *T, *Vde[9];
 } FlowData;
 
 typedef struct
@@ -65,7 +78,16 @@ public:
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
+#ifdef Visc
+    void PhysicVisc(sycl::queue &q, Block bl, FlowData &fdata); // add viscosity of physic force
+#endif
+#ifdef Heat
+    void HeatVisc(sycl::queue &q); // add viscosity of heat transfer
+#endif
 #ifdef COP
+#ifdef Diffu
+    void DiffuVisc(sycl::queue &q); // add viscosity of mass diffusion
+#endif
 #ifdef React
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 #endif                                           // React

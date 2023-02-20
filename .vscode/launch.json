@@ -11,7 +11,7 @@
             "args": [
                 "${workspaceFolder}/setup.ini",
             ],
-            "stopAtEntry": true,
+            "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,

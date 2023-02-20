@@ -31,7 +31,6 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
 			OutNum++;
 		}
-
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt
@@ -46,10 +45,11 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		Reaction(q, dt);
 #endif // React
 #endif // COP
-
 		physicalTime = physicalTime + dt;
 		Iteration++;
 	}
+	cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
+	Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
 	printf("GPU runtime : %12.8f s\n", duration / 1000.0f);
@@ -141,10 +141,6 @@ void SYCLSolver::AllocateMemory(sycl::queue &q)
 
 void SYCLSolver::InitialCondition(sycl::queue &q)
 {
-	// #if NumFluid == 2
-	// levelset->InitPhi();
-	// #endif
-
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->InitialU(q);
 }

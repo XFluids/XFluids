@@ -121,11 +121,11 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         { // boundary of bubble && shock
             rho[id] = 0.5 * (ini.cop_density_in + ini.blast_density_out);
             p[id] = 0.5 * (ini.cop_pressure_in + ini.blast_pressure_out);
-            _y[id * NUM_COP + 0] = half_float * (ini.cop_y1_out + ini.cop_y1_in);
+            _y[id * NUM_COP + 0] = _DF(0.5) * (ini.cop_y1_out + ini.cop_y1_in);
 #ifdef React
             for (size_t i = 0; i < NUM_COP; i++)
             {
-                _y[id * NUM_COP + i] = half_float * (thermal->species_ratio_in[i] + thermal->species_ratio_out[i]);
+                _y[id * NUM_COP + i] = _DF(0.5) * (thermal->species_ratio_in[i] + thermal->species_ratio_out[i]);
             }
 #endif // end React
         }
@@ -235,9 +235,9 @@ real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, real_t yi[NUM_SPECIES]
     for (size_t n = 0; n < NUM_SPECIES; n++)
     {
         Ri[n] = Ru / thermal->species_chara[n * SPCH_Sz + 6];
-        _dpdrhoi[n] = (gamma - one_float) * (hi[0] - hi[n]) + gamma * (Ri[n] - Ri[0]) * T;
+        _dpdrhoi[n] = (gamma - _DF(1.0)) * (hi[0] - hi[n]) + gamma * (Ri[n] - Ri[0]) * T;
         // printf("_dpdrhoi[n]=%lf \n", _dpdrhoi[n]);
-        z[n] = -one_float * _dpdrhoi[n] / (gamma - one_float);
+        z[n] = -_DF(1.0) * _dpdrhoi[n] / (gamma - _DF(1.0));
         if (0 != n)
             Sum_dpdrhoi += yi[n] * _dpdrhoi[n];
     }
@@ -275,7 +275,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 
     // preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
-    real_t D1 = one_float / (D + one_float);
+    real_t D1 = _DF(1.0) / (D + _DF(1.0));
 
     real_t _u = (u[id_l] + D * u[id_r]) * D1;
     real_t _v = (v[id_l] + D * v[id_r]) * D1;
@@ -302,13 +302,13 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
         _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
         _h += _hi[ii] * _yi[ii];
     }
-    //  _h=_H-half_float*(_u*_u+_v*_v+_w*_w);
+    //  _h=_H-_DF(0.5)*(_u*_u+_v*_v+_w*_w);
     real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
     real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T); // z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量
     // printf("argus at [%d],[%d][%d][%d]=yi=%lf, %lf, T=%lf,hi=%lf, %lf, _h=%lf, Gamma=%lf, c2=%lf, zi=%lf,%lf\n", id_l, i, j, k, _yi[0], _yi[1], T, _hi[0], _hi[1], _h, Gamma0, c2, z[0], z[1]); //_Cp
 #else
     real_t Gamma0 = Gamma;
-    real_t c2 = Gamma0 * (_H - half_float * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
+    real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
     real_t z[NUM_SPECIES] = {0};
 #endif
     //  printf("%lf , %lf , %lf , %lf , %lf , %lf \n", UI[Emax * id_l + 0], UI[Emax * id_l + 1], UI[Emax * id_l + 2], UI[Emax * id_l + 3], UI[Emax * id_l + 4], UI[Emax * id_l + 5]);
@@ -323,7 +323,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 	// at i+1/2 in x direction
     // #pragma unroll Emax
 	for(int n=0; n<Emax; n++){
-        real_t eigen_local_max = zero_float;
+        real_t eigen_local_max = _DF(0.0);
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*k + Xmax*j + i + m;
             eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax*id_local+n]));//local lax-friedrichs	
@@ -398,7 +398,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 
     //preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
-    real_t D1 = one_float / (D + one_float);
+    real_t D1 = _DF(1.0) / (D + _DF(1.0));
     real_t _u = (u[id_l] + D * u[id_r]) * D1;
     real_t _v = (v[id_l] + D * v[id_r]) * D1;
     real_t _w = (w[id_l] + D * w[id_r]) * D1;
@@ -424,13 +424,13 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
         _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
         _h += _hi[ii] * _yi[ii];
     }
-    //  _h=_H-half_float*(_u*_u+_v*_v+_w*_w);
+    //  _h=_H-_DF(0.5)*(_u*_u+_v*_v+_w*_w);
     real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
     real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T);
     // printf("argus at [%d],[%d][%d][%d]=yi=%lf, %lf, T=%lf,hi=%lf, %lf, _h=%lf, Gamma=%lf, c2=%lf, zi=%lf,%lf\n", id_l, i, j, k, _yi[0], _yi[1], T, _hi[0], _hi[1], _h, Gamma0, c2, z[0], z[1]); //_Cp
 #else
     real_t Gamma0 = Gamma;
-    real_t c2 = Gamma0 * (_H - half_float * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
+    real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
     real_t z[NUM_SPECIES] = {0};
 #endif
 
@@ -520,7 +520,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 
     //preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
-    real_t D1 = one_float / (D + one_float);
+    real_t D1 = _DF(1.0) / (D + _DF(1.0));
     real_t _u = (u[id_l] + D * u[id_r]) * D1;
     real_t _v = (v[id_l] + D * v[id_r]) * D1;
     real_t _w = (w[id_l] + D * w[id_r]) * D1;
@@ -546,13 +546,13 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
         _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
         _h += _hi[ii] * _yi[ii];
     }
-    //  _h=_H-half_float*(_u*_u+_v*_v+_w*_w);
+    //  _h=_H-_DF(0.5)*(_u*_u+_v*_v+_w*_w);
     real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
     real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T);
     // printf("argus at [%d],[%d][%d][%d]=yi=%lf, %lf, T=%lf,hi=%lf, %lf, _h=%lf, Gamma=%lf, c2=%lf, zi=%lf,%lf\n", id_l, i, j, k, _yi[0], _yi[1], T, _hi[0], _hi[1], _h, Gamma0, c2, z[0], z[1]); //_Cp
 #else
     real_t Gamma0 = Gamma;
-    real_t c2 = Gamma0 * (_H - half_float * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
+    real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
     real_t z[NUM_SPECIES] = {0};
 #endif
 
@@ -742,6 +742,10 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     }
     // printf("U at [%d],[%d][%d][%d] before upate=%lf,%lf,%lf,%lf,%lf,%lf\n", id, i, j, k, U[0], U[1], U[2], U[3], U[4], U[5]);
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
+
+#ifdef Visc
+    // Gettransport_coeff_aver();
+#endif
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);
@@ -975,6 +979,304 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
     }
 }
 
+#ifdef Visc
+extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(sycl::nd_item<3> index, Block bl, real_t *const *V, real_t **Vde)
+{ // NOTE: 这是计算第i(j/k)个点右边的那个半点，所以从=(+Bwidth-2) 开始到<(+inner+Bwidth+2)结束
+    int i = index.get_global_id(0) + bl.Bwidth_X - 2;
+    int j = index.get_global_id(1) + bl.Bwidth_Y - 2;
+    int k = index.get_global_id(2) + bl.Bwidth_Z - 2;
+#ifdef DIM_X
+    if (i > bl.Xmax - bl.Bwidth_X + 1) // NOTE：在CUDA中可以尝试使用shared memory
+            return;
+#endif // DIM_X
+#ifdef DIM_Y
+    if (i > bl.Ymax - bl.Bwidth_Y + 1)
+            return;
+#endif // DIM_Y
+#ifdef DIM_Z
+    if (i > bl.Zmax - bl.Bwidth_Z + 1)
+            return;
+#endif // DIM_Z
+    int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+    int if_dim[3] = {DIM_X, DIM_Y, DIM_Z}, id_m1[3], id_m2[3], id_p1[3], id_p2[3];
+    real_t _D[3] = {bl.dx, bl.dy, bl.dz};
+    id_m1[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
+    id_m2[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
+    id_p1[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+    id_p2[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 2;
+    id_m1[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 1) + i;
+    id_m2[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 2) + i;
+    id_p1[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i;
+    id_p2[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 2) + i;
+    id_m1[2] = bl.Xmax * bl.Ymax * (k - 1) + bl.Xmax * j + i;
+    id_m2[2] = bl.Xmax * bl.Ymax * (k - 2) + bl.Xmax * j + i;
+    id_p1[2] = bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i;
+    id_p2[2] = bl.Xmax * bl.Ymax * (k + 2) + bl.Xmax * j + i;
+
+    for (unsigned int ii = 0; ii < 9; ii++)
+    { //(VdeType i = ducx; i <= dwcz; i = (VdeType)(i + 1))
+            int dim = ii % 3;
+            Vde[i][id] = if_dim[dim] ? (_DF(8.0) * (V[dim][id_p1[dim]] - V[dim][id_m1[dim]]) - (V[dim][id_p2[dim]] - V[dim][id_m2[dim]])) / _D[ii / 3] / _DF(12.0) : _DF(0.0);
+    }
+}
+
+extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    int id = Xmax * Ymax * k + Xmax * j + i;
+
+#if DIM_Y
+    if (j >= Ymax)
+            return;
+#endif
+#if DIM_Z
+    if (k >= Zmax)
+            return;
+#endif
+
+    switch (BC)
+    {
+    case Symmetry:
+    {
+            int offset = 2 * (Bwidth_X + mirror_offset) - 1;
+            int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Periodic:
+    {
+            int target_id = Xmax * Ymax * k + Xmax * j + (i + sign * X_inner);
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Inflow:
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = real_t(0.0f);
+            break;
+
+    case Outflow:
+    {
+            int target_id = Xmax * Ymax * k + Xmax * j + index_inner;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Wall:
+    {
+            int offset = 2 * (Bwidth_X + mirror_offset) - 1;
+            int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = -Vde[n][target_id];
+    }
+    break;
+    }
+}
+
+extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    int id = Xmax * Ymax * k + Xmax * j + i;
+
+#if DIM_X
+    if (i >= Xmax)
+            return;
+#endif
+#if DIM_Z
+    if (k >= Zmax)
+            return;
+#endif
+
+    switch (BC)
+    {
+    case Symmetry:
+    {
+            int offset = 2 * (Bwidth_Y + mirror_offset) - 1;
+            int target_id = Xmax * Ymax * k + Xmax * (offset - j) + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Periodic:
+    {
+            int target_id = Xmax * Ymax * k + Xmax * (j + sign * Y_inner) + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Inflow:
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = real_t(0.0f);
+            break;
+
+    case Outflow:
+    {
+            int target_id = Xmax * Ymax * k + Xmax * index_inner + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Wall:
+    {
+            int offset = 2 * (Bwidth_Y + mirror_offset) - 1;
+            int target_id = Xmax * Ymax * k + Xmax * (offset - j) + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = -Vde[n][target_id];
+    }
+    break;
+    }
+}
+
+extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    int id = Xmax * Ymax * k + Xmax * j + i;
+
+#if DIM_X
+    if (i >= Xmax)
+            return;
+#endif
+#if DIM_Y
+    if (j >= Ymax)
+            return;
+#endif
+
+    switch (BC)
+    {
+    case Symmetry:
+    {
+            int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
+            int target_id = Xmax * Ymax * (offset - k) + Xmax * j + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Periodic:
+    {
+            int target_id = Xmax * Ymax * (k + sign * Z_inner) + Xmax * j + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Inflow:
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = real_t(0.0f);
+            break;
+
+    case Outflow:
+    {
+            int target_id = Xmax * Ymax * index_inner + Xmax * j + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = Vde[n][target_id];
+    }
+    break;
+
+    case Wall:
+    {
+            int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
+            int target_id = Xmax * Ymax * (k - offset) + Xmax * j + i;
+            for (int n = 0; n < 4; n++)
+            Vde[n][id] = -Vde[n][target_id];
+    }
+    break;
+    }
+}
+extern SYCL_EXTERNAL void GetWallViscousFluxesKernelX(sycl::nd_item<3> index, Block bl, real_t *const *V, real_t **Vde)
+{
+    int i = index.get_global_id(0) + bl.Bwidth_X - 1;
+    int j = index.get_global_id(1) + bl.Bwidth_Y;
+    int k = index.get_global_id(2) + bl.Bwidth_Z;
+#ifdef DIM_X
+    if (i >= bl.X_inner + bl.Bwidth_X)
+            return;
+#endif // DIM_X
+#ifdef DIM_Y
+    if (i >= bl.Y_inner + bl.Bwidth_Y)
+            return;
+#endif // DIM_Y
+#ifdef DIM_Z
+    if (i >= bl.Z_inner + bl.Bwidth_Z)
+            return;
+#endif // DIM_Z
+
+    /*
+        double mue = (9.0 * (cells[i + 1][j][k].viscosity_aver + cells[i][j][k].viscosity_aver) - (cells[i + 2][j][k].viscosity_aver + cells[i - 1][j][k].viscosity_aver)) / 16.0;
+        double lamada = -2.0 / 3.0 * mue;
+        double f_x, f_y, f_z;
+        double u_hlf, v_hlf, w_hlf;
+        f_x = (2.0 * mue + lamada) * (27.0 * (cells[i + 1][j][k].u - cells[i][j][k].u) - (cells[i + 2][j][k].u - cells[i - 1][j][k].u)) / dx / 24.0;
+        f_y = DIM_Y ? mue * (27.0 * (cells[i + 1][j][k].v - cells[i][j][k].v) - (cells[i + 2][j][k].v - cells[i - 1][j][k].v)) / dx / 24.0 : 0.0;
+        f_z = DIM_Z ? mue * (27.0 * (cells[i + 1][j][k].w - cells[i][j][k].w) - (cells[i + 2][j][k].w - cells[i - 1][j][k].w)) / dx / 24.0 : 0.0;
+
+        f_x += lamada * (9.0 * (dvcy[i + 1][j][k] + dvcy[i][j][k]) - (dvcy[i + 2][j][k] + dvcy[i - 1][j][k]) + 9.0 * (dwcz[i + 1][j][k] + dwcz[i][j][k]) - (dwcz[i + 2][j][k] + dwcz[i - 1][j][k])) / 16.0;
+        f_y += DIM_Y ? mue * (9.0 * (ducy[i + 1][j][k] + ducy[i][j][k]) - (ducy[i + 2][j][k] + ducy[i - 1][j][k])) / 16.0 : 0.0;
+        f_z += DIM_Z ? mue * (9.0 * (ducz[i + 1][j][k] + ducz[i][j][k]) - (ducz[i + 2][j][k] + ducz[i - 1][j][k])) / 16.0 : 0.0;
+
+        u_hlf = (9.0 * (cells[i + 1][j][k].u + cells[i][j][k].u) - (cells[i + 2][j][k].u + cells[i - 1][j][k].u)) / 16.0;
+        v_hlf = DIM_Y ? (9.0 * (cells[i + 1][j][k].v + cells[i][j][k].v) - (cells[i + 2][j][k].v + cells[i - 1][j][k].v)) / 16.0 : 0.0;
+        w_hlf = DIM_Z ? (9.0 * (cells[i + 1][j][k].w + cells[i][j][k].w) - (cells[i + 2][j][k].w + cells[i - 1][j][k].w)) / 16.0 : 0.0;
+        F_x_wall_v[i][j][k].at(0) = 0.0;
+        F_x_wall_v[i][j][k].at(1) = f_x;
+        F_x_wall_v[i][j][k].at(2) = f_y;
+        F_x_wall_v[i][j][k].at(3) = f_z;
+        F_x_wall_v[i][j][k].at(4) = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
+        // Fourier thermal conductivity
+        double kk; // thermal conductivity at wall
+        kk = (9.0 * (cells[i + 1][j][k].thermal_conduct_aver + cells[i][j][k].thermal_conduct_aver) - (cells[i + 2][j][k].thermal_conduct_aver + cells[i - 1][j][k].thermal_conduct_aver)) / 16.0;
+        kk *= (27.0 * (cells[i + 1][j][k].T - cells[i][j][k].T) - (cells[i + 2][j][k].T - cells[i - 1][j][k].T)) / dx / 24.0; // temperature gradient at wall
+        F_x_wall_v[i][j][k].at(4) += kk;                                                                                      // Equation (32) or Equation (10)
+        // mass diffusion ==> energy fiffusion
+        double rho_wall = (9.0 * (cells[i + 1][j][k].rho + cells[i][j][k].rho) - (cells[i + 2][j][k].rho + cells[i - 1][j][k].rho)) / 16.0;
+        double hi_wall[num_species], Dim_wall[num_species], Yix_wall[num_species];
+        for (int l = 0; l < num_species; l++)
+        {
+                hi_wall[l] = (9.0 * (cells[i + 1][j][k].hi[l] + cells[i][j][k].hi[l]) - (cells[i + 2][j][k].hi[l] + cells[i - 1][j][k].hi[l])) / 16.0;
+                Dim_wall[l] = (9.0 * (cells[i + 1][j][k].Dkm_aver[l] + cells[i][j][k].Dkm_aver[l]) - (cells[i + 2][j][k].Dkm_aver[l] + cells[i - 1][j][k].Dkm_aver[l])) / 16.0;
+                Yix_wall[l] = (27.0 * (cells[i + 1][j][k].rhos[l] / cells[i + 1][j][k].rho - cells[i][j][k].rhos[l] / cells[i][j][k].rho) - (cells[i + 2][j][k].rhos[l] / cells[i + 2][j][k].rho - cells[i - 1][j][k].rhos[l] / cells[i - 1][j][k].rho)) / dx / 24.0; // temperature gradient at wall
+        }
+        for (int l = 0; l < num_species; l++)
+                F_x_wall_v[i][j][k].at(4) += rho_wall * hi_wall[l] * Dim_wall[l] * Yix_wall[l];
+    #if Mixture
+        for (int p = 5; p < Emax + num_species; p++)
+                F_x_wall_v[i][j][k].at(p) = rho_wall * Dim_wall[p - 5] * Yix_wall[p - 5];
+    #endif
+    */
+}
+#endif // Visc
+
 #ifdef React
 extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Thermal *thermal, Reaction *react, real_t *UI, real_t *y, real_t *rho, real_t *T, const real_t dt)
 {
@@ -993,11 +1295,11 @@ extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Th
     {
             U[n] = UI[Emax * id + n];
     }
-    real_t rho1 = one_float / U[0];
+    real_t rho1 = _DF(1.0) / U[0];
     real_t u = U[1] * rho1;
     real_t v = U[2] * rho1;
     real_t w = U[3] * rho1;
-    real_t e = U[4] * rho1 - half_float * (u * u + v * v + w * w);
+    real_t e = U[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
     Chemeq2(thermal, Kf, Kb, react->React_ThirdCoef, react->Rargus, react->Nu_b_, react->Nu_f_, react->Nu_d_, react->third_ind,
             react->reaction_list, react->reactant_list, react->product_list, react->rns, react->rts, react->pls, yi, dt, T[id], rho[id], e);
     // update partial density according to C0

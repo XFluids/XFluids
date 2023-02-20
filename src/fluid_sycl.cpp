@@ -115,7 +115,22 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 }
-
+#ifdef Visc
+void FluidSYCL::PhysicVisc(sycl::queue &q, Block bl, FlowData &fdata)
+{
+	GetCellCenterDerivative(q, Fs.BlSz, d_fstate, Fs.Boundarys);
+}
+#endif
+#ifdef Heat
+void FluidSYCL::HeatVisc(sycl::queue &q)
+{
+}
+#endif
+#ifdef Diffu
+void FluidSYCL::DiffuVisc(sycl::queue &q)
+{
+} // add viscity of mass diffusion
+#endif
 #ifdef React
 void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
 {
