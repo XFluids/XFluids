@@ -42,7 +42,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		Reaction(q, dt);
+		// Reaction(q, dt);
 #endif // React
 #endif // COP
 		physicalTime = physicalTime + dt;
@@ -70,14 +70,18 @@ void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
 		// the fisrt step
 		BoundaryCondition(q, 0);
 		UpdateStates(q, 0);
+		Output_vti(q, 0, 1000, 0);
 		ComputeLU(q, 0);
+		Output_vti(q, 0, 2000, 0);
 		UpdateU(q, 1);
 		break;
 	case 2:
 		// the second step
 		BoundaryCondition(q, 1);
 		UpdateStates(q, 1);
+		Output_vti(q, 0, 3000, 0);
 		ComputeLU(q, 1);
+		Output_vti(q, 0, 4000, 0);
 		UpdateU(q, 2);
 		break;
 	case 3:
@@ -171,12 +175,18 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 		q.memcpy(fluids[n]->h_fstate.v, fluids[n]->d_fstate.v, bytes);
 		q.memcpy(fluids[n]->h_fstate.w, fluids[n]->d_fstate.w, bytes);
 #ifdef COP
-		for (size_t n = 0; n < NUM_SPECIES; n++)
+		for (size_t i = 0; i < NUM_SPECIES; i++)
 		{
-			q.memcpy(fluids[n]->h_fstate.y[n], fluids[n]->d_fstate.y[n], bytes);
+			q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
 		}
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 #endif // COP
+#ifdef Visc
+		for (size_t i = 0; i < 9; i++)
+		{
+			q.memcpy(fluids[n]->h_fstate.Vde[i], fluids[n]->d_fstate.Vde[i], bytes);
+		}
+#endif // Visc
 	}
 	q.wait();
 }
@@ -243,7 +253,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	dy = Ss.BlSz.dy;
 	dz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.dz : 0.0;
 	// Init var names
-	int Onbvar = (2 == NumFluid) ? 7 : Emax + 1;
+	int Onbvar = (2 == NumFluid) ? 7 : Emax + 2;
 	std::map<int, std::string> variables_names;
 	variables_names[0] = "rho";
 	variables_names[1] = "P";
@@ -251,9 +261,9 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	variables_names[3] = "v";
 	variables_names[4] = "w";
 #ifdef COP
-	for (size_t ii = 5; ii < Emax; ii++)
+	for (size_t ii = 5; ii < Emax + 1; ii++)
 	{
-		variables_names[ii] = Ss.species_name[ii - 5];
+		variables_names[ii] = "y" + std::to_string(ii - 5) + "_" + Ss.species_name[ii - 5];
 	}
 	variables_names[Onbvar - 1] = "T";
 #endif // COP
@@ -496,7 +506,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		}		  // for k
 #ifdef COP
 		  //[5]yii
-		for (int ii = 0; ii < NUM_COP; ii++)
+		for (int ii = 0; ii < NUM_SPECIES; ii++)
 		{
 			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 			for (int k = OminZ; k < OmaxZ; k++)
@@ -506,7 +516,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 					for (int i = OminX; i < OmaxX; i++)
 					{
 						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.y[id][ii];
+						real_t tmp = fluids[0]->h_fstate.y[ii][id];
 						outFile.write((char *)&tmp, sizeof(real_t));
 					} // for i
 				}	  // for j

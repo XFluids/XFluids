@@ -25,65 +25,70 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 {
 	int bytes = Fs.bytes;
 	int cellbytes = Fs.cellbytes;
-	d_U = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_U1 = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_LU = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_eigen_local = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_fstate.rho = static_cast<real_t *>(malloc_device(bytes, q));
-	d_fstate.p = static_cast<real_t *>(malloc_device(bytes, q));
-	d_fstate.c = static_cast<real_t *>(malloc_device(bytes, q));
-	d_fstate.H = static_cast<real_t *>(malloc_device(bytes, q));
-	d_fstate.u = static_cast<real_t *>(malloc_device(bytes, q));
-	d_fstate.v = static_cast<real_t *>(malloc_device(bytes, q));
-	d_fstate.w = static_cast<real_t *>(malloc_device(bytes, q));
+	// 主机内存
+	h_fstate.rho = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.p = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.H = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.u = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.v = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.w = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 #ifdef COP
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 	{
-		d_fstate.y[n] = static_cast<real_t *>(malloc_device(bytes, q));
+		h_fstate.y[n] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	}
-	d_fstate.T = static_cast<real_t *>(malloc_device(bytes, q));
+	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 #endif // COP
-	d_FluxF = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_FluxG = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_FluxH = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_wallFluxF = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_wallFluxG = static_cast<real_t *>(malloc_device(cellbytes, q));
-	d_wallFluxH = static_cast<real_t *>(malloc_device(cellbytes, q));
-	// shared
-	uvw_c_max = static_cast<real_t *>(malloc_shared(3 * sizeof(real_t), q));
+#ifdef Visc
+	for (size_t i = 0; i < 9; i++)
+	{
+		h_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	}
+#endif // Visc
+	//  设备内存
+	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_eigen_local = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.u = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+#ifdef COP
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+	{
+		d_fstate.y[n] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	}
+	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+#endif // COP
+#ifdef Visc
+	for (size_t i = 0; i < 9; i++)
+	{
+		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	}
+#endif // Visc
+	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_FluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_wallFluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_wallFluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_wallFluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	// shared memory
+	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
+
+	q.wait();
 
 	cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n";
-
-	// 主机内存
-	h_U = static_cast<real_t *>(malloc(cellbytes));
-	h_U1 = static_cast<real_t *>(malloc(cellbytes));
-	h_LU = static_cast<real_t *>(malloc(cellbytes));
-	h_eigen_local = static_cast<real_t *>(malloc(cellbytes));
-	h_fstate.rho = static_cast<real_t *>(malloc(bytes));
-	h_fstate.p = static_cast<real_t *>(malloc(bytes));
-	h_fstate.c = static_cast<real_t *>(malloc(bytes));
-	h_fstate.H = static_cast<real_t *>(malloc(bytes));
-	h_fstate.u = static_cast<real_t *>(malloc(bytes));
-	h_fstate.v = static_cast<real_t *>(malloc(bytes));
-	h_fstate.w = static_cast<real_t *>(malloc(bytes));
-#ifdef COP
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-	{
-		h_fstate.y[n] = static_cast<real_t *>(malloc(bytes));
-	}
-	h_fstate.T = static_cast<real_t *>(malloc(bytes));
-#endif // COP
-	h_FluxF = static_cast<real_t *>(malloc(cellbytes));
-	h_FluxG = static_cast<real_t *>(malloc(cellbytes));
-	h_FluxH = static_cast<real_t *>(malloc(cellbytes));
-	h_wallFluxF = static_cast<real_t *>(malloc(cellbytes));
-	h_wallFluxG = static_cast<real_t *>(malloc(cellbytes));
-	h_wallFluxH = static_cast<real_t *>(malloc(cellbytes));
 }
 
 void FluidSYCL::InitialU(sycl::queue &q)
 {
 	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
+	q.memcpy(d_U1, d_U, Fs.cellbytes).wait();
 }
 
 real_t FluidSYCL::GetFluidDt(sycl::queue &q)

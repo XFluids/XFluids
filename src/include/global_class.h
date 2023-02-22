@@ -58,12 +58,7 @@ public:
     real_t *d_U, *d_U1, *d_LU;
     real_t *d_eigen_local;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
-    FlowData d_fstate;
-
-    real_t *h_U, *h_U1, *h_LU;
-    real_t *h_eigen_local;
-    real_t *h_FluxF, *h_FluxG, *h_FluxH, *h_wallFluxF, *h_wallFluxG, *h_wallFluxH;
-    FlowData h_fstate;
+    FlowData d_fstate, h_fstate;
 
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
@@ -96,9 +91,9 @@ public:
 
 class SYCLSolver{
     Setup Ss;
-    real_t dt;
 
 public:
+    real_t dt;
     BConditions *d_BCs; // boundary condition indicators
     FluidSYCL *fluids[NumFluid];
 

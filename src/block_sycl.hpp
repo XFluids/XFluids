@@ -18,20 +18,20 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
 			 {
-		// auto out = sycl::stream(1024, 256, h);
-		h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index){
-    		// 利用get_global_id获得全局指标
-    		int i = index.get_global_id(0);
-    		int j = index.get_global_id(1);
-			int k = index.get_global_id(2);
-
-			InitialStatesKernel(i, j, k, bl, ini, material, thermal, U, U1, LU, FluxF, FluxG, FluxH, FluxFw, FluxGw, FluxHw, u, v, w, rho, p, y, T, H, c);
-		}); });
+		//auto out = sycl::stream(1024, 256, h);
+		h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+					   {
+						   int i = index.get_global_id(0);
+						   int j = index.get_global_id(1);
+						   int k = index.get_global_id(2);
+						   // testkernel(i, j, k, bl, ini, y, out);
+						   InitialStatesKernel(i, j, k, bl, ini, material, thermal, U, U1, LU, FluxF, FluxG, FluxH, FluxFw, FluxGw, FluxHw, u, v, w, rho, p, fdata.y, T, H, c);
+					   }); })
+		.wait();
 }
 
 real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
@@ -92,7 +92,6 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
@@ -102,9 +101,8 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
 
-			UpdateFuidStatesKernel(i, j, k, bl,thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, y, T, Gamma); }); });
-
-	q.wait();
+			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); }); })
+		.wait();
 }
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
@@ -118,10 +116,8 @@ void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, r
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-
-			UpdateURK3rdKernel(i, j, k, bl, U, U1, LU, dt, flag); }); });
-
-	q.wait();
+			UpdateURK3rdKernel(i, j, k, bl, U, U1, LU, dt, flag); }); })
+		.wait();
 }
 
 void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, real_t *FluxF, real_t *FluxG, real_t *FluxH,
@@ -135,7 +131,6 @@ void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, r
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	bool is_3d = DIM_X * DIM_Y * DIM_Z ? true : false;
@@ -166,9 +161,9 @@ void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, r
     		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxX(i, j, k, bl,thermal,Gamma, UI, FluxF, FluxFw, eigen_local, rho, u, v, w,y,T, H); }); });
-
-	q.wait();
+			ReconstructFluxX(i, j, k, bl,thermal,Gamma, UI, FluxF, FluxFw, eigen_local, rho, u, v, w, fdata.y, T, H);
+			 }); })
+		.wait();
 #endif
 
 #if DIM_Y
@@ -191,9 +186,8 @@ void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, r
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxY(i, j, k, bl,thermal,Gamma,UI, FluxG, FluxGw, eigen_local, rho, u, v, w,y,T, H); }); });
-
-	q.wait();
+			ReconstructFluxY(i, j, k, bl, thermal, Gamma, UI, FluxG, FluxGw, eigen_local, rho, u, v, w, fdata.y, T, H); }); })
+		.wait();
 #endif
 
 #if DIM_Z
@@ -216,9 +210,8 @@ void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, r
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			ReconstructFluxZ(i, j, k, bl, thermal, Gamma, UI, FluxH, FluxHw, eigen_local, rho, u, v, w, y, T, H); }); });
-
-	q.wait();
+			ReconstructFluxZ(i, j, k, bl, thermal, Gamma, UI, FluxH, FluxHw, eigen_local, rho, u, v, w, fdata.y, T, H); }); })
+		.wait();
 #endif
 
 // update LU from cell-face fluxes
@@ -254,7 +247,8 @@ void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t
 			int k = index.get_global_id(2);
 
 			FluidBCKernelX(i0, j, k, bl, BC0, d_UI, 0, bl.Bwidth_X, 1);
-			FluidBCKernelX(i1, j, k, bl, BC1, d_UI, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); });
+			FluidBCKernelX(i1, j, k, bl, BC1, d_UI, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); })
+		.wait();
 #endif
 
 #if DIM_Y
@@ -272,7 +266,8 @@ void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t
 			int k = index.get_global_id(2);
 
 			FluidBCKernelY(i, j0, k, bl, BC2, d_UI, 0, bl.Bwidth_Y, 1);
-			FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); });
+			FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); })
+		.wait();
 #endif
 
 #if DIM_Z
@@ -290,7 +285,8 @@ void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t
 			int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 
 			FluidBCKernelZ(i, j, k0, bl, BC4, d_UI, 0, bl.Bwidth_Z, 1);
-			FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); });
+			FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); })
+		.wait();
 #endif
 }
 #ifdef Visc
@@ -304,8 +300,8 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-							  { GetInnerCellCenterDerivativeKernel(index, bl, V, Vde); }); });
-	q.wait();
+							  { GetInnerCellCenterDerivativeKernel(index, bl, V, Vde); }); })
+		.wait();
 
 #if DIM_X
 	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
@@ -321,7 +317,8 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int k = index.get_global_id(2);
 
 			CenterDerivativeBCKernelX(i0, j, k, bl, BC[0], Vde_x, 0, bl.Bwidth_X, 1);
-			CenterDerivativeBCKernelX(i1, j, k, bl, BC[1], Vde_x, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); });
+			CenterDerivativeBCKernelX(i1, j, k, bl, BC[1], Vde_x, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); })
+		.wait();
 #endif // DIM_X
 
 #if DIM_Y
@@ -338,7 +335,8 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int k = index.get_global_id(2);
 
 			CenterDerivativeBCKernelY(i, j0, k, bl, BC[2], Vde_y, 0, bl.Bwidth_Y, 1);
-			CenterDerivativeBCKernelY(i, j1, k, bl, BC[3], Vde_y, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); });
+			CenterDerivativeBCKernelY(i, j1, k, bl, BC[3], Vde_y, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); })
+		.wait();
 #endif // DIM_Y
 
 #if DIM_Z
@@ -355,7 +353,8 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 
 			CenterDerivativeBCKernelZ(i, j, k0, bl, BC[4], Vde_z, 0, bl.Bwidth_Z, 1);
-			CenterDerivativeBCKernelZ(i, j, k1, bl, BC[5], Vde_z, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); });
+			CenterDerivativeBCKernelZ(i, j, k1, bl, BC[5], Vde_z, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); })
+		.wait();
 #endif // DIM_Z
 }
 
@@ -394,7 +393,6 @@ void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata,
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
-	real_t **y = fdata.y;
 	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
@@ -403,7 +401,7 @@ void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata,
     		int i = index.get_global_id(0);
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
-			FluidODESolverKernel(i ,j ,k ,bl ,thermal ,react ,UI ,y ,rho , T, dt); }); });
+			FluidODESolverKernel( i, j, k, bl, thermal, react, UI, fdata.y, rho, T, dt); }); });
 	q.wait();
 }
 #endif // React
