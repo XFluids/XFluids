@@ -60,18 +60,14 @@ int main(int argc, char *argv[])
 	SYCLSolver syclsolver(q, setup);
 	syclsolver.AllocateMemory(q);
 	syclsolver.InitialCondition(q);
-	syclsolver.Output_vti(q, 0, 100, 0);
 	// boundary conditions
 	syclsolver.BoundaryCondition(q, 0);
-	syclsolver.Output_vti(q, 0, 200, 0);
 	// // update states by U
 	syclsolver.UpdateStates(q, 0);
-	syclsolver.Output_vti(q, 0, 300, 0);
 	// test updateflux
-	syclsolver.dt = 0.00001;
-	syclsolver.SinglePhaseSolverRK3rd(q);
-	syclsolver.Output_vti(q, 0, 400, 0);
+	// syclsolver.dt = 0.00001;
+	// syclsolver.SinglePhaseSolverRK3rd(q);
 	// time marching by SYCL device
-	// syclsolver.Evolution(q);
+	syclsolver.Evolution(q);
 	return 0;
 }

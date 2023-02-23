@@ -42,7 +42,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		// Reaction(q, dt);
+		Reaction(q, dt);
 #endif // React
 #endif // COP
 		physicalTime = physicalTime + dt;
@@ -70,18 +70,14 @@ void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
 		// the fisrt step
 		BoundaryCondition(q, 0);
 		UpdateStates(q, 0);
-		Output_vti(q, 0, 1000, 0);
 		ComputeLU(q, 0);
-		Output_vti(q, 0, 2000, 0);
 		UpdateU(q, 1);
 		break;
 	case 2:
 		// the second step
 		BoundaryCondition(q, 1);
 		UpdateStates(q, 1);
-		Output_vti(q, 0, 3000, 0);
 		ComputeLU(q, 1);
-		Output_vti(q, 0, 4000, 0);
 		UpdateU(q, 2);
 		break;
 	case 3:

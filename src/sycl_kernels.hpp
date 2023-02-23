@@ -2,6 +2,55 @@
 #include "include/global_class.h"
 #include "device_func.hpp"
 
+extern SYCL_EXTERNAL void printfU(int i, int j, int k, Block bl, real_t *UI, const sycl::stream &stream_ct1)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    real_t dx = bl.dx;
+    real_t dy = bl.dy;
+    real_t dz = bl.dz;
+
+    int id = Xmax * Ymax * k + Xmax * j + i;
+
+#if DIM_X
+    if (i >= Xmax - Bwidth_X)
+        return;
+#endif
+#if DIM_Y
+    if (j >= Ymax - Bwidth_Y)
+        return;
+#endif
+#if DIM_Z
+    if (k >= Zmax - Bwidth_Z)
+        return;
+#endif
+
+    real_t de_UI[Emax];
+    get_Array(UI, de_UI, Emax, id);
+
+    stream_ct1 << "output= "
+               << UI[Emax * id + 0] << ", "
+               << UI[Emax * id + 1] << ", "
+               << UI[Emax * id + 2] << ", "
+               << UI[Emax * id + 3] << ", "
+               << UI[Emax * id + 4] << ", "
+               << UI[Emax * id + 5] << ", "
+               << UI[Emax * id + 6] << ", "
+               << UI[Emax * id + 7] << ", "
+               << UI[Emax * id + 8] << ", "
+               << UI[Emax * id + 9] << ", "
+               << UI[Emax * id + 10] << ", "
+               << UI[Emax * id + 11] << ", "
+               << UI[Emax * id + 12] << "\n";
+}
+
 extern SYCL_EXTERNAL void testkernel(int i, int j, int k, Block bl, IniShape ini, real_t *const *y, const sycl::stream &stream_ct1)
 {
     int Xmax = bl.Xmax;
@@ -192,21 +241,19 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     }
 #endif // 2==NumFluid
 
-    U[Emax * id + 0] = rho[id];
-    U[Emax * id + 1] = rho[id] * u[id];
-    U[Emax * id + 2] = rho[id] * v[id];
-    U[Emax * id + 3] = rho[id] * w[id];
 // EOS was included
 #ifdef COP
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = p[id] / rho[id] / R; // p[id] / rho[id] / R;
+    T[id] = 700.0; // p[id] / rho[id] / R; // NOTE: for debug  p[id] / rho[id] / R;
+    rho[id] = p[id] / R / T[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     real_t h = get_Coph(thermal, yi, T[id]);
-    U[Emax * id + 4] = rho[id] * h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]) - p[id];
+    // U[4] of mixture differ from pure gas
+    U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
     for (size_t ii = 5; ii < Emax; ii++)
-    {
+    { // equations of species
         U[Emax * id + ii] = rho[id] * _y[ii - 5][id];
         FluxF[Emax * id + ii] = rho[id] * u[id] * _y[ii - 5][id];
         FluxG[Emax * id + ii] = rho[id] * v[id] * _y[ii - 5][id];
@@ -221,8 +268,12 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     else
         U[Emax * id + 4] = (p[id] + material.Gamma * (material.B - material.A)) / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
 #endif // COP
-    // printf("U in Ini=%lf,%lf,%lf,%lf,%lf,%lf,T=%lf,h=%lf", U[Emax * id + 0], U[Emax * id + 1], U[Emax * id + 2], U[Emax * id + 3], U[Emax * id + 4], U[Emax * id + 5], T[id], h);
     H[id] = (U[Emax * id + 4] + p[id]) / rho[id];
+    // initial U[0]-U[3]
+    U[Emax * id + 0] = rho[id];
+    U[Emax * id + 1] = rho[id] * u[id];
+    U[Emax * id + 2] = rho[id] * v[id];
+    U[Emax * id + 3] = rho[id] * w[id];
     // initial flux terms F, G, H
     FluxF[Emax * id + 0] = U[Emax * id + 1];
     FluxF[Emax * id + 1] = U[Emax * id + 1] * u[id] + p[id];
@@ -258,27 +309,29 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         CnsrvU1[Emax * id + n] = CnsrvU[Emax * id + n];
 #endif // NumFluid
     }
+    real_t de_U[Emax];
+    get_Array(U, de_U, Emax, id);
+    real_t de_UI[Emax];
 }
 
 /**
  * @brief calculate c^2 of the mixture at given point
  */
+// NOTE: realted with yn=yi[0] or yi[N] : hi[] Ri[]
 real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, const real_t yi[NUM_SPECIES], real_t hi[NUM_SPECIES], const real_t h, const real_t gamma, const real_t T)
 {
-    real_t Sum_dpdrhoi = 0.0;                      // Sum_dpdrhoi:first of c2,存在累加项
+    real_t Sum_dpdrhoi = _DF(0.0);                 // Sum_dpdrhoi:first of c2,存在累加项
     real_t Ri[NUM_SPECIES], _dpdrhoi[NUM_SPECIES]; // hi[NUM_SPECIES]
-    // enthalpy h_i (unit: J/kg) and mass fraction Y_i of each specie
     for (size_t n = 0; n < NUM_SPECIES; n++)
     {
         Ri[n] = Ru / thermal->species_chara[n * SPCH_Sz + 6];
-        _dpdrhoi[n] = (gamma - _DF(1.0)) * (hi[0] - hi[n]) + gamma * (Ri[n] - Ri[0]) * T;
+        _dpdrhoi[n] = (gamma - _DF(1.0)) * (hi[NUM_COP] - hi[n]) + gamma * (Ri[n] - Ri[NUM_COP]) * T; // related with yi
         // printf("_dpdrhoi[n]=%lf \n", _dpdrhoi[n]);
         z[n] = -_DF(1.0) * _dpdrhoi[n] / (gamma - _DF(1.0));
-        if (0 != n)
+        if (NUM_COP != n) // related with yi
             Sum_dpdrhoi += yi[n] * _dpdrhoi[n];
     }
-    real_t _CopC2 = Sum_dpdrhoi + (gamma - 1) * (h - hi[0]) + gamma * Ri[0] * T;
-    // printf("gamma=%lf,h=%lf,hi=%lf,%lf,Ri=%lf,%lf,T=%lf \n", gamma, h, hi[0], hi[1], Ri[0], Ri[1], T);
+    real_t _CopC2 = Sum_dpdrhoi + (gamma - _DF(1.0)) * (h - hi[NUM_COP]) + gamma * Ri[NUM_COP] * T; // related with yi
     return _CopC2;
 }
 
@@ -326,25 +379,20 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     }
     get_yi(y, yi_l, id_l);
     get_yi(y, yi_r, id_r);
-    // printf("yi=%lf,%lf,%lf,%lf,%lf,%lf", yi_l[0], yi_l[1], yi_l[8], yi_r[0], yi_r[1], yi_r[8]);
-    real_t _h = 0;
+    real_t _h = _DF(0.0);
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
     {
         _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;
         _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
         _h += _hi[ii] * _yi[ii];
     }
-    //  _h=_H-_DF(0.5)*(_u*_u+_v*_v+_w*_w);
-    real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
+    real_t Gamma0 = get_CopGamma(thermal, _yi, _T);              // out from RoeAverage_x , 使用半点的数据计算出半点处的Gamma
     real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T); // z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量
-    // printf("argus at [%d],[%d][%d][%d]=yi=%lf, %lf, T=%lf,hi=%lf, %lf, _h=%lf, Gamma=%lf, c2=%lf, zi=%lf,%lf\n", id_l, i, j, k, _yi[0], _yi[1], T, _hi[0], _hi[1], _h, Gamma0, c2, z[0], z[1]); //_Cp
 #else
     real_t Gamma0 = Gamma;
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
     real_t z[NUM_SPECIES] = {0};
 #endif
-    //  printf("%lf , %lf , %lf , %lf , %lf , %lf \n", UI[Emax * id_l + 0], UI[Emax * id_l + 1], UI[Emax * id_l + 2], UI[Emax * id_l + 3], UI[Emax * id_l + 4], UI[Emax * id_l + 5]);
-    //  printf("%lf , %lf , %lf , %lf , %lf , %lf \n", UI[Emax * id_r + 0], UI[Emax * id_r + 1], UI[Emax * id_r + 2], UI[Emax * id_r + 3], UI[Emax * id_r + 4], UI[Emax * id_r + 5]);
 
     RoeAverage_x(eigen_l, eigen_r, z, _yi, c2, _rho, _u, _v, _w, _H, D, D1, Gamma0);
 
@@ -357,53 +405,46 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 	for(int n=0; n<Emax; n++){
         real_t eigen_local_max = _DF(0.0);
         for(int m=-2; m<=3; m++){
-            int id_local = Xmax*Ymax*k + Xmax*j + i + m;
-            eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax*id_local+n]));//local lax-friedrichs	
+            int id_local = Xmax * Ymax * k + Xmax * j + i + m;
+            eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax * id_local + n])); // local lax-friedrichs
         }
 
 		for(int m=i-3; m<=i+4; m++){	// 3rd oder and can be modified
-            int id_local = Xmax*Ymax*k + Xmax*j + m;
-            #if USE_DP
-			uf[m-i+3] = 0.0;
-			ff[m-i+3] = 0.0;
-            #else
-			uf[m-i+3] = 0.0f;
-			ff[m-i+3] = 0.0f;
-            #endif
+            int id_local = Xmax * Ymax * k + Xmax * j + m;
 
-			for(int n1=0; n1<Emax; n1++){
-				uf[m-i+3] = uf[m-i+3] + UI[Emax*id_local+n1]*eigen_l[n][n1];
-				ff[m-i+3] = ff[m-i+3] + Fx[Emax*id_local+n1]*eigen_l[n][n1];
-			}
-			// for local speed
-			pp[m-i+3] = 0.5f*(ff[m-i+3] + eigen_local_max*uf[m-i+3]);
-			mm[m-i+3] = 0.5f*(ff[m-i+3] - eigen_local_max*uf[m-i+3]);
+            uf[m - i + 3] = _DF(0.0);
+            ff[m - i + 3] = _DF(0.0);
+
+            for (int n1 = 0; n1 < Emax; n1++)
+            {
+                uf[m - i + 3] = uf[m - i + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
+                ff[m - i + 3] = ff[m - i + 3] + Fx[Emax * id_local + n1] * eigen_l[n][n1];
+            }
+            // for local speed
+            pp[m - i + 3] = _DF(0.5) * (ff[m - i + 3] + eigen_local_max * uf[m - i + 3]);
+            mm[m - i + 3] = _DF(0.5) * (ff[m - i + 3] - eigen_local_max * uf[m - i + 3]);
         }
 
 		// calculate the scalar numerical flux at x direction
-        #if USE_DP
-        f_flux = (weno5old_P(&pp[3], dx) + weno5old_M(&mm[3], dx))/6.0;
-        #else
-        f_flux = (weno5old_P(&pp[3], dx) + weno5old_M(&mm[3], dx))/6.0f;
-        #endif
+        f_flux = (weno5old_P(&pp[3], dx) + weno5old_M(&mm[3], dx)) / _DF(6.0);
 
-		// get Fp
-		for(int n1=0; n1<Emax; n1++)
-			_p[n][n1] = f_flux*eigen_r[n1][n];
+        // get Fp
+        for (int n1 = 0; n1 < Emax; n1++)
+            _p[n][n1] = f_flux * eigen_r[n1][n];
     }
 
 	// reconstruction the F-flux terms
 	for(int n=0; n<Emax; n++){
-        #if USE_DP
-        real_t fluxx = 0.0;
-#else
-        real_t fluxx = 0.0f;
-#endif
-		for(int n1=0; n1<Emax; n1++) {
+        real_t fluxx = _DF(0.0);
+        for (int n1 = 0; n1 < Emax; n1++)
+        {
             fluxx += _p[n1][n];
-		}
+        }
         Fxwall[Emax*id_l+n] = fluxx;
 	}
+    real_t de_fw[Emax];
+    get_Array(Fxwall, de_fw, Emax, id_l);
+    real_t de_fx[Emax];
 }
 
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fy,
@@ -474,11 +515,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     //construct the right value & the left value scalar equations by characteristic reduction			
 	// at j+1/2 in y direction
 	for(int n=0; n<Emax; n++){
-        #if USE_DP
-        real_t eigen_local_max = 0.0;
-#else
-        real_t eigen_local_max = 0.0f;
-#endif
+        real_t eigen_local_max = _DF(0.0);
 
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*k + Xmax*(j + m) + i;
@@ -761,12 +798,12 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     for (size_t ii = 5; ii < Emax; ii++)
     { // calculate yi
         yi[ii - 5] = U[ii] / U[0];
-        _y[ii - 5][id] = yi[ii];
+        _y[ii - 5][id] = yi[ii - 5];
         yi[NUM_COP] += -yi[ii - 5];
     }
     _y[NUM_COP][id] = yi[NUM_COP];
-    // printf("U at [%d],[%d][%d][%d] before upate=%lf,%lf,%lf,%lf,%lf,%lf\n", id, i, j, k, U[0], U[1], U[2], U[3], U[4], U[5]);
-    // GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
+
+    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
 
 #ifdef Visc
     // Gettransport_coeff_aver();
@@ -776,7 +813,13 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     real_t *Fy = &(FluxG[Emax * id]);
     real_t *Fz = &(FluxH[Emax * id]);
 
-    // GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
+    GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
+
+    real_t de_F[Emax], de_G[Emax], de_H[Emax];
+    get_Array(FluxF, de_F, Emax, id);
+    get_Array(FluxG, de_G, Emax, id);
+    get_Array(FluxH, de_H, Emax, id);
+    real_t de;
 }
 
 extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)

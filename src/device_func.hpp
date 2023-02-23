@@ -6,6 +6,18 @@ using namespace std;
 using namespace sycl;
 
 /**
+ *@brief debug for array
+ */
+
+void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
+{
+	for (size_t i = 0; i < Length; i++)
+	{
+		Out[i] = Ori[Length * id + i];
+	}
+}
+
+/**
  *@brief calculate yi
  */
 void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
@@ -310,7 +322,6 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 #endif // COP
 	H = (UI[4] + p) * rho1;
 	c = sqrt(Gamma * p * rho1);
-	// printf("rho=%lf , p=%lf , c=%lf \n", rho, p, c);
 }
 
 /**
@@ -432,12 +443,12 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	real_t b1 = c21_Gamma;
 	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
 	real_t b3 = _DF(0.0);
-	for (size_t i = 1; i < NUM_SPECIES; i++)
-	{
-		b3 += b1 * yi[i] * z[i];
+	for (size_t i = 0; i < NUM_COP; i++)
+	{ // NOTE: related with yi
+		b3 += yi[i] * z[i];
 	}
+	b3 *= b1;
 	real_t _c1 = _DF(1.0) / _c;
-	// printf("b1=%lf,b2=%lf,b3=%lf,_c=%lf,yi[]=%lf,%lf,z[]=%lf,%lf\n", b1, b2, b3, _c, yi[0], yi[1], z[0], z[1]);
 	eigen_l[0][0] = _DF(0.5) * (b2 + _u / _c + b3);
 	eigen_l[0][1] = -_DF(0.5) * (b1 * _u + _c1);
 	eigen_l[0][2] = -_DF(0.5) * (b1 * _v);
@@ -504,15 +515,15 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
-		eigen_l[1][n + Emax - NUM_COP] = z[n + 1];
+		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n]; // NOTE: eigen values related with yi
+		eigen_l[1][n + Emax - NUM_COP] = z[n];
 		eigen_l[2][n + Emax - NUM_COP] = 0;
 		eigen_l[3][n + Emax - NUM_COP] = 0;
-		eigen_l[Emax - 1][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
+		eigen_l[Emax - 1][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
-		eigen_l[m + Emax - NUM_SPECIES][0] = -yi[m + 1];
+		eigen_l[m + Emax - NUM_SPECIES][0] = -yi[m];
 		eigen_l[m + Emax - NUM_SPECIES][1] = _DF(0.0);
 		eigen_l[m + Emax - NUM_SPECIES][2] = _DF(0.0);
 		eigen_l[m + Emax - NUM_SPECIES][3] = _DF(0.0);
@@ -527,15 +538,15 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 		eigen_r[1][Emax - NUM_COP + n - 1] = _DF(0.0);
 		eigen_r[2][Emax - NUM_COP + n - 1] = _DF(0.0);
 		eigen_r[3][Emax - NUM_COP + n - 1] = _DF(0.0);
-		eigen_r[4][Emax - NUM_COP + n - 1] = z[n + 1];
+		eigen_r[4][Emax - NUM_COP + n - 1] = z[n];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
-		eigen_r[m + Emax - NUM_COP][0] = yi[m + 1];
-		eigen_r[m + Emax - NUM_COP][1] = b1 * yi[m + 1];
+		eigen_r[m + Emax - NUM_COP][0] = yi[m];
+		eigen_r[m + Emax - NUM_COP][1] = b1 * yi[m];
 		eigen_r[m + Emax - NUM_COP][2] = _DF(0.0);
 		eigen_r[m + Emax - NUM_COP][3] = _DF(0.0);
-		eigen_r[m + Emax - NUM_COP][Emax - 1] = yi[m + 1];
+		eigen_r[m + Emax - NUM_COP][Emax - 1] = yi[m];
 		for (int n = 0; n < NUM_COP; n++)
 			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
@@ -624,10 +635,11 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	real_t b1 = c21_Gamma;
 	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
 	real_t b3 = _DF(0.0);
-	for (size_t i = 1; i < NUM_SPECIES; i++)
+	for (size_t i = 0; i < NUM_SPECIES; i++)
 	{
-		b3 += b1 * yi[i] * z[i];
+		b3 += yi[i] * z[i];
 	}
+	b3 *= b1;
 	real_t _c1 = _DF(1.0) / _c;
 	// printf("b1=%lf,b2=%lf,b3=%lf,_c=%lf,yi[]=%lf,%lf,z[]=%lf,%lf\n", b1, b2, b3, _c, yi[0], yi[1], z[0], z[1]);
 	// left eigen vectors
@@ -697,15 +709,15 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
+		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n];
 		eigen_l[1][n + Emax - NUM_COP] = _DF(0.0);
-		eigen_l[2][n + Emax - NUM_COP] = z[n + 1];
+		eigen_l[2][n + Emax - NUM_COP] = z[n];
 		eigen_l[3][n + Emax - NUM_COP] = _DF(0.0);
-		eigen_l[Emax - 1][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n + 1];
+		eigen_l[Emax - 1][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
-		eigen_l[m + Emax - NUM_SPECIES][0] = -yi[m + 1];
+		eigen_l[m + Emax - NUM_SPECIES][0] = -yi[m];
 		eigen_l[m + Emax - NUM_SPECIES][1] = _DF(0.0);
 		eigen_l[m + Emax - NUM_SPECIES][2] = _DF(0.0);
 		eigen_l[m + Emax - NUM_SPECIES][3] = _DF(0.0);
@@ -720,15 +732,15 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 		eigen_r[1][Emax - NUM_COP + n - 1] = _DF(0.0);
 		eigen_r[2][Emax - NUM_COP + n - 1] = _DF(0.0);
 		eigen_r[3][Emax - NUM_COP + n - 1] = _DF(0.0);
-		eigen_r[4][Emax - NUM_COP + n - 1] = z[n + 1];
+		eigen_r[4][Emax - NUM_COP + n - 1] = z[n];
 	}
 	for (int m = 0; m < NUM_COP; m++)
 	{
-		eigen_r[m + Emax - NUM_COP][0] = yi[m + 1];
+		eigen_r[m + Emax - NUM_COP][0] = yi[m];
 		eigen_r[m + Emax - NUM_COP][1] = _DF(0.0);
-		eigen_r[m + Emax - NUM_COP][2] = b1 * yi[m + 1];
+		eigen_r[m + Emax - NUM_COP][2] = b1 * yi[m];
 		eigen_r[m + Emax - NUM_COP][3] = _DF(0.0);
-		eigen_r[m + Emax - NUM_COP][Emax - 1] = yi[m + 1];
+		eigen_r[m + Emax - NUM_COP][Emax - 1] = yi[m];
 		for (int n = 0; n < NUM_COP; n++)
 			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
@@ -818,60 +830,13 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	real_t b1 = c21_Gamma;
 	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
 	real_t b3 = _DF(0.0);
-	for (size_t i = 1; i < NUM_SPECIES; i++)
+	for (size_t i = 0; i < NUM_SPECIES; i++)
 	{
-		b3 += b1 * yi[i] * z[i];
+		b3 += yi[i] * z[i];
 	}
+	b3 *= b1;
 	real_t _c1 = _DF(1.0) / _c;
-	// printf("b1=%lf,b2=%lf,b3=%lf,_c=%lf,yi[]=%lf,%lf,z[]=%lf,%lf\n", b1, b2, b3, _c, yi[0], yi[1], z[0], z[1]);
-	// // printf("b2=%lf , b3=%lf \n", b2, b3);
-	// // printf("b2=%lf , b3=%lf , z1=%lf \n", b2, b3, z[1]);
-	// eigen_l[2][0] += -b3; //在非组分时该项为1-b2,可以通过c2=Gamma*p/rho带入得到，在组分情况下某些文献中不能用前述c2式子
-	// // printf("eigen_l[%d][0]=%lf , eigen_l[Emax - 1][0]=%lf \n", 0, eigen_l[Emax - 2][0], eigen_l[Emax - 1][0]);
-	// eigen_l[Emax - 2][0] += b3 * _c * _rho1;
-	// eigen_l[Emax - 1][0] += b3 * _c * _rho1;
-	// // printf("eigen_l[Emax - 2][0]=%lf , eigen_l[Emax - 1][0]=%lf \n", eigen_l[Emax - 2][0], eigen_l[Emax - 1][0]);
-	// for (size_t j = Emax - NUM_COP; j < Emax; j++)
-	// { // COP相关列
-	// 	eigen_l[2][j] = c21_Gamma * z[j + NUM_SPECIES - Emax];
-	// 	eigen_l[0][j] = 0;
-	// 	eigen_l[1][j] = 0;
-	// 	eigen_l[Emax - 2][j] = -c21_Gamma * z[j + NUM_SPECIES - Emax] * _c * _rho1;
-	// 	eigen_l[Emax - 1][j] = -c21_Gamma * z[j + NUM_SPECIES - Emax] * _c * _rho1;
-	// }
-	// // printf("eigen_l[Emax - 2][0]=%lf , eigen_l[Emax - 1][0]=%lf \n", eigen_l[Emax - 2][0], eigen_l[Emax - 1][0]);
-	// //  COP相关行所有元素
-	// for (size_t ii = 0; ii < NUM_COP; ii++)
-	// {
-	// 	eigen_l[Emax - 1 - NUM_SPECIES + ii][0] = -yi[ii + 1];
-	// 	for (size_t jj = 1; jj < Emax; jj++)
-	// 	{
-	// 		eigen_l[Emax - 1 - NUM_SPECIES + ii][jj] = (ii + Emax - NUM_COP == jj) ? 1 : 0;
-	// 	}
-	// }
-	// // printf("eigen_l[Emax - 2][0]=%lf , eigen_l[Emax - 1][0]=%lf \n", eigen_l[Emax - 2][0], eigen_l[Emax - 1][0]);
-	// // R_Matrix
-	// for (size_t m = Emax - NUM_COP; m < Emax; m++)
-	// {
-	// 	eigen_r[m][2] = yi[m + NUM_SPECIES - Emax];
-	// 	eigen_r[m][0] = 0;
-	// 	eigen_r[m][1] = 0;
-	// 	eigen_r[m][Emax - 2] = yi[m + NUM_SPECIES - Emax] * _c1_rho;
-	// 	eigen_r[m][Emax - 1] = yi[m + NUM_SPECIES - Emax] * _c1_rho;
-	// 	for (size_t n = Emax - 1 - NUM_SPECIES; n < Emax - 2; n++)
-	// 	{
-	// 		eigen_r[m][n] = (m == n + 2) ? 1 : 0;
-	// 	}
-	// }
 
-	// for (size_t nn = Emax - 1 - NUM_SPECIES; nn < Emax - 2; nn++)
-	// {
-	// 	for (size_t mm = 0; mm < Emax - NUM_SPECIES; mm++)
-	// 	{
-	// 		eigen_r[mm][nn] = 0;
-	// 	}
-	// 	eigen_r[Emax - NUM_SPECIES][nn] = z[nn - 2];
-	// }
 #else
 	real_t _rho1 = _DF(1.0) / _rho;
 	real_t _c1_rho = _DF(0.5) * _rho / _c;

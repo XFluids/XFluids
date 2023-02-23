@@ -100,7 +100,27 @@ void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 	if (flag == 0)
 		FluidBoundaryCondition(q, Fs.BlSz, BCs, d_U);
 	else
+	{
 		FluidBoundaryCondition(q, Fs.BlSz, BCs, d_U1);
+		// // NOTE:Output U for debug
+		// q.wait();
+		// auto local_ndrange_max = range<3>(Fs.BlSz.dim_block_x, Fs.BlSz.dim_block_y, Fs.BlSz.dim_block_z); // size of workgroup
+		// auto global_ndrange_max = range<3>(Fs.BlSz.Xmax, Fs.BlSz.Ymax, Fs.BlSz.Zmax);
+		// Block bl = Fs.BlSz;
+		// real_t *d_UI = d_U1;
+		// q.submit([&](sycl::handler &h)
+		// 		 {
+		// 		auto out = sycl::stream(102400, 25600, h);
+		// 		h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange_max), [=](sycl::nd_item<3> index)
+		// 					   {
+		// 						   int i = index.get_global_id(0);
+		// 						   int j = index.get_global_id(1);
+		// 						   int k = index.get_global_id(2);
+		// 						   printfU(i, j, k, bl, d_UI, out); // int i, int j, int k, Block bl, real_t *UI, const sycl::stream &stream_ct1
+		// 					   }); });
+		// q.wait();
+		// std::cout << std::endl;
+	}
 }
 
 void FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
@@ -122,8 +142,31 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 	else
+	{
 		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
+	}
+	// // NOTE:Output U for debug
+	// auto local_ndrange_max = range<3>(Fs.BlSz.dim_block_x, Fs.BlSz.dim_block_y, Fs.BlSz.dim_block_z); // size of workgroup
+	// auto global_ndrange_max = range<3>(Fs.BlSz.X_inner, Fs.BlSz.Y_inner, Fs.BlSz.Z_inner);
+	// Block bl = Fs.BlSz;
+	// real_t *LU = LU;
+	// int Bwidth_X = Fs.BlSz.Bwidth_X;
+	// int Bwidth_Y = Fs.BlSz.Bwidth_Y;
+	// int Bwidth_Z = Fs.BlSz.Bwidth_Z;
+
+	// q.submit([&](sycl::handler &h)
+	// 		 {
+	// 			auto out = sycl::stream(102400, 1024, h);
+	// 			h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange_max), [=](sycl::nd_item<3> index)
+	// 						   {
+	// 							   int i = index.get_global_id(0) + Bwidth_X;
+	// 							   int j = index.get_global_id(1) + Bwidth_Y;
+	// 							   int k = index.get_global_id(2) + Bwidth_Z;
+	// 							   printfU(i, j, k, bl, LU, out); // int i, int j, int k, Block bl, real_t *UI, const sycl::stream &stream_ct1
+	// 						   }); });
+	// q.wait();
+	// std::cout << std::endl;
 }
 #ifdef Visc
 void FluidSYCL::PhysicVisc(sycl::queue &q, Block bl, FlowData &fdata)
