@@ -111,9 +111,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         p[id] = ini.blast_pressure_in;
 #ifdef COP
 #ifdef React
-        for (size_t n = 0; n < NUM_SPECIES; n++)
+        for (size_t i = 0; i < NUM_SPECIES; i++)
         {
-            _y[n][id] = thermal->species_ratio_out[n];
+            _y[i][id] = thermal->species_ratio_out[i];
         }
 #else
         _y[0][id] = ini.cop_y1_out;
@@ -207,10 +207,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     U[Emax * id + 4] = rho[id] * h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]) - p[id];
     for (size_t ii = 5; ii < Emax; ii++)
     {
-        U[Emax * id + ii] = rho[id] * yi[ii - 5];
-        FluxF[Emax * id + ii] = rho[id] * u[id] * yi[ii - 5];
-        FluxG[Emax * id + ii] = rho[id] * v[id] * yi[ii - 5];
-        FluxH[Emax * id + ii] = rho[id] * w[id] * yi[ii - 5];
+        U[Emax * id + ii] = rho[id] * _y[ii - 5][id];
+        FluxF[Emax * id + ii] = rho[id] * u[id] * _y[ii - 5][id];
+        FluxG[Emax * id + ii] = rho[id] * v[id] * _y[ii - 5][id];
+        FluxH[Emax * id + ii] = rho[id] * w[id] * _y[ii - 5][id];
     }
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 #else
@@ -263,7 +263,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 /**
  * @brief calculate c^2 of the mixture at given point
  */
-real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, real_t const yi[NUM_SPECIES], real_t hi[NUM_SPECIES], const real_t h, const real_t gamma, const real_t T)
+real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, const real_t yi[NUM_SPECIES], real_t hi[NUM_SPECIES], const real_t h, const real_t gamma, const real_t T)
 {
     real_t Sum_dpdrhoi = 0.0;                      // Sum_dpdrhoi:first of c2,存在累加项
     real_t Ri[NUM_SPECIES], _dpdrhoi[NUM_SPECIES]; // hi[NUM_SPECIES]
@@ -766,7 +766,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     }
     _y[NUM_COP][id] = yi[NUM_COP];
     // printf("U at [%d],[%d][%d][%d] before upate=%lf,%lf,%lf,%lf,%lf,%lf\n", id, i, j, k, U[0], U[1], U[2], U[3], U[4], U[5]);
-    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
+    // GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
 
 #ifdef Visc
     // Gettransport_coeff_aver();
@@ -776,7 +776,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     real_t *Fy = &(FluxG[Emax * id]);
     real_t *Fz = &(FluxH[Emax * id]);
 
-    GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
+    // GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
 }
 
 extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)

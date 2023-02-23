@@ -88,7 +88,6 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 void FluidSYCL::InitialU(sycl::queue &q)
 {
 	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
-	q.memcpy(d_U1, d_U, Fs.cellbytes).wait();
 }
 
 real_t FluidSYCL::GetFluidDt(sycl::queue &q)

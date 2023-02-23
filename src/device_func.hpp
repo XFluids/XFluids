@@ -19,7 +19,7 @@ void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
 /**
  *@brief calculate R for every cell
  */
-real_t get_CopR(real_t *species_chara, real_t const yi[NUM_SPECIES])
+real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
 {
 	real_t R = 0;
 	for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -63,7 +63,7 @@ real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 /**
  * @brief Compute the Cp of the mixture at given point unit:J/kg/K
  */
-real_t get_CopCp(Thermal *material, real_t const yi[NUM_SPECIES], const real_t T)
+real_t get_CopCp(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
 {
 	real_t _CopCp = 0.0;
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -78,7 +78,7 @@ real_t get_CopCp(Thermal *material, real_t const yi[NUM_SPECIES], const real_t T
 /**
  * @brief calculate W of the mixture at given point
  */
-real_t get_CopW(Thermal *material, real_t const yi[NUM_SPECIES])
+real_t get_CopW(Thermal *material, const real_t yi[NUM_SPECIES])
 {
 	real_t _W = 0.0;
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -92,7 +92,7 @@ real_t get_CopW(Thermal *material, real_t const yi[NUM_SPECIES])
 /**
  * @brief calculate Gamma of the mixture at given point
  */
-real_t get_CopGamma(Thermal *material, real_t const yi[NUM_SPECIES], const real_t T)
+real_t get_CopGamma(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
 {
 	real_t Cp = get_CopCp(material, yi, T);
 	real_t CopW = get_CopW(material, yi);
@@ -200,7 +200,7 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 /**
  * @brief calculate Hi of Mixture at given point	unit:J/kg/K
  */
-real_t get_Coph(Thermal *material, real_t const yi[NUM_SPECIES], const real_t T)
+real_t get_Coph(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
 {
 	real_t H = 0.0, hi[NUM_SPECIES];
 	for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -215,7 +215,7 @@ real_t get_Coph(Thermal *material, real_t const yi[NUM_SPECIES], const real_t T)
 /**
  *@brief sub_function_Steps of update T
  */
-void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal *thermal, real_t const yi[NUM_SPECIES], const real_t e, const real_t T)
+void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T)
 {
 	real_t h = get_Coph(thermal, yi, T);			 // J/kg/K
 	real_t R = get_CopR(thermal->species_chara, yi); // J/kg/K
@@ -227,7 +227,7 @@ void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal *thermal, real_t const y
 /**
  *@brief update T through Newtonian dynasty
  */
-real_t get_T(Thermal *thermal, real_t const yi[NUM_SPECIES], const real_t e, const real_t T0)
+real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T0)
 {
 	real_t T = T0;
 	real_t tol = 1.0e-6, T_dBdr = 100.0, T_uBdr = 1.0e4, x_eps = 1.0e-3;
@@ -288,7 +288,7 @@ real_t get_T(Thermal *thermal, real_t const yi[NUM_SPECIES], const real_t e, con
  * @brief Obtain state at a grid point
  */
 void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
-			   real_t &T, Thermal *thermal, real_t const yi[NUM_SPECIES], real_t const Gamma0)
+			   real_t &T, Thermal *thermal, const real_t yi[NUM_SPECIES], real_t const Gamma0)
 {
 	rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
@@ -417,7 +417,7 @@ void GetPhysFlux(real_t UI[Emax], real_t const yi[NUM_COP], real_t *FluxF, real_
 #endif
 }
 
-inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const c2,
+inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
 						 real_t const _H, real_t const D, real_t const D1, real_t Gamma)
 {
@@ -609,7 +609,7 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
-inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const c2,
+inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
 						 real_t const _H, real_t const D, real_t const D1, real_t const Gamma)
 {
@@ -802,7 +802,7 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
-inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const c2,
+inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
 						 real_t const _H, real_t const D, real_t const D1, real_t const Gamma)
 {
@@ -1258,7 +1258,7 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, rea
 /**
  * @brief QSSAFun
  */
-void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, real_t const yi[NUM_SPECIES], real_t *species_chara, real_t *React_ThirdCoef,
+void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_SPECIES], real_t *species_chara, real_t *React_ThirdCoef,
 			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
 {
