@@ -106,6 +106,18 @@ real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
 void SYCLSolver::ComputeLU(sycl::queue &q, int flag)
 {
 	fluids[0]->ComputeFluidLU(q, flag);
+/* Viscous LU including physical visc(切应力),Heat transfer(传热), mass Diffusion(质量扩散)
+ * Physical Visc must be included Heat is alternative and Diffu depends on compent
+ */
+#ifdef Visc
+	// fluids[0]->ComputeFluidLU(q);
+#ifdef Heat
+#endif // Heat transfer
+#ifdef COP
+#ifdef Diffu
+#endif // mass Diffusion
+#endif // COP
+#endif // physical Visc
 }
 
 void SYCLSolver::UpdateU(sycl::queue &q, int flag)
@@ -121,9 +133,11 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 }
 
 void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
-{
+{ // NOTE: Visc added here
 	for (int n = 0; n < NumFluid; n++)
+	{
 		fluids[n]->UpdateFluidStates(q, flag);
+	}
 }
 
 void SYCLSolver::AllocateMemory(sycl::queue &q)

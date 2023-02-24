@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../read_ini/setupini.h" //#include "setup.h"//
+#include "../read_ini/setupini.h"
 //  C++ headers
 #include <ctime>
 #include <math.h>

@@ -309,9 +309,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         CnsrvU1[Emax * id + n] = CnsrvU[Emax * id + n];
 #endif // NumFluid
     }
-    real_t de_U[Emax];
-    get_Array(U, de_U, Emax, id);
-    real_t de_UI[Emax];
+    // real_t de_U[Emax];
+    // get_Array(U, de_U, Emax, id);
+    // real_t de_UI[Emax];
 }
 
 /**
@@ -814,12 +814,11 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     real_t *Fz = &(FluxH[Emax * id]);
 
     GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
-
-    real_t de_F[Emax], de_G[Emax], de_H[Emax];
-    get_Array(FluxF, de_F, Emax, id);
-    get_Array(FluxG, de_G, Emax, id);
-    get_Array(FluxH, de_H, Emax, id);
-    real_t de;
+    // real_t de_F[Emax], de_G[Emax], de_H[Emax];
+    // get_Array(FluxF, de_F, Emax, id);
+    // get_Array(FluxG, de_G, Emax, id);
+    // get_Array(FluxH, de_H, Emax, id);
+    // real_t de;
 }
 
 extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)

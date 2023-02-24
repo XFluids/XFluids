@@ -93,29 +93,42 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
-
-	// event e = q.submit([&](sycl::handler &h)
-	// 				   {
-	// 					auto out=sycl::stream(1024,256,h);
-	// 					h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-	// 					{
-	// 						int i = index.get_global_id(0);
-	// 						int j = index.get_global_id(1);
-	// 						int k = index.get_global_id(2);
-	// 						printfU(i, j, k, bl, UI, out);
-	// 					}); });
-
 	q.submit([&](sycl::handler &h)
-			 { 
-				// h.depends_on(e);
-				h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-						{
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
 
 			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); }); })
 		.wait();
+
+#ifdef Visc
+	/* Viscous LU including physical visc(切应力),Heat transfer(传热), mass Diffusion(质量扩散)
+	 * Physical Visc must be included Heat is alternative and Diffu depends on compent
+	 */
+	event fv = q.submit([&](sycl::handler &h) { // get velocity derivative at cell center
+		h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+					   {
+					int i = index.get_global_id(0);
+					int j = index.get_global_id(1);
+					int k = index.get_global_id(2);
+
+			UpdateFuidViscFluxKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); });
+	});
+	q.submit([&](sycl::handler &h)
+			 { 
+				h.depends_on(fv);
+				h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+						{
+					int i = index.get_global_id(0);
+					int j = index.get_global_id(1);
+					int k = index.get_global_id(2);
+
+			UpdateFuidViscFluxKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); 
+			}); })
+		.wait();
+#endif // add Visc flux
 }
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
