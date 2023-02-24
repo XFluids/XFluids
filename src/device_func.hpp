@@ -1193,11 +1193,12 @@ real_t get_Kc(real_t *__restrict__ species_chara, real_t *__restrict__ Hia, real
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 	{
 		real_t Ri = Ru / species_chara[n * SPCH_Sz + 6];
-		Kck += Nu_d_[m * NUM_SPECIES + n] * get_Gibson(Hia, Hib, T, Ri, n);
+		real_t S = get_Gibson(Hia, Hib, T, Ri, n);
+		Kck += Nu_d_[m * NUM_SPECIES + n] * S;
 		Nu_sum += Nu_d_[m * NUM_SPECIES + n];
 	}
 	Kck = exp(Kck);
-	Kck *= pow(p_atm / Ru / T * 1e-6, Nu_sum); // TODO:check 1e-6: m^-3 -> cm^-3
+	Kck *= pow(p_atm / Ru / T * 1e-6, Nu_sum); // 1e-6: m^-3 -> cm^-3
 	return Kck;
 }
 
@@ -1209,7 +1210,7 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, rea
 	for (size_t m = 0; m < NUM_REA; m++)
 	{
 		real_t A = Rargus[m * 6 + 0], B = Rargus[m * 6 + 1], E = Rargus[m * 6 + 2];
-#ifdef CJ
+#if CJ
 		Kf[m] = sycl::min<real_t>((20 * _DF(1.0)), A * sycl::pow(T, B) * sycl::exp(-E / T));
 		Kb[m] = _DF(0.0);
 #else
@@ -1329,7 +1330,6 @@ void Chemeq2(Thermal *material, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef,
 	{
 		y0[i] = y[i];
 		y[i] = sycl::max(y[i], ymin);
-		// rhoi[i] = y[i]*species[i].Wi*1e3;
 		rhoi[i] = y[i] * rho;
 	}
 	real_t *species_chara = material->species_chara, *Hia = material->Hia, *Hib = material->Hib;
@@ -1440,21 +1440,6 @@ flag2:
 	if (eps > epsmax)
 	{
 		rcount++;
-		// // hybrid
-		// if(num_iter > 5){
-		// 	real_t C0[num_species];
-		// 	for(int i=0; i<num_species; i++)
-		// 		C0[i] = rho*ys[i]/species[i].Wi*1e-3;
-		// 	for(int m=0; m<num_reactions; m++)
-		// 		AnalyticalSolution(0, m, dt, C0);
-		// 	//SplitSolver(C0, dt);
-		// 	for(int n=0; n<num_species; n++){
-		// 		rhoi[n] = C0[n]*species[n].Wi*1e3;
-		// 		y[n] = std::max(rhoi[n]/rho,ymin);
-		// 	}
-		// 	goto flag3;
-		// }
-		//
 		dto = dt / dto;
 		for (int i = 0; i < NUM_SPECIES; i++)
 			rtaus[i] = rtaus[i] * dto;

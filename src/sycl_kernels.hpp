@@ -1372,9 +1372,9 @@ extern SYCL_EXTERNAL void FluidODESolverKernel(int i, int j, int k, Block bl, Th
     Chemeq2(thermal, Kf, Kb, react->React_ThirdCoef, react->Rargus, react->Nu_b_, react->Nu_f_, react->Nu_d_, react->third_ind,
             react->reaction_list, react->reactant_list, react->product_list, react->rns, react->rts, react->pls, yi, dt, T[id], rho[id], e);
     // update partial density according to C0
-    for (int n = Emax - NUM_COP; n < NUM_SPECIES; n++)
-    {
-            UI[Emax * id + n] = yi[n + NUM_SPECIES - Emax] * rho[id];
+    for (int n = 0; n < NUM_COP; n++)
+    { // NOTE: related with yi[n]
+            UI[Emax * id + n + 5] = yi[n] * rho[id];
     }
 }
 #endif // React
