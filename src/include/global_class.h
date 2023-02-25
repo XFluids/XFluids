@@ -18,7 +18,10 @@ using namespace std;
 using namespace sycl;
 
 constexpr real_t Gamma = 1.4; // 1.666667;
-
+const double Reference_params[8] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+// 0: l_ref(unit :m), 1: rho_ref(unit :kg/m3)(air), 2: p_ref(unit :Pa)(air),
+// 3: T_ref(unit :K), 4:W0_ref(air mole mass,unit :g/mol) 5:μ_ref(unit:Pa.s=kg/(m.s))(air)
+// 6: t_ref(unit :s), 7:ReynoldsNumber=rho_ref*u_ref*l_ref/vis_ref
 enum VdeType
 {
     ducx = 0,
@@ -34,7 +37,9 @@ enum VdeType
 
 typedef struct
 {
-    real_t *rho, *p, *c, *H, *u, *v, *w, *y[NUM_SPECIES], *T, *Vde[9];
+    real_t *rho, *p, *c, *H, *u, *v, *w, *T;
+    real_t *y[NUM_SPECIES], *hi;
+    real_t *viscosity_aver, *thermal_conduct_aver, *Vde[9], *Dkm_aver;
 } FlowData;
 
 typedef struct
@@ -73,16 +78,7 @@ public:
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
-#ifdef Visc
-    void PhysicVisc(sycl::queue &q, Block bl, FlowData &fdata); // add viscosity of physic force
-#endif
-#ifdef Heat
-    void HeatVisc(sycl::queue &q); // add viscosity of heat transfer
-#endif
 #ifdef COP
-#ifdef Diffu
-    void DiffuVisc(sycl::queue &q); // add viscosity of mass diffusion
-#endif
 #ifdef React
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 #endif                                           // React

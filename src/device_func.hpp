@@ -18,7 +18,7 @@ void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
 }
 
 /**
- *@brief calculate yi
+ *@brief calculate yi from y
  */
 void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
 {
@@ -26,6 +26,23 @@ void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
 	{
 		yi[i] = y[i][id];
 	}
+}
+
+/**
+ *@brief calculate xi : mole fraction
+ */
+real_t get_xi(real_t xi[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const *species_chara)
+{
+	real_t C[NUM_SPECIES] = {_DF(0.0)}, C_total = _DF(0.0);
+	for (int i = 0; i < NUM_SPECIES; i++)
+	{
+		C[i] = yi[i] / species_chara[i * SPCH_Sz + Wi]; // Wi==6
+		C_total = C_total + C[i];
+	}
+	// get mole fraction of each specie
+	for (int i = 0; i < NUM_SPECIES; i++)
+		xi[i] = C[i] / C_total;
+	return C_total;
 }
 
 /**
@@ -323,76 +340,6 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	H = (UI[4] + p) * rho1;
 	c = sqrt(Gamma * p * rho1);
 }
-
-/**
- * @brief get Phi value
- */
-real_t get_specie_Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const real_t T) // miu meas Viscosity of species
-{
-	double viscosity = fitted_coefficients_visc[order_polynominal_fitted - 1];
-	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
-		viscosity = viscosity * log(T) + fitted_coefficients_visc[i];
-	return exp(viscosity);
-}
-
-/**
- * @brief get Phi value
- */
-real_t
-PHI(real_t *specie_k, real_t *specie_j, double T) // equation 5-50
-{
-	real_t phi = _DF(0.0);
-	phi = pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * pow(specie_k[Viscosity] / specie_j[Viscosity], _DF(0.5));
-	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sqrt(_DF(2.0));
-	phi = phi * pow(_DF(1.0) + specie_k[Wi] / specie_j[Wi], _DF(-0.5));
-	return phi;
-}
-
-// /**
-//  * @brief Get coeff relating with visc at a grid point
-//  */
-// void Gettransport_coeff_aver(real_t *species_chara, real_t X[NUM_SPECIES], real_t viscosity_aver, const real_t T)
-// {
-// 	// calculate viscosity_aver via equattion(5-49)//
-// 	real_t *species[NUM_SPECIES];
-// 	for (size_t n = 0; n < NUM_SPECIES; n++)
-// 	{
-// 		species[n] = &(species_chara[n * SPCH_Sz]);
-// 		species[n][SID] = real_t(n);
-// 	}
-// 	viscosity_aver = _DF(0.0);
-// 	real_t denominator = _DF(0.0);
-// 	for (int k = 0; k < NUM_SPECIES; k++)
-// 	{
-// 		denominator = _DF(0.0);
-// 		for (int i = k; i < NUM_SPECIES; i++)
-// 			denominator = denominator + X[i] * PHI(species[k], species[i], T);
-// 		viscosity_aver = viscosity_aver + X[k] * species[k][Viscosity] / denominator; // Pa.s=kg/(m.s)
-// 	}
-// 	// calculate thermal_conduct via equattion(5-51)//
-// 	double temp1 = _DF(0.0), temp2 = _DF(0.0);
-// 	for (int k = 0; k < NUM_SPECIES; k++)
-// 	{
-// 		temp1 = X[k] * chemi.species[k].Thermal_conductivity(T);
-// 		temp2 = X[k] / chemi.species[k].Thermal_conductivity(T);
-// 	}
-// 	thermal_conduct_aver = 0.5 * (temp1 + 1.0 / temp2); // unit: W/(m.K)
-// 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
-// 	for (int k = 0; k < NUM_SPECIES; k++)
-// 	{
-// 		temp1 = _DF(0.0);
-// 		temp2 = _DF(0.0);
-// 		for (int i = 0; i < NUM_SPECIES; i++)
-// 		{
-// 			if (i != k)
-// 			{
-// 				temp1 = temp1 + X[i] * chemi.species[i].Wi;
-// 				temp2 = temp2 + X[i] / trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k]);
-// 			}
-// 		}
-// 		Dkm_aver[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
-// 	}
-// }
 
 /**
  * @brief  Obtain fluxes at a grid point
@@ -1456,3 +1403,124 @@ flag3:
 	goto flag1;
 }
 #endif // React
+#ifdef Visc
+/**
+ * @brief get viscosity at temperature T(unit:K)(fit)
+ * @return double,unit: Pa.s=kg/(m.s)
+ */
+real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const double T0)
+{
+	real_t Tref = Reference_params[3], visref = Reference_params[5];
+	real_t T = T0 * Tref; // nondimension==>dimension
+	real_t viscosity = fitted_coefficients_visc[order_polynominal_fitted - 1];
+	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
+		viscosity = viscosity * sycl::log(T) + fitted_coefficients_visc[i];
+	real_t temp = sycl::exp(viscosity) / visref;
+	return temp; // dimension==>nondimension
+}
+
+/**
+ * @brief get viscosity at temperature T(unit:K)
+ * @return double,unit: Pa.s=kg/(m.s)
+ */
+real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const real_t T)
+{
+	real_t phi = _DF(0.0);
+	phi = sycl::pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow(Viscosity(fcv[int(specie_j[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
+	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sycl::sqrt(_DF(2.0));
+	phi = phi * sycl::pow(_DF(1.0) + specie_k[Wi] / specie_j[Wi], -_DF(0.5));
+	return phi;
+}
+
+/**
+ * @brief get thermal conductivity at temperature T(unit:K)
+ * @return double,unit: W/(m.K)
+ */
+real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polynominal_fitted], const real_t T0)
+{
+	real_t rhoref = Reference_params[1], pref = Reference_params[2];
+	real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
+	real_t kref = visref * (pref / rhoref) / Tref;
+	real_t T = T0 * Tref; // nondimension==>dimension
+	real_t thermal_conductivity = fitted_coefficients_therm[order_polynominal_fitted - 1];
+	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
+		thermal_conductivity = thermal_conductivity * sycl::log(T) + fitted_coefficients_therm[i];
+	real_t temp = sycl::exp(thermal_conductivity) / kref;
+	return temp; // dimension==>nondimension
+}
+
+/**
+ * @brief get Dkj:the binary difffusion coefficient of specie-k to specie-j via equation 5-37
+ * @para TT temperature unit:K
+ * @para PP pressure unit:Pa
+ */
+real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, const real_t T0, const real_t P0)
+{
+	real_t rhoref = Reference_params[1], pref = Reference_params[2];
+	real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
+	real_t Dref = visref / rhoref;
+	real_t TT = T0 * Tref; // nondimension==>dimension
+	real_t PP = P0 * pref; // nondimension==>dimension
+	real_t Dkj = Dkj_matrix[int(specie_k[SID]) * NUM_SPECIES + int(specie_j[SID])][order_polynominal_fitted - 1];
+	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
+		Dkj = Dkj * sycl::log(TT) + Dkj_matrix[int(specie_k[SID]) * NUM_SPECIES + int(specie_j[SID])][i];
+	real_t temp = (sycl::exp(Dkj) / PP) / Dref;
+	return temp; // unit:cm*cm/s　//dimension==>nondimension
+}
+
+/**
+ * @brief get average transport coefficient
+ * @param chemi is set to get species information
+ */
+void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
+							  const real_t rho, const real_t p, const real_t T, const real_t C_total)
+{
+	real_t **fcv = thermal->fitted_coefficients_visc;
+	real_t **fct = thermal->fitted_coefficients_therm;
+	real_t **Dkj = thermal->Dkj_matrix;
+	viscosity_aver = _DF(0.0);
+	thermal_conduct_aver = _DF(0.0);
+	double denominator = _DF(0.0);
+	real_t *specie[NUM_SPECIES];
+	for (size_t i = 0; i < NUM_SPECIES; i++)
+	{
+		specie[i] = &(thermal->species_chara[i * SPCH_Sz]);
+	}
+	for (int k = 0; k < NUM_SPECIES; k++)
+	{
+		denominator = 0.0;
+		for (int i = 0; i < NUM_SPECIES; i++)
+			denominator = denominator + X[i] * PHI(specie[k], specie[i], fcv, T);
+		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) / denominator; // Pa.s=kg/(m.s)
+		// calculate thermal_conduct via Su Hongmin//
+		thermal_conduct_aver = thermal_conduct_aver + X[k] * Thermal_conductivity(fct[int(specie[k][SID])], T) / denominator;
+	}
+	// calculate thermal_conduct via equattion(5-51)//
+	double temp1 = _DF(0.0), temp2 = _DF(0.0), temp3 = _DF(0.0);
+	// calculate diffusion coefficient specie_k to mixture via equation 5-45
+	if (1 == NUM_SPECIES)
+	{
+		Dkm_aver[0] = GetDkj(specie[0], specie[0], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[0], chemi.species[0], refstat);
+		Dkm_aver[0] *= _DF(1.0e-4); // cm2/s==>m2/s
+	}
+	else
+	{
+		for (int k = 0; k < NUM_SPECIES; k++)
+		{
+			temp1 = _DF(0.0);
+			temp2 = _DF(0.0);
+			for (int i = 0; i < NUM_SPECIES; i++)
+			{
+				if (i != k)
+				{
+					temp1 = temp1 + X[i] * thermal->species_chara[i * SPCH_Sz + 6];
+					temp2 = temp2 + X[i] / GetDkj(specie[i], specie[k], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k], refstat);
+				}
+			}
+			temp3 = temp1 / temp2 / (rho / C_total);
+			Dkm_aver[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
+			Dkm_aver[k] *= _DF(1.0e-4);					   // cm2/s==>m2/s
+		}
+	}
+}
+#endif // end Visc

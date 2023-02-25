@@ -102,33 +102,6 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI
 
 			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); }); })
 		.wait();
-
-#ifdef Visc
-	/* Viscous LU including physical visc(切应力),Heat transfer(传热), mass Diffusion(质量扩散)
-	 * Physical Visc must be included Heat is alternative and Diffu depends on compent
-	 */
-	event fv = q.submit([&](sycl::handler &h) { // get velocity derivative at cell center
-		h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-					   {
-					int i = index.get_global_id(0);
-					int j = index.get_global_id(1);
-					int k = index.get_global_id(2);
-
-			UpdateFuidViscFluxKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); });
-	});
-	q.submit([&](sycl::handler &h)
-			 { 
-				h.depends_on(fv);
-				h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-						{
-					int i = index.get_global_id(0);
-					int j = index.get_global_id(1);
-					int k = index.get_global_id(2);
-
-			UpdateFuidViscFluxKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); 
-			}); })
-		.wait();
-#endif // add Visc flux
 }
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
@@ -146,8 +119,75 @@ void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, r
 		.wait();
 }
 
-void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-		   real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
+#ifdef Visc
+void GetCellCenterDerivative(sycl::queue &q, Block bl, real_t *const *V, real_t **Vde, BConditions BC[6])
+{
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);	// size of workgroup
+	auto global_ndrange = range<3>(bl.X_inner + 4, bl.Y_inner + 4, bl.Z_inner + 4); // NOTE：这里的4是由求微分的算法确定的,内点网格向两边各延伸两个点
+
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  { GetInnerCellCenterDerivativeKernel(index, bl, V, Vde); }); })
+		.wait();
+
+#if DIM_X
+	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);
+
+	real_t *Vde_x[4] = {Vde[ducy], Vde[ducz], Vde[dvcy], Vde[dwcz]};
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
+							  {
+    		int i0 = index.get_global_id(0) + 0;
+			int i1 = index.get_global_id(0) + bl.Xmax - bl.Bwidth_X;
+			int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+
+			CenterDerivativeBCKernelX(i0, j, k, bl, BC[0], Vde_x, 0, bl.Bwidth_X, 1);
+			CenterDerivativeBCKernelX(i1, j, k, bl, BC[1], Vde_x, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); })
+		.wait();
+#endif // DIM_X
+
+#if DIM_Y
+	auto local_ndrange_y = range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange_y = range<3>(bl.Xmax, bl.Bwidth_Y, bl.Zmax);
+
+	real_t *Vde_y[4] = {Vde[dvcx], Vde[dvcz], Vde[ducx], Vde[dwcz]};
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0);
+			int j0 = index.get_global_id(1) + 0;
+			int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
+			int k = index.get_global_id(2);
+
+			CenterDerivativeBCKernelY(i, j0, k, bl, BC[2], Vde_y, 0, bl.Bwidth_Y, 1);
+			CenterDerivativeBCKernelY(i, j1, k, bl, BC[3], Vde_y, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); })
+		.wait();
+#endif // DIM_Y
+
+#if DIM_Z
+	auto local_ndrange_z = range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
+	auto global_ndrange_z = range<3>(bl.Xmax, bl.Ymax, bl.Bwidth_Z);
+
+	real_t *Vde_z[4] = {Vde[dwcx], Vde[dwcy], Vde[ducx], Vde[dvcy]};
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0);
+			int j = index.get_global_id(1);
+    		int k0 = index.get_global_id(2) + 0;
+			int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
+
+			CenterDerivativeBCKernelZ(i, j, k0, bl, BC[4], Vde_z, 0, bl.Bwidth_Z, 1);
+			CenterDerivativeBCKernelZ(i, j, k1, bl, BC[5], Vde_z, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); })
+		.wait();
+#endif // DIM_Z
+}
+#endif // Visc
+
+void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_t *UI, real_t *LU,
+		   real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
 		   real_t const Gamma, int const Mtrl_ind, FlowData &fdata, real_t *eigen_local)
 {
 	real_t *rho = fdata.rho;
@@ -237,7 +277,60 @@ void GetLU(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI, real_t *LU, r
 			ReconstructFluxZ(i, j, k, bl, thermal, Gamma, UI, FluxH, FluxHw, eigen_local, rho, u, v, w, fdata.y, T, H); }); })
 		.wait();
 #endif
-// update LU from cell-face fluxes
+
+// NOTE: add visc flux to Fluxw
+#ifdef Visc
+	/* Viscous LU including physical visc(切应力),Heat transfer(传热), mass Diffusion(质量扩散)
+	 * Physical Visc must be included Heat is alternative and Diffu depends on compent
+	 */
+	real_t *V[3] = {fdata.u, fdata.v, fdata.w};
+	real_t **Vde = fdata.Vde;
+	real_t *va = fdata.viscosity_aver;
+	real_t *tca = fdata.thermal_conduct_aver;
+	real_t *Da = fdata.Dkm_aver;
+	GetCellCenterDerivative(q, bl, V, Vde, BCs);
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0);
+			int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+			Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, rho, p, T); }); })
+		.wait();
+// NOTE: get wall flux
+#if DIM_X
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
+			int j = index.get_global_id(1) + bl.Bwidth_Y;
+			int k = index.get_global_id(2) + bl.Bwidth_Z;
+			GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, fdata.hi, fdata.y, V, Vde); }); })
+		.wait();
+#endif // end DIM_X
+#if DIM_Y
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0) + bl.Bwidth_X;
+			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
+			int k = index.get_global_id(2) + bl.Bwidth_Z;
+			GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, fdata.hi, fdata.y, V, Vde); }); })
+		.wait();
+#endif // end DIM_Y
+#if DIM_Z
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0) + bl.Bwidth_X;
+			int j = index.get_global_id(1) + bl.Bwidth_Y;
+			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
+			GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, fdata.hi, fdata.y, V, Vde); }); })
+		.wait();
+#endif // end DIM_Z
+#endif // add Visc flux
+
+// NOTE: update LU from cell-face fluxes
 #if NumFluid == 2
 #else
 	q.submit([&](sycl::handler &h)
@@ -313,97 +406,6 @@ void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t
 	q.wait();
 }
 
-#ifdef Visc
-void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditions BC[6])
-{
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
-	auto global_ndrange = range<3>(bl.X_inner + 4, bl.Y_inner + 4, bl.Z_inner + 4); // NOTE：这里的4是由求微分的算法确定的,内点网格向两边各延伸两个点
-
-	real_t *V[3] = {fdata.u, fdata.v, fdata.w};
-	real_t **Vde = fdata.Vde;
-
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-							  { GetInnerCellCenterDerivativeKernel(index, bl, V, Vde); }); })
-		.wait();
-
-#if DIM_X
-	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
-	auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);
-
-	real_t *Vde_x[4] = {fdata.Vde[ducy], fdata.Vde[ducz], fdata.Vde[dvcy], fdata.Vde[dwcz]};
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
-							  {
-    		int i0 = index.get_global_id(0) + 0;
-			int i1 = index.get_global_id(0) + bl.Xmax - bl.Bwidth_X;
-			int j = index.get_global_id(1);
-			int k = index.get_global_id(2);
-
-			CenterDerivativeBCKernelX(i0, j, k, bl, BC[0], Vde_x, 0, bl.Bwidth_X, 1);
-			CenterDerivativeBCKernelX(i1, j, k, bl, BC[1], Vde_x, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); })
-		.wait();
-#endif // DIM_X
-
-#if DIM_Y
-	auto local_ndrange_y = range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
-	auto global_ndrange_y = range<3>(bl.Xmax, bl.Bwidth_Y, bl.Zmax);
-
-	real_t *Vde_y[4] = {fdata.Vde[dvcx], fdata.Vde[dvcz], fdata.Vde[ducx], fdata.Vde[dwcz]};
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
-							  {
-    		int i = index.get_global_id(0);
-			int j0 = index.get_global_id(1) + 0;
-			int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
-			int k = index.get_global_id(2);
-
-			CenterDerivativeBCKernelY(i, j0, k, bl, BC[2], Vde_y, 0, bl.Bwidth_Y, 1);
-			CenterDerivativeBCKernelY(i, j1, k, bl, BC[3], Vde_y, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); })
-		.wait();
-#endif // DIM_Y
-
-#if DIM_Z
-	auto local_ndrange_z = range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
-	auto global_ndrange_z = range<3>(bl.Xmax, bl.Ymax, bl.Bwidth_Z);
-
-	real_t *Vde_z[4] = {fdata.Vde[dwcx], fdata.Vde[dwcy], fdata.Vde[ducx], fdata.Vde[dvcy]};
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
-							  {
-    		int i = index.get_global_id(0);
-			int j = index.get_global_id(1);
-    		int k0 = index.get_global_id(2) + 0;
-			int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
-
-			CenterDerivativeBCKernelZ(i, j, k0, bl, BC[4], Vde_z, 0, bl.Bwidth_Z, 1);
-			CenterDerivativeBCKernelZ(i, j, k1, bl, BC[5], Vde_z, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); })
-		.wait();
-#endif // DIM_Z
-}
-
-void GetWallViscousFluxes(sycl::queue &q, Block bl, FlowData &fdata)
-{
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
-	real_t **Vde = fdata.Vde;
-#if DIM_X
-	real_t *V[3] = {fdata.u, fdata.v, fdata.w};
-	auto global_ndrange_x = range<3>(bl.X_inner + 1, bl.Y_inner, bl.Z_inner);
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
-							  { GetWallViscousFluxesKernelX(index, bl, V, Vde); }); });
-	q.wait();
-#endif // DIM_X
-#if DIM_Y
-#endif // DIM_Y
-#if DIM_Z
-#endif // DIM_Z
-}
-#endif // Visc
-#ifdef Heat
-#endif // Heat
-#ifdef Diffu
-#endif // Diffu
 #ifdef React
 void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata, real_t *UI, Reaction *react, const real_t dt)
 {

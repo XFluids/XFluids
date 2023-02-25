@@ -34,19 +34,11 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.v = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.w = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 #ifdef COP
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-	{
-		h_fstate.y[n] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	}
 	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+		h_fstate.y[n] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 #endif // COP
-#ifdef Visc
-	for (size_t i = 0; i < 9; i++)
-	{
-		h_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	}
-#endif // Visc
-	//  设备内存
+	// NOTE: 设备内存
 	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -59,18 +51,24 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 #ifdef COP
+#ifdef Visc
+	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+#ifdef Heat
+	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+#endif // end Heat
+#ifdef Diffu
+	d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+#endif // end Diffu
+	for (size_t i = 0; i < 9; i++)
+		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+#endif // end Visc
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 	{
 		d_fstate.y[n] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	}
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 #endif // COP
-#ifdef Visc
-	for (size_t i = 0; i < 9; i++)
-	{
-		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	}
-#endif // Visc
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -121,32 +119,14 @@ void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
 void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 {
 	if (flag == 0)
-		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 	else
 	{
-		GetLU(q, Fs.BlSz, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 	}
 }
-#ifdef Visc
-void FluidSYCL::PhysicVisc(sycl::queue &q, Block bl, FlowData &fdata)
-{
-	GetCellCenterDerivative(q, Fs.BlSz, d_fstate, Fs.Boundarys);
-}
-#ifdef Heat
-void FluidSYCL::HeatVisc(sycl::queue &q)
-{
-}
-#endif // Heat
-#ifdef COP
-#ifdef Diffu // add viscity of mass diffusion
-void FluidSYCL::DiffuVisc(sycl::queue &q)
-{
-}
-#endif // Diffu
-#endif
-#endif // Visc
 #ifdef React
 void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
 {

@@ -19,15 +19,16 @@ option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" ON)
 option(DIM_Z "if enable dim_z" OFF)
 option(Multi "if enable multi , OFF for component" OFF)
-option(Visc "if add physic viscidity flux" OFF)
-option(Heat "if add heat transfer flux" OFF)
-option(Diffu "if add mass diffusion" OFF)
+option(Visc "if add physic viscidity flux" ON)
+option(Heat "if add heat transfer flux" ON)
+option(Diffu "if add mass diffusion" ON)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(React "if enable chemical recation, based on COP=ON" ON)
 set(ReaType "0")#define which reaction to caculate, 0 for H2+O2
-set(SelectDv "hip") # "define which platform and devices for compile options:host,nvidia,amd,intel" 
+
+# about platform and device
+set(SelectDv "host") # define which platform and devices for compile options:host,nvidia,amd,intel
 option(ENABLE_OPENMP "if need openmp" OFF)
-option(Comp_Vis "if enable vis for component" OFF)
 option(USE_MPI "if enable mpi" OFF)
 
 # #cmake modules

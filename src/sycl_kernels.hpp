@@ -2,89 +2,6 @@
 #include "include/global_class.h"
 #include "device_func.hpp"
 
-extern SYCL_EXTERNAL void printfU(int i, int j, int k, Block bl, real_t *UI, const sycl::stream &stream_ct1)
-{
-    int Xmax = bl.Xmax;
-    int Ymax = bl.Ymax;
-    int Zmax = bl.Zmax;
-    int X_inner = bl.X_inner;
-    int Y_inner = bl.Y_inner;
-    int Z_inner = bl.Z_inner;
-    int Bwidth_X = bl.Bwidth_X;
-    int Bwidth_Y = bl.Bwidth_Y;
-    int Bwidth_Z = bl.Bwidth_Z;
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-
-    int id = Xmax * Ymax * k + Xmax * j + i;
-
-#if DIM_X
-    if (i >= Xmax - Bwidth_X)
-        return;
-#endif
-#if DIM_Y
-    if (j >= Ymax - Bwidth_Y)
-        return;
-#endif
-#if DIM_Z
-    if (k >= Zmax - Bwidth_Z)
-        return;
-#endif
-
-    real_t de_UI[Emax];
-    get_Array(UI, de_UI, Emax, id);
-
-    stream_ct1 << "output= "
-               << UI[Emax * id + 0] << ", "
-               << UI[Emax * id + 1] << ", "
-               << UI[Emax * id + 2] << ", "
-               << UI[Emax * id + 3] << ", "
-               << UI[Emax * id + 4] << ", "
-               << UI[Emax * id + 5] << ", "
-               << UI[Emax * id + 6] << ", "
-               << UI[Emax * id + 7] << ", "
-               << UI[Emax * id + 8] << ", "
-               << UI[Emax * id + 9] << ", "
-               << UI[Emax * id + 10] << ", "
-               << UI[Emax * id + 11] << ", "
-               << UI[Emax * id + 12] << "\n";
-}
-
-extern SYCL_EXTERNAL void testkernel(int i, int j, int k, Block bl, IniShape ini, real_t *const *y, const sycl::stream &stream_ct1)
-{
-    int Xmax = bl.Xmax;
-    int Ymax = bl.Ymax;
-    int Zmax = bl.Zmax;
-    int X_inner = bl.X_inner;
-    int Y_inner = bl.Y_inner;
-    int Z_inner = bl.Z_inner;
-    int Bwidth_X = bl.Bwidth_X;
-    int Bwidth_Y = bl.Bwidth_Y;
-    int Bwidth_Z = bl.Bwidth_Z;
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-
-    int id = Xmax * Ymax * k + Xmax * j + i;
-
-#if DIM_X
-    if (i >= Xmax)
-        return;
-#endif
-#if DIM_Y
-    if (j >= Ymax)
-        return;
-#endif
-#if DIM_Z
-    if (k >= Zmax)
-        return;
-#endif
-
-    stream_ct1 << "output= " << y[0][id] << ", " << y[1][id] << ", " << y[2][id] << ", " << y[3][id] << ", "
-               << y[4][id] << ", " << y[5][id] << ", " << y[6][id] << "\n";
-}
-
 extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal, real_t *U, real_t *U1, real_t *LU,
                                               real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
                                               real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T, real_t *H, real_t *c)
@@ -442,9 +359,10 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
         }
         Fxwall[Emax*id_l+n] = fluxx;
 	}
-    real_t de_fw[Emax];
-    get_Array(Fxwall, de_fw, Emax, id_l);
-    real_t de_fx[Emax];
+
+    // real_t de_fw[Emax];
+    // get_Array(Fxwall, de_fw, Emax, id_l);
+    // real_t de_fx[Emax];
 }
 
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fy,
@@ -537,30 +455,22 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 				gg[m-j+3] = gg[m-j+3] + Fy[Emax*id_local+n1]*eigen_l[n][n1];
 			}
 			//for local speed
-			pp[m-j+3] = 0.5f*(gg[m-j+3] + eigen_local_max*ug[m-j+3]); 
-			mm[m-j+3] = 0.5f*(gg[m-j+3] - eigen_local_max*ug[m-j+3]); 
+            pp[m - j + 3] = _DF(0.5) * (gg[m - j + 3] + eigen_local_max * ug[m - j + 3]);
+            mm[m - j + 3] = _DF(0.5) * (gg[m - j + 3] - eigen_local_max * ug[m - j + 3]);
         }
 		// calculate the scalar numerical flux at y direction
-        #if USE_DP
-        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy))/6.0;
-        #else
-        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy))/6.0f;
-        #endif
-
-		// get Gp
-		for(int n1=0; n1<Emax; n1++)
-			_p[n][n1] = g_flux*eigen_r[n1][n];
+        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy)) / _DF(6.0);
+        // get Gp
+        for (int n1 = 0; n1 < Emax; n1++)
+            _p[n][n1] = g_flux * eigen_r[n1][n];
     }
 	// reconstruction the G-flux terms
 	for(int n=0; n<Emax; n++){
-        #if USE_DP
-        real_t fluxy = 0.0;
-#else
-        real_t fluxy = 0.0f;
-#endif
-		for(int n1=0; n1<Emax; n1++){
+        real_t fluxy = _DF(0.0);
+        for (int n1 = 0; n1 < Emax; n1++)
+        {
             fluxy += _p[n1][n];
-		}
+        }
         Fywall[Emax*id_l+n] = fluxy;
 	}
 }
@@ -633,11 +543,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     //construct the right value & the left value scalar equations by characteristic reduction
 	// at k+1/2 in z direction
 	for(int n=0; n<Emax; n++){
-        #if USE_DP
-        real_t eigen_local_max = 0.0;
-#else
-        real_t eigen_local_max = 0.0f;
-#endif
+        real_t eigen_local_max = _DF(0.0);
 
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*(k + m) + Xmax*j + i;
@@ -645,41 +551,30 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
         }
 		for(int m=k-3; m<=k+4; m++){
             int id_local = Xmax*Ymax*m + Xmax*j + i;
-            #if USE_DP
-			uh[m-k+3] = 0.0;
-			hh[m-k+3] = 0.0;
-            #else
-			uh[m-k+3] = 0.0f;
-			hh[m-k+3] = 0.0f;
-            #endif
+            uh[m - k + 3] = _DF(0.0);
+            hh[m - k + 3] = _DF(0.0);
 
-			for(int n1=0; n1<Emax; n1++){
-				uh[m-k+3] = uh[m-k+3] + UI[Emax*id_local+n1]*eigen_l[n][n1];
-				hh[m-k+3] = hh[m-k+3] + Fz[Emax*id_local+n1]*eigen_l[n][n1];
-			}
-			//for local speed
-			pp[m-k+3] = 0.5f*(hh[m-k+3] + eigen_local_max*uh[m-k+3]);  
-			mm[m-k+3] = 0.5f*(hh[m-k+3] - eigen_local_max*uh[m-k+3]); 
+            for (int n1 = 0; n1 < Emax; n1++)
+            {
+                uh[m - k + 3] = uh[m - k + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
+                hh[m - k + 3] = hh[m - k + 3] + Fz[Emax * id_local + n1] * eigen_l[n][n1];
+            }
+            // for local speed
+            pp[m - k + 3] = _DF(0.5) * (hh[m - k + 3] + eigen_local_max * uh[m - k + 3]);
+            mm[m - k + 3] = _DF(0.5) * (hh[m - k + 3] - eigen_local_max * uh[m - k + 3]);
         }
 		// calculate the scalar numerical flux at y direction
-        #if USE_DOUBLE
-        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz))/6.0;
-        #else
-        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz))/6.0f;
-        #endif
-		
-		// get Gp
-		for(int n1=0; n1<Emax; n1++)
+        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz)) / _DF(6.0);
+
+        // get Gp
+        for (int n1 = 0; n1 < Emax; n1++)
             _p[n][n1] = h_flux*eigen_r[n1][n];
     }
 	// reconstruction the H-flux terms
 	for(int n=0; n<Emax; n++){
-        #if USE_DP
-        real_t fluxz = 0.0;
-#else
-        real_t fluxz = 0.0f;
-#endif
-		for(int n1=0; n1<Emax; n1++){
+        real_t fluxz = _DF(0.0);
+        for (int n1 = 0; n1 < Emax; n1++)
+        {
             fluxz +=  _p[n1][n];
         }
         Fzwall[Emax*id_l+n]  = fluxz;
@@ -1282,11 +1177,35 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
     break;
     }
 }
-extern SYCL_EXTERNAL void GetWallViscousFluxesKernelX(sycl::nd_item<3> index, Block bl, real_t *const *V, real_t **Vde)
+
+extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal *thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
+                                                  real_t *Dkm_aver, real_t *const *y, real_t *rho, real_t *p, real_t *T)
 {
-    int i = index.get_global_id(0) + bl.Bwidth_X - 1;
-    int j = index.get_global_id(1) + bl.Bwidth_Y;
-    int k = index.get_global_id(2) + bl.Bwidth_Z;
+#ifdef DIM_X
+    if (i >= bl.Xmax)
+            return;
+#endif // DIM_X
+#ifdef DIM_Y
+    if (i >= bl.Ymax)
+            return;
+#endif // DIM_Y
+#ifdef DIM_Z
+    if (i >= bl.Zmax)
+            return;
+#endif // DIM_Z
+    int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+    // get mole fraction of each specie
+    real_t X[NUM_SPECIES] = {_DF(0.0)}, yi[NUM_SPECIES] = {_DF(0.0)};
+    get_yi(y, yi, id);
+    real_t C_total = get_xi(X, yi, thermal->species_chara);
+    // calculate viscosity_aver via equattion(5-49)//
+    Get_transport_coeff_aver(thermal, &(Dkm_aver[id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
+}
+
+#if DIM_X
+extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *FluxFw, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
+                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *const *V, real_t **Vde)
+{ // compute Physical、Heat、Diffu viscity in this function
 #ifdef DIM_X
     if (i >= bl.X_inner + bl.Bwidth_X)
             return;
@@ -1299,50 +1218,259 @@ extern SYCL_EXTERNAL void GetWallViscousFluxesKernelX(sycl::nd_item<3> index, Bl
     if (i >= bl.Z_inner + bl.Bwidth_Z)
             return;
 #endif // DIM_Z
+    int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+    int id_m1 = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
+    int id_m2 = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
+    int id_p1 = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+    int id_p2 = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 2;
+    real_t *Ducy = Vde[ducy];
+    real_t *Ducz = Vde[ducz];
+    real_t *Dvcy = Vde[dvcy];
+    real_t *Dwcz = Vde[dwcz];
+    real_t *u = V[0];
+    real_t *v = V[1];
+    real_t *w = V[2];
+    real_t dx = bl.dx;
 
-    /*
-        double mue = (9.0 * (cells[i + 1][j][k].viscosity_aver + cells[i][j][k].viscosity_aver) - (cells[i + 2][j][k].viscosity_aver + cells[i - 1][j][k].viscosity_aver)) / 16.0;
-        double lamada = -2.0 / 3.0 * mue;
-        double f_x, f_y, f_z;
-        double u_hlf, v_hlf, w_hlf;
-        f_x = (2.0 * mue + lamada) * (27.0 * (cells[i + 1][j][k].u - cells[i][j][k].u) - (cells[i + 2][j][k].u - cells[i - 1][j][k].u)) / dx / 24.0;
-        f_y = DIM_Y ? mue * (27.0 * (cells[i + 1][j][k].v - cells[i][j][k].v) - (cells[i + 2][j][k].v - cells[i - 1][j][k].v)) / dx / 24.0 : 0.0;
-        f_z = DIM_Z ? mue * (27.0 * (cells[i + 1][j][k].w - cells[i][j][k].w) - (cells[i + 2][j][k].w - cells[i - 1][j][k].w)) / dx / 24.0 : 0.0;
+    real_t F_x_wall_v[Emax];
+    real_t mue = (_DF(9.0) * (viscosity_aver[id_p1] + viscosity_aver[id]) - (viscosity_aver[id_p2] + viscosity_aver[id_m1])) / _DF(16.0);
+    real_t lamada = -_DF(2.0) / _DF(3.0) * mue;
+    real_t f_x, f_y, f_z;
+    real_t u_hlf, v_hlf, w_hlf;
+    f_x = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) / dx / _DF(24.0);
+    f_y = DIM_Y ? mue * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) / dx / _DF(24.0) : _DF(0.0);
+    f_z = DIM_Z ? mue * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) / dx / _DF(24.0) : _DF(0.0);
 
-        f_x += lamada * (9.0 * (dvcy[i + 1][j][k] + dvcy[i][j][k]) - (dvcy[i + 2][j][k] + dvcy[i - 1][j][k]) + 9.0 * (dwcz[i + 1][j][k] + dwcz[i][j][k]) - (dwcz[i + 2][j][k] + dwcz[i - 1][j][k])) / 16.0;
-        f_y += DIM_Y ? mue * (9.0 * (ducy[i + 1][j][k] + ducy[i][j][k]) - (ducy[i + 2][j][k] + ducy[i - 1][j][k])) / 16.0 : 0.0;
-        f_z += DIM_Z ? mue * (9.0 * (ducz[i + 1][j][k] + ducz[i][j][k]) - (ducz[i + 2][j][k] + ducz[i - 1][j][k])) / 16.0 : 0.0;
+    f_x += lamada * (_DF(9.0) * (Dvcy[id_p1] + Dvcy[id]) - (Dvcy[id_p2] + Dvcy[id_m1]) + _DF(9.0) * (Dwcz[id_p1] + Dwcz[id]) - (Dwcz[id_p2] + Dwcz[id_m1])) / _DF(16.0);
+    f_y += DIM_Y ? mue * (_DF(9.0) * (Ducy[id_p1] + Ducy[id]) - (Ducy[id_p2] + Ducy[id_m1])) / _DF(16.0) : _DF(0.0);
+    f_z += DIM_Z ? mue * (_DF(9.0) * (Ducz[id_p1] + Ducz[id]) - (Ducz[id_p2] + Ducz[id_m1])) / _DF(16.0) : _DF(0.0);
 
-        u_hlf = (9.0 * (cells[i + 1][j][k].u + cells[i][j][k].u) - (cells[i + 2][j][k].u + cells[i - 1][j][k].u)) / 16.0;
-        v_hlf = DIM_Y ? (9.0 * (cells[i + 1][j][k].v + cells[i][j][k].v) - (cells[i + 2][j][k].v + cells[i - 1][j][k].v)) / 16.0 : 0.0;
-        w_hlf = DIM_Z ? (9.0 * (cells[i + 1][j][k].w + cells[i][j][k].w) - (cells[i + 2][j][k].w + cells[i - 1][j][k].w)) / 16.0 : 0.0;
-        F_x_wall_v[i][j][k].at(0) = 0.0;
-        F_x_wall_v[i][j][k].at(1) = f_x;
-        F_x_wall_v[i][j][k].at(2) = f_y;
-        F_x_wall_v[i][j][k].at(3) = f_z;
-        F_x_wall_v[i][j][k].at(4) = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
-        // Fourier thermal conductivity
-        double kk; // thermal conductivity at wall
-        kk = (9.0 * (cells[i + 1][j][k].thermal_conduct_aver + cells[i][j][k].thermal_conduct_aver) - (cells[i + 2][j][k].thermal_conduct_aver + cells[i - 1][j][k].thermal_conduct_aver)) / 16.0;
-        kk *= (27.0 * (cells[i + 1][j][k].T - cells[i][j][k].T) - (cells[i + 2][j][k].T - cells[i - 1][j][k].T)) / dx / 24.0; // temperature gradient at wall
-        F_x_wall_v[i][j][k].at(4) += kk;                                                                                      // Equation (32) or Equation (10)
-        // mass diffusion ==> energy fiffusion
-        double rho_wall = (9.0 * (cells[i + 1][j][k].rho + cells[i][j][k].rho) - (cells[i + 2][j][k].rho + cells[i - 1][j][k].rho)) / 16.0;
-        double hi_wall[num_species], Dim_wall[num_species], Yix_wall[num_species];
-        for (int l = 0; l < num_species; l++)
-        {
-                hi_wall[l] = (9.0 * (cells[i + 1][j][k].hi[l] + cells[i][j][k].hi[l]) - (cells[i + 2][j][k].hi[l] + cells[i - 1][j][k].hi[l])) / 16.0;
-                Dim_wall[l] = (9.0 * (cells[i + 1][j][k].Dkm_aver[l] + cells[i][j][k].Dkm_aver[l]) - (cells[i + 2][j][k].Dkm_aver[l] + cells[i - 1][j][k].Dkm_aver[l])) / 16.0;
-                Yix_wall[l] = (27.0 * (cells[i + 1][j][k].rhos[l] / cells[i + 1][j][k].rho - cells[i][j][k].rhos[l] / cells[i][j][k].rho) - (cells[i + 2][j][k].rhos[l] / cells[i + 2][j][k].rho - cells[i - 1][j][k].rhos[l] / cells[i - 1][j][k].rho)) / dx / 24.0; // temperature gradient at wall
-        }
-        for (int l = 0; l < num_species; l++)
-                F_x_wall_v[i][j][k].at(4) += rho_wall * hi_wall[l] * Dim_wall[l] * Yix_wall[l];
-    #if Mixture
-        for (int p = 5; p < Emax + num_species; p++)
-                F_x_wall_v[i][j][k].at(p) = rho_wall * Dim_wall[p - 5] * Yix_wall[p - 5];
-    #endif
-    */
+    u_hlf = (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) / _DF(16.0);
+    v_hlf = DIM_Y ? (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) / _DF(16.0) : _DF(0.0);
+    w_hlf = DIM_Z ? (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) / _DF(16.0) : _DF(0.0);
+    F_x_wall_v[0] = _DF(0.0);
+    F_x_wall_v[1] = f_x;
+    F_x_wall_v[2] = f_y;
+    F_x_wall_v[3] = f_z;
+    F_x_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
+
+#ifdef Heat    // Fourier thermal conductivity
+    real_t kk; // thermal conductivity at wall
+    kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0);
+    real_t tempo = _DF(0.0);
+    tempo = (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dx / _DF(24.0);
+    kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dx / _DF(24.0);                                                // temperature gradient at wall
+    F_x_wall_v[4] += kk;                                                                                                            // Equation (32) or Equation (10)
+#endif                                                                                                                              // end Heat
+#ifdef Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
+    real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);
+    real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yix_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];
+    for (int l = 0; l < NUM_SPECIES; l++)
+    {
+            hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+            Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+            Yi_wall[l] = (_DF(9.0) * (Yi[l][id_p1] + Yi[l][id]) - (Yi[l][id_p2] + Yi[l][id_m1])) / _DF(16.0);
+            Yix_wall[l] = (_DF(27.0) * (Yi[l][id_p1] - Yi[l][id]) - (Yi[l][id_p2] - Yi[l][id_m1])) / dx / _DF(24.0); // temperature gradient at wall
+    }
+#ifdef Heat
+    for (int l = 0; l < NUM_SPECIES; l++)
+            F_x_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yix_wall[l];
+#endif     // end Heat
+#ifdef COP // visc flux for cop equations
+    real_t CorrectTermX = _DF(0.0);
+    for (int l = 0; l < NUM_SPECIES; l++)
+            CorrectTermX += Dim_wall[l] * Yix_wall[l];
+    CorrectTermX *= rho_wall;
+    // ADD Correction Term in X-direction
+    for (int p = 5; p < Emax; p++)
+            F_x_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yix_wall[p - 5] - Yi_wall[p - 5] * CorrectTermX;
+#endif // end COP
+#endif // end Diffu
+    for (size_t i = 0; i < Emax; i++)
+    { // add viscous flux to fluxwall
+            FluxFw[i + Emax * id] -= F_x_wall_v[i];
+    }
 }
+#endif // end DIM_X
+
+#if DIM_Y
+extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *FluxGw, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
+                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *const *V, real_t **Vde)
+{ // compute Physical、Heat、Diffu viscity in this function
+#ifdef DIM_X
+    if (i >= bl.X_inner + bl.Bwidth_X)
+            return;
+#endif // DIM_X
+#ifdef DIM_Y
+    if (i >= bl.Y_inner + bl.Bwidth_Y)
+            return;
+#endif // DIM_Y
+#ifdef DIM_Z
+    if (i >= bl.Z_inner + bl.Bwidth_Z)
+            return;
+#endif // DIM_Z
+    int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+    int id_m1 = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 1) + i;
+    int id_m2 = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 2) + i;
+    int id_p1 = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i;
+    int id_p2 = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 2) + i;
+    real_t *Dvcx = Vde[dvcx];
+    real_t *Dvcz = Vde[dvcz];
+    real_t *Ducx = Vde[ducx];
+    real_t *Dwcz = Vde[dwcz];
+    real_t *u = V[0];
+    real_t *v = V[1];
+    real_t *w = V[2];
+    real_t dy = bl.dy;
+
+    // mue at wall
+    real_t F_y_wall_v[Emax];
+    real_t mue = (_DF(9.0) * (viscosity_aver[id_p1] + viscosity_aver[id]) - (viscosity_aver[id_p2] + viscosity_aver[id_m1])) / _DF(16.0);
+    real_t lamada = -_DF(2.0) / _DF(3.0) * mue;
+    real_t f_x, f_y, f_z;
+    real_t u_hlf, v_hlf, w_hlf;
+    f_x = DIM_X ? mue * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) / dy / _DF(24.0) : _DF(0.0);
+    f_y = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) / dy / _DF(24.0);
+    f_z = DIM_Z ? mue * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) / dy / _DF(24.0) : _DF(0.0);
+
+    f_x += DIM_X ? mue * (_DF(9.0) * (Dvcx[id_p1] + Dvcx[id]) - (Dvcx[id_p2] + Dvcx[id_m1])) / _DF(16.0) : _DF(0.0);
+    f_y += lamada * (_DF(9.0) * (Ducx[id_p1] + Ducx[id]) - (Ducx[id_p2] + Ducx[id_m1]) + _DF(9.0) * (Dwcz[id_p1] + Dwcz[id]) - (Dwcz[id_p2] + Dwcz[id_m1])) / _DF(16.0);
+    f_z += DIM_Z ? mue * (_DF(9.0) * (Dvcz[id_p1] + Dvcz[id]) - (Dvcz[id_p2] + Dvcz[id_m1])) / _DF(16.0) : _DF(0.0);
+
+    u_hlf = DIM_X ? (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) / _DF(16.0) : _DF(0.0);
+    v_hlf = (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) / _DF(16.0);
+    w_hlf = DIM_Z ? (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) / _DF(16.0) : _DF(0.0);
+    F_y_wall_v[0] = _DF(0.0);
+    F_y_wall_v[1] = f_x;
+    F_y_wall_v[2] = f_y;
+    F_y_wall_v[3] = f_z;
+    F_y_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
+
+#ifdef Heat    // Fourier thermal conductivity
+    real_t kk; // thermal conductivity at wall
+    kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0);
+    kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dy / _DF(24.0);                                                // temperature gradient at wall
+    F_y_wall_v[4] += kk;                                                                                                            // Equation (32) or Equation (10)
+#endif                                                                                                                              // end Heat
+#ifdef Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
+    real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);
+    real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yiy_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];
+    for (int l = 0; l < NUM_SPECIES; l++)
+    {
+            hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+            Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+            Yi_wall[l] = (_DF(9.0) * (Yi[l][id_p1] + Yi[l][id]) - (Yi[l][id_p2] + Yi[l][id_m1])) / _DF(16.0);
+            Yiy_wall[l] = (_DF(27.0) * (Yi[l][id_p1] - Yi[l][id]) - (Yi[l][id_p2] - Yi[l][id_m1])) / dy / _DF(24.0); // temperature gradient at wal
+    }
+#ifdef Heat
+    for (int l = 0; l < NUM_SPECIES; l++)
+            F_y_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yiy_wall[l];
+#endif     // end Heat
+#ifdef COP // visc flux for cop equations
+    real_t CorrectTermY = _DF(0.0);
+    for (int l = 0; l < NUM_SPECIES; l++)
+            CorrectTermY += Dim_wall[l] * Yiy_wall[l];
+    CorrectTermY *= rho_wall;
+    // ADD Correction Term in X-direction
+    for (int p = 5; p < Emax; p++)
+            F_y_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yiy_wall[p - 5] - Yi_wall[p - 5] * CorrectTermY;
+#endif // end COP
+#endif // end Diffu
+    for (size_t i = 0; i < Emax; i++)
+    { // add viscous flux to fluxwall
+            FluxGw[i + Emax * id] -= F_y_wall_v[i];
+    }
+}
+#endif // end DIM_Y
+
+#if DIM_Z
+extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *FluxHw, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
+                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *const *V, real_t **Vde)
+{ // compute Physical、Heat、Diffu viscity in this function
+#ifdef DIM_X
+    if (i >= bl.X_inner + bl.Bwidth_X)
+            return;
+#endif // DIM_X
+#ifdef DIM_Y
+    if (i >= bl.Y_inner + bl.Bwidth_Y)
+            return;
+#endif // DIM_Y
+#ifdef DIM_Z
+    if (i >= bl.Z_inner + bl.Bwidth_Z)
+            return;
+#endif // DIM_Z
+    int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+    int id_m1 = bl.Xmax * bl.Ymax * (k - 1) + bl.Xmax * j + i;
+    int id_m2 = bl.Xmax * bl.Ymax * (k - 2) + bl.Xmax * j + i;
+    int id_p1 = bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i;
+    int id_p2 = bl.Xmax * bl.Ymax * (k + 2) + bl.Xmax * j + i;
+    real_t *Dwcx = Vde[dwcx];
+    real_t *Dwcy = Vde[dwcy];
+    real_t *Ducx = Vde[ducx];
+    real_t *Dvcy = Vde[dvcy];
+    real_t *u = V[0];
+    real_t *v = V[1];
+    real_t *w = V[2];
+    real_t dz = bl.dz;
+
+    // mue at wall
+    real_t F_z_wall_v[Emax];
+    real_t mue = (_DF(9.0) * (viscosity_aver[id_p1] + viscosity_aver[id]) - (viscosity_aver[id_p2] + viscosity_aver[id_m1])) / _DF(16.0);
+    real_t lamada = -_DF(2.0) / _DF(3.0) * mue;
+    real_t f_x, f_y, f_z;
+    real_t u_hlf, v_hlf, w_hlf;
+    f_x = DIM_X ? mue * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) / dz / _DF(24.0) : _DF(0.0);
+    f_y = DIM_Y ? mue * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) / dz / _DF(24.0) : _DF(0.0);
+    f_z = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) / dz / _DF(24.0);
+
+    f_x += DIM_X ? mue * (_DF(9.0) * (Dwcx[id_p1] + Dwcx[id]) - (Dwcx[id_p2] + Dwcx[id_m1])) / _DF(16.0) : _DF(0.0);
+    f_y += DIM_Y ? mue * (_DF(9.0) * (Dwcy[id_p1] + Dwcy[id]) - (Dwcy[id_p2] + Dwcy[id_m1])) / _DF(16.0) : _DF(0.0);
+    f_z += lamada * (_DF(9.0) * (Ducx[id_p1] + Ducx[id]) - (Ducx[id_p2] + Ducx[id_m1]) + _DF(9.0) * (Dvcy[id_p1] + Dvcy[id]) - (Dvcy[id_p2] + Dvcy[id_m1])) / _DF(16.0);
+    u_hlf = DIM_X ? (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) / _DF(16.0) : _DF(0.0);
+    v_hlf = DIM_Y ? (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) / _DF(16.0) : _DF(0.0);
+    w_hlf = (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) / _DF(16.0);
+    F_z_wall_v[0] = _DF(0.0);
+    F_z_wall_v[1] = f_x;
+    F_z_wall_v[2] = f_y;
+    F_z_wall_v[3] = f_z;
+    F_z_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
+
+#ifdef Heat    // Fourier thermal conductivity
+    real_t kk; // thermal conductivity at wall
+    kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id_m1])) / _DF(16.0);
+    kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dz / _DF(24.0);                                                // temperature gradient at wall
+    F_z_wall_v[4] += kk;                                                                                                            // Equation (32) or Equation (10)
+#endif                                                                                                                              // end Heat
+#ifdef Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
+    real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);
+    real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yiz_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];
+    for (int l = 0; l < NUM_SPECIES; l++)
+    {
+            hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+            Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+            Yi_wall[l] = (_DF(9.0) * (Yi[l][id_p1] + Yi[l][id]) - (Yi[l][id_p2] + Yi[l][id_m1])) / _DF(16.0);
+            Yiz_wall[l] = (_DF(27.0) * (Yi[l][id_p1] - Yi[l][id]) - (Yi[l][id_p2] - Yi[l][id_m1])) / dz / _DF(24.0); // temperature gradient at wall
+    }
+#ifdef Heat
+    for (int l = 0; l < NUM_SPECIES; l++)
+            F_z_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yiz_wall[l];
+#endif     // end Heat
+#ifdef COP // visc flux for cop equations
+    real_t CorrectTermZ = _DF(0.0);
+    for (int l = 0; l < NUM_SPECIES; l++)
+            CorrectTermZ += Dim_wall[l] * Yiz_wall[l];
+    CorrectTermZ *= rho_wall;
+    // ADD Correction Term in X-direction
+    for (int p = 5; p < Emax; p++)
+            F_z_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yiz_wall[p - 5] - Yi_wall[p - 5] * CorrectTermZ;
+#endif // end COP
+#endif // end Diffu
+    for (size_t i = 0; i < Emax; i++)
+    { // add viscous flux to fluxwall
+            FluxHw[i + Emax * id] -= F_z_wall_v[i];
+    }
+}
+#endif // end DIM_Z
 #endif // Visc
 
 #ifdef React
