@@ -163,8 +163,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = 700.0; // p[id] / rho[id] / R; // NOTE: for debug  p[id] / rho[id] / R;
-    rho[id] = p[id] / R / T[id];
+    T[id] = p[id] / rho[id] / R;
+    // T[id] = _DF(700.0); // TODO: for debug
+    // rho[id] = p[id] / R / T[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     real_t h = get_Coph(thermal, yi, T[id]);
     // U[4] of mixture differ from pure gas
@@ -243,7 +244,6 @@ real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, const real_t yi[NUM_SP
     {
         Ri[n] = Ru / thermal->species_chara[n * SPCH_Sz + 6];
         _dpdrhoi[n] = (gamma - _DF(1.0)) * (hi[NUM_COP] - hi[n]) + gamma * (Ri[n] - Ri[NUM_COP]) * T; // related with yi
-        // printf("_dpdrhoi[n]=%lf \n", _dpdrhoi[n]);
         z[n] = -_DF(1.0) * _dpdrhoi[n] / (gamma - _DF(1.0));
         if (NUM_COP != n) // related with yi
             Sum_dpdrhoi += yi[n] * _dpdrhoi[n];
@@ -287,7 +287,6 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
     real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES];
-    // NOTE: _hi Only defined by T , get_T at left && right may be different
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
         real_t Ri = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
@@ -399,7 +398,6 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
     real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES];
-    // NOTE: _hi Only defined by T , get_T at left && right may be different
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
         real_t Ri = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
@@ -415,10 +413,8 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
         _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
         _h += _hi[ii] * _yi[ii];
     }
-    //  _h=_H-_DF(0.5)*(_u*_u+_v*_v+_w*_w);
     real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
     real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T);
-    // printf("argus at [%d],[%d][%d][%d]=yi=%lf, %lf, T=%lf,hi=%lf, %lf, _h=%lf, Gamma=%lf, c2=%lf, zi=%lf,%lf\n", id_l, i, j, k, _yi[0], _yi[1], T, _hi[0], _hi[1], _h, Gamma0, c2, z[0], z[1]); //_Cp
 #else
     real_t Gamma0 = Gamma;
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
@@ -509,7 +505,6 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
     real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES];
-    // NOTE: _hi Only defined by T , get_T at left && right may be different
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
         real_t Ri = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
@@ -525,10 +520,8 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
         _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
         _h += _hi[ii] * _yi[ii];
     }
-    //  _h=_H-_DF(0.5)*(_u*_u+_v*_v+_w*_w);
     real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
     real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T);
-    // printf("argus at [%d],[%d][%d][%d]=yi=%lf, %lf, T=%lf,hi=%lf, %lf, _h=%lf, Gamma=%lf, c2=%lf, zi=%lf,%lf\n", id_l, i, j, k, _yi[0], _yi[1], T, _hi[0], _hi[1], _h, Gamma0, c2, z[0], z[1]); //_Cp
 #else
     real_t Gamma0 = Gamma;
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
@@ -700,20 +693,11 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
 
-#ifdef Visc
-    // Gettransport_coeff_aver();
-#endif
-
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);
     real_t *Fz = &(FluxH[Emax * id]);
 
     GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
-    // real_t de_F[Emax], de_G[Emax], de_H[Emax];
-    // get_Array(FluxF, de_F, Emax, id);
-    // get_Array(FluxG, de_G, Emax, id);
-    // get_Array(FluxH, de_H, Emax, id);
-    // real_t de;
 }
 
 extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
@@ -943,44 +927,67 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
 }
 
 #ifdef Visc
-extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(sycl::nd_item<3> index, Block bl, real_t *const *V, real_t **Vde)
-{ // NOTE: 这是计算第i(j/k)个点右边的那个半点，所以从=(+Bwidth-2) 开始到<(+inner+Bwidth+2)结束
-    int i = index.get_global_id(0) + bl.Bwidth_X - 2;
-    int j = index.get_global_id(1) + bl.Bwidth_Y - 2;
-    int k = index.get_global_id(2) + bl.Bwidth_Z - 2;
-#ifdef DIM_X
-    if (i > bl.Xmax - bl.Bwidth_X + 1) // NOTE：在CUDA中可以尝试使用shared memory
-            return;
+extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t **Vde)
+{
+#if DIM_X
+    if (i > bl.Xmax - bl.Bwidth_X + 1)
+        return;
 #endif // DIM_X
-#ifdef DIM_Y
+#if DIM_Y
     if (i > bl.Ymax - bl.Bwidth_Y + 1)
             return;
 #endif // DIM_Y
-#ifdef DIM_Z
+#if DIM_Z
     if (i > bl.Zmax - bl.Bwidth_Z + 1)
             return;
 #endif // DIM_Z
     int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-    int if_dim[3] = {DIM_X, DIM_Y, DIM_Z}, id_m1[3], id_m2[3], id_p1[3], id_p2[3];
-    real_t _D[3] = {bl.dx, bl.dy, bl.dz};
-    id_m1[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
-    id_m2[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
-    id_p1[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-    id_p2[0] = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 2;
-    id_m1[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 1) + i;
-    id_m2[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 2) + i;
-    id_p1[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i;
-    id_p2[1] = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 2) + i;
-    id_m1[2] = bl.Xmax * bl.Ymax * (k - 1) + bl.Xmax * j + i;
-    id_m2[2] = bl.Xmax * bl.Ymax * (k - 2) + bl.Xmax * j + i;
-    id_p1[2] = bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i;
-    id_p2[2] = bl.Xmax * bl.Ymax * (k + 2) + bl.Xmax * j + i;
 
-    for (unsigned int ii = 0; ii < 9; ii++)
-    {
-            int dim = ii % 3;
-            Vde[i][id] = if_dim[dim] ? (_DF(8.0) * (V[dim][id_p1[dim]] - V[dim][id_m1[dim]]) - (V[dim][id_p2[dim]] - V[dim][id_m2[dim]])) / _D[ii / 3] / _DF(12.0) : _DF(0.0);
-    }
+#if DIM_X
+    real_t dx = bl.dx;
+    int id_m1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
+    int id_m2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
+    int id_p1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+    int id_p2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
+
+    Vde[ducx][id] = (_DF(8.0) * (u[id_p1_x] - u[id_m1_x]) - (u[id_p2_x] - u[id_m2_x])) / dx / _DF(12.0);
+    Vde[dvcx][id] = DIM_Y ? (_DF(8.0) * (v[id_p1_x] - v[id_m1_x]) - (v[id_p2_x] - v[id_m2_x])) / dx / _DF(12.0) : _DF(0.0);
+    Vde[dwcx][id] = DIM_Z ? (_DF(8.0) * (w[id_p1_x] - w[id_m1_x]) - (w[id_p2_x] - w[id_m2_x])) / dx / _DF(12.0) : _DF(0.0);
+#else
+    Vde[ducx][id] = _DF(0.0);
+    Vde[dvcx][id] = _DF(0.0);
+    Vde[dwcx][id] = _DF(0.0);
+#endif // end DIM_X
+#if DIM_Y
+    real_t dy = bl.dy;
+    int id_m1_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 1) + i;
+    int id_m2_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 2) + i;
+    int id_p1_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i;
+    int id_p2_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 2) + i;
+
+    Vde[ducy][id] = DIM_X ? (_DF(8.0) * (u[id_p1_y] - u[id_m1_y]) - (u[id_p2_y] - u[id_m2_y])) / dy / _DF(12.0) : _DF(0.0);
+    Vde[dvcy][id] = (_DF(8.0) * (v[id_p1_y] - v[id_m1_y]) - (v[id_p2_y] - v[id_m2_y])) / dy / _DF(12.0);
+    Vde[dwcy][id] = DIM_Z ? (_DF(8.0) * (w[id_p1_y] - w[id_m1_y]) - (w[id_p2_y] - w[id_m2_y])) / dy / _DF(12.0) : _DF(0.0);
+#else
+    Vde[ducy][id] = _DF(0.0);
+    Vde[dvcy][id] = _DF(0.0);
+    Vde[dwcy][id] = _DF(0.0);
+#endif // end DIM_Y
+#if DIM_Z
+    real_t dz = bl.dz;
+    int id_m1_z = bl.Xmax * bl.Ymax * (k - 1) + bl.Xmax * j + i;
+    int id_m2_z = bl.Xmax * bl.Ymax * (k - 2) + bl.Xmax * j + i;
+    int id_p1_z = bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i;
+    int id_p2_z = bl.Xmax * bl.Ymax * (k + 2) + bl.Xmax * j + i;
+
+    Vde[ducz][id] = DIM_X ? (_DF(8.0) * (u[id_p1_z] - u[id_m1_z]) - (u[id_p2_z] - u[id_m2_z])) / dz / _DF(12.0) : _DF(0.0);
+    Vde[dvcz][id] = DIM_Y ? (_DF(8.0) * (v[id_p1_z] - v[id_m1_z]) - (v[id_p2_z] - v[id_m2_z])) / dz / _DF(12.0) : _DF(0.0);
+    Vde[dwcz][id] = (_DF(8.0) * (w[id_p1_z] - w[id_m1_z]) - (w[id_p2_z] - w[id_m2_z])) / dz / _DF(12.0);
+#else
+    Vde[ducz][id] = _DF(0.0);
+    Vde[dvcz][id] = _DF(0.0);
+    Vde[dwcz][id] = _DF(0.0);
+#endif // end DIM_Z
 }
 
 extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
@@ -1179,7 +1186,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
 }
 
 extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal *thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
-                                                  real_t *Dkm_aver, real_t *const *y, real_t *rho, real_t *p, real_t *T)
+                                                  real_t *Dkm_aver, real_t *const *y, real_t *hi, real_t *rho, real_t *p, real_t *T)
 {
 #ifdef DIM_X
     if (i >= bl.Xmax)
@@ -1196,10 +1203,15 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
     int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
     // get mole fraction of each specie
     real_t X[NUM_SPECIES] = {_DF(0.0)}, yi[NUM_SPECIES] = {_DF(0.0)};
+    for (size_t i = 0; i < NUM_SPECIES; i++)
+    {
+            real_t Ri = Ru / thermal->species_chara[i * SPCH_Sz + 6];
+            hi[i + NUM_SPECIES * id] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id], Ri, i);
+    }
     get_yi(y, yi, id);
     real_t C_total = get_xi(X, yi, thermal->species_chara);
     // calculate viscosity_aver via equattion(5-49)//
-    Get_transport_coeff_aver(thermal, &(Dkm_aver[id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
+    Get_transport_coeff_aver(thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
 }
 
 #if DIM_X

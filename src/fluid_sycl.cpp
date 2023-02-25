@@ -63,11 +63,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	for (size_t i = 0; i < 9; i++)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 #endif // end Visc
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-	{
-		d_fstate.y[n] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	}
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+		d_fstate.y[n] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 #endif // COP
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));

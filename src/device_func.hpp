@@ -60,10 +60,11 @@ real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
 
 /**
  * @brief calculate Cpi of the specie at given point
+ * unit: J/kg/K
  */
 real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
-	real_t T = T0, Cpi = _DF(0.0); // NOTE:注意由Hia和Hib计算得到的Cp单位是J/kg/K
+	real_t T = T0, Cpi = _DF(0.0);
 	if (T < (200.0 / Tref))
 		T = 200.0 / Tref;
 #if Thermo
@@ -133,7 +134,6 @@ real_t get_CopGamma(Thermal *material, const real_t yi[NUM_SPECIES], const real_
 	}
 	else
 	{
-		// TODO printf("CopGamma calculate error: CopGamma=%lf,Yi of qloc =%lf,%lf,Cp=%lf,CopW=%lf\n", _CopGamma, yi[0], yi[1], Cp, CopW);
 		return 0;
 	}
 }
@@ -197,7 +197,7 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	if (T >= (1000.0 / Tref) && T < (6000.0 / Tref))
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 1] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * pow(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 1] * pow(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 1] * pow(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 1]);
 	else if (T < (1000.0 / Tref))
-	{ // TODO: hi[n] caculate error
+	{
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 0] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * pow(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 0] * pow(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 0] * pow(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 0]);
 	}
 	else if (T >= (6000.0 / Tref) && T < (15000.0 / Tref))
@@ -207,6 +207,7 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	else
 	{
 		// TODO printf("T=%lf,T > 15000 K,please check!!!NO h for T>15000 K. \n", T * Tref);
+		return 0;
 	}
 #else
 	// H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
@@ -462,7 +463,7 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n]; // NOTE: eigen values related with yi
+		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n]; // NOTE: related with yi eigen values
 		eigen_l[1][n + Emax - NUM_COP] = z[n];
 		eigen_l[2][n + Emax - NUM_COP] = 0;
 		eigen_l[3][n + Emax - NUM_COP] = 0;
@@ -1472,7 +1473,7 @@ real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, const rea
  * @brief get average transport coefficient
  * @param chemi is set to get species information
  */
-void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
+void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
 							  const real_t rho, const real_t p, const real_t T, const real_t C_total)
 {
 	real_t **fcv = thermal->fitted_coefficients_visc;
@@ -1500,8 +1501,8 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver, real_t &viscos
 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
 	if (1 == NUM_SPECIES)
 	{
-		Dkm_aver[0] = GetDkj(specie[0], specie[0], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[0], chemi.species[0], refstat);
-		Dkm_aver[0] *= _DF(1.0e-4); // cm2/s==>m2/s
+		Dkm_aver_id[0] = GetDkj(specie[0], specie[0], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[0], chemi.species[0], refstat);
+		Dkm_aver_id[0] *= _DF(1.0e-4);							  // cm2/s==>m2/s
 	}
 	else
 	{
@@ -1518,8 +1519,8 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver, real_t &viscos
 				}
 			}
 			temp3 = temp1 / temp2 / (rho / C_total);
-			Dkm_aver[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
-			Dkm_aver[k] *= _DF(1.0e-4);					   // cm2/s==>m2/s
+			Dkm_aver_id[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
+			Dkm_aver_id[k] *= _DF(1.0e-4);					  // cm2/s==>m2/s
 		}
 	}
 }

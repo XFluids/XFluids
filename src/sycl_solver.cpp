@@ -22,7 +22,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 	double duration = 0.0;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
-	// RK3
+
 	while (physicalTime < Ss.EndTime)
 	{
 		cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
@@ -34,7 +34,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt
-		dt = ComputeTimeStep(q); // 5.0e-5;//0.001;//
+		dt = ComputeTimeStep(q); // 3.0e-4; // TODO: debug for viscous flux // 5.0e-5;//0.001;//
 		if (physicalTime + dt > Ss.EndTime)
 			dt = Ss.EndTime - physicalTime;
 		// solved the fluid with 3rd order Runge-Kutta method
@@ -42,14 +42,14 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		Reaction(q, dt);
+		// Reaction(q, dt); // TODO: without Reaction
 #endif // React
 #endif // COP
 		physicalTime = physicalTime + dt;
 		Iteration++;
 	}
-	cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
 	Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
+
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
 	printf("GPU runtime : %12.8f s\n", duration / 1000.0f);
@@ -106,18 +106,6 @@ real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
 void SYCLSolver::ComputeLU(sycl::queue &q, int flag)
 {
 	fluids[0]->ComputeFluidLU(q, flag);
-/* Viscous LU including physical visc(切应力),Heat transfer(传热), mass Diffusion(质量扩散)
- * Physical Visc must be included Heat is alternative and Diffu depends on compent
- */
-#ifdef Visc
-	// fluids[0]->ComputeFluidLU(q);
-#ifdef Heat
-#endif // Heat transfer
-#ifdef COP
-#ifdef Diffu
-#endif // mass Diffusion
-#endif // COP
-#endif // physical Visc
 }
 
 void SYCLSolver::UpdateU(sycl::queue &q, int flag)
@@ -133,7 +121,7 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 }
 
 void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
-{ // NOTE: Visc added here
+{
 	for (int n = 0; n < NumFluid; n++)
 	{
 		fluids[n]->UpdateFluidStates(q, flag);
@@ -191,12 +179,6 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 		}
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 #endif // COP
-#ifdef Visc
-		for (size_t i = 0; i < 9; i++)
-		{
-			q.memcpy(fluids[n]->h_fstate.Vde[i], fluids[n]->d_fstate.Vde[i], bytes);
-		}
-#endif // Visc
 	}
 	q.wait();
 }

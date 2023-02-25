@@ -27,7 +27,7 @@ option(React "if enable chemical recation, based on COP=ON" ON)
 set(ReaType "0")#define which reaction to caculate, 0 for H2+O2
 
 # about platform and device
-set(SelectDv "host") # define which platform and devices for compile options:host,nvidia,amd,intel
+set(SelectDv "nvidia") # define which platform and devices for compile options:host,nvidia,amd,intel
 option(ENABLE_OPENMP "if need openmp" OFF)
 option(USE_MPI "if enable mpi" OFF)
 

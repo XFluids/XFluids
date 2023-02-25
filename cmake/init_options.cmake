@@ -11,6 +11,10 @@ IF(Heat)
   add_compile_options(-DHeat)
 ENDIF(Heat)
 
+IF(Diffu)
+  add_compile_options(-DDiffu)
+ENDIF(Diffu)
+
 IF(DIM_X)
   add_compile_options(-DDIM_X=1)
 ELSE(DIM_X)
