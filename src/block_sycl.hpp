@@ -125,16 +125,16 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, real_t *u, real_t *v, rea
 	int offset_x = DIM_X ? bl.Bwidth_X - 2 : 0; // NOTE: 这是计算第i(j/k)个点右边的那个半点，所以从=(+Bwidth-2) 开始到<(+inner+Bwidth+2)结束
 	int offset_y = DIM_Y ? bl.Bwidth_Y - 2 : 0;
 	int offset_z = DIM_Z ? bl.Bwidth_Z - 2 : 0;
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	auto local_ndrange_ck = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_ck = range<3>(range_x, range_y, range_z);
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_ck, local_ndrange), [=](sycl::nd_item<3> index)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_ck, local_ndrange_ck), [=](sycl::nd_item<3> index)
 							  {
 			int i = index.get_global_id(0) + offset_x;
 			int j = index.get_global_id(1) + offset_y;
 			int k = index.get_global_id(2) + offset_z;
-			GetInnerCellCenterDerivativeKernel(i, j, k, bl, u, v, w, Vde); }); });
-	q.wait();
+			GetInnerCellCenterDerivativeKernel(i, j, k, bl, u, v, w, Vde); }); })
+		.wait();
 
 #if DIM_X
 	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
@@ -293,7 +293,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 	real_t *tca = fdata.thermal_conduct_aver;
 	real_t *Da = fdata.Dkm_aver;
 	real_t *hi = fdata.hi;
-	GetCellCenterDerivative(q, bl, u, v, w, fdata.Vde, BCs);
+
+	GetCellCenterDerivative(q, bl, u, v, w, Vde, BCs);
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
 							  {

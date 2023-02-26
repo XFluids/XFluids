@@ -34,7 +34,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt
-		dt = ComputeTimeStep(q); // 3.0e-4; // TODO: debug for viscous flux // 5.0e-5;//0.001;//
+		dt = ComputeTimeStep(q); // 3.0e-4; // debug for viscous flux // 5.0e-5;//0.001;//
 		if (physicalTime + dt > Ss.EndTime)
 			dt = Ss.EndTime - physicalTime;
 		// solved the fluid with 3rd order Runge-Kutta method
@@ -42,7 +42,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		// Reaction(q, dt); // TODO: without Reaction
+		Reaction(q, dt); // TODO: without Reaction
 #endif // React
 #endif // COP
 		physicalTime = physicalTime + dt;

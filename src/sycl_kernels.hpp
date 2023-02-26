@@ -163,9 +163,12 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = p[id] / rho[id] / R;
-    // T[id] = _DF(700.0); // TODO: for debug
-    // rho[id] = p[id] / R / T[id];
+    // T[id] = p[id] / rho[id] / R;
+    T[id] = x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
+    p[id] = x < 0.5 ? _DF(72200.0) : _DF(36100.0);
+    u[id] = x < 0.5 ? _DF(10.0) : 0.0;
+    v[id] = y < 0.5 ? _DF(0.0) : 10.0;
+    rho[id] = p[id] / R / T[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     real_t h = get_Coph(thermal, yi, T[id]);
     // U[4] of mixture differ from pure gas
