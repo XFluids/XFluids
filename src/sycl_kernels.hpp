@@ -930,7 +930,7 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
 }
 
 #ifdef Visc
-extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t **Vde)
+extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 {
 #if DIM_X
     if (i > bl.Xmax - bl.Bwidth_X + 1)
@@ -953,6 +953,9 @@ extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k
     int id_p1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
     int id_p2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
 
+    // real_t a = u[id_p1_x];
+    // a = Ducx[id_p1_x];
+    // Ducx[id] = (_DF(8.0) * (u[id_p1_x] - u[id_m1_x]) - (u[id_p2_x] - u[id_m2_x])) / dx / _DF(12.0);
     Vde[ducx][id] = (_DF(8.0) * (u[id_p1_x] - u[id_m1_x]) - (u[id_p2_x] - u[id_m2_x])) / dx / _DF(12.0);
     Vde[dvcx][id] = DIM_Y ? (_DF(8.0) * (v[id_p1_x] - v[id_m1_x]) - (v[id_p2_x] - v[id_m2_x])) / dx / _DF(12.0) : _DF(0.0);
     Vde[dwcx][id] = DIM_Z ? (_DF(8.0) * (w[id_p1_x] - w[id_m1_x]) - (w[id_p2_x] - w[id_m2_x])) / dx / _DF(12.0) : _DF(0.0);
@@ -1005,7 +1008,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block b
     int Bwidth_Y = bl.Bwidth_Y;
     int Bwidth_Z = bl.Bwidth_Z;
     int id = Xmax * Ymax * k + Xmax * j + i;
-
+    real_t *Vde_x[] = {Vde[ducy], Vde[ducz], Vde[dvcy], Vde[dwcz]};
 #if DIM_Y
     if (j >= Ymax)
             return;
@@ -1022,7 +1025,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block b
             int offset = 2 * (Bwidth_X + mirror_offset) - 1;
             int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_x[n][id] = Vde_x[n][target_id];
     }
     break;
 
@@ -1030,20 +1033,20 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block b
     {
             int target_id = Xmax * Ymax * k + Xmax * j + (i + sign * X_inner);
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_x[n][id] = Vde_x[n][target_id];
     }
     break;
 
     case Inflow:
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = real_t(0.0f);
+            Vde_x[n][id] = real_t(0.0f);
             break;
 
     case Outflow:
     {
             int target_id = Xmax * Ymax * k + Xmax * j + index_inner;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_x[n][id] = Vde_x[n][target_id];
     }
     break;
 
@@ -1052,7 +1055,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block b
             int offset = 2 * (Bwidth_X + mirror_offset) - 1;
             int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = -Vde[n][target_id];
+            Vde_x[n][id] = -Vde_x[n][target_id];
     }
     break;
     }
@@ -1070,7 +1073,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block b
     int Bwidth_Y = bl.Bwidth_Y;
     int Bwidth_Z = bl.Bwidth_Z;
     int id = Xmax * Ymax * k + Xmax * j + i;
-
+    real_t *Vde_y[4] = {Vde[dvcx], Vde[dvcz], Vde[ducx], Vde[dwcz]};
 #if DIM_X
     if (i >= Xmax)
             return;
@@ -1087,7 +1090,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block b
             int offset = 2 * (Bwidth_Y + mirror_offset) - 1;
             int target_id = Xmax * Ymax * k + Xmax * (offset - j) + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_y[n][id] = Vde_y[n][target_id];
     }
     break;
 
@@ -1095,20 +1098,20 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block b
     {
             int target_id = Xmax * Ymax * k + Xmax * (j + sign * Y_inner) + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_y[n][id] = Vde_y[n][target_id];
     }
     break;
 
     case Inflow:
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = real_t(0.0f);
+            Vde_y[n][id] = real_t(0.0f);
             break;
 
     case Outflow:
     {
             int target_id = Xmax * Ymax * k + Xmax * index_inner + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_y[n][id] = Vde_y[n][target_id];
     }
     break;
 
@@ -1117,7 +1120,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block b
             int offset = 2 * (Bwidth_Y + mirror_offset) - 1;
             int target_id = Xmax * Ymax * k + Xmax * (offset - j) + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = -Vde[n][target_id];
+            Vde_y[n][id] = -Vde_y[n][target_id];
     }
     break;
     }
@@ -1135,7 +1138,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
     int Bwidth_Y = bl.Bwidth_Y;
     int Bwidth_Z = bl.Bwidth_Z;
     int id = Xmax * Ymax * k + Xmax * j + i;
-
+    real_t *Vde_z[4] = {Vde[dwcx], Vde[dwcy], Vde[ducx], Vde[dvcy]};
 #if DIM_X
     if (i >= Xmax)
             return;
@@ -1152,7 +1155,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
             int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
             int target_id = Xmax * Ymax * (offset - k) + Xmax * j + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_z[n][id] = Vde_z[n][target_id];
     }
     break;
 
@@ -1160,20 +1163,20 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
     {
             int target_id = Xmax * Ymax * (k + sign * Z_inner) + Xmax * j + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_z[n][id] = Vde_z[n][target_id];
     }
     break;
 
     case Inflow:
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = real_t(0.0f);
+            Vde_z[n][id] = real_t(0.0f);
             break;
 
     case Outflow:
     {
             int target_id = Xmax * Ymax * index_inner + Xmax * j + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = Vde[n][target_id];
+            Vde_z[n][id] = Vde_z[n][target_id];
     }
     break;
 
@@ -1182,7 +1185,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
             int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
             int target_id = Xmax * Ymax * (k - offset) + Xmax * j + i;
             for (int n = 0; n < 4; n++)
-            Vde[n][id] = -Vde[n][target_id];
+            Vde_z[n][id] = -Vde_z[n][target_id];
     }
     break;
     }
@@ -1213,7 +1216,6 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
     }
     get_yi(y, yi, id);
     real_t C_total = get_xi(X, yi, thermal->species_chara);
-    // calculate viscosity_aver via equattion(5-49)//
     Get_transport_coeff_aver(thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
 }
 

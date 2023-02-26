@@ -1492,6 +1492,7 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 		denominator = 0.0;
 		for (int i = 0; i < NUM_SPECIES; i++)
 			denominator = denominator + X[i] * PHI(specie[k], specie[i], fcv, T);
+		// calculate viscosity_aver via equattion(5-49)//
 		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) / denominator; // Pa.s=kg/(m.s)
 		// calculate thermal_conduct via Su Hongmin//
 		thermal_conduct_aver = thermal_conduct_aver + X[k] * Thermal_conductivity(fct[int(specie[k][SID])], T) / denominator;
