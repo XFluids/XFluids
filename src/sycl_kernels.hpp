@@ -794,7 +794,13 @@ extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, Block bl, BConditi
         d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
         }
         break;
-    }
+#ifdef USE_MPI
+        case BC_COPY:
+        break;
+        case BC_UNDEFINED:
+        break;
+#endif
+        }
 }
 
 extern SYCL_EXTERNAL void FluidBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
@@ -860,32 +866,39 @@ extern SYCL_EXTERNAL void FluidBCKernelY(int i, int j, int k, Block bl, BConditi
         d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
         }
         break;
-    }
+#ifdef USE_MPI
+        case BC_COPY:
+        break;
+        case BC_UNDEFINED:
+        break;
+#endif
+        }
 }
 
 extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
-    int Xmax = bl.Xmax;
-    int Ymax = bl.Ymax;
-    int Zmax = bl.Zmax;
-    int X_inner = bl.X_inner;
-    int Y_inner = bl.Y_inner;
-    int Z_inner = bl.Z_inner;
-    int Bwidth_X = bl.Bwidth_X;
-    int Bwidth_Y = bl.Bwidth_Y;
-    int Bwidth_Z = bl.Bwidth_Z;
-    int id = Xmax * Ymax * k + Xmax * j + i;
+        int Xmax = bl.Xmax;
+        int Ymax = bl.Ymax;
+        int Zmax = bl.Zmax;
+        int X_inner = bl.X_inner;
+        int Y_inner = bl.Y_inner;
+        int Z_inner = bl.Z_inner;
+        int Bwidth_X = bl.Bwidth_X;
+        int Bwidth_Y = bl.Bwidth_Y;
+        int Bwidth_Z = bl.Bwidth_Z;
+        int id = Xmax * Ymax * k + Xmax * j + i;
 
 #if DIM_X
-    if(i >= Xmax)
+        if (i >= Xmax)
         return;
-    #endif
-    #if DIM_Y
-    if(j >= Ymax)
+#endif
+#if DIM_Y
+        if (j >= Ymax)
         return;
-    #endif
+#endif
 
-    switch(BC) {
+        switch (BC)
+        {
         case Symmetry:
         {
         int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
@@ -926,7 +939,13 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
         d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
         }
         break;
-    }
+#ifdef USE_MPI
+        case BC_COPY:
+        break;
+        case BC_UNDEFINED:
+        break;
+#endif
+        }
 }
 
 #if USE_MPI
@@ -1141,6 +1160,12 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block b
             Vde_x[n][id] = -Vde_x[n][target_id];
     }
     break;
+#ifdef USE_MPI
+    case BC_COPY:
+            break;
+    case BC_UNDEFINED:
+            break;
+#endif
     }
 }
 
@@ -1206,6 +1231,12 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block b
             Vde_y[n][id] = -Vde_y[n][target_id];
     }
     break;
+#ifdef USE_MPI
+    case BC_COPY:
+            break;
+    case BC_UNDEFINED:
+            break;
+#endif
     }
 }
 
@@ -1271,6 +1302,12 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
             Vde_z[n][id] = -Vde_z[n][target_id];
     }
     break;
+#ifdef USE_MPI
+    case BC_COPY:
+            break;
+    case BC_UNDEFINED:
+            break;
+#endif
     }
 }
 

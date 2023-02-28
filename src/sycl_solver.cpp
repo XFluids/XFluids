@@ -8,7 +8,7 @@ SYCLSolver::SYCLSolver(sycl::queue &q, Setup &setup) : Ss(setup), dt(setup.dt)
 	// Display the information of fluid materials
 	for (int n = 0; n < NumFluid; n++)
 	{
-		fluids[n] = new FluidSYCL(setup, Emax);
+		fluids[n] = new FluidSYCL(setup);
 		fluids[n]->initialize(n);
 	}
 }
@@ -310,7 +310,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		}
 		outHeader << "    </PCellData>" << std::endl;
 		// Out put for 2D && 3D;
-		for (int iPiece = 0; iPiece < Ss.nProcs; ++iPiece)
+		for (int iPiece = 0; iPiece < Ss.mpiTrans->nProcs; ++iPiece)
 		{
 			std::ostringstream pieceFormat;
 			pieceFormat.width(5);
@@ -323,7 +323,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 #else
 			int coords[2];
 #endif
-			Ss.communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
+			Ss.mpiTrans->communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
 			outHeader << " <Piece Extent=\"";
 			// pieces in first line of column are different (due to the special
 			// pvti file format with overlapping by 1 cell)

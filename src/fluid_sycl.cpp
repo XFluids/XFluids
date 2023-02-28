@@ -94,10 +94,10 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q)
 void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 {
 	if (flag == 0)
-		FluidBoundaryCondition(q, Fs.BlSz, BCs, d_U);
+		FluidBoundaryCondition(q, Ftrans, Fs.BlSz, BCs, d_U);
 	else
 	{
-		FluidBoundaryCondition(q, Fs.BlSz, BCs, d_U1);
+		FluidBoundaryCondition(q, Ftrans, Fs.BlSz, BCs, d_U1);
 	}
 }
 
