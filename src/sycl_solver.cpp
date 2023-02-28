@@ -5,10 +5,10 @@ SYCLSolver::SYCLSolver(sycl::queue &q, Setup &setup) : Ss(setup), dt(setup.dt)
 	// Print device name and version
 	std::cout << "Device: " << q.get_device().get_info<sycl::info::device::name>()
 			  << ",  version = " << q.get_device().get_info<sycl::info::device::version>() << "\n";
-	// display the information of fluid materials
+	// Display the information of fluid materials
 	for (int n = 0; n < NumFluid; n++)
 	{
-		fluids[n] = new FluidSYCL(setup);
+		fluids[n] = new FluidSYCL(setup, Emax);
 		fluids[n]->initialize(n);
 	}
 }
@@ -207,7 +207,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	int OnbX, OnbY, OnbZ, OminX, OminY, OminZ, OmaxX, OmaxY, OmaxZ;
 	real_t dx, dy, dz;
 
-	if (Ss.OutBoundary) //(Ss.Runtime_debug)
+	if (Ss.OutBoundary)
 	{
 		OnbX = Ss.BlSz.Xmax;
 		OminX = 0;
@@ -235,12 +235,12 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		OminZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Bwidth_Z : 0;
 		OmaxZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z : 1;
 	}
-	xmin = Ss.myMpiPos[0] * OnbX;
-	xmax = Ss.myMpiPos[0] * OnbX + OnbX;
-	ymin = Ss.myMpiPos[1] * OnbY;
-	ymax = Ss.myMpiPos[1] * OnbY + OnbY;
-	zmin = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.myMpiPos[2] * OnbZ) : 0;
-	zmax = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.myMpiPos[2] * OnbZ + OnbZ) : 0;
+	xmin = Ss.BlSz.myMpiPos_x * OnbX;
+	xmax = Ss.BlSz.myMpiPos_x * OnbX + OnbX;
+	ymin = Ss.BlSz.myMpiPos_y * OnbY;
+	ymax = Ss.BlSz.myMpiPos_y * OnbY + OnbY;
+	zmin = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.BlSz.myMpiPos_z * OnbZ) : 0;
+	zmax = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.BlSz.myMpiPos_z * OnbZ + OnbZ) : 0;
 	dx = Ss.BlSz.dx;
 	dy = Ss.BlSz.dy;
 	dz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.dz : 0.0;
@@ -275,9 +275,9 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".vti";
 #endif
 #ifdef USE_MPI
-	mx = Ss.mx;
-	my = Ss.my;
-	mz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.mz : 0;
+	mx = Ss.BlSz.mx;
+	my = Ss.BlSz.my;
+	mz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.mz : 0;
 	if (0 == rank) // write header
 	{
 		std::fstream outHeader;

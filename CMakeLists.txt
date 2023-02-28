@@ -26,11 +26,12 @@ option(COP "if enable compoent, based on Multi=OFF" ON)
 option(React "if enable chemical recation, based on COP=ON" ON)
 set(ReaType "0")#define which reaction to caculate, 0 for H2+O2
 
-# about platform and device
+#about platform and device
 set(SelectDv "nvidia") # define which platform and devices for compile options:host,nvidia,amd,intel
-option(ENABLE_OPENMP "if need openmp" OFF)
-option(USE_MPI "if enable mpi" OFF)
+option(USE_MPI "if enable mpi" ON)
+option(AWARE_MPI "if enable aware-mpi" OFF)
+option(ENABLE_OPENMP "if enable openmp" OFF)
 
-# #cmake modules
-include(init_options) # #add main exec
+# cmake modules
+include(init_options) # add main exec
 add_subdirectory(src)

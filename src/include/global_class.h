@@ -57,7 +57,9 @@ class FluidSYCL; class SYCLSolver;
 
 class FluidSYCL{
     Setup Fs;
-
+#if USE_MPI
+    MpiTrans *Ftrans; // Give N=Emax for initialize
+#endif
 public:
     real_t *uvw_c_max;
     real_t *d_U, *d_U1, *d_LU;
@@ -68,7 +70,12 @@ public:
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
 
-    FluidSYCL(Setup &setup) : Fs(setup){};
+    FluidSYCL(Setup &setup, const int N = Emax) : Fs(setup)
+    {
+#if USE_MPI
+        Ftrans = new MpiTrans(setup.q, setup.BlSz, setup.Boundarys, N);
+#endif // end USE_MPI
+    };
 
     void initialize(int n);
     void InitialU(sycl::queue &q);

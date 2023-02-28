@@ -929,6 +929,89 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
     }
 }
 
+#if USE_MPI
+extern SYCL_EXTERNAL void FluidMpiCopyKernelX(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
+                                              const int Bwidth_Xset, const MpiCpyType Cpytype)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    int tid = abs(Bwidth_Xset) * Ymax * k + abs(Bwidth_Xset) * j + (i - index_offset);
+    int fid = Xmax * Ymax * k + Xmax * j + (i - Bwidth_Xset);
+
+#if DIM_Y
+    if (j >= Ymax)
+        return;
+#endif
+#if DIM_Z
+    int Zmax = bl.Zmax;
+    if (k >= Zmax)
+        return;
+#endif
+    for (size_t n = 0; n < Emax; n++)
+    {
+        if (BorToBuf == Cpytype)
+            d_TransBuf[Emax * tid + n] = d_UI[Emax * fid + n];
+        if (BufToBC == Cpytype)
+            d_UI[Emax * id + n] = d_TransBuf[Emax * tid + n];
+    }
+}
+
+extern SYCL_EXTERNAL void FluidMpiCopyKernelY(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
+                                              const int Bwidth_Yset, const MpiCpyType Cpytype)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    int tid = Xmax * abs(Bwidth_Yset) * k + Xmax * (j - index_offset) + i;
+    int fid = Xmax * Ymax * k + Xmax * (j - Bwidth_Yset) + i;
+
+#if DIM_Y
+    if (j >= Ymax)
+        return;
+#endif
+#if DIM_Z
+    if (k >= bl.Zmax)
+        return;
+#endif
+    for (size_t n = 0; n < Emax; n++)
+    {
+        if (BorToBuf == Cpytype)
+            d_TransBuf[Emax * tid + n] = d_UI[Emax * fid + n];
+        if (BufToBC == Cpytype)
+            d_UI[Emax * id + n] = d_TransBuf[Emax * tid + n];
+    }
+}
+
+extern SYCL_EXTERNAL void FluidMpiCopyKernelZ(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
+                                              const int Bwidth_Zset, const MpiCpyType Cpytype)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    int tid = Xmax * Ymax * (k - index_offset) + Xmax * j + i;
+    int fid = Xmax * Ymax * (k - Bwidth_Zset) + Xmax * j + i;
+
+#if DIM_Y
+    if (j >= Ymax)
+        return;
+#endif
+#if DIM_Z
+    if (k >= bl.Zmax)
+        return;
+#endif
+    for (size_t n = 0; n < Emax; n++)
+    {
+        if (BorToBuf == Cpytype)
+            d_TransBuf[Emax * tid + n] = d_UI[Emax * fid + n];
+        if (BufToBC == Cpytype)
+            d_UI[Emax * id + n] = d_TransBuf[Emax * tid + n];
+    }
+}
+#endif // end USE_MPI
+
 #ifdef Visc
 extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 {

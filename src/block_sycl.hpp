@@ -359,59 +359,135 @@ void FluidBoundaryCondition(sycl::queue &q, Block bl, BConditions BCs[6], real_t
 	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);
 
-	BConditions BC0 = BCs[0], BC1 = BCs[1];
-
+#if USE_MPI
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
 							  {
-    		int i0 = index.get_global_id(0) + 0;
-			int i1 = index.get_global_id(0) + bl.Xmax - bl.Bwidth_X;
-			int j = index.get_global_id(1);
-			int k = index.get_global_id(2);
+								  int i0 = index.get_global_id(0) + 0;
+								  int i1 = index.get_global_id(0) + bl.Xmax - bl.Bwidth_X;
+								  int j = index.get_global_id(1);
+								  int k = index.get_global_id(2);
 
-			FluidBCKernelX(i0, j, k, bl, BC0, d_UI, 0, bl.Bwidth_X, 1);
-			FluidBCKernelX(i1, j, k, bl, BC1, d_UI, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); })
+								  FluidMpiCopyKernelX(i0, j, k, bl, d_mpiData->TransBufRecv_xmin, d_UI, 0, -bl.Bwidth_X, BorToBuf);					   // X_MIN
+								  FluidMpiCopyKernelX(i1, j, k, bl, d_mpiData->TransBufRecv_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BorToBuf); // X_MAX
+							  }); })
 		.wait();
-#endif
+
+	Ftrans->MpiTransBuf(XDIR);
+#endif // USE_MPI
+	BConditions BC0 = BCs[0], BC1 = BCs[1];
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(
+				   sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
+				   {
+					   int i0 = index.get_global_id(0) + 0;
+					   int i1 = index.get_global_id(0) + bl.Xmax - bl.Bwidth_X;
+					   int j = index.get_global_id(1);
+					   int k = index.get_global_id(2);
+#if USE_MPI
+					   if (Ftrans->neighborsBC[XMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
+						   FluidMpiCopyKernelX(i0, j, k, bl, d_mpiData->TransBufRecv_xmin, d_UI, 0, -bl.Bwidth_X, BufToBC);
+					   else
+#endif // USE_MPI
+						   FluidBCKernelX(i0, j, k, bl, BC0, d_UI, 0, bl.Bwidth_X, 1);
+#ifdef USE_MPI
+					   if (Ftrans->neighborsBC[XMAX] == BC_COPY)
+						   FluidMpiCopyKernelX(i1, j, k, bl, d_mpiData->TransBufRecv_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BufToBC);
+					   else
+#endif // USE_MPI
+						   FluidBCKernelX(i1, j, k, bl, BC1, d_UI, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1);
+				   }); })
+		.wait();
+#endif // end USE_MPI
+#endif // end DIM_X
 
 #if DIM_Y
 	auto local_ndrange_y = range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange_y = range<3>(bl.Xmax, bl.Bwidth_Y, bl.Zmax);
 
-	BConditions BC2 = BCs[2], BC3 = BCs[3];
-
+#if USE_MPI
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
 							  {
-			int i = index.get_global_id(0);
-			int j0 = index.get_global_id(1) + 0;
-			int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
-			int k = index.get_global_id(2);
+								  int i = index.get_global_id(0);
+								  int j0 = index.get_global_id(1) + 0;
+								  int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
+								  int k = index.get_global_id(2);
 
-			FluidBCKernelY(i, j0, k, bl, BC2, d_UI, 0, bl.Bwidth_Y, 1);
-			FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); })
+								  FluidMpiCopyKernelY(i, j0, k, bl, d_mpiData->TransBufRecv_ymin, d_UI, 0, -bl.Bwidth_Y, BorToBuf);					   // X_MIN
+								  FluidMpiCopyKernelY(i, j1, k, bl, d_mpiData->TransBufRecv_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BorToBuf); // X_MAX
+							  }); })
 		.wait();
-#endif
+
+	Ftrans->MpiTransBuf(YDIR);
+#endif // USE_MPI
+	BConditions BC2 = BCs[2], BC3 = BCs[3];
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
+							  {
+								  int i = index.get_global_id(0);
+								  int j0 = index.get_global_id(1) + 0;
+								  int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
+								  int k = index.get_global_id(2);
+#if USE_MPI
+								  if (Ftrans->neighborsBC[YMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
+									  FluidMpiCopyKernelY(i, j0, k, bl, d_mpiData->TransBufRecv_ymin, d_UI, 0, -bl.Bwidth_Y, BufToBC);
+								  else
+#endif // USE_MPI
+									  FluidBCKernelY(i, j0, k, bl, BC2, d_UI, 0, bl.Bwidth_Y, 1);
+#ifdef USE_MPI
+								  if (Ftrans->neighborsBC[YMAX] == BC_COPY)
+									  FluidMpiCopyX(i, j1, k, bl, d_mpiData->TransBufRecv_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BufToBC);
+								  else
+#endif																													  // USE_MPI
+									  FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); //
+							  }); })
+		.wait();
+#endif // end DIM_Y
 
 #if DIM_Z
 	auto local_ndrange_z = range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
 	auto global_ndrange_z = range<3>(bl.Xmax, bl.Ymax, bl.Bwidth_Z);
 
-	BConditions BC4 = BCs[4], BC5 = BCs[5];
-
+#if USE_MPI
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
 							  {
-    		int i = index.get_global_id(0);
-			int j = index.get_global_id(1);
-    		int k0 = index.get_global_id(2) + 0;
-			int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
+								  int i = index.get_global_id(0);
+								  int j = index.get_global_id(1);
+								  int k0 = index.get_global_id(2) + 0;
+								  int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 
-			FluidBCKernelZ(i, j, k0, bl, BC4, d_UI, 0, bl.Bwidth_Z, 1);
-			FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); })
+								  FluidMpiCopyKernelZ(i, j, k0, bl, d_mpiData->TransBufRecv_zmin, d_UI, 0, -bl.Bwidth_Z, BorToBuf);					   // X_MIN
+								  FluidMpiCopyKernelZ(i, j, k1, bl, d_mpiData->TransBufRecv_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BorToBuf); // X_MAX
+							  }); })
 		.wait();
+
+	Ftrans->MpiTransBuf(ZDIR);
+#endif // USE_MPI
+	BConditions BC4 = BCs[4], BC5 = BCs[5];
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
+							  {
+								  int i = index.get_global_id(0);
+								  int j = index.get_global_id(1);
+								  int k0 = index.get_global_id(2) + 0;
+								  int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
+#if USE_MPI
+								  if (Ftrans->neighborsBC[ZMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
+									  FluidMpiCopyKernelY(i, j, k0, bl, d_mpiData->TransBufRecv_zmin, d_UI, 0, -bl.Bwidth_Z, BufToBC);
+								  else
+#endif // USE_MPI
+									  FluidBCKernelZ(i, j, k0, bl, BC4, d_UI, 0, bl.Bwidth_Z, 1);
+#ifdef USE_MPI
+								  if (Ftrans->neighborsBC[ZMAX] == BC_COPY)
+									  FluidMpiCopyX(i, j, k1, bl, d_mpiData->TransBufRecv_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BufToBC);
+								  else
 #endif
-	q.wait();
+									  FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); //
+							  }); })
+		.wait();
+#endif // end DIM_Z
 }
 
 #ifdef React
