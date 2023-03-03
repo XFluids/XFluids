@@ -77,8 +77,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
 
 	q.wait();
-
-	cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n";
+	if (0 == mpiTrans->myRank)
+		cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n";
 }
 
 void FluidSYCL::InitialU(sycl::queue &q)

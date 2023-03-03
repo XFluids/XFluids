@@ -1,2 +1,2 @@
-# #CUDA inc
-add_compile_options (-Ddevice_id=1)
+# #CUDA inc 
+add_compile_options(-DPform_id=1)

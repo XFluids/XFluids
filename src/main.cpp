@@ -49,7 +49,8 @@ int main(int argc, char *argv[])
 #endif // USE_MPI
 	ConfigMap configMap = broadcast_parameters(std::string(argv[1]));
 	// accelerator_selector device;
-	auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
+	int device_id = rank % num_GPUs; // num_GPUS = 2 means two GPUs on this cluster
+	auto device = sycl::platform::get_platforms()[Pform_id].get_devices()[0];
 	sycl::queue q(device);
 	Setup setup(configMap, q);
 	// Create MPI session if MPI enabled
