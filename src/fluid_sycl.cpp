@@ -78,7 +78,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 
 	q.wait();
 	if (0 == Fs.mpiTrans->myRank)
-		cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n";
+		cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n"
+			 << "\n";
 }
 
 void FluidSYCL::InitialU(sycl::queue &q)
