@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.10)
 PROJECT(EulerSYCL LANGUAGES CXX)
 ##default local cmake macro repository
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -26,7 +26,7 @@ option(COP "if enable compoent, based on Multi=OFF" ON)
 option(React "if enable chemical recation, based on COP=ON" ON)
 set(ReaType "0")#define which reaction to caculate, 0 for H2+O2
 
-#about platform and device
+# about platform and device
 set(SelectDv "nvidia") # define which platform and devices for compile options:host,nvidia,amd,intel
 option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF)

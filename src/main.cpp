@@ -37,7 +37,6 @@
 //-------------------------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-	// Create MPI session if MPI enabled
 #ifdef USE_MPI
 	// MPI_Init(&argc, &argv);
 	mpiUtils::GlobalMpiSession mpiSession(&argc, &argv); //
@@ -48,13 +47,12 @@ int main(int argc, char *argv[])
 	int rank = 0;
 	int nRanks = 1;
 #endif // USE_MPI
-	std::string input_flie = std::string(argv[1]);
-	ConfigMap configMap = broadcast_parameters(input_flie);
+	ConfigMap configMap = broadcast_parameters(std::string(argv[1]));
 	// accelerator_selector device;
 	auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
 	sycl::queue q(device);
 	Setup setup(configMap, q);
-
+	// Create MPI session if MPI enabled
 	SYCLSolver syclsolver(q, setup);
 	syclsolver.AllocateMemory(q);
 	syclsolver.InitialCondition(q);

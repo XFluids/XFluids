@@ -18,7 +18,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	real_t physicalTime = 0.0;
 	int Iteration = 0;
 	int OutNum = 1;
-	int rank = 0;
+	int rank = USE_MPI ? Ss.mpiTrans->myRank : 0;
 
 	double duration = 0.0;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
@@ -33,8 +33,14 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		}
 		if (Iteration == Ss.nStepmax)
 			break;
-		// get minmum dt
+		// get minmum dt, if MPI used, get the minimum of all ranks
 		dt = ComputeTimeStep(q); // 3.0e-4; // debug for viscous flux // 5.0e-5;//0.001;//
+#ifdef USE_MPI
+		Ss.mpiTrans->communicator->synchronize();
+		real_t temp;
+		Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+		dt = temp;
+#endif // end USE_MPI
 		if (physicalTime + dt > Ss.EndTime)
 			dt = Ss.EndTime - physicalTime;
 		// solved the fluid with 3rd order Runge-Kutta method
@@ -42,7 +48,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		Reaction(q, dt); // TODO: without Reaction
+		// Reaction(q, dt); // TODO: without Reaction
 #endif // React
 #endif // COP
 		physicalTime = physicalTime + dt;
@@ -52,7 +58,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
-	printf("GPU runtime : %12.8f s\n", duration / 1000.0f);
+	printf("Device runtime : %12.8f s\n", duration / 1000.0f);
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -553,7 +559,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	outFile << "  </AppendedData>" << std::endl;
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
-	std::cout << "Output has been done at Step = " << interation << std::endl;
+	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
 }
 
 void SYCLSolver::Output(sycl::queue &q, real_t Time)

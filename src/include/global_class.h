@@ -57,9 +57,7 @@ class FluidSYCL; class SYCLSolver;
 
 class FluidSYCL{
     Setup Fs;
-#ifdef USE_MPI
-    MpiTrans *Ftrans; // Give N=Emax for initialize
-#endif
+
 public:
     real_t *uvw_c_max;
     real_t *d_U, *d_U1, *d_LU;
@@ -73,8 +71,7 @@ public:
     FluidSYCL(Setup &setup) : Fs(setup)
     {
 #ifdef USE_MPI
-        Ftrans = setup.mpiTrans;
-        Ftrans->AllocMemory(setup.q, setup.BlSz, Emax);
+        Fs.mpiTrans->AllocMemory(setup.q, setup.BlSz, Emax);
 #endif // end USE_MPI
     };
 
