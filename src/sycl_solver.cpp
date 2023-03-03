@@ -2,9 +2,6 @@
 
 SYCLSolver::SYCLSolver(sycl::queue &q, Setup &setup) : Ss(setup), dt(setup.dt)
 {
-	// Print device name and version
-	std::cout << "Device: " << q.get_device().get_info<sycl::info::device::name>()
-			  << ",  version = " << q.get_device().get_info<sycl::info::device::version>() << "\n";
 	// Display the information of fluid materials
 	for (int n = 0; n < NumFluid; n++)
 	{
@@ -58,7 +55,14 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
-	printf("Device runtime : %12.8f s\n", duration / 1000.0f);
+#ifdef USE_MPI
+	Ss.mpiTrans->communicator->synchronize();
+	real_t temp;
+	Ss.mpiTrans->communicator->allReduce(&duration, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	duration = temp;
+#endif // end USE_MPI
+	if (0 == Ss.mpiTrans->myRank)
+		printf("Device runtime(max of all ranks if USE_MPI) : %12.8f s\n", duration / 1000.0f);
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
