@@ -77,7 +77,10 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
 
 	q.wait();
+
+#if USE_MPI
 	if (0 == Fs.mpiTrans->myRank)
+#endif // end USE_MPI
 		cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n"
 			 << "\n";
 }
@@ -95,10 +98,10 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q)
 void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 {
 	if (flag == 0)
-		FluidBoundaryCondition(q, *(Fs.mpiTrans), Fs.BlSz, BCs, d_U);
+		FluidBoundaryCondition(q, Fs, BCs, d_U);
 	else
 	{
-		FluidBoundaryCondition(q, *(Fs.mpiTrans), Fs.BlSz, BCs, d_U1);
+		FluidBoundaryCondition(q, Fs, BCs, d_U1);
 	}
 }
 

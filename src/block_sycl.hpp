@@ -6,7 +6,6 @@ using namespace sycl;
 
 void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal, FlowData &fdata, real_t *U, real_t *U1, real_t *LU,
 						   real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
-// real_t const dx, real_t const dy, real_t const dz
 {
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
@@ -40,7 +39,7 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
 
-	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
+	auto local_ndrange = range<1>(16); // size of workgroup
 	auto global_ndrange = range<1>(bl.Xmax * bl.Ymax * bl.Zmax);
 
 	for (int n = 0; n < 3; n++)
@@ -353,8 +352,12 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 #endif
 }
 
-void FluidBoundaryCondition(sycl::queue &q, MpiTrans Trans, Block bl, BConditions BCs[6], real_t *d_UI)
+void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], real_t *d_UI)
 {
+	Block bl = setup.BlSz;
+#if USE_MPI
+	MpiTrans Trans = *(setup.mpiTrans);
+#endif // end USE_MPI
 #if DIM_X
 	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);

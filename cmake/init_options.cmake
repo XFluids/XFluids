@@ -1,6 +1,7 @@
 add_compile_options(-DNumFluid=1)
+
 IF(USE_DOUBLE)
-  add_compile_options(-DUSE_DOUBLE)#将参数从cmakelist传入程序中
+  add_compile_options(-DUSE_DOUBLE) # 将参数从cmakelist传入程序中
 ENDIF(USE_DOUBLE)
 
 IF(Visc)
@@ -46,19 +47,22 @@ IF(COP)
   ENDIF(Diffu)
 ENDIF(COP)
 
-IF(SelectDv STREQUAL "nvidia")
+IF(SelectDv STREQUAL "host")
+  include(init_host)
+ELSEIF(SelectDv STREQUAL "nvidia")
   include(init_cuda)
 ELSEIF(SelectDv STREQUAL "amd")
   include(init_hip)
 ELSEIF(SelectDv STREQUAL "intel")
   include(init_intel)
-ELSEIF(SelectDv STREQUAL "host")
-  include(init_host)
-ENDIF(SelectDv STREQUAL "nvidia")
+ENDIF(SelectDv STREQUAL "host")
 
-IF(ENABLE_OPENMP)
-  include(init_openmp)
-ENDIF(ENABLE_OPENMP)
+add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
+add_compile_options(-DPform_id=${Pform_id}) # first device id in sycl-ls list
+add_compile_options(-Dnum_GPUs=${num_GPUs}) # number of mpi devices in sycl-ls list
+message(STATUS "Compile settings: ")
+message(STATUS "  Compile for platform: ${SelectDv} and arch: ${ARCH}")
+message(STATUS "  Number of GPUs for MPI: ${num_GPUs}")
 
 IF(USE_MPI)
   include(init_mpi)

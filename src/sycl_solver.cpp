@@ -15,9 +15,11 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	real_t physicalTime = 0.0;
 	int Iteration = 0;
 	int OutNum = 1;
-	int rank = USE_MPI ? Ss.mpiTrans->myRank : 0;
-
-	double duration = 0.0;
+	int rank = 0;
+#if USE_MPI
+	rank = Ss.mpiTrans->myRank;
+#endif // end USE_MPI
+	float duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 
 	while (physicalTime < Ss.EndTime)
@@ -60,9 +62,9 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	real_t temp;
 	Ss.mpiTrans->communicator->allReduce(&duration, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	duration = temp;
-#endif // end USE_MPI
 	if (0 == Ss.mpiTrans->myRank)
-		printf("Device runtime(max of all ranks if USE_MPI) : %12.8f s\n", duration / 1000.0f);
+#endif // end USE_MPI
+		std::cout << SelectDv << " runtime(max of all ranks if USE_MPI): " << duration / 1000.0f << std::endl;
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -102,7 +104,7 @@ void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
 
 real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
 {
-	real_t dt_ref = 10e10;
+	real_t dt_ref = _DF(0.0f);
 #if NumFluid == 1
 	dt_ref = fluids[0]->GetFluidDt(q);
 #elif NumFluid == 2
