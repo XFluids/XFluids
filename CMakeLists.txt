@@ -21,9 +21,9 @@ option(DIM_Z "if enable dim_z" OFF)
 option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(React "if enable chemical recation, based on COP=ON" ON)
-option(Visc "if add physic viscidity flux" ON)
-option(Heat "if add heat transfer flux" ON)
-option(Diffu "if add mass diffusion" ON)
+option(Visc "if add physic viscidity flux" OFF)
+option(Heat "if add heat transfer flux" OFF)
+option(Diffu "if add mass diffusion" OFF)
 set(ReaType "2") # define which reaction to caculate, 0 for H2+O2
 
 # about platform and device

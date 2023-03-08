@@ -254,7 +254,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxY(i, j, k, bl, thermal, Gamma, UI, FluxG, FluxGw, eigen_local, rho, u, v, w, fdata.y, T, H); }); })
+			ReconstructFluxY(i, j, k, bl, thermal, Gamma, UI, FluxG, FluxGw, eigen_local, rho, u, v, w, fdata.y, T, H); 
+			}); })
 		.wait();
 #endif
 
@@ -438,7 +439,7 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 									  FluidBCKernelY(i, j0, k, bl, BC2, d_UI, 0, bl.Bwidth_Y, 1);
 #ifdef USE_MPI
 								  if (Trans.neighborsBC[YMAX] == BC_COPY)
-									  FluidMpiCopyKernelX(i, j1, k, bl, Trans.d_mpiData->TransBufRecv_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BufToBC);
+									  FluidMpiCopyKernelY(i, j1, k, bl, Trans.d_mpiData->TransBufRecv_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BufToBC);
 								  else
 #endif																													  // USE_MPI
 									  FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); //
@@ -476,13 +477,13 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 #if USE_MPI
 								  if (Trans.neighborsBC[ZMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
-									  FluidMpiCopyKernelY(i, j, k0, bl, Trans.d_mpiData->TransBufRecv_zmin, d_UI, 0, -bl.Bwidth_Z, BufToBC);
+									  FluidMpiCopyKernelZ(i, j, k0, bl, Trans.d_mpiData->TransBufRecv_zmin, d_UI, 0, -bl.Bwidth_Z, BufToBC);
 								  else
 #endif // USE_MPI
 									  FluidBCKernelZ(i, j, k0, bl, BC4, d_UI, 0, bl.Bwidth_Z, 1);
 #ifdef USE_MPI
 								  if (Trans.neighborsBC[ZMAX] == BC_COPY)
-									  FluidMpiCopyKernelX(i, j, k1, bl, Trans.d_mpiData->TransBufRecv_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BufToBC);
+									  FluidMpiCopyKernelZ(i, j, k1, bl, Trans.d_mpiData->TransBufRecv_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BufToBC);
 								  else
 #endif
 									  FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); //

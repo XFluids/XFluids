@@ -164,10 +164,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
     // T[id] = p[id] / rho[id] / R;
-    T[id] = x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
-    p[id] = x < 0.5 ? _DF(72200.0) : _DF(36100.0);
-    u[id] = x < 0.5 ? _DF(10.0) : 0.0;
-    v[id] = y < 0.5 ? _DF(0.0) : 10.0;
+    T[id] = 600;     // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
+    p[id] = 36100.0; // x < 0.5 ? _DF(72200.0) : _DF(36100.0);
+    u[id] = 0;       // x < 0.5 ? _DF(10.0) : 0.0;
+    v[id] = y < 0.5 ? _DF(-10.0) : 10.0;
     rho[id] = p[id] / R / T[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     real_t h = get_Coph(thermal, yi, T[id]);
@@ -997,7 +997,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelY(int i, int j, int k, Block bl, rea
     for (size_t n = 0; n < Emax; n++)
     {
         if (BorToBuf == Cpytype)
-            d_TransBuf[Emax * tid + n] = d_UI[Emax * fid + n];
+            d_TransBuf[Emax * tid + n] = d_UI[Emax * fid + n]; // TODO:debug
         if (BufToBC == Cpytype)
             d_UI[Emax * id + n] = d_TransBuf[Emax * tid + n];
     }
