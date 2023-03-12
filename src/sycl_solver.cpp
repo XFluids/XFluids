@@ -33,7 +33,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt, if MPI used, get the minimum of all ranks
-		dt = ComputeTimeStep(q); // 3.0e-4; // debug for viscous flux // 5.0e-5;//0.001;//
+		dt = 3.0e-4; // ComputeTimeStep(q); // debug for viscous flux // 5.0e-5;//0.001;//
 #ifdef USE_MPI
 		Ss.mpiTrans->communicator->synchronize();
 		real_t temp;
@@ -47,7 +47,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		// Reaction(q, dt); // TODO: without Reaction
+		Reaction(q, dt); // TODO: without Reaction
 #endif // React
 #endif // COP
 		physicalTime = physicalTime + dt;
@@ -257,19 +257,28 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	dy = Ss.BlSz.dy;
 	dz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.dz : 0.0;
 	// Init var names
-	int Onbvar = (2 == NumFluid) ? 7 : Emax + 2;
-	std::map<int, std::string> variables_names;
-	variables_names[0] = "rho";
-	variables_names[1] = "P";
-	variables_names[2] = "u";
-	variables_names[3] = "v";
-	variables_names[4] = "w";
+	int Onbvar = 8; // one fluid no COP
 #ifdef COP
-	for (size_t ii = 5; ii < Emax + 1; ii++)
+	Onbvar += NUM_SPECIES + 1;
+#endif // end COP
+#if 1 != NumFluid
+	Onbar += NumFluid - 1;
+#endif // end Multi
+	std::map<int, std::string> variables_names;
+	variables_names[0] = "x";
+	variables_names[1] = "y";
+	variables_names[2] = "z";
+	variables_names[3] = "rho";
+	variables_names[4] = "P";
+	variables_names[5] = "u";
+	variables_names[6] = "v";
+	variables_names[7] = "w";
+#ifdef COP
+	variables_names[8] = "T";
+	for (size_t ii = 9; ii < Onbvar; ii++)
 	{
-		variables_names[ii] = "y" + std::to_string(ii - 5) + "_" + Ss.species_name[ii - 5];
+		variables_names[ii] = "y" + std::to_string(ii - 9) + "_" + Ss.species_name[ii - 9];
 	}
-	variables_names[Onbvar - 1] = "T";
 #endif // COP
 #if 2 == NumFluid
 	variables_names[5] = "phi";
@@ -418,6 +427,45 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	// then write heavy data (column major format)
 	unsigned int nbOfWords = OnbX * OnbY * OnbZ * sizeof(real_t);
 	{
+		//[0]x
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					real_t tmp = (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X - Ss.BlSz.Bwidth_X)) * dx + 0.5 * dx;
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+		  //[1]y
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					real_t tmp = (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy;
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+		  //[2]z
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					real_t tmp = (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz;
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
 		//[0]rho
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
@@ -508,6 +556,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
+
 #ifdef COP
 		  //[5]yii
 		for (int ii = 0; ii < NUM_SPECIES; ii++)
@@ -526,7 +575,6 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				}	  // for j
 			}		  // for k
 		}			  // for yii
-#endif				  // COP
 					  //[6]T
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
@@ -545,6 +593,8 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
+#endif			  // COP
+
 #if 2 == NumFluid
 		  //[5]phi
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));

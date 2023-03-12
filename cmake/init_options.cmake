@@ -47,23 +47,29 @@ IF(COP)
   ENDIF(Diffu)
 ENDIF(COP)
 
-IF(SelectDv STREQUAL "host")
-  include(init_host)
-ELSEIF(SelectDv STREQUAL "nvidia")
-  include(init_cuda)
-ELSEIF(SelectDv STREQUAL "amd")
-  include(init_hip)
-ELSEIF(SelectDv STREQUAL "intel")
-  include(init_intel)
-ENDIF(SelectDv STREQUAL "host")
-
 add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
 add_compile_options(-DPform_id=${Pform_id}) # first device id in sycl-ls list
 add_compile_options(-Dnum_GPUs=${num_GPUs}) # number of mpi devices in sycl-ls list
 message(STATUS "Compile settings: ")
-message(STATUS "  Compile for platform: ${SelectDv} and arch: ${ARCH}")
-message(STATUS "  Number of GPUs for MPI: ${num_GPUs}")
+message(STATUS "  Compile for platform: ${SelectDv}")
+
+IF(SelectDv STREQUAL "host")
+  include(init_host)
+ELSEIF(SelectDv STREQUAL "nvidia")
+  include(init_cuda)
+  message(STATUS "  Compile for ARCH: ${ARCH}")
+ELSEIF(SelectDv STREQUAL "amd")
+  include(init_hip)
+  message(STATUS "  Compile for ARCH: ${ARCH}")
+ELSEIF(SelectDv STREQUAL "intel")
+  message(STATUS "  Compile for ARCH: ${ARCH}")
+  include(init_intel)
+ENDIF(SelectDv STREQUAL "host")
+
+IF(SelectDv STREQUAL "host")
+ENDIF(SelectDv STREQUAL "host")
 
 IF(USE_MPI)
   include(init_mpi)
+  message(STATUS "  Number of GPUs for MPI: ${num_GPUs}")
 ENDIF(USE_MPI)

@@ -158,17 +158,24 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     }
 #endif // 2==NumFluid
 
+    p[id] = 36100.0;        // TODO: for debug;
+    u[id] = 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
+    v[id] = 10.0 * fabs(y); // 10.0 * y;          // y < 0.5 ? _DF(-10.0) * y : 10.0 * y;
+    w[id] = 0.0;
+    rho[id] = 0.5; // p[id] / R / T[id];
+
 // EOS was included
 #ifdef COP
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
-    // T[id] = p[id] / rho[id] / R;
-    T[id] = 600;     // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
-    p[id] = 36100.0; // x < 0.5 ? _DF(72200.0) : _DF(36100.0);
-    u[id] = 0;       // x < 0.5 ? _DF(10.0) : 0.0;
-    v[id] = y < 0.5 ? _DF(-10.0) : 10.0;
+    T[id] = 300.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
+    p[id] = 36100.0;        // x < 0.5 ? _DF(72200.0) : _DF(36100.0);
+    u[id] = 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
+    v[id] = 10.0 * fabs(y); // 10.0 * y;          // y < 0.5 ? _DF(-10.0) * y : 10.0 * y;
+    w[id] = 0.0;
     rho[id] = p[id] / R / T[id];
+    // T[id] = p[id] / rho[id] / R; // TODO
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     real_t h = get_Coph(thermal, yi, T[id]);
     // U[4] of mixture differ from pure gas
@@ -182,7 +189,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     }
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 #else
-    //  for both singlephase && multiphase
+                   //  for both singlephase && multiphase
     c[id] = material.Mtrl_ind == 0 ? sqrt(material.Gamma * p[id] / rho[id]) : sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
     if (material.Mtrl_ind == 0)
         U[Emax * id + 4] = p[id] / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
@@ -230,9 +237,95 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         CnsrvU1[Emax * id + n] = CnsrvU[Emax * id + n];
 #endif // NumFluid
     }
-    // real_t de_U[Emax];
-    // get_Array(U, de_U, Emax, id);
-    // real_t de_UI[Emax];
+}
+
+/**
+ * @brief  _u = (u[id_l] + D * u[id_r]) * D1;
+ * @return real_t
+ */
+real_t get_RoeAverage(const real_t left, const real_t right, const real_t D, const real_t D1)
+{
+    return (left + D * right) * D1;
+}
+
+/**
+ * @brief \frac{\partial p}{\partial \rho}
+ * @param hiN: hi[NUM_COP]
+ * @param RiN: Ru/thermal->specie_chara[NUM_COP*SPCH_Sz+6]
+ * @return real_t
+ */
+real_t get_DpDrho(const real_t hN, const real_t RN, const real_t T, const real_t e, const real_t gamma)
+{
+#if CJ
+    return (Gamma0 - 1.0) * e; // p/rho;//
+#else
+    double RNT = RN * T; // unit: J/kg
+    return gamma * RNT + (gamma - _DF(1.0)) * (e - hN);
+#endif
+}
+
+/**
+ * @brief \frac{\partial p}{\partial \rho_i}
+ * @param hin: hi of the n-th species
+ * @param hiN: hi of the N-th species
+ * @param Cp: get_CopCp for mixture
+ * @param R: get_CopR for mixture
+ * @return real_t
+ */
+real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const real_t RiN, const real_t T, const real_t Cp, const real_t R, const real_t gamma)
+{
+#if CJ
+    return 0; //(Gamma0-1.0)*(-heat_release[n]);
+#else
+    real_t hN_minus_hi = -hin + hiN;  // unit: J/kg
+    real_t Ri_minus_RN = (Rin - RiN); // unit: J/kg/K
+    return (gamma - _DF(1.0)) * (hN_minus_hi + Cp * Ri_minus_RN * T / R);
+#endif
+}
+
+/**
+ * @brief compute Roe-averaged sound speed of multicomponent flows
+ * @param zi: for eigen matrix
+ * @return real_t c*c
+ */
+real_t SoundSpeedMultiSpecies(real_t *zi, real_t *_Yi, real_t *_dpdrhoi, real_t *drhoi, const real_t _dpdrho, const real_t _dpde, const real_t _dpdE,
+                              const real_t _prho, const real_t dp, const real_t drho, const real_t de, const real_t _rho)
+{
+    // sum
+    real_t Sum_dpdrhoi = _DF(0.0), Sum_drhoi = _DF(0.0), Sum_dpdrhoi2 = _DF(0.0), Sum_Yidpdrhoi = _DF(0.0);
+    for (int n = 0; n < NUM_COP; n++)
+    {
+        Sum_dpdrhoi += _dpdrhoi[n] * drhoi[n];
+        Sum_dpdrhoi2 += _dpdrhoi[n] * drhoi[n] * _dpdrhoi[n] * drhoi[n];
+    }
+    // method 1
+    real_t temp1 = dp - (_dpdrho * drho + _dpde * de + Sum_dpdrhoi);
+    real_t temp = temp1 / (_dpdrho * _dpdrho * drho * drho + _dpde * de * _dpde * de + Sum_dpdrhoi2 + 1e-19);
+
+    real_t _dpdE_new = _dpdE + _dpdE * _dpdE * de * _rho * temp;
+    real_t _dpdrho_new = _dpdrho + _dpdrho * _dpdrho * drho * temp;
+    // sound speed
+    real_t _dpdrhoi_new[NUM_COP];
+
+    real_t Sum_Yidpdrhoi_new = _DF(0.0);
+    for (int n = 0; n < NUM_COP; n++)
+        _dpdrhoi_new[n] = _dpdrhoi[n] + _dpdrhoi[n] * _dpdrhoi[n] * drhoi[n] * temp;
+    for (int n = 0; n < NUM_COP; n++)
+    {
+        // Sum_drhoi += drhoi[n]*drhoi[n];
+        Sum_Yidpdrhoi += _Yi[n] * _dpdrhoi[n];
+        Sum_Yidpdrhoi_new += _Yi[n] * _dpdrhoi_new[n];
+    }
+    real_t csqr = _dpdrho_new + _dpdE_new * _prho + Sum_Yidpdrhoi_new;
+    // b1 = _dpdE_new / csqr;
+    for (int n = 0; n < NUM_COP; n++)
+    {
+        zi[n] = -_dpdrhoi_new[n] / _dpdE_new;
+        // b3 += _Yi[n] * zi[n];
+    }
+    // b3 *= b1;
+
+    return csqr;
 }
 
 /**
@@ -256,7 +349,7 @@ real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, const real_t yi[NUM_SP
 }
 
 extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fx,
-                                           real_t *Fxwall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v, real_t *w,
+                                           real_t *Fxwall, real_t *eigen_local, real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w,
                                            real_t *const *y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
@@ -268,16 +361,19 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     int Bwidth_X = bl.Bwidth_X;
     int Bwidth_Y = bl.Bwidth_Y;
     int Bwidth_Z = bl.Bwidth_Z;
-    int id_l = Xmax*Ymax*k + Xmax*j + i;
-    int id_r = Xmax*Ymax*k + Xmax*j + i + 1;
+    int id_l = Xmax * Ymax * k + Xmax * j + i;
+    int id_r = Xmax * Ymax * k + Xmax * j + i + 1;
     real_t dx = bl.dx;
 
-    if(i>= X_inner+Bwidth_X)
+    if (i >= X_inner + Bwidth_X)
+        return;
+    if (j >= Y_inner + Bwidth_Y)
+        return;
+    if (k >= Z_inner + Bwidth_Z)
         return;
 
-    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
-
     // preparing some interval value for roe average
+
     real_t D = sqrt(rho[id_r] / rho[id_l]);
     real_t D1 = _DF(1.0) / (D + _DF(1.0));
 
@@ -286,15 +382,14 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     real_t _w = (w[id_l] + D * w[id_r]) * D1;
     real_t _H = (H[id_l] + D * H[id_r]) * D1;
     real_t _rho = sqrt(rho[id_r] * rho[id_l]);
-
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
-    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES];
+    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], Ri[NUM_SPECIES];
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
-        real_t Ri = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
-        hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri, i);
-        hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri, i);
+        Ri[i] = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
+        hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri[i], i);
+        hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri[i], i);
     }
     get_yi(y, yi_l, id_l);
     get_yi(y, yi_r, id_r);
@@ -302,17 +397,40 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
     {
         _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;
-        _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
-        _h += _hi[ii] * _yi[ii];
+        // _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
+        // _h += _hi[ii] * _yi[ii];
     }
-    real_t Gamma0 = get_CopGamma(thermal, _yi, _T);              // out from RoeAverage_x , 使用半点的数据计算出半点处的Gamma
-    real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T); // z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量
+    // real_t Gamma0 = get_CopGamma(thermal, _yi, _T);              // out from RoeAverage_x , 使用半点的数据计算出半点处的Gamma
+    // real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T); // z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量
+    real_t _dpdrhoi[NUM_COP], drhoi[NUM_COP];
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
+    real_t e_l = H[id_l] - _DF(0.5) * (u[id_l] * u[id_l] + v[id_l] * v[id_l] + w[id_l] * w[id_l]) - p[id_l] / rho[id_l];
+    real_t e_r = H[id_r] - _DF(0.5) * (u[id_r] * u[id_r] + v[id_r] * v[id_r] + w[id_r] * w[id_r]) - p[id_r] / rho[id_r];
+    real_t _dpdrho = get_RoeAverage(get_DpDrho(hi_l[NUM_COP], Ri[NUM_COP], T[id_l], e_l, gamma_l),
+                                    get_DpDrho(hi_r[NUM_COP], Ri[NUM_COP], T[id_r], e_r, gamma_r), D, D1);
+    real_t Cp_l = get_CopCp(thermal, yi_l, T[id_l]);
+    real_t Cp_r = get_CopCp(thermal, yi_r, T[id_r]);
+    real_t R_l = get_CopR(thermal->species_chara, yi_l);
+    real_t R_r = get_CopR(thermal->species_chara, yi_r);
+    for (size_t i = 0; i < NUM_COP; i++)
+    {
+        drhoi[i] = rho[id_r] * yi_r[i] - rho[id_l] * yi_l[i];
+        _dpdrhoi[i] = get_RoeAverage(get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_l, R_l, gamma_l),
+                                     get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_r, R_r, gamma_r), D, D1);
+    }
+    real_t _prho = get_RoeAverage(p[id_l] / rho[id_l], p[id_r] / rho[id_r], D, D1);
+    real_t _dpdE = get_RoeAverage(gamma_l - _DF(1.0), gamma_r - _DF(1.0), D, D1);
+    real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);
+    real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
 #else
     real_t Gamma0 = Gamma;
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
-    real_t z[NUM_SPECIES] = {0};
+    real_t z[] = {0}, _yi[] = {0};
 #endif
 
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
     RoeAverage_x(eigen_l, eigen_r, z, _yi, c2, _rho, _u, _v, _w, _H, D, D1, Gamma0);
 
     real_t uf[10], ff[10], pp[10], mm[10];
@@ -362,13 +480,13 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
         Fxwall[Emax*id_l+n] = fluxx;
 	}
 
-    // real_t de_fw[Emax];
-    // get_Array(Fxwall, de_fw, Emax, id_l);
-    // real_t de_fx[Emax];
+    real_t de_fw[Emax];
+    get_Array(Fxwall, de_fw, Emax, id_l);
+    real_t de_fx[Emax];
 }
 
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fy,
-                                           real_t *Fywall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v, real_t *w,
+                                           real_t *Fywall, real_t *eigen_local, real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w,
                                            real_t *const *y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
@@ -380,14 +498,16 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     int Bwidth_X = bl.Bwidth_X;
     int Bwidth_Y = bl.Bwidth_Y;
     int Bwidth_Z = bl.Bwidth_Z;
-    int id_l = Xmax*Ymax*k + Xmax*j + i;
-    int id_r = Xmax*Ymax*k + Xmax*(j+ 1) + i;
+    int id_l = Xmax * Ymax * k + Xmax * j + i;
+    int id_r = Xmax * Ymax * k + Xmax * (j + 1) + i;
     real_t dy = bl.dy;
 
-    if(j>= Y_inner+Bwidth_Y)
+    if (i >= X_inner + Bwidth_X)
         return;
-
-    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    if (j >= Y_inner + Bwidth_Y)
+        return;
+    if (k >= Z_inner + Bwidth_Z)
+        return;
 
     //preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
@@ -400,30 +520,53 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
-    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES];
+    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES], Ri[NUM_SPECIES];
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
-        real_t Ri = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
-        hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri, i);
-        hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri, i);
+        Ri[i] = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
+        hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri[i], i);
+        hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri[i], i);
     }
     get_yi(y, yi_l, id_l);
     get_yi(y, yi_r, id_r);
-    real_t _h = 0;
+    real_t _h = _DF(0.0);
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
     {
         _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;
-        _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
-        _h += _hi[ii] * _yi[ii];
+        // _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
+        // _h += _hi[ii] * _yi[ii];
     }
-    real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
-    real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T);
+    // real_t Gamma0 = get_CopGamma(thermal, _yi, _T);              // out from RoeAverage_x , 使用半点的数据计算出半点处的Gamma
+    // real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T); // z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量
+    real_t _dpdrhoi[NUM_COP], drhoi[NUM_COP];
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
+    real_t e_l = H[id_l] - _DF(0.5) * (u[id_l] * u[id_l] + v[id_l] * v[id_l] + w[id_l] * w[id_l]) - p[id_l] / rho[id_l];
+    real_t e_r = H[id_r] - _DF(0.5) * (u[id_r] * u[id_r] + v[id_r] * v[id_r] + w[id_r] * w[id_r]) - p[id_r] / rho[id_r];
+    real_t _dpdrho = get_RoeAverage(get_DpDrho(hi_l[NUM_COP], Ri[NUM_COP], T[id_l], e_l, gamma_l),
+                                    get_DpDrho(hi_r[NUM_COP], Ri[NUM_COP], T[id_r], e_r, gamma_r), D, D1);
+    real_t Cp_l = get_CopCp(thermal, yi_l, T[id_l]);
+    real_t Cp_r = get_CopCp(thermal, yi_r, T[id_r]);
+    real_t R_l = get_CopR(thermal->species_chara, yi_l);
+    real_t R_r = get_CopR(thermal->species_chara, yi_r);
+    for (size_t i = 0; i < NUM_COP; i++)
+    {
+        drhoi[i] = rho[id_r] * yi_r[i] - rho[id_l] * yi_l[i];
+        _dpdrhoi[i] = get_RoeAverage(get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_l, R_l, gamma_l),
+                                     get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_r, R_r, gamma_r), D, D1);
+    }
+    real_t _prho = get_RoeAverage(p[id_l] / rho[id_l], p[id_r] / rho[id_r], D, D1);
+    real_t _dpdE = get_RoeAverage(gamma_l - _DF(1.0), gamma_r - _DF(1.0), D, D1);
+    real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);
+    real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
 #else
     real_t Gamma0 = Gamma;
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
-    real_t z[NUM_SPECIES] = {0};
+    real_t z[] = {0}, _yi[] = {0};
 #endif
 
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
     RoeAverage_y(eigen_l, eigen_r, z, _yi, c2, _rho, _u, _v, _w, _H, D, D1, Gamma0);
 
     real_t ug[10], gg[10], pp[10], mm[10];
@@ -440,20 +583,17 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
         }
 
 		for(int m=j-3; m<=j+4; m++){	// 3rd oder and can be modified
-            int id_local = Xmax*Ymax*k + Xmax*m + i;
-            #if USE_DP
-			ug[m-j+3] = 0.0;
-			gg[m-j+3] = 0.0;
-            #else
-			ug[m-j+3] = 0.0f;
-			gg[m-j+3] = 0.0f;
-            #endif
+            int id_local = Xmax * Ymax * k + Xmax * m + i;
 
-			for(int n1=0; n1<Emax; n1++){
-				ug[m-j+3] = ug[m-j+3] + UI[Emax*id_local+n1]*eigen_l[n][n1];
-				gg[m-j+3] = gg[m-j+3] + Fy[Emax*id_local+n1]*eigen_l[n][n1];
-			}
-			//for local speed
+            ug[m - j + 3] = _DF(0.0);
+            gg[m - j + 3] = _DF(0.0);
+
+            for (int n1 = 0; n1 < Emax; n1++)
+            {
+                ug[m - j + 3] = ug[m - j + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
+                gg[m - j + 3] = gg[m - j + 3] + Fy[Emax * id_local + n1] * eigen_l[n][n1];
+            }
+            // for local speed
             pp[m - j + 3] = _DF(0.5) * (gg[m - j + 3] + eigen_local_max * ug[m - j + 3]);
             mm[m - j + 3] = _DF(0.5) * (gg[m - j + 3] - eigen_local_max * ug[m - j + 3]);
         }
@@ -472,10 +612,13 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
         }
         Fywall[Emax*id_l+n] = fluxy;
 	}
+    real_t de_fw[Emax];
+    get_Array(Fywall, de_fw, Emax, id_l);
+    real_t de_fx[Emax];
 }
 
 extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fz,
-                                           real_t *Fzwall, real_t *eigen_local, real_t *rho, real_t *u, real_t *v, real_t *w,
+                                           real_t *Fzwall, real_t *eigen_local, real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w,
                                            real_t *const *y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
@@ -487,14 +630,16 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     int Bwidth_X = bl.Bwidth_X;
     int Bwidth_Y = bl.Bwidth_Y;
     int Bwidth_Z = bl.Bwidth_Z;
-    int id_l = Xmax*Ymax*k + Xmax*j + i;
-    int id_r = Xmax*Ymax*(k+1) + Xmax*j + i;
+    int id_l = Xmax * Ymax * k + Xmax * j + i;
+    int id_r = Xmax * Ymax * (k + 1) + Xmax * j + i;
     real_t dz = bl.dz;
 
-    if(k>= Z_inner+Bwidth_Z)
+    if (i >= X_inner + Bwidth_X)
         return;
-
-    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    if (j >= Y_inner + Bwidth_Y)
+        return;
+    if (k >= Z_inner + Bwidth_Z)
+        return;
 
     //preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
@@ -507,30 +652,53 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
-    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES];
+    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES], Ri[NUM_SPECIES];
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
-        real_t Ri = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
-        hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri, i);
-        hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri, i);
+        Ri[i] = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
+        hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri[i], i);
+        hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri[i], i);
     }
     get_yi(y, yi_l, id_l);
     get_yi(y, yi_r, id_r);
-    real_t _h = 0;
+    real_t _h = _DF(0.0);
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
     {
         _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;
-        _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
-        _h += _hi[ii] * _yi[ii];
+        // _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
+        // _h += _hi[ii] * _yi[ii];
     }
-    real_t Gamma0 = get_CopGamma(thermal, _yi, _T); // out from RoeAverage_x
-    real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T);
+    // real_t Gamma0 = get_CopGamma(thermal, _yi, _T);              // out from RoeAverage_x , 使用半点的数据计算出半点处的Gamma
+    // real_t c2 = get_CopC2(z, thermal, _yi, _hi, _h, Gamma0, _T); // z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量
+    real_t _dpdrhoi[NUM_COP], drhoi[NUM_COP];
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
+    real_t e_l = H[id_l] - _DF(0.5) * (u[id_l] * u[id_l] + v[id_l] * v[id_l] + w[id_l] * w[id_l]) - p[id_l] / rho[id_l];
+    real_t e_r = H[id_r] - _DF(0.5) * (u[id_r] * u[id_r] + v[id_r] * v[id_r] + w[id_r] * w[id_r]) - p[id_r] / rho[id_r];
+    real_t _dpdrho = get_RoeAverage(get_DpDrho(hi_l[NUM_COP], Ri[NUM_COP], T[id_l], e_l, gamma_l),
+                                    get_DpDrho(hi_r[NUM_COP], Ri[NUM_COP], T[id_r], e_r, gamma_r), D, D1);
+    real_t Cp_l = get_CopCp(thermal, yi_l, T[id_l]);
+    real_t Cp_r = get_CopCp(thermal, yi_r, T[id_r]);
+    real_t R_l = get_CopR(thermal->species_chara, yi_l);
+    real_t R_r = get_CopR(thermal->species_chara, yi_r);
+    for (size_t i = 0; i < NUM_COP; i++)
+    {
+        drhoi[i] = rho[id_r] * yi_r[i] - rho[id_l] * yi_l[i];
+        _dpdrhoi[i] = get_RoeAverage(get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_l, R_l, gamma_l),
+                                     get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_r, R_r, gamma_r), D, D1);
+    }
+    real_t _prho = get_RoeAverage(p[id_l] / rho[id_l], p[id_r] / rho[id_r], D, D1);
+    real_t _dpdE = get_RoeAverage(gamma_l - _DF(1.0), gamma_r - _DF(1.0), D, D1);
+    real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);
+    real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
 #else
     real_t Gamma0 = Gamma;
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
-    real_t z[NUM_SPECIES] = {0};
+    real_t z[] = {0}, _yi[] = {0};
 #endif
 
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
     RoeAverage_z(eigen_l, eigen_r, z, _yi, c2, _rho, _u, _v, _w, _H, D, D1, Gamma0);
 
     real_t uh[10], hh[10], pp[10], mm[10];
@@ -585,20 +753,20 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     int X_inner = bl.X_inner;
     int Y_inner = bl.Y_inner;
     int Z_inner = bl.Z_inner;
-    int id = Xmax*Ymax*k + Xmax*j + i;
+    int id = Xmax * Ymax * k + Xmax * j + i;
 
-    #if DIM_X
+#if DIM_X
     if(i >= Xmax)
     return;
-    #endif
-    #if DIM_Y
+#endif
+#if DIM_Y
     if(j >= Ymax)
     return;
-    #endif
-    #if DIM_Z
+#endif
+#if DIM_Z
     if(k >= Zmax)
     return;
-    #endif
+#endif
 
     real_t uu = AA * u[id] + BB * v[id] + CC * w[id];
     real_t uuPc = uu + c[id];
@@ -640,7 +808,9 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
     int id_km = Xmax * Ymax * (k - 1) + Xmax * j + i;
 #endif
 
-    for(int n=0; n<Emax; n++){
+    real_t de_LU[Emax];
+    for (int n = 0; n < Emax; n++)
+    {
     real_t LU0 = _DF(0.0);
 #if DIM_X
     LU0 += (FluxFw[Emax * id_im + n] - FluxFw[Emax * id + n]) / bl.dx;
@@ -652,7 +822,9 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
     LU0 += (FluxHw[Emax * id_km + n] - FluxHw[Emax * id + n]) / bl.dz;
 #endif
     LU[Emax * id + n] = LU0;
+    de_LU[n] = LU0;
     }
+    real_t de_L;
 }
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
@@ -685,6 +857,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     {
         U[n] = UI[Emax * id + n];
     }
+#ifdef COP
     yi[NUM_COP] = _DF(1.0);
     for (size_t ii = 5; ii < Emax; ii++)
     { // calculate yi
@@ -693,6 +866,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
         yi[NUM_COP] += -yi[ii - 5];
     }
     _y[NUM_COP][id] = yi[NUM_COP];
+#endif // end COP
 
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
 
@@ -725,7 +899,7 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
         break;
         case 3:
         for(int n=0; n<Emax; n++){
-            U[Emax * id + n] = (U[Emax * id + n] + _DF(2.0) * U1[Emax * id + n]) / _DF(3.0) + _DF(2.0) * dt * LU[Emax * id + n] / _DF(3.0);
+            U[Emax * id + n] = (U[Emax * id + n] + _DF(2.0) * U1[Emax * id + n] + _DF(2.0) * dt * LU[Emax * id + n]) / _DF(3.0);
         }
         break;
     }
@@ -997,7 +1171,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelY(int i, int j, int k, Block bl, rea
     for (size_t n = 0; n < Emax; n++)
     {
         if (BorToBuf == Cpytype)
-            d_TransBuf[Emax * tid + n] = d_UI[Emax * fid + n]; // TODO:debug
+            d_TransBuf[Emax * tid + n] = d_UI[Emax * fid + n];
         if (BufToBC == Cpytype)
             d_UI[Emax * id + n] = d_TransBuf[Emax * tid + n];
     }

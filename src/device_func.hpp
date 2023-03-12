@@ -387,14 +387,11 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	real_t _c = sqrt(c2);
 	real_t c21_Gamma = _Gamma / c2;
 
-#ifdef COP
 	real_t b1 = c21_Gamma;
 	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
 	real_t b3 = _DF(0.0);
-	for (size_t i = 0; i < NUM_COP; i++)
-	{ // NOTE: related with yi
+	for (size_t i = 0; i < NUM_COP; i++) // NOTE: related with yi
 		b3 += yi[i] * z[i];
-	}
 	b3 *= b1;
 	real_t _c1 = _DF(1.0) / _c;
 	eigen_l[0][0] = _DF(0.5) * (b2 + _u / _c + b3);
@@ -432,8 +429,6 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[0][1] = b1;
 	eigen_r[0][2] = _DF(0.0);
 	eigen_r[0][3] = _DF(0.0);
-	// for (int n = 0; n < NUM_COP; n++)
-	// 	eigen_r[0][Emax - NUM_COP + n - 1] = _DF(0.0);
 	eigen_r[0][Emax - 1] = _DF(1.0);
 
 	eigen_r[1][0] = _u - _c;
@@ -460,13 +455,14 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[4][3] = _w;
 	eigen_r[4][Emax - 1] = _H + _u * _c;
 
+#ifdef COP
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
 		eigen_l[0][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n]; // NOTE: related with yi eigen values
 		eigen_l[1][n + Emax - NUM_COP] = z[n];
-		eigen_l[2][n + Emax - NUM_COP] = 0;
-		eigen_l[3][n + Emax - NUM_COP] = 0;
+		eigen_l[2][n + Emax - NUM_COP] = _DF(0.0);
+		eigen_l[3][n + Emax - NUM_COP] = _DF(0.0);
 		eigen_l[Emax - 1][n + Emax - NUM_COP] = -_DF(0.5) * b1 * z[n];
 	}
 	for (int m = 0; m < NUM_COP; m++)
@@ -498,73 +494,6 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 		for (int n = 0; n < NUM_COP; n++)
 			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
-#else
-	real_t _rho1 = _DF(1.0) / _rho;
-	real_t _c1_rho = _DF(0.5) * _rho / _c;
-	real_t _c1_rho1_Gamma = _Gamma * _rho1 / _c;
-
-	// left eigen vectors
-	eigen_l[0][0] = _DF(1.0) - _DF(0.5) * c21_Gamma * q2;
-	eigen_l[0][1] = c21_Gamma * _u;
-	eigen_l[0][2] = c21_Gamma * _v;
-	eigen_l[0][3] = c21_Gamma * _w;
-	eigen_l[0][4] = -c21_Gamma;
-
-	eigen_l[1][0] = -_w * _rho1;
-	eigen_l[1][1] = _DF(0.0);
-	eigen_l[1][2] = _DF(0.0);
-	eigen_l[1][3] = _rho1;
-	eigen_l[1][4] = _DF(0.0);
-
-	eigen_l[2][0] = _v * _rho1;
-	eigen_l[2][1] = _DF(0.0);
-	eigen_l[2][2] = -_rho1;
-	eigen_l[2][3] = _DF(0.0);
-	eigen_l[2][4] = _DF(0.0);
-
-	eigen_l[3][0] = _DF(0.5) * _c1_rho1_Gamma * q2 - _u * _rho1;
-	eigen_l[3][1] = -_c1_rho1_Gamma * _u + _rho1;
-	eigen_l[3][2] = -_c1_rho1_Gamma * _v;
-	eigen_l[3][3] = -_c1_rho1_Gamma * _w;
-	eigen_l[3][4] = _c1_rho1_Gamma;
-
-	eigen_l[4][0] = _DF(0.5) * _c1_rho1_Gamma * q2 + _u * _rho1;
-	eigen_l[4][1] = -_c1_rho1_Gamma * _u - _rho1;
-	eigen_l[4][2] = -_c1_rho1_Gamma * _v;
-	eigen_l[4][3] = -_c1_rho1_Gamma * _w;
-	eigen_l[4][4] = _c1_rho1_Gamma;
-
-	// right eigen vectors
-	eigen_r[0][0] = _DF(1.0);
-	eigen_r[0][1] = _DF(0.0);
-	eigen_r[0][2] = _DF(0.0);
-	eigen_r[0][3] = _c1_rho;
-	eigen_r[0][4] = _c1_rho;
-
-	eigen_r[1][0] = _u;
-	eigen_r[1][1] = _DF(0.0);
-	eigen_r[1][2] = _DF(0.0);
-	eigen_r[1][3] = _c1_rho * (_u + _c);
-	eigen_r[1][4] = _c1_rho * (_u - _c);
-
-	eigen_r[2][0] = _v;
-	eigen_r[2][1] = _DF(0.0);
-	eigen_r[2][2] = -_rho;
-	eigen_r[2][3] = _c1_rho * _v;
-	eigen_r[2][4] = _c1_rho * _v;
-
-	eigen_r[3][0] = _w;
-	eigen_r[3][1] = _rho;
-	eigen_r[3][2] = _DF(0.0);
-	eigen_r[3][3] = _c1_rho * _w;
-	eigen_r[3][4] = _c1_rho * _w;
-
-	eigen_r[4][0] = _DF(0.5) * q2;
-	eigen_r[4][1] = _rho * _w;
-	eigen_r[4][2] = -_rho * _v;
-	eigen_r[4][3] = _c1_rho * (_H + _u * _c);
-	eigen_r[4][4] = _c1_rho * (_H - _u * _c);
-
 #endif // COP
 }
 
@@ -579,18 +508,13 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	real_t _c = sqrt(c2);
 	real_t c21_Gamma = _Gamma / c2;
 
-#ifdef COP
 	real_t b1 = c21_Gamma;
 	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
 	real_t b3 = _DF(0.0);
-	for (size_t i = 0; i < NUM_SPECIES; i++)
-	{
+	for (size_t i = 0; i < NUM_COP; i++)
 		b3 += yi[i] * z[i];
-	}
 	b3 *= b1;
 	real_t _c1 = _DF(1.0) / _c;
-	// printf("b1=%lf,b2=%lf,b3=%lf,_c=%lf,yi[]=%lf,%lf,z[]=%lf,%lf\n", b1, b2, b3, _c, yi[0], yi[1], z[0], z[1]);
-	// left eigen vectors
 	eigen_l[0][0] = _DF(0.5) * (b2 + _v / _c + b3);
 	eigen_l[0][1] = -_DF(0.5) * (b1 * _u);
 	eigen_l[0][2] = -_DF(0.5) * (b1 * _v + _c1);
@@ -626,8 +550,6 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[0][1] = _DF(0.0);
 	eigen_r[0][2] = b1;
 	eigen_r[0][3] = _DF(0.0);
-	// for (int n = 0; n < num_species - 1; n++)
-	// 	eigen_r[0][Emax - NUM_COP + n - 1] = _DF(0.0);
 	eigen_r[0][Emax - 1] = _DF(1.0);
 
 	eigen_r[1][0] = _u;
@@ -654,6 +576,7 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[4][3] = -_w;
 	eigen_r[4][Emax - 1] = _H + _v * _c;
 
+#ifdef COP
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
@@ -692,73 +615,6 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 		for (int n = 0; n < NUM_COP; n++)
 			eigen_r[m + Emax - NUM_COP][n + Emax - NUM_SPECIES] = (m == n) ? _DF(1.0) : _DF(0.0);
 	}
-#else
-
-	real_t _rho1 = _DF(1.0) / _rho;
-	real_t _c1_rho = _DF(0.5) * _rho / _c;
-	real_t _c1_rho1_Gamma = _Gamma * _rho1 / _c;
-	// left eigen vectors 
-	eigen_l[0][0] = _w*_rho1;
-	eigen_l[0][1] = _DF(0.0);
-	eigen_l[0][2] = _DF(0.0);
-	eigen_l[0][3] = - _rho1;
-	eigen_l[0][4] = _DF(0.0);
-
-	eigen_l[1][0] = _DF(1.0) - _DF(0.5) * c21_Gamma * q2;
-	eigen_l[1][1] = c21_Gamma*_u;
-	eigen_l[1][2] = c21_Gamma*_v;
-	eigen_l[1][3] = c21_Gamma*_w;
-	eigen_l[1][4] = - c21_Gamma;
-
-	eigen_l[2][0] = - _u*_rho1;
-	eigen_l[2][1] = _rho1;
-	eigen_l[2][2] = _DF(0.0);
-	eigen_l[2][3] = _DF(0.0);
-	eigen_l[2][4] = _DF(0.0);
-
-	eigen_l[3][0] = _DF(0.5) * _c1_rho1_Gamma * q2 - _v * _rho1;
-	eigen_l[3][1] = -_c1_rho1_Gamma*_u;
-	eigen_l[3][2] = -_c1_rho1_Gamma*_v + _rho1;
-	eigen_l[3][3] = -_c1_rho1_Gamma*_w;
-	eigen_l[3][4] = _c1_rho1_Gamma;
-
-	eigen_l[4][0] = _DF(0.5) * _c1_rho1_Gamma * q2 + _v * _rho1;
-	eigen_l[4][1] = -_c1_rho1_Gamma*_u;
-	eigen_l[4][2] = -_c1_rho1_Gamma*_v - _rho1;
-	eigen_l[4][3] = -_c1_rho1_Gamma*_w;
-	eigen_l[4][4] = _c1_rho1_Gamma;
-
-	//right eigen vectors
-	eigen_r[0][0] = _DF(0.0);
-	eigen_r[0][1] = _DF(1.0);
-	eigen_r[0][2] = _DF(0.0);
-	eigen_r[0][3] = _c1_rho;
-	eigen_r[0][4] = _c1_rho;
-
-	eigen_r[1][0] = _DF(0.0);
-	eigen_r[1][1] = _u;
-	eigen_r[1][2] = _rho;
-	eigen_r[1][3] = _c1_rho*_u;
-	eigen_r[1][4] = _c1_rho*_u;
-
-	eigen_r[2][0] = _DF(0.0);
-	eigen_r[2][1] = _v;
-	eigen_r[2][2] = _DF(0.0);
-	eigen_r[2][3] = _c1_rho*(_v + _c);
-	eigen_r[2][4] = _c1_rho*(_v - _c);
-
-	eigen_r[3][0] = - _rho;
-	eigen_r[3][1] = _w;
-	eigen_r[3][2] = _DF(0.0);
-	eigen_r[3][3] = _c1_rho*_w;
-	eigen_r[3][4] = _c1_rho*_w;
-
-	eigen_r[4][0] = - _rho*_w;
-	eigen_r[4][1] = _DF(0.5) * q2;
-	eigen_r[4][2] = _rho*_u;
-	eigen_r[4][3] = _c1_rho*(_H + _v*_c);
-	eigen_r[4][4] = _c1_rho*(_H - _v*_c);
-
 #endif // COP
 }
 
