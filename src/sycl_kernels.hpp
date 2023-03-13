@@ -18,9 +18,6 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t dx = bl.dx;
     real_t dy = bl.dy;
     real_t dz = bl.dz;
-
-    int id = Xmax * Ymax * k + Xmax * j + i;
-
 #if DIM_X
     if (i >= Xmax)
         return;
@@ -33,6 +30,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     if (k >= Zmax)
         return;
 #endif
+    int id = Xmax * Ymax * k + Xmax * j + i;
 
     real_t x = (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + 0.5 * dx;
     real_t y = (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + 0.5 * dy;
@@ -159,8 +157,8 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 #endif // 2==NumFluid
 
     p[id] = 36100.0;        // TODO: for debug;
-    u[id] = 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
-    v[id] = 10.0 * fabs(y); // 10.0 * y;          // y < 0.5 ? _DF(-10.0) * y : 10.0 * y;
+    u[id] = x < 0.5 ? _DF(-10.0) * x : 10.0 * x; // 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
+    v[id] = y < 0.5 ? _DF(-10.0) * y : 10.0 * y; // 10.0 * fabs(y); // 10.0 * y;
     w[id] = 0.0;
     rho[id] = 0.5; // p[id] / R / T[id];
 
@@ -170,9 +168,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
     T[id] = 300.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
-    p[id] = 36100.0;        // x < 0.5 ? _DF(72200.0) : _DF(36100.0);
-    u[id] = 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
-    v[id] = 10.0 * fabs(y); // 10.0 * y;          // y < 0.5 ? _DF(-10.0) * y : 10.0 * y;
+    p[id] = 36100.0;        // TODO: for debug;
+    u[id] = x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x); // 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
+    v[id] = y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
     w[id] = 0.0;
     rho[id] = p[id] / R / T[id];
     // T[id] = p[id] / rho[id] / R; // TODO

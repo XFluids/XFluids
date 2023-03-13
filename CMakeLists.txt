@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(USE_DOUBLE "if double" ON)
-option(DIM_X "if enable dim_x" OFF)
+option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" ON)
 option(DIM_Z "if enable dim_z" OFF)
 option(Multi "if enable multi , OFF for component" OFF)
@@ -27,12 +27,12 @@ option(Diffu "if add mass diffusion" OFF)
 set(ReaType "2") # define which reaction to caculate, 0 for H2+O2
 
 # about platform and device
-set(SelectDv "host") # define which platform and devices for compile options:host,nvidia,amd,intel
+set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
 set(ARCH "sm_86") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "1") # first device id in sycl-ls list
-set(num_GPUs "2") # number of mpi devices in sycl-ls list; 2 for 3080Tix2
-option(USE_MPI "if enable mpi" OFF)
+set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
+option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF)
+set(num_GPUs "1") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 
 # cmake modules
 include(init_options) # add main exec
