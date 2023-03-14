@@ -168,9 +168,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
     T[id] = 700.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
-    p[id] = 361000.0 * fabs(x); // TODO: for debug;
-    u[id] = 10.0 * fabs(x); // 0.0;x < 0.5 ? _DF(-10.0) * fabs(x) :
-    v[id] = 0.0;            // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
+    p[id] = 361000.0 * fabs(y); // TODO: for debug;
+    u[id] = 10.0 * fabs(0);     // 0.0;x < 0.5 ? _DF(-10.0) * fabs(x) :
+    v[id] = 10.0 * fabs(y);     // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
     w[id] = 0.0;
     rho[id] = p[id] / R / T[id];
     // T[id] = p[id] / rho[id] / R; // TODO
