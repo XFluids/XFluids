@@ -229,9 +229,9 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		OminY = 0;
 		OmaxY = Ss.BlSz.Ymax;
 
-		OnbZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax : 1;
-		OminZ = (3 == DIM_X + DIM_Y + DIM_Z) ? 0 : 0;
-		OmaxZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax : 1;
+		OnbZ = Ss.BlSz.Zmax;
+		OminZ = 0;
+		OmaxZ = Ss.BlSz.Zmax;
 	}
 	else
 	{
@@ -243,19 +243,20 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		OminY = Ss.BlSz.Bwidth_Y;
 		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
 
-		OnbZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax : 1;
-		OminZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Bwidth_Z : 0;
-		OmaxZ = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z : 1;
+		OnbZ = Ss.BlSz.Zmax;
+		OminZ = Ss.BlSz.Bwidth_Z;
+		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
 	}
 	xmin = Ss.BlSz.myMpiPos_x * OnbX;
 	xmax = Ss.BlSz.myMpiPos_x * OnbX + OnbX;
+	dx = Ss.BlSz.dx;
 	ymin = Ss.BlSz.myMpiPos_y * OnbY;
 	ymax = Ss.BlSz.myMpiPos_y * OnbY + OnbY;
-	zmin = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.BlSz.myMpiPos_z * OnbZ) : 0;
-	zmax = (3 == DIM_X + DIM_Y + DIM_Z) ? (Ss.BlSz.myMpiPos_z * OnbZ + OnbZ) : 0;
-	dx = Ss.BlSz.dx;
 	dy = Ss.BlSz.dy;
-	dz = (3 == DIM_X + DIM_Y + DIM_Z) ? Ss.BlSz.dz : 0.0;
+	zmin = Ss.BlSz.myMpiPos_z * OnbZ;
+	zmax = Ss.BlSz.myMpiPos_z * OnbZ + OnbZ;
+	dz = Ss.BlSz.dz;
+
 	// Init var names
 	int Onbvar = 8; // one fluid no COP
 #ifdef COP
@@ -265,9 +266,9 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	Onbar += NumFluid - 1;
 #endif // end Multi
 	std::map<int, std::string> variables_names;
-	variables_names[0] = "DIM-x";
-	variables_names[1] = "DIM-y";
-	variables_names[2] = "DIM-z";
+	variables_names[0] = "DIR-X";
+	variables_names[1] = "DIR-Y";
+	variables_names[2] = "DIR-Z";
 	variables_names[3] = "rho";
 	variables_names[4] = "P";
 	variables_names[5] = "u";
@@ -283,7 +284,6 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 #if 2 == NumFluid
 	variables_names[5] = "phi";
 #endif
-	bool useDouble = (sizeof(real_t) == sizeof(double)) ? true : false;
 
 	std::string file_name;
 	std::string headerfile_name;
@@ -324,10 +324,11 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		outHeader << "    <PCellData Scalars=\"Scalars_\">" << std::endl;
 		for (int iVar = 0; iVar < Onbvar; iVar++)
 		{
-			if (useDouble)
-				outHeader << "      <PDataArray type=\"Float64\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
-			else
-				outHeader << "      <PDataArray type=\"Float32\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+#if USE_DOUBLE
+			outHeader << "      <PDataArray type=\"Float64\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+#else
+			outHeader << "      <PDataArray type=\"Float32\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+#endif // end USE_DOUBLE
 		}
 		outHeader << "    </PCellData>" << std::endl;
 		// Out put for 2D && 3D;
@@ -378,13 +379,9 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	outFile.open(file_name.c_str(), std::ios_base::out);
 	// write xml data header
 	if (isBigEndian())
-	{
 		outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
-	}
 	else
-	{
 		outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
-	}
 
 	outFile << "  <ImageData WholeExtent=\""
 			<< xmin << " " << xmax << " "
@@ -405,14 +402,11 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	outFile << "    <CellData>" << std::endl;
 	for (int iVar = 0; iVar < Onbvar; iVar++)
 	{
-		if (useDouble)
-		{
-			outFile << "     <DataArray type=\"Float64\" Name=\"";
-		}
-		else
-		{
-			outFile << "     <DataArray type=\"Float32\" Name=\"";
-		}
+#if USE_DOUBLE
+		outFile << "     <DataArray type=\"Float64\" Name=\"";
+#else
+		outFile << "     <DataArray type=\"Float32\" Name=\"";
+#endif // end USE_DOUBLE
 		outFile << variables_names.at(iVar)
 				<< "\" format=\"appended\" offset=\""
 				<< iVar * OnbX * OnbY * OnbZ * sizeof(real_t) + iVar * sizeof(unsigned int)

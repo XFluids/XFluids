@@ -274,7 +274,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 	q.submit([&](sycl::handler &h)
 			 {
 		h.depends_on(ez);
-		h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
+		h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
 					   {
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;

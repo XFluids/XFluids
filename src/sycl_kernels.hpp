@@ -168,10 +168,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
     T[id] = 700.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
-    p[id] = 361000.0 * fabs(y); // TODO: for debug;
+    p[id] = 361000.0 * fabs(z); // TODO: for debug;
     u[id] = 10.0 * fabs(0);     // 0.0;x < 0.5 ? _DF(-10.0) * fabs(x) :
-    v[id] = 10.0 * fabs(y);     // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
-    w[id] = 0.0;
+    v[id] = 10.0 * fabs(0);     // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
+    w[id] = 10.0 * fabs(z);
     rho[id] = p[id] / R / T[id];
     // T[id] = p[id] / rho[id] / R; // TODO
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
@@ -639,7 +639,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     if (k >= Z_inner + Bwidth_Z)
         return;
 
-    //preparing some interval value for roe average
+    // preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
     real_t D1 = _DF(1.0) / (D + _DF(1.0));
     real_t _u = (u[id_l] + D * u[id_r]) * D1;
@@ -726,7 +726,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
             mm[m - k + 3] = _DF(0.5) * (hh[m - k + 3] - eigen_local_max * uh[m - k + 3]);
         }
 		// calculate the scalar numerical flux at y direction
-        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz)) / _DF(6.0);
+        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz));
 
         // get Gp
         for (int n1 = 0; n1 < Emax; n1++)
@@ -741,6 +741,10 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
         }
         Fzwall[Emax*id_l+n]  = fluxz;
 	}
+
+    real_t de_fw[Emax];
+    get_Array(Fzwall, de_fw, Emax, id_l);
+    real_t de_fx[Emax];
 }
 
 extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA, real_t BB, real_t CC, real_t *eigen_local, real_t *u, real_t *v, real_t *w, real_t *c)
@@ -769,21 +773,15 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     real_t uu = AA * u[id] + BB * v[id] + CC * w[id];
     real_t uuPc = uu + c[id];
     real_t uuMc = uu - c[id];
-    //local eigen values
-#ifdef COP
+
+    // local eigen values
     eigen_local[Emax * id + 0] = uuMc;
     for (size_t ii = 1; ii < Emax - 1; ii++)
     {
     eigen_local[Emax * id + ii] = uu;
     }
     eigen_local[Emax * id + Emax - 1] = uuPc;
-#else
-    eigen_local[Emax * id + 0] = uuMc;
-    eigen_local[Emax * id + 1] = uu;
-    eigen_local[Emax * id + 2] = uu;
-    eigen_local[Emax * id + 3] = uu;
-    eigen_local[Emax * id + 4] = uuPc;
-#endif // COP
+
     real_t de_fw[Emax];
     get_Array(eigen_local, de_fw, Emax, id);
     real_t de_fx[Emax];
