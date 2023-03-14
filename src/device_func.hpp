@@ -973,9 +973,9 @@ real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const rea
 		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 0] / T / T - Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 0]);
 #else
 	if (T > 1000)
-		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
 	else
-		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] / real_t(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] / real_t(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] / _DF(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] / _DF(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
 #endif // Thermo
 	return S;
 }

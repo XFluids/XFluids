@@ -33,7 +33,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt, if MPI used, get the minimum of all ranks
-		dt = 3.0e-4; // ComputeTimeStep(q); // debug for viscous flux // 5.0e-5;//0.001;//
+		dt = 3.0e-6; // ComputeTimeStep(q); // debug for viscous flux // 5.0e-5;//0.001;//
 #ifdef USE_MPI
 		Ss.mpiTrans->communicator->synchronize();
 		real_t temp;
@@ -47,7 +47,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		Reaction(q, dt); // TODO: without Reaction
+		// Reaction(q, dt); // TODO: without Reaction
 #endif // React
 #endif // COP
 		physicalTime = physicalTime + dt;
@@ -265,9 +265,9 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	Onbar += NumFluid - 1;
 #endif // end Multi
 	std::map<int, std::string> variables_names;
-	variables_names[0] = "x";
-	variables_names[1] = "y";
-	variables_names[2] = "z";
+	variables_names[0] = "DIM-x";
+	variables_names[1] = "DIM-y";
+	variables_names[2] = "DIM-z";
 	variables_names[3] = "rho";
 	variables_names[4] = "P";
 	variables_names[5] = "u";
@@ -435,12 +435,12 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			{
 				for (int i = OminX; i < OmaxX; i++)
 				{
-					real_t tmp = (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X - Ss.BlSz.Bwidth_X)) * dx + 0.5 * dx;
+					real_t tmp = DIM_X ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X - Ss.BlSz.Bwidth_X)) * dx + 0.5 * dx : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
 				} // for i
 			}	  // for j
 		}		  // for k
-		  //[1]y
+		//[1]y
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -448,12 +448,12 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			{
 				for (int i = OminX; i < OmaxX; i++)
 				{
-					real_t tmp = (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy;
+					real_t tmp = DIM_Y ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
 				} // for i
 			}	  // for j
 		}		  // for k
-		  //[2]z
+		//[2]z
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -461,12 +461,12 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			{
 				for (int i = OminX; i < OmaxX; i++)
 				{
-					real_t tmp = (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz;
+					real_t tmp = DIM_Z ? (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
 				} // for i
 			}	  // for j
 		}		  // for k
-		//[0]rho
+		//[3]rho
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -484,7 +484,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-				  //[1]P
+		//[4]P
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -502,7 +502,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-				  //[2]u
+		//[5]u
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -520,7 +520,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-				  //[3]v
+		//[6]v
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -538,7 +538,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-				  //[4]w
+		//[7]w
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -558,24 +558,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		}		  // for k
 
 #ifdef COP
-		  //[5]yii
-		for (int ii = 0; ii < NUM_SPECIES; ii++)
-		{
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-			{
-				for (int j = OminY; j < OmaxY; j++)
-				{
-					for (int i = OminX; i < OmaxX; i++)
-					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.y[ii][id];
-						outFile.write((char *)&tmp, sizeof(real_t));
-					} // for i
-				}	  // for j
-			}		  // for k
-		}			  // for yii
-					  //[6]T
+		//[8]T
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -593,7 +576,24 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-#endif			  // COP
+		//[COP]yii
+		for (int ii = 0; ii < NUM_SPECIES; ii++)
+		{
+			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+			for (int k = OminZ; k < OmaxZ; k++)
+			{
+				for (int j = OminY; j < OmaxY; j++)
+				{
+					for (int i = OminX; i < OmaxX; i++)
+					{
+						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+						real_t tmp = fluids[0]->h_fstate.y[ii][id];
+						outFile.write((char *)&tmp, sizeof(real_t));
+					} // for i
+				}	  // for j
+			}		  // for k
+		}			  // for yii
+#endif				  // end  COP
 
 #if 2 == NumFluid
 		  //[5]phi

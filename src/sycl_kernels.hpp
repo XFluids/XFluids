@@ -32,9 +32,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 #endif
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + 0.5 * dx;
-    real_t y = (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + 0.5 * dy;
-    real_t z = (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + 0.5 * dz;
+    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx : _DF(0.0);
+    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
+    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
 
     real_t d2;
     switch (ini.blast_type)
@@ -156,21 +156,21 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     }
 #endif // 2==NumFluid
 
-    p[id] = 36100.0;        // TODO: for debug;
-    u[id] = x < 0.5 ? _DF(-10.0) * x : 10.0 * x; // 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
-    v[id] = y < 0.5 ? _DF(-10.0) * y : 10.0 * y; // 10.0 * fabs(y); // 10.0 * y;
-    w[id] = 0.0;
-    rho[id] = 0.5; // p[id] / R / T[id];
+    // p[id] = 36100.0;        // TODO: for debug;
+    // u[id] = x < 0.5 ? _DF(-10.0) * x : 10.0 * x; // 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
+    // v[id] = y < 0.5 ? _DF(-10.0) * y : 10.0 * y; // 10.0 * fabs(y); // 10.0 * y;
+    // w[id] = 0.0;
+    // rho[id] = 0.5; // p[id] / R / T[id];
 
 // EOS was included
 #ifdef COP
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = 300.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
+    T[id] = 700.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
     p[id] = 36100.0;        // TODO: for debug;
-    u[id] = x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x); // 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
-    v[id] = y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
+    u[id] = 10.0 * fabs(x); // 0.0;x < 0.5 ? _DF(-10.0) * fabs(x) :
+    v[id] = 0.0;            // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
     w[id] = 0.0;
     rho[id] = p[id] / R / T[id];
     // T[id] = p[id] / rho[id] / R; // TODO
@@ -784,6 +784,9 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     eigen_local[Emax * id + 3] = uu;
     eigen_local[Emax * id + 4] = uuPc;
 #endif // COP
+    real_t de_fw[Emax];
+    get_Array(eigen_local, de_fw, Emax, id);
+    real_t de_fx[Emax];
 }
 
 extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
