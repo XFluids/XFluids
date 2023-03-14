@@ -709,6 +709,8 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
+const double epsilon_weno = 1.0e-6;
+
 /**
  * @brief the 5th WENO Scheme
  * 
@@ -721,7 +723,7 @@ real_t weno5old_P(real_t *f, real_t delta)
 	int k;
 	real_t v1, v2, v3, v4, v5;
 	real_t a1, a2, a3;
-//	real_t w1, w2, w3;
+	real_t w1, w2, w3;
 
 	//assign value to v1, v2,...
 	k = 0;
@@ -731,104 +733,124 @@ real_t weno5old_P(real_t *f, real_t delta)
 	v4 = *(f + k + 1); 
 	v5 = *(f + k + 2);
 
-	//smoothness indicator
-//	real_t s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3) 
-//	   + 3.0*(v1 - 4.0*v2 + 3.0*v3)*(v1 - 4.0*v2 + 3.0*v3);
-//	real_t s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4) 
-//	   + 3.0*(v2 - v4)*(v2 - v4);
-//	real_t s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5) 
-//	   + 3.0*(3.0*v3 - 4.0*v4 + v5)*(3.0*v3 - 4.0*v4 + v5);
-	
-        //weights
-//      a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
-//      a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
-//      a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-//      real_t tw1 = 1.0/(a1 + a2 +a3); 
-//      w1 = a1*tw1;
-//      w2 = a2*tw1;
-//      w3 = a3*tw1;
+	// smoothness indicator
+	real_t s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
+	s1 /= _DF(12.0);
+	real_t s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
+	s2 /= _DF(12.0);
+	real_t s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
+	s3 /= _DF(12.0);
 
-//      a1 = w1*(2.0*v1 - 7.0*v2 + 11.0*v3);
-//      a2 = w2*(-v2 + 5.0*v3 + 2.0*v4);
-//      a3 = w3*(2.0*v3 + 5.0*v4 - v5);
+	// weights
+	a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
+	a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
+	a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
+	real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
+	w1 = a1 * tw1;
+	w2 = a2 * tw1;
+	w3 = a3 * tw1;
+	real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
+	// return weighted average
+	return temp;
 
-//      return (a1+a2+a3)/6.0;
+	// 	//smoothness indicator
+	// //	real_t s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3)
+	// //	   + 3.0*(v1 - 4.0*v2 + 3.0*v3)*(v1 - 4.0*v2 + 3.0*v3);
+	// //	real_t s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4)
+	// //	   + 3.0*(v2 - v4)*(v2 - v4);
+	// //	real_t s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5)
+	// //	   + 3.0*(3.0*v3 - 4.0*v4 + v5)*(3.0*v3 - 4.0*v4 + v5);
 
-        //return weighted average
-//      return  w1*(2.0*v1 - 7.0*v2 + 11.0*v3)/6.0
-  //              + w2*(-v2 + 5.0*v3 + 2.0*v4)/6.0
-    //            + w3*(2.0*v3 + 5.0*v4 - v5)/6.0;
+	//         //weights
+	// //      a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
+	// //      a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
+	// //      a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
+	// //      real_t tw1 = 1.0/(a1 + a2 +a3);
+	// //      w1 = a1*tw1;
+	// //      w2 = a2*tw1;
+	// //      w3 = a3*tw1;
 
-#if USE_DP
-	a1 = v1 - 2.0 * v2 + v3;
-	real_t s1 = 13.0 * a1 * a1;
-	a1 = v1 - 4.0 * v2 + 3.0 * v3;
-	s1 += 3.0 * a1 * a1;
-	a1 = v2 - 2.0 * v3 + v4;
-	real_t s2 = 13.0 * a1 * a1;
-	a1 = v2 - v4;
-	s2 += 3.0 * a1 * a1;
-	a1 = v3 - 2.0 * v4 + v5;
-	real_t s3 = 13.0 * a1 * a1;
-	a1 = 3.0 * v3 - 4.0 * v4 + v5;
-	s3 += 3.0 * a1 * a1;
-#else
-	a1 = v1 - 2.0f * v2 + v3;
-	real_t s1 = 13.0f * a1 * a1;
-	a1 = v1 - 4.0f * v2 + 3.0f * v3;
-	s1 += 3.0f * a1 * a1;
-	a1 = v2 - 2.0f * v3 + v4;
-	real_t s2 = 13.0f * a1 * a1;
-	a1 = v2 - v4;
-	s2 += 3.0f * a1 * a1;
-	a1 = v3 - 2.0f * v4 + v5;
-	real_t s3 = 13.0f * a1 * a1;
-	a1 = 3.0f * v3 - 4.0f * v4 + v5;
-	s3 += 3.0f * a1 * a1;
-#endif
+	// //      a1 = w1*(2.0*v1 - 7.0*v2 + 11.0*v3);
+	// //      a2 = w2*(-v2 + 5.0*v3 + 2.0*v4);
+	// //      a3 = w3*(2.0*v3 + 5.0*v4 - v5);
 
-	// a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
-	// a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
-	// a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-	// real_t tw1 = 1.0/(a1 + a2 +a3);
-	// a1 = a1*tw1;
-	// a2 = a2*tw1;
-	// a3 = a3*tw1;
-	real_t tol = 1.0e-6;
-#if USE_DP
-	a1 = 0.1 * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
-	a2 = 0.2 * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
-	a3 = 0.3 * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
-	real_t tw1 = 1.0 / (a1 + a2 + a3);
-#else
-	a1 = 0.1f * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
-	a2 = 0.2f * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
-	a3 = 0.3f * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
-	real_t tw1 = 1.0f / (a1 + a2 + a3);
-#endif
+	// //      return (a1+a2+a3)/6.0;
 
-	a1 = a1 * tw1;
-	a2 = a2 * tw1;
-	a3 = a3 * tw1;
+	//         //return weighted average
+	// //      return  w1*(2.0*v1 - 7.0*v2 + 11.0*v3)/6.0
+	//   //              + w2*(-v2 + 5.0*v3 + 2.0*v4)/6.0
+	//     //            + w3*(2.0*v3 + 5.0*v4 - v5)/6.0;
 
-#if USE_DP
-	s1 = a1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3);
-	s2 = a2 * (-v2 + 5.0 * v3 + 2.0 * v4);
-	s3 = a3 * (2.0 * v3 + 5.0 * v4 - v5);
-#else
-	s1 = a1 * (2.0f * v1 - 7.0f * v2 + 11.0f * v3);
-	s2 = a2 * (-v2 + 5.0f * v3 + 2.0f * v4);
-	s3 = a3 * (2.0f * v3 + 5.0f * v4 - v5);
-#endif
+	// #if USE_DP
+	// 	a1 = v1 - 2.0 * v2 + v3;
+	// 	real_t s1 = 13.0 * a1 * a1;
+	// 	a1 = v1 - 4.0 * v2 + 3.0 * v3;
+	// 	s1 += 3.0 * a1 * a1;
+	// 	a1 = v2 - 2.0 * v3 + v4;
+	// 	real_t s2 = 13.0 * a1 * a1;
+	// 	a1 = v2 - v4;
+	// 	s2 += 3.0 * a1 * a1;
+	// 	a1 = v3 - 2.0 * v4 + v5;
+	// 	real_t s3 = 13.0 * a1 * a1;
+	// 	a1 = 3.0 * v3 - 4.0 * v4 + v5;
+	// 	s3 += 3.0 * a1 * a1;
+	// #else
+	// 	a1 = v1 - 2.0f * v2 + v3;
+	// 	real_t s1 = 13.0f * a1 * a1;
+	// 	a1 = v1 - 4.0f * v2 + 3.0f * v3;
+	// 	s1 += 3.0f * a1 * a1;
+	// 	a1 = v2 - 2.0f * v3 + v4;
+	// 	real_t s2 = 13.0f * a1 * a1;
+	// 	a1 = v2 - v4;
+	// 	s2 += 3.0f * a1 * a1;
+	// 	a1 = v3 - 2.0f * v4 + v5;
+	// 	real_t s3 = 13.0f * a1 * a1;
+	// 	a1 = 3.0f * v3 - 4.0f * v4 + v5;
+	// 	s3 += 3.0f * a1 * a1;
+	// #endif
 
-	// return (s1+s2+s3)/6.0;
-	return (s1 + s2 + s3);
+	// 	// a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
+	// 	// a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
+	// 	// a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
+	// 	// real_t tw1 = 1.0/(a1 + a2 +a3);
+	// 	// a1 = a1*tw1;
+	// 	// a2 = a2*tw1;
+	// 	// a3 = a3*tw1;
+	// 	real_t tol = 1.0e-6;
+	// #if USE_DP
+	// 	a1 = 0.1 * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+	// 	a2 = 0.2 * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+	// 	a3 = 0.3 * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+	// 	real_t tw1 = 1.0 / (a1 + a2 + a3);
+	// #else
+	// 	a1 = 0.1f * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+	// 	a2 = 0.2f * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+	// 	a3 = 0.3f * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+	// 	real_t tw1 = 1.0f / (a1 + a2 + a3);
+	// #endif
 
-	// a1 = (1.0e-6 + s1)*(1.0e-6 + s1);
-	// a2 = (1.0e-6 + s2)*(1.0e-6 + s2);
-	// a3 = (1.0e-6 + s3)*(1.0e-6 + s3);
-	// real_t tw1 = 6.0*(a1 + a2 + a3);
-	// return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
+	// 	a1 = a1 * tw1;
+	// 	a2 = a2 * tw1;
+	// 	a3 = a3 * tw1;
+
+	// #if USE_DP
+	// 	s1 = a1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3);
+	// 	s2 = a2 * (-v2 + 5.0 * v3 + 2.0 * v4);
+	// 	s3 = a3 * (2.0 * v3 + 5.0 * v4 - v5);
+	// #else
+	// 	s1 = a1 * (2.0f * v1 - 7.0f * v2 + 11.0f * v3);
+	// 	s2 = a2 * (-v2 + 5.0f * v3 + 2.0f * v4);
+	// 	s3 = a3 * (2.0f * v3 + 5.0f * v4 - v5);
+	// #endif
+
+	// 	// return (s1+s2+s3)/6.0;
+	// 	return (s1 + s2 + s3);
+
+	// 	// a1 = (1.0e-6 + s1)*(1.0e-6 + s1);
+	// 	// a2 = (1.0e-6 + s2)*(1.0e-6 + s2);
+	// 	// a3 = (1.0e-6 + s3)*(1.0e-6 + s3);
+	// 	// real_t tw1 = 6.0*(a1 + a2 + a3);
+	// 	// return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
 }
 /**
  * @brief the 5th WENO Scheme
@@ -842,7 +864,7 @@ real_t weno5old_M(real_t *f, real_t delta)
 	int k;
 	real_t v1, v2, v3, v4, v5;
 	real_t a1, a2, a3;
-//	real_t w1, w2, w3;
+	real_t w1, w2, w3;
 
 	//assign value to v1, v2,...
 	k = 1;
@@ -852,103 +874,124 @@ real_t weno5old_M(real_t *f, real_t delta)
 	v4 = *(f + k - 1); 
 	v5 = *(f + k - 2);
 
-	//smoothness indicator
-//	real_t s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3) 
-//	   + 3.0*(v1 - 4.0*v2 + 3.0*v3)*(v1 - 4.0*v2 + 3.0*v3);
-//	real_t s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4) 
-//	   + 3.0*(v2 - v4)*(v2 - v4);
-//	real_t s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5) 
-//	   + 3.0*(3.0*v3 - 4.0*v4 + v5)*(3.0*v3 - 4.0*v4 + v5);
+	// smoothness indicator
+	double s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
+	s1 /= _DF(12.0);
+	double s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
+	s2 /= _DF(12.0);
+	double s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
+	s3 /= _DF(12.0);
 
-        //weights
-//      a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
-//      a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
-//      a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-//      real_t tw1 = 1.0/(a1 + a2 +a3); 
-//      w1 = a1*tw1;
-//      w2 = a2*tw1;
-//      w3 = a3*tw1;
+	// weights
+	a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
+	a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
+	a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
+	double tw1 = _DF(1.0) / (a1 + a2 + a3);
+	w1 = a1 * tw1;
+	w2 = a2 * tw1;
+	w3 = a3 * tw1;
 
-//      a1 = w1*(2.0*v1 - 7.0*v2 + 11.0*v3);
-//      a2 = w2*(-v2 + 5.0*v3 + 2.0*v4);
-//      a3 = w3*(2.0*v3 + 5.0*v4 - v5);
+	real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
+	// return weighted average
+	return temp;
 
-//      return (a1+a2+a3)/6.0;
+	// 	//smoothness indicator
+	// //	real_t s1 = 13.0*(v1 - 2.0*v2 + v3)*(v1 - 2.0*v2 + v3)
+	// //	   + 3.0*(v1 - 4.0*v2 + 3.0*v3)*(v1 - 4.0*v2 + 3.0*v3);
+	// //	real_t s2 = 13.0*(v2 - 2.0*v3 + v4)*(v2 - 2.0*v3 + v4)
+	// //	   + 3.0*(v2 - v4)*(v2 - v4);
+	// //	real_t s3 = 13.0*(v3 - 2.0*v4 + v5)*(v3 - 2.0*v4 + v5)
+	// //	   + 3.0*(3.0*v3 - 4.0*v4 + v5)*(3.0*v3 - 4.0*v4 + v5);
 
-        //return weighted average
-	//      return  w1*(2.0*v1 - 7.0*v2 + 11.0*v3)/6.0
-	//                + w2*(-v2 + 5.0*v3 + 2.0*v4)/6.0
-	//                + w3*(2.0*v3 + 5.0*v4 - v5)/6.0;
+	//         //weights
+	// //      a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
+	// //      a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
+	// //      a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
+	// //      real_t tw1 = 1.0/(a1 + a2 +a3);
+	// //      w1 = a1*tw1;
+	// //      w2 = a2*tw1;
+	// //      w3 = a3*tw1;
 
-#if USE_DP
-	a1 = v1 - 2.0 * v2 + v3;
-	real_t s1 = 13.0 * a1 * a1;
-	a1 = v1 - 4.0 * v2 + 3.0 * v3;
-	s1 += 3.0 * a1 * a1;
-	a1 = v2 - 2.0 * v3 + v4;
-	real_t s2 = 13.0 * a1 * a1;
-	a1 = v2 - v4;
-	s2 += 3.0 * a1 * a1;
-	a1 = v3 - 2.0 * v4 + v5;
-	real_t s3 = 13.0 * a1 * a1;
-	a1 = 3.0 * v3 - 4.0 * v4 + v5;
-	s3 += 3.0 * a1 * a1;
-#else
-	a1 = v1 - 2.0f * v2 + v3;
-	real_t s1 = 13.0f * a1 * a1;
-	a1 = v1 - 4.0f * v2 + 3.0f * v3;
-	s1 += 3.0f * a1 * a1;
-	a1 = v2 - 2.0f * v3 + v4;
-	real_t s2 = 13.0f * a1 * a1;
-	a1 = v2 - v4;
-	s2 += 3.0f * a1 * a1;
-	a1 = v3 - 2.0f * v4 + v5;
-	real_t s3 = 13.0f * a1 * a1;
-	a1 = 3.0f * v3 - 4.0f * v4 + v5;
-	s3 += 3.0f * a1 * a1;
-#endif
+	// //      a1 = w1*(2.0*v1 - 7.0*v2 + 11.0*v3);
+	// //      a2 = w2*(-v2 + 5.0*v3 + 2.0*v4);
+	// //      a3 = w3*(2.0*v3 + 5.0*v4 - v5);
 
-	//  a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
-	//  a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
-	//  a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
-	//  real_t tw1 = 1.0/(a1 + a2 +a3);
-	//  a1 = a1*tw1;
-	//  a2 = a2*tw1;
-	//  a3 = a3*tw1;
-	real_t tol = 1.0e-6;
-#if USE_DP
-	a1 = 0.1 * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
-	a2 = 0.2 * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
-	a3 = 0.3 * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
-	real_t tw1 = 1.0 / (a1 + a2 + a3);
-#else
-	a1 = 0.1f * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
-	a2 = 0.2f * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
-	a3 = 0.3f * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
-	real_t tw1 = 1.0f / (a1 + a2 + a3);
-#endif
-	a1 = a1 * tw1;
-	a2 = a2 * tw1;
-	a3 = a3 * tw1;
+	// //      return (a1+a2+a3)/6.0;
 
-#if USE_DP
-	s1 = a1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3);
-	s2 = a2 * (-v2 + 5.0 * v3 + 2.0 * v4);
-	s3 = a3 * (2.0 * v3 + 5.0 * v4 - v5);
-#else
-	s1 = a1 * (2.0f * v1 - 7.0f * v2 + 11.0f * v3);
-	s2 = a2 * (-v2 + 5.0f * v3 + 2.0f * v4);
-	s3 = a3 * (2.0f * v3 + 5.0f * v4 - v5);
-#endif
+	//         //return weighted average
+	// 	//      return  w1*(2.0*v1 - 7.0*v2 + 11.0*v3)/6.0
+	// 	//                + w2*(-v2 + 5.0*v3 + 2.0*v4)/6.0
+	// 	//                + w3*(2.0*v3 + 5.0*v4 - v5)/6.0;
 
-	//  return (s1+s2+s3)/6.0;
-	return (s1 + s2 + s3);
+	// #if USE_DP
+	// 	a1 = v1 - 2.0 * v2 + v3;
+	// 	real_t s1 = 13.0 * a1 * a1;
+	// 	a1 = v1 - 4.0 * v2 + 3.0 * v3;
+	// 	s1 += 3.0 * a1 * a1;
+	// 	a1 = v2 - 2.0 * v3 + v4;
+	// 	real_t s2 = 13.0 * a1 * a1;
+	// 	a1 = v2 - v4;
+	// 	s2 += 3.0 * a1 * a1;
+	// 	a1 = v3 - 2.0 * v4 + v5;
+	// 	real_t s3 = 13.0 * a1 * a1;
+	// 	a1 = 3.0 * v3 - 4.0 * v4 + v5;
+	// 	s3 += 3.0 * a1 * a1;
+	// #else
+	// 	a1 = v1 - 2.0f * v2 + v3;
+	// 	real_t s1 = 13.0f * a1 * a1;
+	// 	a1 = v1 - 4.0f * v2 + 3.0f * v3;
+	// 	s1 += 3.0f * a1 * a1;
+	// 	a1 = v2 - 2.0f * v3 + v4;
+	// 	real_t s2 = 13.0f * a1 * a1;
+	// 	a1 = v2 - v4;
+	// 	s2 += 3.0f * a1 * a1;
+	// 	a1 = v3 - 2.0f * v4 + v5;
+	// 	real_t s3 = 13.0f * a1 * a1;
+	// 	a1 = 3.0f * v3 - 4.0f * v4 + v5;
+	// 	s3 += 3.0f * a1 * a1;
+	// #endif
 
-	//  a1 = (1.0e-6 + s1)*(1.0e-6 + s1);
-	//  a2 = (1.0e-6 + s2)*(1.0e-6 + s2);
-	//  a3 = (1.0e-6 + s3)*(1.0e-6 + s3);
-	//  real_t tw1 = 6.0*(a1 + a2 + a3);
-	//  return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
+	// 	//  a1 = 0.1/((1.0e-6 + s1)*(1.0e-6 + s1));
+	// 	//  a2 = 0.6/((1.0e-6 + s2)*(1.0e-6 + s2));
+	// 	//  a3 = 0.3/((1.0e-6 + s3)*(1.0e-6 + s3));
+	// 	//  real_t tw1 = 1.0/(a1 + a2 +a3);
+	// 	//  a1 = a1*tw1;
+	// 	//  a2 = a2*tw1;
+	// 	//  a3 = a3*tw1;
+	// 	real_t tol = 1.0e-6;
+	// #if USE_DP
+	// 	a1 = 0.1 * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+	// 	a2 = 0.2 * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+	// 	a3 = 0.3 * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+	// 	real_t tw1 = 1.0 / (a1 + a2 + a3);
+	// #else
+	// 	a1 = 0.1f * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+	// 	a2 = 0.2f * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+	// 	a3 = 0.3f * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+	// 	real_t tw1 = 1.0f / (a1 + a2 + a3);
+	// #endif
+	// 	a1 = a1 * tw1;
+	// 	a2 = a2 * tw1;
+	// 	a3 = a3 * tw1;
+
+	// #if USE_DP
+	// 	s1 = a1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3);
+	// 	s2 = a2 * (-v2 + 5.0 * v3 + 2.0 * v4);
+	// 	s3 = a3 * (2.0 * v3 + 5.0 * v4 - v5);
+	// #else
+	// 	s1 = a1 * (2.0f * v1 - 7.0f * v2 + 11.0f * v3);
+	// 	s2 = a2 * (-v2 + 5.0f * v3 + 2.0f * v4);
+	// 	s3 = a3 * (2.0f * v3 + 5.0f * v4 - v5);
+	// #endif
+
+	// 	//  return (s1+s2+s3)/6.0;
+	// 	return (s1 + s2 + s3);
+
+	// 	//  a1 = (1.0e-6 + s1)*(1.0e-6 + s1);
+	// 	//  a2 = (1.0e-6 + s2)*(1.0e-6 + s2);
+	// 	//  a3 = (1.0e-6 + s3)*(1.0e-6 + s3);
+	// 	//  real_t tw1 = 6.0*(a1 + a2 + a3);
+	// 	//  return (0.1*(2.0*v1 - 7.0*v2 + 11.0*v3) + 0.6*(-v2 + 5.0*v3 + 2.0*v4) + 0.2*(2.0*v3 + 5.0*v4 - v5))/tw1;
 }
 
 #ifdef React

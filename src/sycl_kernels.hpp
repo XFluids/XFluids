@@ -168,7 +168,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     get_yi(_y, yi, id);
     real_t R = get_CopR(thermal->species_chara, yi);
     T[id] = 700.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
-    p[id] = 36100.0;        // TODO: for debug;
+    p[id] = 361000.0 * fabs(x); // TODO: for debug;
     u[id] = 10.0 * fabs(x); // 0.0;x < 0.5 ? _DF(-10.0) * fabs(x) :
     v[id] = 0.0;            // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
     w[id] = 0.0;
@@ -461,7 +461,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
         }
 
 		// calculate the scalar numerical flux at x direction
-        f_flux = (weno5old_P(&pp[3], dx) + weno5old_M(&mm[3], dx)) / _DF(6.0);
+        f_flux = (weno5old_P(&pp[3], dx) + weno5old_M(&mm[3], dx));
 
         // get Fp
         for (int n1 = 0; n1 < Emax; n1++)
@@ -596,7 +596,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
             mm[m - j + 3] = _DF(0.5) * (gg[m - j + 3] - eigen_local_max * ug[m - j + 3]);
         }
 		// calculate the scalar numerical flux at y direction
-        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy)) / _DF(6.0);
+        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy));
         // get Gp
         for (int n1 = 0; n1 < Emax; n1++)
             _p[n][n1] = g_flux * eigen_r[n1][n];
@@ -809,7 +809,6 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
     int id_km = Xmax * Ymax * (k - 1) + Xmax * j + i;
 #endif
 
-    real_t de_LU[Emax];
     for (int n = 0; n < Emax; n++)
     {
     real_t LU0 = _DF(0.0);
@@ -823,9 +822,9 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
     LU0 += (FluxHw[Emax * id_km + n] - FluxHw[Emax * id + n]) / bl.dz;
 #endif
     LU[Emax * id + n] = LU0;
-    de_LU[n] = LU0;
     }
-    real_t de_L;
+    real_t de_LU[Emax];
+    get_Array(LU, de_LU, Emax, id);
 }
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
@@ -888,20 +887,29 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
     int Z_inner = bl.Z_inner;
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    switch(flag) {
-        case 1:
-        for(int n=0; n<Emax; n++)
+    real_t de_U[Emax], de_U1[Emax], de_LU[Emax];
+    switch (flag)
+    {
+    case 1:
+        for (int n = 0; n < Emax; n++)
             U1[Emax * id + n] = U[Emax * id + n] + dt * LU[Emax * id + n];
+        get_Array(U, de_U, Emax, id);
+        get_Array(LU, de_LU, Emax, id);
+        get_Array(U1, de_U1, Emax, id);
         break;
-        case 2:
-        for(int n=0; n<Emax; n++){
+    case 2:
+        for (int n = 0; n < Emax; n++)
             U1[Emax * id + n] = _DF(0.75) * U[Emax * id + n] + _DF(0.25) * U1[Emax * id + n] + _DF(0.25) * dt * LU[Emax * id + n];
-        }   
+        get_Array(U, de_U, Emax, id);
+        get_Array(LU, de_LU, Emax, id);
+        get_Array(U1, de_U1, Emax, id);
         break;
-        case 3:
-        for(int n=0; n<Emax; n++){
+    case 3:
+        for (int n = 0; n < Emax; n++)
             U[Emax * id + n] = (U[Emax * id + n] + _DF(2.0) * U1[Emax * id + n] + _DF(2.0) * dt * LU[Emax * id + n]) / _DF(3.0);
-        }
+        get_Array(U, de_U, Emax, id);
+        get_Array(LU, de_LU, Emax, id);
+        get_Array(U1, de_U1, Emax, id);
         break;
     }
 }

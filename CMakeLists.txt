@@ -28,7 +28,7 @@ set(ReaType "2") # define which reaction to caculate, 0 for H2+O2
 
 # about platform and device
 set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_86") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
+set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
 set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
 option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF)
