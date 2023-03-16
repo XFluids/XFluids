@@ -1512,7 +1512,7 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
 
 #if DIM_X
 extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *FluxFw, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
-                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *const *V, real_t **Vde)
+                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 { // compute Physical、Heat、Diffu viscity in this function
 #ifdef DIM_X
     if (i >= bl.X_inner + bl.Bwidth_X)
@@ -1535,9 +1535,6 @@ extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, rea
     real_t *Ducz = Vde[ducz];
     real_t *Dvcy = Vde[dvcy];
     real_t *Dwcz = Vde[dwcz];
-    real_t *u = V[0];
-    real_t *v = V[1];
-    real_t *w = V[2];
     real_t dx = bl.dx;
 
     real_t F_x_wall_v[Emax];
@@ -1600,7 +1597,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, rea
 
 #if DIM_Y
 extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *FluxGw, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
-                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *const *V, real_t **Vde)
+                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 { // compute Physical、Heat、Diffu viscity in this function
 #ifdef DIM_X
     if (i >= bl.X_inner + bl.Bwidth_X)
@@ -1623,9 +1620,6 @@ extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, rea
     real_t *Dvcz = Vde[dvcz];
     real_t *Ducx = Vde[ducx];
     real_t *Dwcz = Vde[dwcz];
-    real_t *u = V[0];
-    real_t *v = V[1];
-    real_t *w = V[2];
     real_t dy = bl.dy;
 
     // mue at wall
@@ -1689,7 +1683,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, rea
 
 #if DIM_Z
 extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *FluxHw, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
-                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *const *V, real_t **Vde)
+                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 { // compute Physical、Heat、Diffu viscity in this function
 #ifdef DIM_X
     if (i >= bl.X_inner + bl.Bwidth_X)
@@ -1712,9 +1706,6 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
     real_t *Dwcy = Vde[dwcy];
     real_t *Ducx = Vde[ducx];
     real_t *Dvcy = Vde[dvcy];
-    real_t *u = V[0];
-    real_t *v = V[1];
-    real_t *w = V[2];
     real_t dz = bl.dz;
 
     // mue at wall

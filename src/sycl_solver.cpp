@@ -33,7 +33,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt, if MPI used, get the minimum of all ranks
-		dt = 1.0e-5; // ComputeTimeStep(q); // debug for viscous flux // 5.0e-5;//0.001;//
+		dt = ComputeTimeStep(q); // debug for viscous flux // 1.0e-6; //
 #ifdef USE_MPI
 		Ss.mpiTrans->communicator->synchronize();
 		real_t temp;
@@ -65,8 +65,10 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	Ss.mpiTrans->communicator->allReduce(&duration, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	duration = temp;
 	if (0 == Ss.mpiTrans->myRank)
+		std::cout << SelectDv << " runtime(max of all ranks): " << duration / 1000.0f << std::endl;
+#else
+	std::cout << SelectDv << " runtime: " << duration / 1000.0f << std::endl;
 #endif // end USE_MPI
-		std::cout << SelectDv << " runtime(max of all ranks if USE_MPI): " << duration / 1000.0f << std::endl;
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -106,7 +108,7 @@ void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
 
 real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
 {
-	real_t dt_ref = _DF(0.0f);
+	real_t dt_ref = _DF(1.0e-10);
 #if NumFluid == 1
 	dt_ref = fluids[0]->GetFluidDt(q);
 #elif NumFluid == 2

@@ -33,46 +33,66 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 
 real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 {
-	real_t *rho = fdata.rho;
 	real_t *c = fdata.c;
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
 
-	auto local_ndrange = range<1>(16); // size of workgroup
-	auto global_ndrange = range<1>(bl.Xmax * bl.Ymax * bl.Zmax);
-
+	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
+	auto local_ndrange = range<1>(2); // size of workgroup
+	auto global_ndrange = range<1>(meshSize);
 	for (int n = 0; n < 3; n++)
 		uvw_c_max[n] = 0;
+	// add uvw and c individually
+	//  #if DIM_X
+	//  	real_t *uc;
+	//  	uc = sycl::malloc_device<real_t>(meshSize * sizeof(real_t), q);
+	//  #endif // end DIM_X
+	//  #if DIM_Y
+	//  			 real_t *
+	//  		 vc;
+	//  #endif // end DIM_Y
+	//  #if DIM_Z
+	//  	real_t *wc;
+	//  #endif // end DIM_Z
 
+	// define reduction objects for sum, min, max reduction
+	// auto reduction_sum = reduction(sum, sycl::plus<>());
+	real_t dtref = _DF(0.0);
+#if DIM_X
 	q.submit([&](sycl::handler &h)
 			 {
-      	// define reduction objects for sum, min, max reduction
-		// auto reduction_sum = reduction(sum, sycl::plus<>());
     	auto reduction_max_x = reduction(&(uvw_c_max[0]), sycl::maximum<>());
-		auto reduction_max_y = reduction(&(uvw_c_max[1]), sycl::maximum<>());
-		auto reduction_max_z = reduction(&(uvw_c_max[2]), sycl::maximum<>());
-
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, reduction_max_y, reduction_max_z,
-					   [=](nd_item<1> index, auto &temp_max_x, auto &temp_max_y, auto &temp_max_z)
+		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, [=](nd_item<1> index, auto &temp_max_x)
 					   {
 						   auto id = index.get_global_id();
-						   temp_max_x.combine(fabs(u[id]) + c[id]); // TODO:|u|+c ?
+						   temp_max_x.combine(fabs(u[id]) + c[id]); }); })
+		.wait();
+	dtref += uvw_c_max[0] / bl.dx;
+#endif // end DIM_X
+#if DIM_Y
+	q.submit([&](sycl::handler &h)
+			 {	auto reduction_max_y = reduction(&(uvw_c_max[1]), sycl::maximum<>());
+		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y)
+					   {
+						   auto id = index.get_global_id();
 						   temp_max_y.combine(fabs(v[id]) + c[id]);
+					   }); })
+		.wait();
+	dtref += uvw_c_max[1] / bl.dy;
+#endif // end DIM_Y
+#if DIM_Z
+	q.submit([&](sycl::handler &h)
+			 {	auto reduction_max_z = reduction(&(uvw_c_max[2]), sycl::maximum<>());
+		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z)
+					   {
+						   auto id = index.get_global_id();
 						   temp_max_z.combine(fabs(w[id]) + c[id]);
 					   }); })
 		.wait();
-
-	real_t dtref = 0.0;
-#if DIM_X
-	dtref += uvw_c_max[0] / bl.dx;
-#endif
-#if DIM_Y
-	dtref += uvw_c_max[1] / bl.dy;
-#endif
-#if DIM_Z
 	dtref += uvw_c_max[2] / bl.dz;
-#endif
+#endif // end DIM_Z
+
 	return bl.CFLnumber / dtref;
 }
 
@@ -286,10 +306,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 // NOTE: add visc flux to Fluxw
 #ifdef Visc
 	/* Viscous LU including physical visc(切应力),Heat transfer(传热), mass Diffusion(质量扩散)
-	 * Physical Visc must be included Heat is alternative and Diffu depends on compent
+	 * Physical Visc must be included, Heat is alternative, Diffu depends on compent
 	 */
-	real_t *V[3] = {fdata.u, fdata.v, fdata.w};
-	real_t **Vde = fdata.Vde;
 	real_t *va = fdata.viscosity_aver;
 	real_t *tca = fdata.thermal_conduct_aver;
 	real_t *Da = fdata.Dkm_aver;
@@ -312,7 +330,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, V, Vde); }); })
+			GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); })
 		.wait();
 #endif // end DIM_X
 #if DIM_Y
@@ -322,7 +340,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, V, Vde); }); })
+			GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); })
 		.wait();
 #endif // end DIM_Y
 #if DIM_Z
@@ -332,7 +350,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, V, Vde); }); })
+			GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); })
 		.wait();
 #endif // end DIM_Z
 #endif // add Visc flux

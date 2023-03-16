@@ -50,22 +50,28 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.u = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	long double MemMbSize = (4 * cellbytes + 7 * bytes) / 1024.0 / 1024.0;
 #ifdef COP
 #ifdef Visc
 	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0;
 #ifdef Heat
 	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0;
 #endif // end Heat
 #ifdef Diffu
 	d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0 * 2.0;
 #endif // end Diffu
 	for (size_t i = 0; i < 9; i++)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0 * 9.0;
 #endif // end Visc
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 		d_fstate.y[n] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0 * (NUM_SPECIES + 1);
 #endif // COP
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -73,6 +79,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_wallFluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_wallFluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_wallFluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	MemMbSize += cellbytes / 1024.0 / 1024.0 * 6.0;
 	// shared memory
 	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
 
@@ -81,8 +88,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 #if USE_MPI
 	if (0 == Fs.mpiTrans->myRank)
 #endif // end USE_MPI
-		cout << "Memory Usage: " << (real_t)((long)10 * cellbytes / real_t(1024 * 1024) + (long)(8 + NUM_SPECIES) * bytes / real_t(1024 * 1024)) / (real_t)(1024) << " GB\n"
-			 << "\n";
+	{
+		cout << "Memory Usage: " << MemMbSize / 1024.0 << " GB\n\n";
+	}
 }
 
 void FluidSYCL::InitialU(sycl::queue &q)
