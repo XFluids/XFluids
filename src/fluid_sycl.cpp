@@ -132,6 +132,9 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 #ifdef React
 void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
 {
-	FluidODESolver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
+#if 0 == CHEME_SOLVER
+	ChemeODEQ2Solver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
+//#else 1 == CHEME_SOLVER // CVODE from LLNL to SYCL only support Intel GPUs
+#endif // end CHEME_SOLVER
 }
 #endif // React

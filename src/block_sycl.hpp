@@ -57,9 +57,9 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 					   [=](nd_item<1> index, auto &temp_max_x, auto &temp_max_y, auto &temp_max_z)
 					   {
 						   auto id = index.get_global_id();
-						   temp_max_x.combine(u[id] + c[id]);
-						   temp_max_y.combine(v[id] + c[id]);
-						   temp_max_z.combine(w[id] + c[id]);
+						   temp_max_x.combine(fabs(u[id]) + c[id]); // TODO:|u|+c ?
+						   temp_max_y.combine(fabs(v[id]) + c[id]);
+						   temp_max_z.combine(fabs(w[id]) + c[id]);
 					   }); })
 		.wait();
 
@@ -493,7 +493,7 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 }
 
 #ifdef React
-void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata, real_t *UI, Reaction *react, const real_t dt)
+void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata, real_t *UI, Reaction *react, const real_t dt)
 {
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
@@ -513,7 +513,7 @@ void FluidODESolver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata,
     		int i = index.get_global_id(0);
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
-			FluidODESolverKernel( i, j, k, bl, thermal, react, UI, fdata.y, rho, T, dt); }); });
+			ChemeODEQ2SolverKernel( i, j, k, bl, thermal, react, UI, fdata.y, rho, T, dt); }); });
 	q.wait();
 }
 #endif // React

@@ -31,12 +31,12 @@ void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
 /**
  *@brief calculate xi : mole fraction
  */
-real_t get_xi(real_t xi[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const *species_chara)
+real_t get_xi(real_t xi[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const *Wi, const real_t rho)
 {
 	real_t C[NUM_SPECIES] = {_DF(0.0)}, C_total = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		C[i] = yi[i] / species_chara[i * SPCH_Sz + Wi]; // Wi==6
+		C[i] = yi[i] / Wi[i] * 1e-3 * rho; // Wi==6
 		C_total = C_total + C[i];
 	}
 	// get mole fraction of each specie
@@ -1360,7 +1360,7 @@ real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], cons
 real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const real_t T)
 {
 	real_t phi = _DF(0.0);
-	phi = sycl::pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow(Viscosity(fcv[int(specie_j[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
+	phi = sycl::pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow(Viscosity(fcv[int(specie_k[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
 	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sycl::sqrt(_DF(2.0));
 	phi = phi * sycl::pow(_DF(1.0) + specie_k[Wi] / specie_j[Wi], -_DF(0.5));
 	return phi;
@@ -1414,17 +1414,18 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 	real_t **Dkj = thermal->Dkj_matrix;
 	viscosity_aver = _DF(0.0);
 	thermal_conduct_aver = _DF(0.0);
-	double denominator = _DF(0.0);
+	real_t denominator = _DF(0.0);
 	real_t *specie[NUM_SPECIES];
-	for (size_t i = 0; i < NUM_SPECIES; i++)
-	{
-		specie[i] = &(thermal->species_chara[i * SPCH_Sz]);
-	}
+	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
+		specie[ii] = &(thermal->species_chara[ii * SPCH_Sz]);
 	for (int k = 0; k < NUM_SPECIES; k++)
 	{
-		denominator = 0.0;
+		denominator = _DF(0.0);
 		for (int i = 0; i < NUM_SPECIES; i++)
+		{
+			// real_t temp = PHI(specie[k], specie[i], fcv, T);
 			denominator = denominator + X[i] * PHI(specie[k], specie[i], fcv, T);
+		}
 		// calculate viscosity_aver via equattion(5-49)//
 		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) / denominator; // Pa.s=kg/(m.s)
 		// calculate thermal_conduct via Su Hongmin//
@@ -1448,13 +1449,13 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 			{
 				if (i != k)
 				{
-					temp1 = temp1 + X[i] * thermal->species_chara[i * SPCH_Sz + 6];
-					temp2 = temp2 + X[i] / GetDkj(specie[i], specie[k], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k], refstat);
+					temp1 += X[i] * thermal->Wi[i];
+					temp2 += X[i] / GetDkj(specie[i], specie[k], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k], refstat);
 				}
 			}
-			temp3 = temp1 / temp2 / (rho / C_total);
+			// temp3 = temp1 / temp2 / (rho / C_total);
 			Dkm_aver_id[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
-			Dkm_aver_id[k] *= _DF(1.0e-4);					  // cm2/s==>m2/s
+			Dkm_aver_id[k] *= _DF(1.0e-1);					  // cm2/s==>m2/s
 		}
 	}
 }

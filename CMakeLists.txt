@@ -16,14 +16,15 @@ endif()
 
 option(USE_DOUBLE "if double" ON)
 option(DIM_X "if enable dim_x" ON)
-option(DIM_Y "if enable dim_y" ON)
+option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" ON)
 option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
-option(React "if enable chemical recation, based on COP=ON" ON)
-option(Visc "if add physic viscidity flux" OFF)
-option(Heat "if add heat transfer flux" OFF)
-option(Diffu "if add mass diffusion" OFF)
+option(COP_CHEME "if enable chemical reaction, based on React=ON" ON)
+set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
+option(Visc "if add physic viscidity flux" ON)
+option(Heat "if add heat transfer flux" ON)
+option(Diffu "if add mass diffusion" ON)
 set(ReaType "2") # define which reaction to caculate, 0 for H2+O2
 
 # about platform and device

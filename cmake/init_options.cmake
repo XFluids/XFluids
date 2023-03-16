@@ -36,12 +36,20 @@ ENDIF(DIM_Z)
 
 IF(COP)
   add_compile_options(-DCOP)
+  add_compile_options(-DReact) # COP ON with React OFF may has error
+  add_compile_options(-DReaType=${ReaType})
 
-  IF(React)
-    add_compile_options(-DReact)
-    add_compile_options(-DReaType=${ReaType})
-  ENDIF(React)
+    IF(COP_CHEME)
+    add_compile_options(-DCOP_CHEME)
 
+    IF(${CHEME_SOLVER} MATCHES "Q2")
+      add_compile_options(-DCHEME_SOLVER=0)
+    ELSEIF(${CHEME_SOLVER} MATCHES "CVODE")
+      add_compile_options(-DCHEME_SOLVER=1)
+    ELSE()
+    ENDIF()
+  ENDIF(COP_CHEME)
+    
   IF(Diffu)
     add_compile_options(-DDiffu)
   ENDIF(Diffu)

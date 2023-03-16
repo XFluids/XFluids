@@ -33,7 +33,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		if (Iteration == Ss.nStepmax)
 			break;
 		// get minmum dt, if MPI used, get the minimum of all ranks
-		dt = 3.0e-6; // ComputeTimeStep(q); // debug for viscous flux // 5.0e-5;//0.001;//
+		dt = 1.0e-5; // ComputeTimeStep(q); // debug for viscous flux // 5.0e-5;//0.001;//
 #ifdef USE_MPI
 		Ss.mpiTrans->communicator->synchronize();
 		real_t temp;
@@ -47,9 +47,11 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP
 #ifdef React
-		// Reaction(q, dt); // TODO: without Reaction
-#endif // React
-#endif // COP
+#ifdef COP_CHEME
+		Reaction(q, dt);
+#endif // end COP_CHEME
+#endif // end React
+#endif // end COP
 		physicalTime = physicalTime + dt;
 		Iteration++;
 	}
@@ -243,7 +245,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		OminY = Ss.BlSz.Bwidth_Y;
 		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
 
-		OnbZ = Ss.BlSz.Zmax;
+		OnbZ = Ss.BlSz.Z_inner;
 		OminZ = Ss.BlSz.Bwidth_Z;
 		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
 	}
