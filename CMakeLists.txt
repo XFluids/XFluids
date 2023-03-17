@@ -34,11 +34,11 @@ set(ReaType "2") # define which reaction to caculate, 0 for H2+O2
 
 # about platform and device
 set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
+set(ARCH "sm_86") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
 set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
-option(USE_MPI "if enable mpi" OFF)
+option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF)
-set(num_GPUs "1") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
+set(num_GPUs "2") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 
 # cmake modules
 include(init_options) # add main exec

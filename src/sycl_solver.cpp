@@ -16,46 +16,48 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	int Iteration = 0;
 	int OutNum = 1;
 	int rank = 0;
+	int TimeLoop = 0;
 #if USE_MPI
 	rank = Ss.mpiTrans->myRank;
 #endif // end USE_MPI
 	float duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 
-	while (physicalTime < Ss.EndTime)
+	while (TimeLoop < Ss.nOutTimeStamps + 1)
 	{
-		cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
-		if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
+		TimeLoop++;
+		while (physicalTime < TimeLoop * Ss.OutTimeStamp)
 		{
-			Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
-			OutNum++;
-		}
-		if (Iteration == Ss.nStepmax)
-			break;
-		// get minmum dt, if MPI used, get the minimum of all ranks
-		dt = ComputeTimeStep(q); // debug for viscous flux // 1.0e-6; //
+			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
+			{
+				Output_vti(q, rank, Iteration, physicalTime);
+				OutNum++;
+			}
+			// get minmum dt, if MPI used, get the minimum of all ranks
+			dt = ComputeTimeStep(q); // debug for viscous flux // 1.0e-6; //
 #ifdef USE_MPI
-		Ss.mpiTrans->communicator->synchronize();
-		real_t temp;
-		Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-		dt = temp;
+			Ss.mpiTrans->communicator->synchronize();
+			real_t temp;
+			Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+			dt = temp;
 #endif // end USE_MPI
-		if (physicalTime + dt > Ss.EndTime)
-			dt = Ss.EndTime - physicalTime;
-		// solved the fluid with 3rd order Runge-Kutta method
-		SinglePhaseSolverRK3rd(q);
-
-#ifdef COP
+			if (physicalTime + dt > TimeLoop * Ss.OutTimeStamp)
+				dt = TimeLoop * Ss.OutTimeStamp - physicalTime;
+			// solved the fluid with 3rd order Runge-Kutta method
+			SinglePhaseSolverRK3rd(q);
 #ifdef React
 #ifdef COP_CHEME
-		Reaction(q, dt);
+			Reaction(q, dt);
 #endif // end COP_CHEME
 #endif // end React
-#endif // end COP
-		physicalTime = physicalTime + dt;
-		Iteration++;
+			physicalTime = physicalTime + dt;
+			Iteration++;
+			cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
+		}
+		Output_vti(q, rank, Iteration, physicalTime);
+		if (Iteration >= Ss.nStepmax)
+			break;
 	}
-	Output_vti(q, rank, Iteration, physicalTime); // Output(q, physicalTime); //
 
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
