@@ -47,42 +47,39 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         break;
     }
 #ifdef COP
-    real_t dy2, copBin = 0.0, copBout = 0.0;
-    int n = int(ini.cop_radius / dx) + 1;
+    real_t dy2, dl = dx;
+    real_t copBin = int(ini.cop_radius / dl) * dl;
+    real_t copBout = copBin + 2 * dl;
     switch (ini.cop_type)
     { // 可以选择组分不同区域，圆形或类shock-wave
-    case 1:
-        dy2 = ((x - ini.cop_center_x) * (x - ini.cop_center_x) + (y - ini.cop_center_y) * (y - ini.cop_center_y));
-        copBin = (n - 1) * (n - 1) * dx * dx;
-        copBout = (n + 1) * (n + 1) * dx * dx;
-        break;
     case 0:
         dy2 = x;
-        copBin = ini.blast_center_x - dx;
-        copBout = ini.blast_center_x + dx;
+        break;
+    case 1:
+        dy2 = (pow(x - ini.cop_center_x, 2) + pow(y - ini.cop_center_y, 2));
+        copBin = copBin * copBin;
+        copBout = copBout * copBout;
+        break;
+    case 2: // for 3D shock-bubble interactive
+        dy2 = (pow(x - ini.cop_center_x, 2) + pow(y - ini.cop_center_y, 2) + pow(z - ini.cop_center_z, 2));
+        copBin = copBin * copBin;
+        copBout = copBout * copBout;
         break;
     }
 #endif
 
 #if 1 == NumFluid
-    // 1d shock tube case： no bubble
-    if (d2 < ini.blast_center_x)
+    if (d2 < ini.blast_center_x) // 1d shock tube case: no bubble // upstream of the shock
     {
         rho[id] = ini.blast_density_in;
         u[id] = ini.blast_u_in;
         v[id] = ini.blast_v_in;
         w[id] = ini.blast_w_in;
         p[id] = ini.blast_pressure_in;
-#ifdef COP
-#ifdef React
+#ifdef React // to be 1d shock without define React
         for (size_t i = 0; i < NUM_SPECIES; i++)
-        {
             _y[i][id] = thermal->species_ratio_out[i];
-        }
-#else
-        _y[0][id] = ini.cop_y1_out;
 #endif // end React
-#endif // COP
     }
     else
     {
@@ -91,50 +88,29 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         u[id] = ini.blast_u_out;
         v[id] = ini.blast_v_out;
         w[id] = ini.blast_w_out;
-#ifdef COP
+#ifdef React
         if (dy2 < copBin) //|| dy2 == (n - 1) * (n - 1) * dx * dx)
-        {                 // in the bubble
+        {                 // in bubble
             rho[id] = ini.cop_density_in;         // 气泡内单独赋值密度以和气泡外区分
             p[id] = ini.cop_pressure_in;          // 气泡内单独赋值压力以和气泡外区分
-#ifdef React
             for (size_t i = 0; i < NUM_SPECIES; i++)
-            { // set the last specie in .dat as fliud
                 _y[i][id] = thermal->species_ratio_in[i];
-            }
-#else
-            _y[0][id] = ini.cop_y1_in; // 组分气泡必须在激波下游
-#endif // end React
         }
         else if (dy2 > copBout)
         { // out of bubble
-            rho[id] = ini.blast_density_out;
-            p[id] = ini.blast_pressure_out;
-#ifdef React
             for (size_t i = 0; i < NUM_SPECIES; i++)
-            {
                 _y[i][id] = thermal->species_ratio_out[i];
-            }
-#else
-            _y[0][id] = ini.cop_y1_out;
-#endif // end React
         }
         else
         { // boundary of bubble && shock
-            rho[id] = 0.5 * (ini.cop_density_in + ini.blast_density_out);
-            p[id] = 0.5 * (ini.cop_pressure_in + ini.blast_pressure_out);
-#ifdef React
+            rho[id] = _DF(0.5) * (ini.cop_density_in + ini.blast_density_out);
+            p[id] = _DF(0.5) * (ini.cop_pressure_in + ini.blast_pressure_out);
             for (size_t i = 0; i < NUM_SPECIES; i++)
-            {
                 _y[i][id] = _DF(0.5) * (thermal->species_ratio_in[i] + thermal->species_ratio_out[i]);
-            }
-#else
-            _y[0][id] = _DF(0.5) * (ini.cop_y1_out + ini.cop_y1_in);
-#endif // end React
         }
-#endif // COP
+#endif // end React
     }
-#endif // MumFluid
-#if 2 == NumFluid
+#elif 2 == NumFluid
     if (material.Rgn_ind > 0.5)
     {
         rho[id] = 0.125;
@@ -162,20 +138,18 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // w[id] = 0.0;
     // rho[id] = 0.5; // p[id] / R / T[id];
 
-// EOS was included
 #ifdef COP
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
-    for (size_t n = 0; n < NUM_SPECIES; n++)
-        yi[n] *= fabs(x * z);
+    // for (size_t n = 0; n < NUM_SPECIES; n++)    // TODO: for debug;
+    //     yi[n] *= fabs(x * y);
+    // T[id] = 700.0;
+    // p[id] = 36100.0 * fabs(x * y);
+    // u[id] = 10.0 * fabs(x);         // x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x);
+    // v[id] = 10.0 * fabs(y);         // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
+    // w[id] = 10.0 * fabs(0);
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = 700.0;          // x < 0.5 ? _DF(900.0) : _DF(700.0); // TODO: for debug
-    p[id] = 36100.0 * fabs(x * z);  // TODO: for debug;
-    u[id] = 10.0 * fabs(x);         // x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x);
-    v[id] = 10.0 * fabs(0);         // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
-    w[id] = 10.0 * fabs(z);
-    rho[id] = p[id] / R / T[id];
-    // T[id] = p[id] / rho[id] / R; // TODO
+    T[id] = p[id] / rho[id] / R; // rho[id] = p[id] / R / T[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     real_t h = get_Coph(thermal, yi, T[id]);
     // U[4] of mixture differ from pure gas

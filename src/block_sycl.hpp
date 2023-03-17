@@ -39,26 +39,16 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 	real_t *w = fdata.w;
 
 	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
-	auto local_ndrange = range<1>(2); // size of workgroup
+	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
 	auto global_ndrange = range<1>(meshSize);
+
+	// add uvw and c individually if need more resources
+
 	for (int n = 0; n < 3; n++)
 		uvw_c_max[n] = 0;
-	// add uvw and c individually
-	//  #if DIM_X
-	//  	real_t *uc;
-	//  	uc = sycl::malloc_device<real_t>(meshSize * sizeof(real_t), q);
-	//  #endif // end DIM_X
-	//  #if DIM_Y
-	//  			 real_t *
-	//  		 vc;
-	//  #endif // end DIM_Y
-	//  #if DIM_Z
-	//  	real_t *wc;
-	//  #endif // end DIM_Z
-
+	real_t dtref = _DF(0.0);
 	// define reduction objects for sum, min, max reduction
 	// auto reduction_sum = reduction(sum, sycl::plus<>());
-	real_t dtref = _DF(0.0);
 #if DIM_X
 	q.submit([&](sycl::handler &h)
 			 {

@@ -17,10 +17,15 @@ endif()
 option(USE_DOUBLE "if double" ON)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" ON)
-option(DIM_Z "if enable dim_z" OFF)
+option(DIM_Z "if enable dim_z" ON)
 option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" OFF)
+set(COP_THERMAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
+set(COP_SAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat/Reaction/H2O_19_reaction") # where to read species and reactions
+set(NUM_SPECIES 9) # must match with species_list.dat in COP_SAMPLE_PATH
+set(NUM_EQUATIONS 13) # depends on NUM_SPECIES: Emax
+set(NUM_REACTIONS 19) # must match with reaction_list.dat COP_SAMPLE_PATH
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
 option(Visc "if add physic viscidity flux" ON)
 option(Heat "if add heat transfer flux" ON)

@@ -37,9 +37,13 @@ ENDIF(DIM_Z)
 IF(COP)
   add_compile_options(-DCOP)
   add_compile_options(-DReact) # COP ON with React OFF may has error
-  add_compile_options(-DReaType=${ReaType})
+  add_compile_options(-DRPath="${COP_THERMAL_PATH}")
+  add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
+  add_compile_options(-DNUM_SPECIES=${NUM_SPECIES})
+  add_compile_options(-DEmax=${NUM_EQUATIONS})
+  add_compile_options(-DNUM_REA=${NUM_REACTIONS})
 
-    IF(COP_CHEME)
+  IF(COP_CHEME)
     add_compile_options(-DCOP_CHEME)
 
     IF(${CHEME_SOLVER} MATCHES "Q2")

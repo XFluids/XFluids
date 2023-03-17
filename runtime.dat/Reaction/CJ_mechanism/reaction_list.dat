@@ -1,0 +1,8 @@
+*forward_reaction
+1   0
+*backward_reaction
+0	1
+*third_body
+0	0
+*Arrhenius
+16418	0.1	15
