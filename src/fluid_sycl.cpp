@@ -33,8 +33,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.u = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.v = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.w = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-#ifdef COP
 	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+#ifdef COP
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 		h_fstate.y[n] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 #endif // COP
@@ -50,8 +50,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.u = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	long double MemMbSize = (4 * cellbytes + 7 * bytes) / 1024.0 / 1024.0;
-#ifdef COP
+	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	long double MemMbSize = (4 * cellbytes + 8 * bytes) / 1024.0 / 1024.0;
 #ifdef Visc
 	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0;
@@ -68,10 +68,10 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0 * 9.0;
 #endif // end Visc
-	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+#ifdef COP
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 		d_fstate.y[n] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	MemMbSize += bytes / 1024.0 / 1024.0 * (NUM_SPECIES + 1);
+	MemMbSize += bytes / 1024.0 / 1024.0 * (NUM_SPECIES);
 #endif // COP
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));

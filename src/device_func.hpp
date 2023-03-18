@@ -22,10 +22,14 @@ void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
  */
 void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
 {
+#ifdef COP
 	for (size_t i = 0; i < NUM_SPECIES; i++)
 	{
 		yi[i] = y[i][id];
 	}
+#else
+	yi[NUM_COP] = _DF(1.0);
+#endif
 }
 
 /**
@@ -127,7 +131,6 @@ real_t get_CopGamma(Thermal *material, const real_t yi[NUM_SPECIES], const real_
 	real_t Cp = get_CopCp(material, yi, T);
 	real_t CopW = get_CopW(material, yi);
 	real_t _CopGamma = Cp / (Cp - Ru / CopW);
-	// printf("CopGamma=%lf,yi of qloc =%lf,%lf,Cp=%lf,CopW=%lf\n", _CopGamma, yi[0], yi[1], Cp, CopW);
 	if (_CopGamma > 1)
 	{
 		return _CopGamma;
@@ -318,7 +321,7 @@ real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, con
  * @brief Obtain state at a grid point
  */
 void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
-			   real_t &T, Thermal *thermal, const real_t yi[NUM_SPECIES], real_t const Gamma0)
+			   real_t &T, Thermal *thermal, const real_t yi[NUM_SPECIES])
 {
 	rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
@@ -326,18 +329,11 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	v = UI[2] * rho1;
 	w = UI[3] * rho1;
 
-// EOS was included
-#ifdef COP
 	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 	T = get_T(thermal, yi, e, T);
 	real_t R = get_CopR(thermal->species_chara, yi);
 	p = rho * R * T; // 对所有气体都适用
 	real_t Gamma = get_CopGamma(thermal, yi, T);
-	// printf("UI[0]=%lf,UI[4]=%lf,T2=%lf, e=%lf, yi=%lf, %lf, R=%lf,p=%lf,gamma=%lf\n", rho, UI[4], T, e, yi[0], yi[1], R, p, Gamma);
-#else
-	real_t Gamma = Gamma0;
-	p = (Gamma - _DF(1.0)) * (UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
-#endif // COP
 	H = (UI[4] + p) * rho1;
 	c = sqrt(Gamma * p * rho1);
 }
@@ -1413,7 +1409,9 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 	real_t **fct = thermal->fitted_coefficients_therm;
 	real_t **Dkj = thermal->Dkj_matrix;
 	viscosity_aver = _DF(0.0);
+#ifdef Heat
 	thermal_conduct_aver = _DF(0.0);
+#endif
 	real_t denominator = _DF(0.0);
 	real_t *specie[NUM_SPECIES];
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -1428,19 +1426,21 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 		}
 		// calculate viscosity_aver via equattion(5-49)//
 		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) / denominator; // Pa.s=kg/(m.s)
+#ifdef Heat
 		// calculate thermal_conduct via Su Hongmin//
 		thermal_conduct_aver = thermal_conduct_aver + X[k] * Thermal_conductivity(fct[int(specie[k][SID])], T) / denominator;
+#endif // end Heat
 	}
-	// calculate thermal_conduct via equattion(5-51)//
-	double temp1 = _DF(0.0), temp2 = _DF(0.0), temp3 = _DF(0.0);
+#ifdef Diffu
 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
 	if (1 == NUM_SPECIES)
 	{
 		Dkm_aver_id[0] = GetDkj(specie[0], specie[0], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[0], chemi.species[0], refstat);
-		Dkm_aver_id[0] *= _DF(1.0e-4);							  // cm2/s==>m2/s
+		Dkm_aver_id[0] *= _DF(1.0e-1);							  // cm2/s==>m2/s
 	}
 	else
 	{
+		double temp1 = _DF(0.0), temp2 = _DF(0.0), temp3 = _DF(0.0);
 		for (int k = 0; k < NUM_SPECIES; k++)
 		{
 			temp1 = _DF(0.0);
@@ -1453,10 +1453,10 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 					temp2 += X[i] / GetDkj(specie[i], specie[k], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k], refstat);
 				}
 			}
-			// temp3 = temp1 / temp2 / (rho / C_total);
 			Dkm_aver_id[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
 			Dkm_aver_id[k] *= _DF(1.0e-1);					  // cm2/s==>m2/s
 		}
 	}
+#endif // end Diffu
 }
 #endif // end Visc

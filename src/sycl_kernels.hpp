@@ -132,38 +132,24 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     }
 #endif // 2==NumFluid
 
-    // p[id] = 36100.0;        // TODO: for debug;
-    // u[id] = x < 0.5 ? _DF(-10.0) * x : 10.0 * x; // 0.0;            // 10.0 * x;          // x < 0.5 ? _DF(10.0) : 0.0;
-    // v[id] = y < 0.5 ? _DF(-10.0) * y : 10.0 * y; // 10.0 * fabs(y); // 10.0 * y;
-    // w[id] = 0.0;
-    // rho[id] = 0.5; // p[id] / R / T[id];
+    // p[id] = 36100.0 * fabs(x * y); // TODO: for debug;
+    // T[id] = 700.0;
+    // u[id] = 10.0 * fabs(x); // x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x);
+    // v[id] = 10.0 * fabs(y); // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
+    // w[id] = 10.0 * fabs(0);
 
-#ifdef COP
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
-    // for (size_t n = 0; n < NUM_SPECIES; n++)    // TODO: for debug;
-    //     yi[n] *= fabs(x * y);
-    // T[id] = 700.0;
-    // p[id] = 36100.0 * fabs(x * y);
-    // u[id] = 10.0 * fabs(x);         // x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x);
-    // v[id] = 10.0 * fabs(y);         // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
-    // w[id] = 10.0 * fabs(0);
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = p[id] / rho[id] / R; // rho[id] = p[id] / R / T[id];
-    real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    real_t h = get_Coph(thermal, yi, T[id]);
+    rho[id] = p[id] / R / T[id]; // T[id] = p[id] / rho[id] / R; //
     // U[4] of mixture differ from pure gas
+    real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
-    for (size_t ii = 5; ii < Emax; ii++)
-    { // equations of species
-        U[Emax * id + ii] = rho[id] * yi[ii - 5];
-        FluxF[Emax * id + ii] = rho[id] * u[id] * yi[ii - 5];
-        FluxG[Emax * id + ii] = rho[id] * v[id] * yi[ii - 5];
-        FluxH[Emax * id + ii] = rho[id] * w[id] * yi[ii - 5];
-    }
+
+    real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
-#else
-                   //  for both singlephase && multiphase
+#if 1 != NumFluid
+    //  for both singlephase && multiphase
     c[id] = material.Mtrl_ind == 0 ? sqrt(material.Gamma * p[id] / rho[id]) : sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
     if (material.Mtrl_ind == 0)
         U[Emax * id + 4] = p[id] / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
@@ -176,6 +162,15 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     U[Emax * id + 1] = rho[id] * u[id];
     U[Emax * id + 2] = rho[id] * v[id];
     U[Emax * id + 3] = rho[id] * w[id];
+#ifdef COP
+    for (size_t ii = 5; ii < Emax; ii++)
+    { // equations of species
+        U[Emax * id + ii] = rho[id] * yi[ii - 5];
+        FluxF[Emax * id + ii] = rho[id] * u[id] * yi[ii - 5];
+        FluxG[Emax * id + ii] = rho[id] * v[id] * yi[ii - 5];
+        FluxH[Emax * id + ii] = rho[id] * w[id] * yi[ii - 5];
+    }
+#endif // end COP
     // initial flux terms F, G, H
     FluxF[Emax * id + 0] = U[Emax * id + 1];
     FluxF[Emax * id + 1] = U[Emax * id + 1] * u[id] + p[id];
@@ -322,9 +317,8 @@ real_t get_CopC2(real_t z[NUM_SPECIES], Thermal *thermal, const real_t yi[NUM_SP
     return _CopC2;
 }
 
-extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fx,
-                                           real_t *Fxwall, real_t *eigen_local, real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w,
-                                           real_t *const *y, real_t *T, real_t *H)
+extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fx, real_t *Fxwall, real_t *eigen_local,
+                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -356,6 +350,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     real_t _w = (w[id_l] + D * w[id_r]) * D1;
     real_t _H = (H[id_l] + D * H[id_r]) * D1;
     real_t _rho = sqrt(rho[id_r] * rho[id_l]);
+
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
     real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], Ri[NUM_SPECIES];
@@ -399,9 +394,12 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);
     real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
 #else
-    real_t Gamma0 = Gamma;
+    real_t yi_l[NUM_SPECIES] = {_DF(1.0)}, yi_r[NUM_SPECIES] = {_DF(1.0)};
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
-    real_t z[] = {0}, _yi[] = {0};
+    real_t z[] = {0}, _yi[] = {1};
 #endif
 
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
@@ -459,9 +457,8 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     // real_t de_fx[Emax];
 }
 
-extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fy,
-                                           real_t *Fywall, real_t *eigen_local, real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w,
-                                           real_t *const *y, real_t *T, real_t *H)
+extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fy, real_t *Fywall, real_t *eigen_local,
+                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -535,9 +532,12 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);
     real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
 #else
-    real_t Gamma0 = Gamma;
+    real_t yi_l[NUM_SPECIES] = {_DF(1.0)}, yi_r[NUM_SPECIES] = {_DF(1.0)};
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
-    real_t z[] = {0}, _yi[] = {0};
+    real_t z[] = {0}, _yi[] = {1};
 #endif
 
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
@@ -591,9 +591,8 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     // real_t de_fx[Emax];
 }
 
-extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t const Gamma, real_t *UI, real_t *Fz,
-                                           real_t *Fzwall, real_t *eigen_local, real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w,
-                                           real_t *const *y, real_t *T, real_t *H)
+extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fz, real_t *Fzwall, real_t *eigen_local,
+                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -667,9 +666,12 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);
     real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
 #else
-    real_t Gamma0 = Gamma;
+    real_t yi_l[NUM_SPECIES] = {_DF(1.0)}, yi_r[NUM_SPECIES] = {_DF(1.0)};
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
     real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
-    real_t z[] = {0}, _yi[] = {0};
+    real_t z[] = {0}, _yi[] = {1};
 #endif
 
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
@@ -832,8 +834,8 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     {
         U[n] = UI[Emax * id + n];
     }
-#ifdef COP
     yi[NUM_COP] = _DF(1.0);
+#ifdef COP
     for (size_t ii = 5; ii < Emax; ii++)
     { // calculate yi
         yi[ii - 5] = U[ii] / U[0];
@@ -843,7 +845,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     _y[NUM_COP][id] = yi[NUM_COP];
 #endif // end COP
 
-    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi, Gamma);
+    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi);
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);
@@ -1475,8 +1477,10 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
     int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
     // get mole fraction of each specie
     real_t X[NUM_SPECIES] = {_DF(0.0)}, yi[NUM_SPECIES] = {_DF(0.0)};
+#ifdef Diffu
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
             hi[ii + NUM_SPECIES * id] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id], thermal->Ri[ii], ii);
+#endif // end Diffu
     get_yi(y, yi, id);
     real_t C_total = get_xi(X, yi, thermal->Wi, rho[id]);
     //  real_t *temp = &(Dkm_aver[NUM_SPECIES * id]);
@@ -1545,8 +1549,12 @@ extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, rea
     {
             hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);
             Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+#ifdef COP
             Yi_wall[l] = (_DF(9.0) * (Yi[l][id_p1] + Yi[l][id]) - (Yi[l][id_p2] + Yi[l][id_m1])) / _DF(16.0);
             Yix_wall[l] = (_DF(27.0) * (Yi[l][id_p1] - Yi[l][id]) - (Yi[l][id_p2] - Yi[l][id_m1])) / dx / _DF(24.0); // temperature gradient at wall
+#else
+            Yix_wall[l] = _DF(0.0);
+#endif // end COP
     }
 #ifdef Heat
     for (int l = 0; l < NUM_SPECIES; l++)
@@ -1631,8 +1639,12 @@ extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, rea
     {
             hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);
             Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+#ifdef COP
             Yi_wall[l] = (_DF(9.0) * (Yi[l][id_p1] + Yi[l][id]) - (Yi[l][id_p2] + Yi[l][id_m1])) / _DF(16.0);
             Yiy_wall[l] = (_DF(27.0) * (Yi[l][id_p1] - Yi[l][id]) - (Yi[l][id_p2] - Yi[l][id_m1])) / dy / _DF(24.0); // temperature gradient at wal
+#else
+            Yiy_wall[l] = _DF(0.0);
+#endif // end COP
     }
 #ifdef Heat
     for (int l = 0; l < NUM_SPECIES; l++)
@@ -1716,8 +1728,12 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
     {
             hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);
             Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);
+#ifdef COP
             Yi_wall[l] = (_DF(9.0) * (Yi[l][id_p1] + Yi[l][id]) - (Yi[l][id_p2] + Yi[l][id_m1])) / _DF(16.0);
             Yiz_wall[l] = (_DF(27.0) * (Yi[l][id_p1] - Yi[l][id]) - (Yi[l][id_p2] - Yi[l][id_m1])) / dz / _DF(24.0); // temperature gradient at wall
+#else
+            Yiz_wall[l] = _DF(0.0);
+#endif // end COP
     }
 #ifdef Heat
     for (int l = 0; l < NUM_SPECIES; l++)

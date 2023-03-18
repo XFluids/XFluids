@@ -29,14 +29,13 @@ set(NUM_REACTIONS 19) # must match with reaction_list.dat COP_SAMPLE_PATH
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
 option(Visc "if add physic viscidity flux" ON)
 option(Heat "if add heat transfer flux" ON)
-option(Diffu "if add mass diffusion" ON)
-set(ReaType "2") # define which reaction to caculate, 0 for H2+O2
+option(Diffu "if add mass diffusion" ON) # depends on COP=ON
 
 # about platform and device
-set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
+set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
 set(ARCH "sm_86") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
-option(USE_MPI "if enable mpi" ON)
+set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
+option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF)
 set(num_GPUs "2") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 

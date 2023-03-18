@@ -34,11 +34,11 @@ ELSE(DIM_Z)
   add_compile_options(-DDIM_Z=0)
 ENDIF(DIM_Z)
 
+add_compile_options(-DRPath="${COP_THERMAL_PATH}")
+add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
 IF(COP)
   add_compile_options(-DCOP)
   add_compile_options(-DReact) # COP ON with React OFF may has error
-  add_compile_options(-DRPath="${COP_THERMAL_PATH}")
-  add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
   add_compile_options(-DNUM_SPECIES=${NUM_SPECIES})
   add_compile_options(-DEmax=${NUM_EQUATIONS})
   add_compile_options(-DNUM_REA=${NUM_REACTIONS})
@@ -53,10 +53,10 @@ IF(COP)
     ELSE()
     ENDIF()
   ENDIF(COP_CHEME)
-    
-  IF(Diffu)
-    add_compile_options(-DDiffu)
-  ENDIF(Diffu)
+ELSE(COP)
+  add_compile_options(-DNUM_SPECIES=1)
+  add_compile_options(-DEmax=5)
+  add_compile_options(-DNUM_REA=0)
 ENDIF(COP)
 
 add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value

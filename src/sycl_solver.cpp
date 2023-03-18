@@ -34,7 +34,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				OutNum++;
 			}
 			// get minmum dt, if MPI used, get the minimum of all ranks
-			dt = ComputeTimeStep(q); // debug for viscous flux // 1.0e-6; //
+			dt = 1.0e-6; // ComputeTimeStep(q); // debug for viscous flux //
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;
@@ -264,9 +264,9 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	dz = Ss.BlSz.dz;
 
 	// Init var names
-	int Onbvar = 8; // one fluid no COP
+	int Onbvar = 9; // one fluid no COP
 #ifdef COP
-	Onbvar += NUM_SPECIES + 1;
+	Onbvar += NUM_SPECIES;
 #endif // end COP
 #if 1 != NumFluid
 	Onbar += NumFluid - 1;
@@ -280,16 +280,16 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	variables_names[5] = "u";
 	variables_names[6] = "v";
 	variables_names[7] = "w";
-#ifdef COP
 	variables_names[8] = "T";
-	for (size_t ii = 9; ii < Onbvar; ii++)
-	{
-		variables_names[ii] = "y" + std::to_string(ii - 9) + "_" + Ss.species_name[ii - 9];
-	}
-#endif // COP
 #if 2 == NumFluid
 	variables_names[5] = "phi";
 #endif
+#ifdef COP
+	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
+	{
+		variables_names[ii] = "y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "_" + Ss.species_name[ii - Onbvar + NUM_SPECIES];
+	}
+#endif // COP
 
 	std::string file_name;
 	std::string headerfile_name;
@@ -557,7 +557,6 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			}	  // for j
 		}		  // for k
 
-#ifdef COP
 		//[8]T
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
@@ -576,6 +575,25 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
+
+#if 2 == NumFluid
+		  //[5]phi
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = levelset->h_phi[id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+#endif
+
+#ifdef COP
 		//[COP]yii
 		for (int ii = 0; ii < NUM_SPECIES; ii++)
 		{
@@ -594,23 +612,6 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			}		  // for k
 		}			  // for yii
 #endif				  // end  COP
-
-#if 2 == NumFluid
-		  //[5]phi
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
-		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					real_t tmp = levelset->h_phi[id];
-					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
-#endif
 	} // End Var Output
 	outFile << "  </AppendedData>" << std::endl;
 	outFile << "</VTKFile>" << std::endl;
