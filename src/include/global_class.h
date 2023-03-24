@@ -98,7 +98,7 @@ public:
     BConditions *d_BCs; // boundary condition indicators
     FluidSYCL *fluids[NumFluid];
 
-    SYCLSolver(sycl::queue &q, Setup &setup);
+    SYCLSolver(Setup &setup);
     ~SYCLSolver(){};
     void Evolution(sycl::queue &q);
     void AllocateMemory(sycl::queue &q);

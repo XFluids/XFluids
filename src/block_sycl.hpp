@@ -19,15 +19,23 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 
-	q.submit([&](sycl::handler &h)
-			 {
-		//auto out = sycl::stream(1024, 256, h);
-		h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-					   {
-			int i = index.get_global_id(0);
+	event ei = q.submit([&](sycl::handler &h)
+						{ h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+										 {
+    		int i = index.get_global_id(0);
 			int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
-			InitialStatesKernel(i, j, k, bl, ini, material, thermal, U, U1, LU, FluxF, FluxG, FluxH, FluxFw, FluxGw, FluxHw, u, v, w, rho, p, fdata.y, T, H, c); }); })
+			InitialStatesKernel(i, j, k, bl, ini, material, thermal, u, v, w, rho, p, fdata.y, T); }); });
+
+	q.submit([&](sycl::handler &h)
+			 {
+		h.depends_on(ei);
+		h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+					   {
+    		int i = index.get_global_id(0);
+			int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+			InitialUFKernel(i, j, k, bl, material, thermal, U, U1, LU, FluxF, FluxG, FluxH, FluxFw, FluxGw, FluxHw, u, v, w, rho, p, fdata.y, T, H, c); }); })
 		.wait();
 }
 

@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	sycl::queue q(device);
 	Setup setup(configMap, q);
 	// Create MPI session if MPI enabled
-	SYCLSolver syclsolver(q, setup);
+	SYCLSolver syclsolver(setup);
 	syclsolver.AllocateMemory(q);
 	syclsolver.InitialCondition(q);
 	// boundary conditions

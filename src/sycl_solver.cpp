@@ -1,8 +1,7 @@
 #include "include/global_class.h"
 
-SYCLSolver::SYCLSolver(sycl::queue &q, Setup &setup) : Ss(setup), dt(setup.dt)
+SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(setup.dt)
 {
-	// Display the information of fluid materials
 	for (int n = 0; n < NumFluid; n++)
 	{
 		fluids[n] = new FluidSYCL(setup);
@@ -52,6 +51,8 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #endif // end React
 			physicalTime = physicalTime + dt;
 			Iteration++;
+			if (Iteration >= Ss.nStepmax)
+				break;
 			cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
 		}
 		Output_vti(q, rank, Iteration, physicalTime);
@@ -165,7 +166,6 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 		fluids[n]->InitialU(q);
 }
 
-#ifdef COP
 #ifdef React
 void SYCLSolver::Reaction(sycl::queue &q, real_t Time)
 {
@@ -175,7 +175,6 @@ void SYCLSolver::Reaction(sycl::queue &q, real_t Time)
 	UpdateStates(q, 0);
 }
 #endif // React
-#endif // COP
 
 void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 {

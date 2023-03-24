@@ -54,7 +54,7 @@ real_t get_xi(real_t xi[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const
  */
 real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
 {
-	real_t R = 0;
+	real_t R = _DF(0.0);
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 	{
 		R += yi[n] * Ru / (species_chara[n * SPCH_Sz + 6]);
@@ -69,8 +69,8 @@ real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
 real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
 	real_t T = T0, Cpi = _DF(0.0);
-	if (T < (200.0 / Tref))
-		T = 200.0 / Tref;
+	if (T < (_DF(200.0) / Tref))
+		T = _DF(200.0) / Tref;
 #if Thermo
 	if (T >= (1000.0 / Tref) && T < (6000.0 / Tref))
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] / T / T + Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] + Hia[n * 7 * 3 + 3 * 3 + 1] * T + Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1] * T * T * T * T);
@@ -86,7 +86,7 @@ real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 	}
 #else
 	// Cpi[n)/R = a1 + a2*T + a3*T^2 + a4*T^3 + a5*T^4
-	if (T > (1000.0 / Tref))
+	if (T > (_DF(1000.0) / Tref))
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] + Hia[n * 7 * 3 + 1 * 3 + 0] * T + Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * T * T * T * T);
 	else
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] + Hia[n * 7 * 3 + 1 * 3 + 1] * T + Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * T * T * T * T);
@@ -99,12 +99,9 @@ real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
  */
 real_t get_CopCp(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
 {
-	real_t _CopCp = 0.0;
+	real_t _CopCp = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-	{
-		real_t Ri = Ru / material->species_chara[ii * SPCH_Sz + 6];
-		_CopCp += yi[ii] * get_Cpi(material->Hia, T, Ri, ii); // real_t Cpi = get_Cpi(material->Hia, T, Ri, ii) ;
-	}
+		_CopCp += yi[ii] * get_Cpi(material->Hia, T, material->Ri[ii], ii); // real_t Cpi = get_Cpi(material->Hia, T, Ri, ii) ;
 	// printf("Cpi=%lf , %lf , yi=%lf , %lf , _CopCp=%lf \n", Cpi[0], Cpi[1], yi[0], yi[1], _CopCp);
 	return _CopCp;
 }
@@ -114,7 +111,7 @@ real_t get_CopCp(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T
  */
 real_t get_CopW(Thermal *material, const real_t yi[NUM_SPECIES])
 {
-	real_t _W = 0.0;
+	real_t _W = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
 	{
 		_W += yi[ii] / (material->species_chara[ii * SPCH_Sz + 6]); // Wi
@@ -238,8 +235,7 @@ real_t get_Coph(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
 	real_t H = 0.0, hi[NUM_SPECIES];
 	for (size_t i = 0; i < NUM_SPECIES; i++)
 	{
-		real_t Ri = Ru / material->species_chara[i * SPCH_Sz + 6];
-		real_t hi = get_Enthalpy(material->Hia, material->Hib, T, Ri, i);
+		real_t hi = get_Enthalpy(material->Hia, material->Hib, T, material->Ri[i], i);
 		H += hi * yi[i];
 	}
 	return H;

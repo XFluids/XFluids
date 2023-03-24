@@ -2,9 +2,12 @@
 #include "include/global_class.h"
 #include "device_func.hpp"
 
-extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal, real_t *U, real_t *U1, real_t *LU,
-                                              real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T, real_t *H, real_t *c)
+/**
+ * @brief  Initialize Fluid states espically primitive quantity;
+ * @return void
+ */
+extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal,
+                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
@@ -39,28 +42,31 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t d2;
     switch (ini.blast_type)
     {
-    case 0:
+    case 1:
         d2 = x;
         break;
-    case 1:
-        d2 = ((x - ini.blast_center_x) * (x - ini.blast_center_x) + (y - ini.blast_center_y) * (y - ini.blast_center_y));
+    case 2:
+        d2 = (pow(x - ini.blast_center_x, 2) + pow(y - ini.blast_center_y, 2));
+        break;
+    case 3:
+        d2 = (pow(x - ini.blast_center_x, 2) + pow(y - ini.blast_center_y, 2) + pow(z - ini.blast_center_z, 2));
         break;
     }
 #ifdef COP
-    real_t dy2, dl = dx;
-    real_t copBin = int(ini.cop_radius / dl) * dl;
-    real_t copBout = copBin + 2 * dl;
+    real_t dy2;
+    real_t copBin = int(ini.cop_radius / bl.dl) * bl.dl;
+    real_t copBout = copBin + 2 * bl.dl;
     switch (ini.cop_type)
     { // 可以选择组分不同区域，圆形或类shock-wave
-    case 0:
+    case 1:
         dy2 = x;
         break;
-    case 1:
+    case 2:
         dy2 = (pow(x - ini.cop_center_x, 2) + pow(y - ini.cop_center_y, 2));
         copBin = copBin * copBin;
         copBout = copBout * copBout;
         break;
-    case 2: // for 3D shock-bubble interactive
+    case 3: // for 3D shock-bubble interactive
         dy2 = (pow(x - ini.cop_center_x, 2) + pow(y - ini.cop_center_y, 2) + pow(z - ini.cop_center_z, 2));
         copBin = copBin * copBin;
         copBout = copBout * copBout;
@@ -89,10 +95,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         v[id] = ini.blast_v_out;
         w[id] = ini.blast_w_out;
 #ifdef React
-        if (dy2 < copBin) //|| dy2 == (n - 1) * (n - 1) * dx * dx)
-        {                 // in bubble
-            rho[id] = ini.cop_density_in;         // 气泡内单独赋值密度以和气泡外区分
-            p[id] = ini.cop_pressure_in;          // 气泡内单独赋值压力以和气泡外区分
+        if (dy2 < copBin)                 //|| dy2 == (n - 1) * (n - 1) * dx * dx
+        {                                 // in bubble
+            rho[id] = ini.cop_density_in; // 气泡内单独赋值密度以和气泡外区分
+            p[id] = ini.cop_pressure_in;  // 气泡内单独赋值压力以和气泡外区分
             for (size_t i = 0; i < NUM_SPECIES; i++)
                 _y[i][id] = thermal->species_ratio_in[i];
         }
@@ -110,36 +116,58 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         }
 #endif // end React
     }
-#elif 2 == NumFluid
-    if (material.Rgn_ind > 0.5)
-    {
-        rho[id] = 0.125;
-        u[id] = 0.0;
-        v[id] = 0.0;
-        w[id] = 0.0;
-        if (x < 0.1)
-            p[id] = 10;
-        else
-            p[id] = 0.1;
-    }
-    else
-    {
-        rho[id] = 1.0;
-        u[id] = 0.0;
-        v[id] = 0.0;
-        w[id] = 0.0;
-        p[id] = 1.0;
-    }
 #endif // 2==NumFluid
+}
 
-    // p[id] = 36100.0 * fabs(x * y); // TODO: for debug;
-    // T[id] = 700.0;
-    // u[id] = 10.0 * fabs(x); // x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x);
-    // v[id] = 10.0 * fabs(y); // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
-    // w[id] = 10.0 * fabs(0);
+/**
+ * @brief  Initialize conservative quantity;
+ * @return void
+ */
+extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal *thermal, real_t *U, real_t *U1, real_t *LU,
+                                          real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
+                                          real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T, real_t *H, real_t *c)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+    int Zmax = bl.Zmax;
+    int X_inner = bl.X_inner;
+    int Y_inner = bl.Y_inner;
+    int Z_inner = bl.Z_inner;
+    int Bwidth_X = bl.Bwidth_X;
+    int Bwidth_Y = bl.Bwidth_Y;
+    int Bwidth_Z = bl.Bwidth_Z;
+    real_t dx = bl.dx;
+    real_t dy = bl.dy;
+    real_t dz = bl.dz;
+#if DIM_X
+    if (i >= Xmax)
+        return;
+#endif
+#if DIM_Y
+    if (j >= Ymax)
+        return;
+#endif
+#if DIM_Z
+    if (k >= Zmax)
+        return;
+#endif
+    int id = Xmax * Ymax * k + Xmax * j + i;
+
+    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx : _DF(0.0);
+    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
+    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
+
+    p[id] = 36100.0 * fabs(x * y); // TODO: for debug;
+    T[id] = 700.0;
+    u[id] = 10.0 * fabs(x); // x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x);
+    v[id] = 10.0 * fabs(y); // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
+    w[id] = 10.0 * fabs(0);
 
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
+    for (size_t n = 0; n < NUM_SPECIES; n++)
+        yi[n] *= fabs(x * y);
+
     real_t R = get_CopR(thermal->species_chara, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / rho[id] / R; //
     // U[4] of mixture differ from pure gas
@@ -196,11 +224,11 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // give intial value for the interval matrixes
     for (int n = 0; n < Emax; n++)
     {
-        LU[Emax * id + n] = _DF(0.0);     // incremental of one time step
+        LU[Emax * id + n] = _DF(0.0);         // incremental of one time step
         U1[Emax * id + n] = U[Emax * id + n]; // intermediate conwervatives
-        FluxFw[Emax * id + n] = _DF(0.0); // numerical flux F
-        FluxGw[Emax * id + n] = _DF(0.0); // numerical flux G
-        FluxHw[Emax * id + n] = _DF(0.0); // numerical flux H
+        FluxFw[Emax * id + n] = _DF(0.0);     // numerical flux F
+        FluxGw[Emax * id + n] = _DF(0.0);     // numerical flux G
+        FluxHw[Emax * id + n] = _DF(0.0);     // numerical flux H
 #if NumFluid != 1
         CnsrvU[Emax * id + n] = U[Emax * id + n] * fraction;
         CnsrvU1[Emax * id + n] = CnsrvU[Emax * id + n];
