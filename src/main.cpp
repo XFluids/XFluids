@@ -21,12 +21,12 @@ int main(int argc, char *argv[])
 	// Create MPI session if MPI enabled
 	SYCLSolver syclsolver(setup);
 	syclsolver.AllocateMemory(q);
-	syclsolver.InitialCondition(q);
-	// boundary conditions
-	syclsolver.BoundaryCondition(q, 0);
+	// syclsolver.InitialCondition(q);
+	// // boundary conditions
+	// syclsolver.BoundaryCondition(q, 0);
 	// // update states by U
-	syclsolver.UpdateStates(q, 0);
-	// time marching by SYCL device
-	syclsolver.Evolution(q);
+	// syclsolver.UpdateStates(q, 0);
+	// // time marching by SYCL device
+	// syclsolver.Evolution(q);
 	return 0;
 }

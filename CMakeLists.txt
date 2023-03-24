@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 PROJECT(EulerSYCL LANGUAGES CXX)
 ##default local cmake macro repository
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-##cmake features init
+
+# #cmake features init
 set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_COMPILER "clang++")#use clang++ from oneapi/llvm
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
@@ -32,8 +33,8 @@ option(Heat "if add heat transfer flux" OFF)
 option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 
 # about platform and device
-set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
+set(SelectDv "amd") # define which platform and devices for compile options: host, nvidia, amd, intel
+set(ARCH "gfx906") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
 set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF)

@@ -46,10 +46,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         d2 = x;
         break;
     case 2:
-        d2 = (pow(x - ini.blast_center_x, 2) + pow(y - ini.blast_center_y, 2));
+        d2 = (sycl::pow<real_t>(x - ini.blast_center_x, 2) + sycl::pow<real_t>(y - ini.blast_center_y, 2));
         break;
     case 3:
-        d2 = (pow(x - ini.blast_center_x, 2) + pow(y - ini.blast_center_y, 2) + pow(z - ini.blast_center_z, 2));
+        d2 = (sycl::pow<real_t>(x - ini.blast_center_x, 2) + sycl::pow<real_t>(y - ini.blast_center_y, 2) + sycl::pow<real_t>(z - ini.blast_center_z, 2));
         break;
     }
 #ifdef COP
@@ -62,12 +62,12 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         dy2 = x;
         break;
     case 2:
-        dy2 = (pow(x - ini.cop_center_x, 2) + pow(y - ini.cop_center_y, 2));
+        dy2 = (sycl::pow<real_t>(x - ini.cop_center_x, 2) + sycl::pow<real_t>(y - ini.cop_center_y, 2));
         copBin = copBin * copBin;
         copBout = copBout * copBout;
         break;
     case 3: // for 3D shock-bubble interactive
-        dy2 = (pow(x - ini.cop_center_x, 2) + pow(y - ini.cop_center_y, 2) + pow(z - ini.cop_center_z, 2));
+        dy2 = (sycl::pow<real_t>(x - ini.cop_center_x, 2) + sycl::pow<real_t>(y - ini.cop_center_y, 2) + sycl::pow<real_t>(z - ini.cop_center_z, 2));
         copBin = copBin * copBin;
         copBout = copBout * copBout;
         break;

@@ -149,43 +149,43 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 #if Thermo
 	// NOTE：Non_dim of Hia && Hib*3+only for h&Cp not for S ATTENTATION
 	//  200K~1000K
-	Hia[n * 7 * 3 + 0 * 3 + 0] = Hia[n * 7 * 3 + 0 * 3 + 0] / pow(Tref, 2);
+	Hia[n * 7 * 3 + 0 * 3 + 0] = Hia[n * 7 * 3 + 0 * 3 + 0] / sycl::pow<real_t>(Tref, 2);
 	Hia[n * 7 * 3 + 1 * 3 + 0] = Hia[n * 7 * 3 + 1 * 3 + 0] / Tref;
 
 	Hia[n * 7 * 3 + 3 * 3 + 0] = Hia[n * 7 * 3 + 3 * 3 + 0] * Tref;
-	Hia[n * 7 * 3 + 4 * 3 + 0] = Hia[n * 7 * 3 + 4 * 3 + 0] * pow(Tref, 2);
-	Hia[n * 7 * 3 + 5 * 3 + 0] = Hia[n * 7 * 3 + 5 * 3 + 0] * pow(Tref, 3);
-	Hia[n * 7 * 3 + 6 * 3 + 0] = Hia[n * 7 * 3 + 6 * 3 + 0] * pow(Tref, 4);
+	Hia[n * 7 * 3 + 4 * 3 + 0] = Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(Tref, 2);
+	Hia[n * 7 * 3 + 5 * 3 + 0] = Hia[n * 7 * 3 + 5 * 3 + 0] * sycl::pow<real_t>(Tref, 3);
+	Hia[n * 7 * 3 + 6 * 3 + 0] = Hia[n * 7 * 3 + 6 * 3 + 0] * sycl::pow<real_t>(Tref, 4);
 	Hib[n * 2 * 3 + 0 * 3 + 0] = Hib[n * 2 * 3 + 0 * 3 + 0] / Tref + Hia[n * 7 * 3 + 1 * 3 + 0] * log(Tref);
 	// 1000K~6000K
-	Hia[n * 7 * 3 + 0 * 3 + 1] = Hia[n * 7 * 3 + 0 * 3 + 1] / pow(Tref, 2);
+	Hia[n * 7 * 3 + 0 * 3 + 1] = Hia[n * 7 * 3 + 0 * 3 + 1] / sycl::pow<real_t>(Tref, 2);
 	Hia[n * 7 * 3 + 1 * 3 + 1] = Hia[n * 7 * 3 + 1 * 3 + 1] / Tref;
 
 	Hia[n * 7 * 3 + 3 * 3 + 1] = Hia[n * 7 * 3 + 3 * 3 + 1] * Tref;
-	Hia[n * 7 * 3 + 4 * 3 + 1] = Hia[n * 7 * 3 + 4 * 3 + 1] * pow(Tref, 2);
-	Hia[n * 7 * 3 + 5 * 3 + 1] = Hia[n * 7 * 3 + 5 * 3 + 1] * pow(Tref, 3);
-	Hia[n * 7 * 3 + 6 * 3 + 1] = Hia[n * 7 * 3 + 6 * 3 + 1] * pow(Tref, 4);
+	Hia[n * 7 * 3 + 4 * 3 + 1] = Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(Tref, 2);
+	Hia[n * 7 * 3 + 5 * 3 + 1] = Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(Tref, 3);
+	Hia[n * 7 * 3 + 6 * 3 + 1] = Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(Tref, 4);
 	Hib[n * 2 * 3 + 0 * 3 + 1] = Hib[n * 2 * 3 + 0 * 3 + 1] / Tref + Hia[n * 7 * 3 + 1 * 3 + 1] * log(Tref);
 	// 6000K~15000K
-	Hia[n * 7 * 3 + 0 * 3 + 2] = Hia[n * 7 * 3 + 0 * 3 + 2] / pow(Tref, 2);
+	Hia[n * 7 * 3 + 0 * 3 + 2] = Hia[n * 7 * 3 + 0 * 3 + 2] / sycl::pow<real_t>(Tref, 2);
 	Hia[n * 7 * 3 + 1 * 3 + 2] = Hia[n * 7 * 3 + 1 * 3 + 2] / Tref;
 
 	Hia[n * 7 * 3 + 3 * 3 + 2] = Hia[n * 7 * 3 + 3 * 3 + 2] * Tref;
-	Hia[n * 7 * 3 + 4 * 3 + 2] = Hia[n * 7 * 3 + 4 * 3 + 2] * pow(Tref, 2);
-	Hia[n * 7 * 3 + 5 * 3 + 2] = Hia[n * 7 * 3 + 5 * 3 + 2] * pow(Tref, 3);
-	Hia[n * 7 * 3 + 6 * 3 + 2] = Hia[n * 7 * 3 + 6 * 3 + 2] * pow(Tref, 4);
+	Hia[n * 7 * 3 + 4 * 3 + 2] = Hia[n * 7 * 3 + 4 * 3 + 2] * sycl::pow<real_t>(Tref, 2);
+	Hia[n * 7 * 3 + 5 * 3 + 2] = Hia[n * 7 * 3 + 5 * 3 + 2] * sycl::pow<real_t>(Tref, 3);
+	Hia[n * 7 * 3 + 6 * 3 + 2] = Hia[n * 7 * 3 + 6 * 3 + 2] * sycl::pow<real_t>(Tref, 4);
 	Hib[n * 2 * 3 + 0 * 3 + 2] = Hib[n * 2 * 3 + 0 * 3 + 2] / Tref + Hia[n * 7 * 3 + 1 * 3 + 2] * log(Tref);
 #else
 	Hia[n * 7 * 3 + 1 * 3 + 0] = Hia[n * 7 * 3 + 1 * 3 + 0] * Tref;
-	Hia[n * 7 * 3 + 2 * 3 + 0] = Hia[n * 7 * 3 + 2 * 3 + 0] * pow(Tref, 2);
-	Hia[n * 7 * 3 + 3 * 3 + 0] = Hia[n * 7 * 3 + 3 * 3 + 0] * pow(Tref, 3);
-	Hia[n * 7 * 3 + 4 * 3 + 0] = Hia[n * 7 * 3 + 4 * 3 + 0] * pow(Tref, 4);
+	Hia[n * 7 * 3 + 2 * 3 + 0] = Hia[n * 7 * 3 + 2 * 3 + 0] * sycl::pow<real_t>(Tref, 2);
+	Hia[n * 7 * 3 + 3 * 3 + 0] = Hia[n * 7 * 3 + 3 * 3 + 0] * sycl::pow<real_t>(Tref, 3);
+	Hia[n * 7 * 3 + 4 * 3 + 0] = Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(Tref, 4);
 	Hia[n * 7 * 3 + 5 * 3 + 0] = Hia[n * 7 * 3 + 5 * 3 + 0] / Tref;
 
 	Hia[n * 7 * 3 + 1 * 3 + 1] = Hia[n * 7 * 3 + 1 * 3 + 1] * Tref;
-	Hia[n * 7 * 3 + 2 * 3 + 1] = Hia[n * 7 * 3 + 2 * 3 + 1] * pow(Tref, 2);
-	Hia[n * 7 * 3 + 3 * 3 + 1] = Hia[n * 7 * 3 + 3 * 3 + 1] * pow(Tref, 3);
-	Hia[n * 7 * 3 + 4 * 3 + 1] = Hia[n * 7 * 3 + 4 * 3 + 1] * pow(Tref, 4);
+	Hia[n * 7 * 3 + 2 * 3 + 1] = Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::pow<real_t>(Tref, 2);
+	Hia[n * 7 * 3 + 3 * 3 + 1] = Hia[n * 7 * 3 + 3 * 3 + 1] * sycl::pow<real_t>(Tref, 3);
+	Hia[n * 7 * 3 + 4 * 3 + 1] = Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(Tref, 4);
 	Hia[n * 7 * 3 + 5 * 3 + 1] = Hia[n * 7 * 3 + 5 * 3 + 1] / Tref;
 #endif
 	if (T < 200.0 / Tref)
@@ -195,14 +195,14 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	}
 #if Thermo
 	if (T >= (1000.0 / Tref) && T < (6000.0 / Tref))
-		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 1] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * pow(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 1] * pow(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 1] * pow(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 1]);
+		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 1] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 1]);
 	else if (T < (1000.0 / Tref))
 	{
-		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 0] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * pow(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 0] * pow(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 0] * pow(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 0]);
+		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 0] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 0] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 0] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 0]);
 	}
 	else if (T >= (6000.0 / Tref) && T < (15000.0 / Tref))
 	{
-		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 2] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 2] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] * T * T + Hia[n * 7 * 3 + 4 * 3 + 2] * pow(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 2] * pow(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 2] * pow(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 2]);
+		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 2] * log(T) + Hia[n * 7 * 3 + 2 * 3 + 2] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] * T * T + Hia[n * 7 * 3 + 4 * 3 + 2] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 2] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 2] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 2]);
 	}
 	else
 	{
@@ -212,9 +212,9 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 #else
 	// H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
 	if (T > (1000.0 / Tref))
-		hi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * T + Hia[n * 7 * 3 + 1 * 3 + 0] * T * T / 2.0 + Hia[n * 7 * 3 + 2 * 3 + 0] * pow(T, 3) / 3.0 + Hia[n * 7 * 3 + 3 * 3 + 0] * pow(T, 4) / 4.0 + Hia[n * 7 * 3 + 4 * 3 + 0] * pow(T, 5) / 5.0 + Hia[n * 7 * 3 + 5 * 3 + 0]);
+		hi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * T + Hia[n * 7 * 3 + 1 * 3 + 0] * T * T / 2.0 + Hia[n * 7 * 3 + 2 * 3 + 0] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 3 * 3 + 0] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(T, 5) / 5.0 + Hia[n * 7 * 3 + 5 * 3 + 0]);
 	else
-		hi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * T + Hia[n * 7 * 3 + 1 * 3 + 1] * T * T / 2.0 + Hia[n * 7 * 3 + 2 * 3 + 1] * pow(T, 3) / 3.0 + Hia[n * 7 * 3 + 3 * 3 + 1] * pow(T, 4) / 4.0 + Hia[n * 7 * 3 + 4 * 3 + 1] * pow(T, 5) / 5.0 + Hia[n * 7 * 3 + 5 * 3 + 1]);
+		hi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * T + Hia[n * 7 * 3 + 1 * 3 + 1] * T * T / 2.0 + Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 3 * 3 + 1] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(T, 5) / 5.0 + Hia[n * 7 * 3 + 5 * 3 + 1]);
 #endif
 	// printf("hi[n] of get_hi=%lf \n", hi[n]);
 	// get_hi at T>200
@@ -1026,7 +1026,7 @@ real_t weno5old_M(real_t *f, real_t delta)
  */
 real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
 {
-	return A * pow(T, B) * exp(-E * 4.184 / Ru / T);
+	return A * sycl::pow<real_t>(T, B) * exp(-E * 4.184 / Ru / T);
 }
 
 /**
@@ -1037,9 +1037,9 @@ real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const rea
 	real_t S = _DF(0.0);
 #if Thermo
 	if (T > 1000) // Hia[n * 7 * 3 + 0 * 3 + 1]//Hib[n * 2 * 3 + 0 * 3 + 1]
-		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 1] / T / T - Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 1] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 1]);
+		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 1] / T / T - Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 1]);
 	else
-		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 0] / T / T - Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * pow(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * pow(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 0]);
+		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 0] / T / T - Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 3 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * sycl::pow<real_t>(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * sycl::pow<real_t>(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 0]);
 #else
 	if (T > 1000)
 		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
@@ -1071,7 +1071,7 @@ real_t get_Kc(real_t *__restrict__ species_chara, real_t *__restrict__ Hia, real
 		Nu_sum += Nu_d_[m * NUM_SPECIES + n];
 	}
 	Kck = exp(Kck);
-	Kck *= pow(p_atm / Ru / T * 1e-6, Nu_sum); // 1e-6: m^-3 -> cm^-3
+	Kck *= sycl::pow<real_t>(p_atm / Ru / T * 1e-6, Nu_sum); // 1e-6: m^-3 -> cm^-3
 	return Kck;
 }
 
@@ -1084,7 +1084,7 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, rea
 	{
 		real_t A = Rargus[m * 6 + 0], B = Rargus[m * 6 + 1], E = Rargus[m * 6 + 2];
 #if CJ
-		Kf[m] = sycl::min<real_t>((20 * _DF(1.0)), A * sycl::pow(T, B) * sycl::exp(-E / T));
+		Kf[m] = sycl::min<real_t>((20 * _DF(1.0)), A * sycl::pow<real_t>(T, B) * sycl::exp(-E / T));
 		Kb[m] = _DF(0.0);
 #else
 		Kf[m] = get_Kf_ArrheniusLaw(A, B, E, T);
@@ -1352,9 +1352,9 @@ real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], cons
 real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const real_t T)
 {
 	real_t phi = _DF(0.0);
-	phi = sycl::pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow(Viscosity(fcv[int(specie_k[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
+	phi = sycl::pow<real_t>(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow<real_t>(Viscosity(fcv[int(specie_k[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
 	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sycl::sqrt(_DF(2.0));
-	phi = phi * sycl::pow(_DF(1.0) + specie_k[Wi] / specie_j[Wi], -_DF(0.5));
+	phi = phi * sycl::pow<real_t>(_DF(1.0) + specie_k[Wi] / specie_j[Wi], -_DF(0.5));
 	return phi;
 }
 
