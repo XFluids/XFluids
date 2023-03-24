@@ -1,4 +1,4 @@
-#include "include/global_class.h"
+#include "global_class.h"
 #include "global_function.hpp"
 #include "block_sycl.hpp"
 
@@ -86,6 +86,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	q.wait();
 
 #if USE_MPI
+	Fs.mpiTrans->AllocMemory(setup.q, setup.BlSz, Emax);
 	if (0 == Fs.mpiTrans->myRank)
 #endif // end USE_MPI
 	{

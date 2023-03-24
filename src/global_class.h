@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../read_ini/setupini.h"
+#include "read_ini/setupini.h"
 //  C++ headers
 #include <ctime>
 #include <math.h>
@@ -68,13 +68,7 @@ public:
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
 
-    FluidSYCL(Setup &setup) : Fs(setup)
-    {
-#ifdef USE_MPI
-        Fs.mpiTrans->AllocMemory(setup.q, setup.BlSz, Emax);
-#endif // end USE_MPI
-    };
-
+    FluidSYCL(Setup &setup) : Fs(setup){};
     void initialize(int n);
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
@@ -98,8 +92,16 @@ public:
     BConditions *d_BCs; // boundary condition indicators
     FluidSYCL *fluids[NumFluid];
 
-    SYCLSolver(Setup &setup);
-    ~SYCLSolver(){};
+    SYCLSolver(Setup &setup) : Ss(setup), dt(setup.dt)
+    {
+        for (int n = 0; n < NumFluid; n++)
+        {
+            fluids[n] = new FluidSYCL(setup);
+#if 1 != NumFluid
+            fluids[n]->initialize(n);
+#endif
+        }
+    }
     void Evolution(sycl::queue &q);
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);

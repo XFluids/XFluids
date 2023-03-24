@@ -1,5 +1,5 @@
 #pragma once
-#include "include/global_class.h"
+#include "global_class.h"
 
 using namespace std;
 

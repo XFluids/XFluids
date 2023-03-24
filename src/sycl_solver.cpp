@@ -1,13 +1,4 @@
-#include "include/global_class.h"
-
-SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(setup.dt)
-{
-	for (int n = 0; n < NumFluid; n++)
-	{
-		fluids[n] = new FluidSYCL(setup);
-		fluids[n]->initialize(n);
-	}
-}
+#include "global_class.h"
 
 void SYCLSolver::Evolution(sycl::queue &q)
 {
@@ -189,12 +180,12 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 		q.memcpy(fluids[n]->h_fstate.u, fluids[n]->d_fstate.u, bytes);
 		q.memcpy(fluids[n]->h_fstate.v, fluids[n]->d_fstate.v, bytes);
 		q.memcpy(fluids[n]->h_fstate.w, fluids[n]->d_fstate.w, bytes);
+		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 #ifdef COP
 		for (size_t i = 0; i < NUM_SPECIES; i++)
 		{
 			q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
 		}
-		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 #endif // COP
 	}
 	q.wait();
