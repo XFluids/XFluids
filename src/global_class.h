@@ -14,9 +14,6 @@
 // SYCL headers
 #include <sycl/sycl.hpp>
 
-using namespace std;
-using namespace sycl;
-
 constexpr real_t Gamma = 1.4; // 1.666667;
 const double Reference_params[8] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 // 0: l_ref(unit :m), 1: rho_ref(unit :kg/m3)(air), 2: p_ref(unit :Pa)(air),
@@ -77,11 +74,9 @@ public:
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
-#ifdef COP
-#ifdef React
+#ifdef COP_CHEME
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 #endif                                           // React
-#endif                                           // COP
 };
 
 class SYCLSolver{
@@ -106,7 +101,6 @@ public:
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
-    void Output(sycl::queue &q, real_t Time);
     void Output_vti(sycl::queue &q, int rank, int interation, real_t Time);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);

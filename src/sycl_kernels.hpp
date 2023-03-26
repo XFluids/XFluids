@@ -157,16 +157,16 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
 
-    p[id] = 36100.0 * fabs(x * y); // TODO: for debug;
+    p[id] = 36100.0 * sycl::fabs<real_t>(x * y); // TODO: for debug;
     T[id] = 700.0;
-    u[id] = 10.0 * fabs(x); // x < 0.5 ? _DF(-10.0) * fabs(x) : 10.0 * fabs(x);
-    v[id] = 10.0 * fabs(y); // y < 0.5 ? _DF(-10.0) * fabs(y) : 10.0 * fabs(y); // 10.0 * fabs(y); // 10.0 * y;
-    w[id] = 10.0 * fabs(0);
+    u[id] = 10.0 * sycl::fabs<real_t>(x); // x < 0.5 ? _DF(-10.0) * sycl::fabs<real_t>(x) : 10.0 * sycl::fabs<real_t>(x);
+    v[id] = 10.0 * sycl::fabs<real_t>(y); // y < 0.5 ? _DF(-10.0) * sycl::fabs<real_t>(y) : 10.0 * sycl::fabs<real_t>(y); // 10.0 * sycl::fabs<real_t>(y); // 10.0 * y;
+    w[id] = 10.0 * sycl::fabs<real_t>(0);
 
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     for (size_t n = 0; n < NUM_SPECIES; n++)
-        yi[n] *= fabs(x * y);
+        yi[n] *= sycl::fabs<real_t>(x * y);
 
     real_t R = get_CopR(thermal->species_chara, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / rho[id] / R; //
@@ -443,7 +443,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
         real_t eigen_local_max = _DF(0.0);
         for(int m=-2; m<=3; m++){
             int id_local = Xmax * Ymax * k + Xmax * j + i + m;
-            eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax * id_local + n])); // local lax-friedrichs
+            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
         }
 
 		for(int m=i-3; m<=i+4; m++){	// 3rd oder and can be modified
@@ -581,7 +581,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*k + Xmax*(j + m) + i;
-            eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax*id_local+n]));//local lax-friedrichs	
+            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
         }
 
 		for(int m=j-3; m<=j+4; m++){	// 3rd oder and can be modified
@@ -715,7 +715,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 
         for(int m=-2; m<=3; m++){
             int id_local = Xmax*Ymax*(k + m) + Xmax*j + i;
-            eigen_local_max = sycl::max(eigen_local_max, fabs(eigen_local[Emax*id_local+n]));//local lax-friedrichs	
+            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
         }
 		for(int m=k-3; m<=k+4; m++){
             int id_local = Xmax*Ymax*m + Xmax*j + i;
@@ -1785,7 +1785,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
 #endif // end DIM_Z
 #endif // Visc
 
-#ifdef React
+#ifdef COP_CHEME
 extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal *thermal, Reaction *react, real_t *UI, real_t *const *y, real_t *rho, real_t *T, const real_t dt)
 {
     int Xmax = bl.Xmax;
@@ -1816,4 +1816,4 @@ extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, 
             UI[Emax * id + n + 5] = yi[n] * rho[id];
     }
 }
-#endif // React
+#endif // end COP_CHEME

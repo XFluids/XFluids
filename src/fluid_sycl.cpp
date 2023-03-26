@@ -1,7 +1,6 @@
 #include "global_class.h"
 #include "block_sycl.hpp"
 
-using namespace std;
 using namespace sycl;
 
 void FluidSYCL::initialize(int n)
@@ -89,7 +88,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	if (0 == Fs.mpiTrans->myRank)
 #endif // end USE_MPI
 	{
-		cout << "Memory Usage: " << MemMbSize / 1024.0 << " GB\n\n";
+		std::cout << "Memory Usage: " << MemMbSize / 1024.0 << " GB\n\n";
 	}
 }
 
@@ -137,7 +136,8 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local);
 	}
 }
-#ifdef React
+
+#ifdef COP_CHEME
 void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
 {
 #if 0 == CHEME_SOLVER
@@ -145,4 +145,4 @@ void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
 //#else 1 == CHEME_SOLVER // CVODE from LLNL to SYCL only support Intel GPUs
 #endif // end CHEME_SOLVER
 }
-#endif // React
+#endif // end COP_CHEME

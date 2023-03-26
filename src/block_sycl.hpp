@@ -1,7 +1,6 @@
 #include "global_class.h"
 #include "sycl_kernels.hpp"
 
-using namespace std;
 using namespace sycl;
 
 void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal, FlowData &fdata, real_t *U, real_t *U1, real_t *LU,
@@ -64,7 +63,7 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, [=](nd_item<1> index, auto &temp_max_x)
 					   {
 						   auto id = index.get_global_id();
-						   temp_max_x.combine(fabs(u[id]) + c[id]); }); })
+						   temp_max_x.combine(sycl::fabs<real_t>(u[id]) + c[id]); }); })
 		.wait();
 	dtref += uvw_c_max[0] / bl.dx;
 #endif // end DIM_X
@@ -74,7 +73,7 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y)
 					   {
 						   auto id = index.get_global_id();
-						   temp_max_y.combine(fabs(v[id]) + c[id]);
+						   temp_max_y.combine(sycl::fabs<real_t>(v[id]) + c[id]);
 					   }); })
 		.wait();
 	dtref += uvw_c_max[1] / bl.dy;
@@ -85,7 +84,7 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z)
 					   {
 						   auto id = index.get_global_id();
-						   temp_max_z.combine(fabs(w[id]) + c[id]);
+						   temp_max_z.combine(sycl::fabs<real_t>(w[id]) + c[id]);
 					   }); })
 		.wait();
 	dtref += uvw_c_max[2] / bl.dz;
@@ -508,7 +507,7 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 #endif // end DIM_Z
 }
 
-#ifdef React
+#ifdef COP_CHEME
 void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdata, real_t *UI, Reaction *react, const real_t dt)
 {
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
@@ -526,10 +525,10 @@ void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal *thermal, FlowData &fdat
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
-    		int i = index.get_global_id(0);
-    		int j = index.get_global_id(1);
-			int k = index.get_global_id(2);
-			ChemeODEQ2SolverKernel( i, j, k, bl, thermal, react, UI, fdata.y, rho, T, dt); }); });
-	q.wait();
+								  int i = index.get_global_id(0);
+								  int j = index.get_global_id(1);
+								  int k = index.get_global_id(2);
+								  ChemeODEQ2SolverKernel( i, j, k, bl, thermal, react, UI, fdata.y, rho, T, dt); }); })
+		.wait();
 }
-#endif // React
+#endif // end COP_CHEME
