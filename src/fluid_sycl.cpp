@@ -1,8 +1,6 @@
 #include "global_class.h"
 #include "block_sycl.hpp"
 
-using namespace sycl;
-
 void FluidSYCL::initialize(int n)
 {
 	Fluid_name = Fs.fname[n]; // give a name to the fluid
@@ -84,7 +82,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	q.wait();
 
 #if USE_MPI
-	Fs.mpiTrans->AllocMemory(setup.q, setup.BlSz, Emax);
+	Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
 	if (0 == Fs.mpiTrans->myRank)
 #endif // end USE_MPI
 	{

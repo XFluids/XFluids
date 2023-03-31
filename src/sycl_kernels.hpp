@@ -42,6 +42,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t d2;
     switch (ini.blast_type)
     {
+    case 0:
+        d2 = _DF(0.0);
+        break;
     case 1:
         d2 = x;
         break;
@@ -58,6 +61,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t copBout = copBin + 2 * bl.dl;
     switch (ini.cop_type)
     { // 可以选择组分不同区域，圆形或类shock-wave
+    case 0:
+        dy2 = _DF(0.0);
+        break;
     case 1:
         dy2 = x;
         break;
@@ -157,16 +163,15 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
 
-    p[id] = 36100.0 * sycl::fabs<real_t>(x * y); // TODO: for debug;
-    T[id] = 700.0;
-    u[id] = 10.0 * sycl::fabs<real_t>(x); // x < 0.5 ? _DF(-10.0) * sycl::fabs<real_t>(x) : 10.0 * sycl::fabs<real_t>(x);
-    v[id] = 10.0 * sycl::fabs<real_t>(y); // y < 0.5 ? _DF(-10.0) * sycl::fabs<real_t>(y) : 10.0 * sycl::fabs<real_t>(y); // 10.0 * sycl::fabs<real_t>(y); // 10.0 * y;
-    w[id] = 10.0 * sycl::fabs<real_t>(0);
-
+    p[id] = 101325.0;                                                                                            // 36100.0 * sycl::fabs<real_t>(x * y); // TODO: for debug;
+    u[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
+    v[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
+    w[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
+    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp<real_t>(-(x - 0.5) * (x - 0.5) - (y - 0.5) * (y - 0.5))); // 700.0;//- (y - 0.5) * (y - 0.5)
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
-    for (size_t n = 0; n < NUM_SPECIES; n++)
-        yi[n] *= sycl::fabs<real_t>(x * y);
+    // for (size_t n = 0; n < NUM_SPECIES; n++)
+    //     yi[n] *= sycl::fabs<real_t>(x * y);
 
     real_t R = get_CopR(thermal->species_chara, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / rho[id] / R; //

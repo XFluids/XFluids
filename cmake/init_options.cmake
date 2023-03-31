@@ -4,6 +4,10 @@ IF(USE_DOUBLE)
   add_compile_options(-DUSE_DOUBLE) # 将参数从cmakelist传入程序中
 ENDIF(USE_DOUBLE)
 
+IF(USE_PLT)
+  add_compile_options(-DOUT_PLT) # 将参数从cmakelist传入程序中
+ENDIF(USE_PLT)
+
 IF(Visc)
   add_compile_options(-DVisc)
 ENDIF(Visc)

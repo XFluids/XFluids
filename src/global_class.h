@@ -3,7 +3,6 @@
 #include "read_ini/setupini.h"
 //  C++ headers
 #include <ctime>
-#include <math.h>
 #include <cstdio>
 #include <iomanip>
 #include <cstdlib>
@@ -101,7 +100,9 @@ public:
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
+    void Output(sycl::queue &q, int rank, int interation, real_t Time);
     void Output_vti(sycl::queue &q, int rank, int interation, real_t Time);
+    void Output_plt(sycl::queue &q, int rank, int interation, real_t Time);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);
@@ -114,9 +115,7 @@ public:
         const int i = 1;
         return ((*(char *)&i) == 0);
     }
-#ifdef COP
 #ifdef React
     void Reaction(sycl::queue &q, real_t Time);
 #endif // React
-#endif // COP
 };

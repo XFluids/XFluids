@@ -16,16 +16,17 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(USE_DOUBLE "if double" ON)
+option(USE_PLT "out plt or vti" ON)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" ON)
-option(DIM_Z "if enable dim_z" ON)
+option(DIM_Z "if enable dim_z" OFF)
 option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" OFF)
 set(COP_THERMAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
 set(COP_SAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat/Reaction/H2O_19_reaction") # where to read species and reactions
-set(NUM_SPECIES 9) # must match with species_list.dat in COP_SAMPLE_PATH
-set(NUM_EQUATIONS 13) # depends on NUM_SPECIES: Emax
+set(NUM_SPECIES 2) # must match with species_list.dat in COP_SAMPLE_PATH
+set(NUM_EQUATIONS 6) # depends on NUM_SPECIES: Emax
 set(NUM_REACTIONS 19) # must match with reaction_list.dat COP_SAMPLE_PATH
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
 option(Visc "if add physic viscidity flux" OFF)
@@ -33,9 +34,9 @@ option(Heat "if add heat transfer flux" OFF)
 option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 
 # about platform and device
-set(SelectDv "amd") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "gfx906") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
+set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
+set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
+set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF)
 set(num_GPUs "1") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
