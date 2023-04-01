@@ -4,15 +4,14 @@ PROJECT(EulerSYCL LANGUAGES CXX)
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # #cmake features init
-set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_CXX_COMPILER "clang++")#use clang++ from oneapi/llvm
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 #some options in CMAKE && Kokkos need CACHE STRING FORCE set
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 endif()
 
 option(USE_DOUBLE "if double" ON)
@@ -26,7 +25,6 @@ option(COP_CHEME "if enable chemical reaction" OFF)
 set(COP_THERMAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
 set(COP_SAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat/Reaction/H2O_19_reaction") # where to read species and reactions
 set(NUM_SPECIES 2) # must match with species_list.dat in COP_SAMPLE_PATH
-set(NUM_EQUATIONS 6) # depends on NUM_SPECIES: Emax
 set(NUM_REACTIONS 19) # must match with reaction_list.dat COP_SAMPLE_PATH
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
 option(Visc "if add physic viscidity flux" OFF)

@@ -40,11 +40,11 @@ ENDIF(DIM_Z)
 
 add_compile_options(-DRPath="${COP_THERMAL_PATH}")
 add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
+
 IF(COP)
   add_compile_options(-DCOP)
   add_compile_options(-DReact) # COP ON with React OFF may has error
   add_compile_options(-DNUM_SPECIES=${NUM_SPECIES})
-  add_compile_options(-DEmax=${NUM_EQUATIONS})
   add_compile_options(-DNUM_REA=${NUM_REACTIONS})
 
   IF(COP_CHEME)
@@ -59,7 +59,6 @@ IF(COP)
   ENDIF(COP_CHEME)
 ELSE(COP)
   add_compile_options(-DNUM_SPECIES=1)
-  add_compile_options(-DEmax=5)
   add_compile_options(-DNUM_REA=0)
 ENDIF(COP)
 
@@ -82,8 +81,12 @@ ELSEIF(SelectDv STREQUAL "intel")
   message(STATUS "  Compile for ARCH: ${ARCH}")
 ENDIF(SelectDv STREQUAL "host")
 
-IF(SelectDv STREQUAL "host")
-ENDIF(SelectDv STREQUAL "host")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+message(STATUS "CMAKE STATUS:")
+message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "  CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
+message(STATUS "  CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
 
 IF(USE_MPI)
   include(init_mpi)

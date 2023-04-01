@@ -163,18 +163,18 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
 
-    p[id] = 101325.0;                                                                                            // 36100.0 * sycl::fabs<real_t>(x * y); // TODO: for debug;
-    u[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
-    v[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
-    w[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
-    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp<real_t>(-(x - 0.5) * (x - 0.5) - (y - 0.5) * (y - 0.5))); // 700.0;//- (y - 0.5) * (y - 0.5)
+    // p[id] = 101325.0;                                                                                            // 36100.0 * sycl::fabs<real_t>(x * y); // TODO: for debug;
+    // u[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
+    // v[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
+    // w[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
+    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp<real_t>(-(x - 0.5) / 0.05 * (x - 0.5) / 0.05 - (y - 0.5) / 0.05 * (y - 0.5) / 0.05)); // 700.0;//- (y - 0.5) * (y - 0.5)
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     // for (size_t n = 0; n < NUM_SPECIES; n++)
     //     yi[n] *= sycl::fabs<real_t>(x * y);
 
     real_t R = get_CopR(thermal->species_chara, yi);
-    rho[id] = p[id] / R / T[id]; // T[id] = p[id] / rho[id] / R; //
+    T[id] = p[id] / rho[id] / R; // rho[id] = p[id] / R / T[id]; //
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
