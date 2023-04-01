@@ -3,6 +3,7 @@
 int main(int argc, char *argv[])
 {
 #ifdef USE_MPI
+	// Create MPI session if MPI enabled
 	int rank, nRanks;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -18,9 +19,10 @@ int main(int argc, char *argv[])
 	auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
 	sycl::queue q(device);
 	Setup setup(configMap, q);
-	// Create MPI session if MPI enabled
 	SYCLSolver syclsolver(setup);
+	// AllocateMemory
 	syclsolver.AllocateMemory(q);
+	// Initialize original states
 	syclsolver.InitialCondition(q);
 	// boundary conditions
 	syclsolver.BoundaryCondition(q, 0);
