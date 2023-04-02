@@ -24,7 +24,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				OutNum++;
 			}
 			// get minmum dt, if MPI used, get the minimum of all ranks
-			dt = ComputeTimeStep(q); // TODO: debug for viscous flux //1.0e-6; //
+			dt = ComputeTimeStep(q); // 1.0e-6; //
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;

@@ -20,7 +20,7 @@ option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" ON)
 option(DIM_Z "if enable dim_z" OFF)
 option(Multi "if enable multi , OFF for component" OFF)
-option(COP "if enable compoent, based on Multi=OFF" ON)
+option(COP "if enable compoent, based on Multi=OFF" OFF)
 option(COP_CHEME "if enable chemical reaction" OFF)
 set(COP_THERMAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
 set(COP_SAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat/Reaction/H2O_19_reaction") # where to read species and reactions

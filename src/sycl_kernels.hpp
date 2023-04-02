@@ -163,11 +163,48 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
 
-    // p[id] = 101325.0;                                                                                            // 36100.0 * sycl::fabs<real_t>(x * y); // TODO: for debug;
+    // TODO: for debug
+    // p[id] = 101325.0;                                                                                            // 36100.0 * sycl::fabs<real_t>(x * y);
     // u[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
     // v[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
     // w[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
     // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp<real_t>(-(x - 0.5) / 0.05 * (x - 0.5) / 0.05 - (y - 0.5) / 0.05 * (y - 0.5) / 0.05)); // 700.0;//- (y - 0.5) * (y - 0.5)
+    // 2D Riemann problem
+    // if (y > 0.5)
+    // {
+    //     if (x > 0.5)
+    //     {                     // 接触间断相互作用// 激波相互作用// 中心稀疏波相互作用
+    //         rho[id] = 0.5197; // 1;   // 1.5; // 1.;
+    //         u[id] = 0.1;      //-0.75; // 0.;
+    //         v[id] = 0.1;      //-0.5;  // 0.;
+    //         p[id] = 0.4;      // 1;     // 1.5; // 1.;
+    //     }
+    //     else
+    //     {
+    //         rho[id] = 1.;    // 2;   // 0.5323; // 0.5197;
+    //         u[id] = -0.6259; //-0.75; // 1.206;    //-0.7259;
+    //         v[id] = 0.1;     // 0.5;     // 0.;
+    //         p[id] = 1;       // 0.3; // 0.4;
+    //     }
+    // }
+    // else
+    // {
+    //     if (x < 0.5)
+    //     {
+    //         rho[id] = 0.8; // 1;  // 0.138; // 1;
+    //         u[id] = 0.1;   // 0.75;  // 1.206;   //-0.7259;
+    //         v[id] = 0.1;   // 0.5;   // 1.206;   //-0.7259;
+    //         p[id] = 1;     // 0.029;   // 1;
+    //     }
+    //     else
+    //     {
+    //         rho[id] = 1;     // 3;  // 0.5323; // 0.51792579;
+    //         u[id] = 0.1;     // 0.75; // 0.;
+    //         v[id] = -0.6259; //-0.5; // 1.206; //-0.7259;
+    //         p[id] = 1;       // 0.3;   // 0.4;
+    //     }
+    // }
+
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
     // for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -382,6 +419,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     real_t _v = (v[id_l] + D * v[id_r]) * D1;
     real_t _w = (w[id_l] + D * w[id_r]) * D1;
     real_t _H = (H[id_l] + D * H[id_r]) * D1;
+    real_t _P = (p[id_l] + D * p[id_r]) * D1;
     real_t _rho = sqrt(rho[id_r] * rho[id_l]);
 
 #ifdef COP
@@ -431,7 +469,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
     real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
     real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
-    real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
+    real_t c2 = Gamma0 * _P / _rho; //(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
     real_t z[] = {0}, _yi[] = {1};
 #endif
 
@@ -516,15 +554,17 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     //preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
     real_t D1 = _DF(1.0) / (D + _DF(1.0));
+
     real_t _u = (u[id_l] + D * u[id_r]) * D1;
     real_t _v = (v[id_l] + D * v[id_r]) * D1;
     real_t _w = (w[id_l] + D * w[id_r]) * D1;
     real_t _H = (H[id_l] + D * H[id_r]) * D1;
+    real_t _P = (p[id_l] + D * p[id_r]) * D1;
     real_t _rho = sqrt(rho[id_r] * rho[id_l]);
 
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
-    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES], Ri[NUM_SPECIES];
+    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], Ri[NUM_SPECIES];
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
         Ri[i] = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
@@ -569,7 +609,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
     real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
     real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
-    real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
+    real_t c2 = Gamma0 * _P / _rho; //(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
     real_t z[] = {0}, _yi[] = {1};
 #endif
 
@@ -650,15 +690,17 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     // preparing some interval value for roe average
     real_t D = sqrt(rho[id_r] / rho[id_l]);
     real_t D1 = _DF(1.0) / (D + _DF(1.0));
+
     real_t _u = (u[id_l] + D * u[id_r]) * D1;
     real_t _v = (v[id_l] + D * v[id_r]) * D1;
     real_t _w = (w[id_l] + D * w[id_r]) * D1;
     real_t _H = (H[id_l] + D * H[id_r]) * D1;
+    real_t _P = (p[id_l] + D * p[id_r]) * D1;
     real_t _rho = sqrt(rho[id_r] * rho[id_l]);
 
 #ifdef COP
     real_t _T = (T[id_l] + D * T[id_r]) * D1;
-    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_SPECIES], Ri[NUM_SPECIES];
+    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], Ri[NUM_SPECIES];
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
         Ri[i] = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
@@ -703,7 +745,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
     real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
     real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
-    real_t c2 = Gamma0 * (_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
+    real_t c2 = Gamma0 * _P / _rho; //(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
     real_t z[] = {0}, _yi[] = {1};
 #endif
 
