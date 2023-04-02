@@ -1,15 +1,45 @@
 # Euler-SYCL
 
-## sycl for cuda based on intel/llvm/clang++
+## 1. [intel oneapi 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline) && [codeplay Solutions for Nvidia and AMD backends](https://codeplay.com/solutions/oneapi/) needed
 
-1. [intel oneapi 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline) && [codeplay Solutions for Nvidia and AMD](https://codeplay.com/solutions/oneapi/)
-2. use clang++ in llvm-bin as compiler && some compiling options in /CMakeList.txt and /cmake/init_cuda/hip/host/intel.cmake, environment set below:
+## 2. use clang++ in /llvm-bin inside where oneapi installed as compiler && some compiling options
+
+- environment set:
 
     ````bash
     source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
     ````
 
-3. device discovery:
+- compile options for backends:
+
+  - host and intel backends:
+
+    ````cmake
+    set(CMAKE_CXX_COMPILER "clang++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+    ````
+
+  - cuda backends,${ARCH} like sm_75,sm_86 tested:
+
+    ````cmake
+    set(CMAKE_CXX_COMPILER "clang++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --cuda-gpu-arch=${ARCH}")
+    ````
+
+  - amd backends,${ARCH} like gfx906 tested:
+
+    ````cmake
+    set(CMAKE_CXX_COMPILER "clang++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=${ARCH}")
+    ````
+
+## 3. device discovery
+
+- sycl-ls in cmd for device counting
 
     ````cmd
     $sycl-ls
@@ -18,23 +48,26 @@
     [ext_oneapi_cuda:gpu:0] NVIDIA CUDA BACKEND, NVIDIA T600 0.0 [CUDA 11.5]
     ````
 
+- select target device in SYCL project
+  - set device_id=1 for targetting host and throwing mission to AMD Ryzen 7 5800X 8-Core Processor
+  - set device_id=2 for targetting nvidia GPU and throwing mission to NVIDIA T600
+
     ````C++
     auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
     sycl::queue q(device);
     ````
 
-    set device_id=1 for selecting host as device and throwing mission to AMD Ryzen 7 5800X 8-Core Processor
-    set device_id=2 for selecting nvidia GPU as device and throwing mission to NVIDIA T600
+## 4. MPI libs
 
-4. MPI libs
+- set MPI_PATH browsed by cmake before build
 
     ````cmd
     export MPI_PATH=/path/to/mpi
     ````
 
-    libmpi.so located in $MPI_PATH/lib/libmpi.so
+- libmpi.so located in $MPI_PATH/lib/libmpi.so
 
-## .ini file arguments
+## 5. .ini file arguments
 
 - ### [run] parameters
 
