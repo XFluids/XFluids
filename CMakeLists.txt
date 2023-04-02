@@ -11,20 +11,20 @@ set(CMAKE_CXX_COMPILER "clang++")#use clang++ from oneapi/llvm
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 #some options in CMAKE && Kokkos need CACHE STRING FORCE set
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
 option(USE_DOUBLE "if double" ON)
 option(USE_PLT "out plt or vti" ON)
 option(DIM_X "if enable dim_x" ON)
-option(DIM_Y "if enable dim_y" ON)
+option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" OFF)
 option(Multi "if enable multi , OFF for component" OFF)
-option(COP "if enable compoent, based on Multi=OFF" OFF)
+option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" OFF)
 set(COP_THERMAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
-set(COP_SAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat/Reaction/H2O_19_reaction") # where to read species and reactions
-set(NUM_SPECIES 2) # must match with species_list.dat in COP_SAMPLE_PATH
+set(COP_SAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat/1d-mc-insert-shock-tube") # where to read species and reactions:/Reaction/H2O_19_reaction
+set(NUM_SPECIES 3) # must match with species_list.dat in COP_SAMPLE_PATH
 set(NUM_REACTIONS 19) # must match with reaction_list.dat COP_SAMPLE_PATH
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
 option(Visc "if add physic viscidity flux" OFF)

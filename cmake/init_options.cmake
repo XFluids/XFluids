@@ -62,6 +62,11 @@ ELSE(COP)
   add_compile_options(-DNUM_REA=0)
 ENDIF(COP)
 
+IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+  set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
+  set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
+ENDIF()
+
 add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
 add_compile_options(-DPform_id=${Pform_id}) # first device id in sycl-ls list
 add_compile_options(-Dnum_GPUs=${num_GPUs}) # number of mpi devices in sycl-ls list

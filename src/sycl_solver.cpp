@@ -263,25 +263,28 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	dz = Ss.BlSz.dz;
 
 	// Init var names
-	int Onbvar = 6 + DIM_X + DIM_Y + DIM_Z; // one fluid no COP
+	int Onbvar = 3 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
 	Onbvar += NUM_SPECIES;
 #endif // end COP
-#if 1 != NumFluid
-	Onbar += NumFluid - 1;
-#endif // end Multi
 	std::map<int, std::string> variables_names;
 	int index = 0;
 #if DIM_X
 	variables_names[index] = "DIR-X";
 	index++;
+	variables_names[index] = "u";
+	index++;
 #endif // end DIM_X
 #if DIM_Y
 	variables_names[index] = "DIR-Y";
 	index++;
+	variables_names[index] = "v";
+	index++;
 #endif // end DIM_Y
 #if DIM_Z
 	variables_names[index] = "DIR-Z";
+	index++;
+	variables_names[index] = "w";
 	index++;
 #endif // end DIM_Z
 
@@ -289,15 +292,10 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	index++;
 	variables_names[index] = "P";
 	index++;
-	variables_names[index] = "u";
-	index++;
-	variables_names[index] = "v";
-	index++;
-	variables_names[index] = "w";
-	index++;
 	variables_names[index] = "T";
 	index++;
-#if 2 == NumFluid
+#if 1 != NumFluid
+	Onbar += NumFluid - 1;
 	variables_names[index] = "phi";
 	index++;
 #endif
@@ -458,74 +456,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-#endif			  // end DIM_X
-//[1]y
-#if DIM_Y
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
-		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					real_t tmp = DIM_Y ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy : 0.0;
-					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
-#endif			  // end DIM_Y
-//[2]z
-#if DIM_Z
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
-		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					real_t tmp = DIM_Z ? (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz : 0.0;
-					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
-#endif			  // end DIM_Z
-		//[3]rho
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
-		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.rho[id];
-#elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
-#endif
-					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
-		//[4]P
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
-		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.p[id];
-#elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.p[id] : fluids[1]->h_fstate.p[id];
-#endif
-					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
-		//[5]u
+		  //[1]u
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -543,7 +474,22 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-		//[6]v
+#endif			  // end DIM_X
+#if DIM_Y
+		//[2]y
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					real_t tmp = DIM_Y ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy : 0.0;
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+		  //[3]v
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -561,7 +507,22 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-		//[7]w
+#endif			  // end DIM_Y
+#if DIM_Z
+		//[4]z
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					real_t tmp = DIM_Z ? (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz : 0.0;
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+		  //[5]w
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -579,7 +540,43 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 				} // for i
 			}	  // for j
 		}		  // for k
-
+#endif			  // end DIM_Z
+		//[6]rho
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.rho[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+		//[7]P
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.p[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.p[id] : fluids[1]->h_fstate.p[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
 		//[8]T
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
@@ -685,19 +682,21 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 		<< "\n";
 	int LEN = 3;
 #if (DIM_X + DIM_Y + DIM_Z == 1)
-	out << "variables=x, u, p, rho, T"
-		<< "\n";
+	out << "variables=x, u, p, rho, T";
 #elif (DIM_X + DIM_Y + DIM_Z == 2)
-	out << "variables=x, y, u, v, p, rho, T"
-		<< "\n";
+	out << "variables=x, y, u, v, p, rho, T";
 #elif (DIM_X + DIM_Y + DIM_Z == 3)
-	out << "variables=x, y, z, u, v, w, p, rho, T"
-		<< "\n";
+	out << "variables=x, y, z, u, v, w, p, rho, T";
 #endif
+#ifdef COP
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+		out << ", Y(" << Ss.species_name[n] << ")";
+#endif
+	out << "\n";
 	out << "zone t='filed', i=" << X_inner + DIM_X << ", j=" << Y_inner + DIM_Y << ", k=" << Z_inner + DIM_Z << "  DATAPACKING=BLOCK, VARLOCATION=([";
 	int pos_s = DIM_X + DIM_Y + DIM_Z + 1;
 	out << pos_s << "-";
-	out << 2 * pos_s - 1 + LEN - 1 << "]=CELLCENTERED) SOLUTIONTIME=" << Time << "\n";
+	out << 2 * pos_s - 1 + LEN - 1 + NUM_SPECIES << "]=CELLCENTERED) SOLUTIONTIME=" << Time << "\n";
 
 	int ii = Xmax - Bwidth_X + DIM_X - 1;
 	int jj = Ymax - Bwidth_Y + DIM_Y - 1;
@@ -850,6 +849,24 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 			out << "\n";
 		}
 	}
+
+#ifdef COP
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+	{
+		for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
+		{
+			for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
+			{
+				for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
+				{
+					int id = Xmax * Ymax * k + Xmax * j + i;
+					out << fluids[0]->h_fstate.y[n][id] << " ";
+				}
+				out << "\n";
+			}
+		}
+	}
+#endif // end COP
 
 	out.close();
 	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
