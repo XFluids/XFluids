@@ -43,7 +43,6 @@ add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
 
 IF(COP)
   add_compile_options(-DCOP)
-  add_compile_options(-DReact) # COP ON with React OFF may has error
   add_compile_options(-DNUM_SPECIES=${NUM_SPECIES})
   add_compile_options(-DNUM_REA=${NUM_REACTIONS})
 

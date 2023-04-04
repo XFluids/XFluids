@@ -75,7 +75,7 @@ public:
     void ComputeFluidLU(sycl::queue &q, int flag);
 #ifdef COP_CHEME
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
-#endif                                           // React
+#endif                                           // end COP_CHEME
 };
 
 class SYCLSolver{
@@ -115,7 +115,7 @@ public:
         const int i = 1;
         return ((*(char *)&i) == 0);
     }
-#ifdef React
+#ifdef COP_CHEME
     void Reaction(sycl::queue &q, real_t Time);
-#endif // React
+#endif // end COP_CHEME
 };

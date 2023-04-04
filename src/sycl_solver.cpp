@@ -23,8 +23,10 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				Output(q, rank, Iteration, physicalTime);
 				OutNum++;
 			}
+			if (Iteration >= Ss.nStepmax)
+				break;
 			// get minmum dt, if MPI used, get the minimum of all ranks
-			dt = ComputeTimeStep(q); // 1.0e-6; //
+			dt = 1.0e-4; // ComputeTimeStep(q); //
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;
@@ -39,14 +41,10 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #ifdef COP_CHEME
 			Reaction(q, dt);
 #endif // end COP_CHEME
-
 			physicalTime = physicalTime + dt;
 			Iteration++;
-			if (Iteration >= Ss.nStepmax)
-				break;
-			std::cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << "\n";
+			std::cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << " done. \n";
 		}
-		Output(q, rank, Iteration, physicalTime);
 		if (Iteration >= Ss.nStepmax)
 			break;
 	}
@@ -133,9 +131,7 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
 {
 	for (int n = 0; n < NumFluid; n++)
-	{
 		fluids[n]->UpdateFluidStates(q, flag);
-	}
 }
 
 void SYCLSolver::AllocateMemory(sycl::queue &q)
@@ -693,49 +689,45 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 		out << ", Y(" << Ss.species_name[n] << ")";
 #endif
 	out << "\n";
-	out << "zone t='filed', i=" << X_inner + DIM_X << ", j=" << Y_inner + DIM_Y << ", k=" << Z_inner + DIM_Z << "  DATAPACKING=BLOCK, VARLOCATION=([";
+	out << "zone t='filed', i=" << X_inner << ", j=" << Y_inner << ", k=" << Z_inner << "  DATAPACKING=BLOCK, VARLOCATION=([";
 	int pos_s = DIM_X + DIM_Y + DIM_Z + 1;
 	out << pos_s << "-";
 	out << 2 * pos_s - 1 + LEN - 1 + NUM_SPECIES << "]=CELLCENTERED) SOLUTIONTIME=" << Time << "\n";
 
-	int ii = Xmax - Bwidth_X + DIM_X - 1;
-	int jj = Ymax - Bwidth_Y + DIM_Y - 1;
-	int kk = Zmax - Bwidth_Z + DIM_Z - 1;
-
 #if DIM_X
-	for (int k = Bwidth_Z; k <= kk; k++)
+	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
 	{
-		for (int j = Bwidth_Y; j <= jj; j++)
+		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
 		{
-			for (int i = Bwidth_X; i <= ii; i++)
+			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
 			{
-				out << (i - Bwidth_X) * dx << " ";
+				out << (i - Bwidth_X + 0.5) * dx << " ";
 			}
 			out << "\n";
 		}
 	}
 #endif
 #if DIM_Y
-	for (int k = Bwidth_Z; k <= kk; k++)
+	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
 	{
-		for (int j = Bwidth_Y; j <= jj; j++)
+		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
 		{
-			for (int i = Bwidth_X; i <= ii; i++)
+			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
 			{
-				out << (j - Bwidth_Y) * dy << " ";
+				out << (j - Bwidth_Y + 0.5) * dy << " ";
 			}
 			out << "\n";
 		}
 	}
 #endif
 #if DIM_Z
-	for (int k = Bwidth_Z; k <= kk; k++)
+	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
 	{
-		for (int j = Bwidth_Y; j <= jj; j++)
+		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
 		{
-			for (int i = Bwidth_X; i <= ii; i++)
+			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
 			{
-				out << (k - Bwidth_Z) * dz << " ";
+				out << (k - Bwidth_Z + 0.5) * dz << " ";
 			}
 			out << "\n";
 		}

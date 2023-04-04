@@ -1,11 +1,10 @@
 #pragma once
 
-#include "global_class.h"
+#include "schemes_device.hpp"
 
 /**
  *@brief debug for array
  */
-
 void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
 {
 	for (size_t i = 0; i < Length; i++)
@@ -203,7 +202,6 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	}
 	else
 	{
-		// TODO printf("T=%lf,T > 15000 K,please check!!!NO h for T>15000 K. \n", T * Tref);
 		return 0;
 	}
 #else
@@ -213,13 +211,11 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	else
 		hi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * T + Hia[n * 7 * 3 + 1 * 3 + 1] * T * T / 2.0 + Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 3 * 3 + 1] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(T, 5) / 5.0 + Hia[n * 7 * 3 + 5 * 3 + 1]);
 #endif
-	// printf("hi[n] of get_hi=%lf \n", hi[n]);
 	// get_hi at T>200
 	if (TT < 200.0 / Tref)
 	{
 		real_t Cpi = get_Cpi(Hia, 200.0 / Tref, Ri, n); // get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 		hi += Cpi * (TT - 200.0 / Tref);
-		// printf("hi[%d] = %lf , Cpi[%d]=%lf \n", ii, hi[ii], ii, Cpi[ii]);
 	}
 	return hi;
 }
@@ -365,24 +361,124 @@ void GetPhysFlux(real_t UI[Emax], real_t const yi[NUM_COP], real_t *FluxF, real_
 #endif
 }
 
+/**
+ * @brief Roe average of value u_l and u_r
+ * @brief  _u = (u[id_l] + D * u[id_r]) * D1
+ * @param ul left value
+ * @param ur right value
+ * @param D
+ * @return real_t
+ */
+real_t get_RoeAverage(const real_t left, const real_t right, const real_t D, const real_t D1)
+{
+	return (left + D * right) * D1;
+}
+
+/**
+ * @brief \frac{\partial p}{\partial \rho}
+ * @param hiN: hi[NUM_COP]
+ * @param RiN: Ru/thermal->specie_chara[NUM_COP*SPCH_Sz+6]
+ * @return real_t
+ */
+real_t get_DpDrho(const real_t hN, const real_t RN, const real_t T, const real_t e, const real_t gamma)
+{
+#if CJ
+	return (Gamma0 - 1.0) * e; // p/rho;//
+#else
+	double RNT = RN * T; // unit: J/kg
+	return gamma * RNT + (gamma - _DF(1.0)) * (e - hN);
+#endif
+}
+
+/**
+ * @brief \frac{\partial p}{\partial \rho_i}
+ * @param hin: hi of the n-th species
+ * @param hiN: hi of the N-th species
+ * @param Cp: get_CopCp for mixture
+ * @param R: get_CopR for mixture
+ * @return real_t
+ */
+real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const real_t RiN, const real_t T, const real_t Cp, const real_t R, const real_t gamma)
+{
+#if CJ
+	return 0; //(Gamma0-1.0)*(-heat_release[n]);
+#else
+	real_t hN_minus_hi = -hin + hiN;  // unit: J/kg
+	real_t Ri_minus_RN = (Rin - RiN); // unit: J/kg/K
+	return (gamma - _DF(1.0)) * (hN_minus_hi + Cp * Ri_minus_RN * T / R);
+#endif
+}
+
+/**
+ * @brief compute Roe-averaged sound speed of multicomponent flows
+ * @param zi: for eigen matrix
+ * @return real_t c*c
+ */
+real_t SoundSpeedMultiSpecies(real_t *zi, real_t *_Yi, real_t *_dpdrhoi, real_t *drhoi, const real_t _dpdrho, const real_t _dpde, const real_t _dpdE,
+							  const real_t _prho, const real_t dp, const real_t drho, const real_t de, const real_t _rho)
+{
+	// sum
+	real_t Sum_dpdrhoi = _DF(0.0), Sum_drhoi = _DF(0.0), Sum_dpdrhoi2 = _DF(0.0), Sum_Yidpdrhoi = _DF(0.0);
+	for (int n = 0; n < NUM_COP; n++)
+	{
+		Sum_dpdrhoi += _dpdrhoi[n] * drhoi[n];
+		Sum_dpdrhoi2 += _dpdrhoi[n] * drhoi[n] * _dpdrhoi[n] * drhoi[n];
+	}
+	// method 1
+	real_t temp1 = dp - (_dpdrho * drho + _dpde * de + Sum_dpdrhoi);
+	real_t temp = temp1 / (_dpdrho * _dpdrho * drho * drho + _dpde * de * _dpde * de + Sum_dpdrhoi2 + 1e-19);
+
+	real_t _dpdE_new = _dpdE + _dpdE * _dpdE * de * _rho * temp;
+	real_t _dpdrho_new = _dpdrho + _dpdrho * _dpdrho * drho * temp;
+	// sound speed
+	real_t _dpdrhoi_new[NUM_COP];
+
+	real_t Sum_Yidpdrhoi_new = _DF(0.0);
+	for (int n = 0; n < NUM_COP; n++)
+		_dpdrhoi_new[n] = _dpdrhoi[n] + _dpdrhoi[n] * _dpdrhoi[n] * drhoi[n] * temp;
+	for (int n = 0; n < NUM_COP; n++)
+	{
+		// Sum_drhoi += drhoi[n]*drhoi[n];
+		Sum_Yidpdrhoi += _Yi[n] * _dpdrhoi[n];
+		Sum_Yidpdrhoi_new += _Yi[n] * _dpdrhoi_new[n];
+	}
+	real_t csqr = _dpdrho_new + _dpdE_new * _prho + Sum_Yidpdrhoi_new;
+	// b1 = _dpdE_new / csqr;
+	for (int n = 0; n < NUM_COP; n++)
+	{
+		zi[n] = -_dpdrhoi_new[n] / _dpdE_new;
+		// b3 += _Yi[n] * zi[n];
+	}
+	// b3 *= b1;
+
+	return csqr;
+}
+
+/**
+ * @brief calculate c^2 of the mixture at given point
+ * // NOTE: realted with yn=yi[0] or yi[N] : hi[] Ri[]
+ */
+real_t get_CopC2(real_t z[NUM_SPECIES], real_t const Ri[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const hi[NUM_SPECIES], const real_t gamma, const real_t h, const real_t T)
+{
+	real_t Sum_dpdrhoi = _DF(0.0);				   // Sum_dpdrhoi:first of c2,存在累加项
+	real_t _dpdrhoi[NUM_SPECIES];
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+	{
+		_dpdrhoi[n] = (gamma - _DF(1.0)) * (hi[NUM_COP] - hi[n]) + gamma * (Ri[n] - Ri[NUM_COP]) * T; // related with yi
+		z[n] = -_DF(1.0) * _dpdrhoi[n] / (gamma - _DF(1.0));
+		if (NUM_COP != n) // related with yi
+			Sum_dpdrhoi += yi[n] * _dpdrhoi[n];
+	}
+	real_t _CopC2 = Sum_dpdrhoi + (gamma - _DF(1.0)) * (h - hi[NUM_COP]) + gamma * Ri[NUM_COP] * T; // related with yi
+	return _CopC2;
+}
+
 inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
 						 real_t const _H, real_t const D, real_t const D1, real_t Gamma)
 {
 
-	real_t _Gamma = Gamma - _DF(1.0);
-	real_t q2 = _u * _u + _v * _v + _w * _w;
-	// real_t c2 = _Gamma * (_H - _DF(0.5) * q2);
-	real_t _c = sqrt(c2);
-	real_t c21_Gamma = _Gamma / c2;
-
-	real_t b1 = c21_Gamma;
-	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
-	real_t b3 = _DF(0.0);
-	for (size_t i = 0; i < NUM_COP; i++) // NOTE: related with yi
-		b3 += yi[i] * z[i];
-	b3 *= b1;
-	real_t _c1 = _DF(1.0) / _c;
+	MARCO_PREEIGEN();
 
 	eigen_l[0][0] = _DF(0.5) * (b2 + _u / _c + b3);
 	eigen_l[0][1] = -_DF(0.5) * (b1 * _u + _c1);
@@ -491,21 +587,9 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
 						 real_t const _H, real_t const D, real_t const D1, real_t const Gamma)
 {
+	MARCO_PREEIGEN();
 
-	real_t _Gamma = Gamma - _DF(1.0);
-	real_t q2 = _u*_u + _v*_v + _w*_w;
-	// real_t c2 = _Gamma*(_H - _DF(0.5)*q2);
-	real_t _c = sqrt(c2);
-	real_t c21_Gamma = _Gamma / c2;
-
-	real_t b1 = c21_Gamma;
-	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
-	real_t b3 = _DF(0.0);
-	for (size_t i = 0; i < NUM_COP; i++)
-		b3 += yi[i] * z[i];
-	b3 *= b1;
-	real_t _c1 = _DF(1.0) / _c;
-
+	// left eigen vectors
 	eigen_l[0][0] = _DF(0.5) * (b2 + _v / _c + b3);
 	eigen_l[0][1] = -_DF(0.5) * (b1 * _u);
 	eigen_l[0][2] = -_DF(0.5) * (b1 * _v + _c1);
@@ -613,20 +697,7 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
 						 real_t const _H, real_t const D, real_t const D1, real_t const Gamma)
 {
-	// preparing some interval value
-	real_t _Gamma = Gamma - _DF(1.0);
-	real_t q2 = _u * _u + _v * _v + _w * _w;
-	// real_t c2 = _Gamma*(_H - _DF(0.5)*q2);
-	real_t _c = sqrt(c2);
-	real_t c21_Gamma = _Gamma / c2;
-
-	real_t b1 = c21_Gamma;
-	real_t b2 = _DF(1.0) + c21_Gamma * q2 - c21_Gamma * _H;
-	real_t b3 = _DF(0.0);
-	for (size_t i = 0; i < NUM_COP; i++)
-		b3 += yi[i] * z[i];
-	b3 *= b1;
-	real_t _c1 = _DF(1.0) / _c;
+	MARCO_PREEIGEN();
 
 	// left eigen vectors
 	eigen_l[0][0] = _DF(0.5) * (b2 + _w / _c + b3);
@@ -732,95 +803,7 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
-const double epsilon_weno = 1.0e-6;
-
-/**
- * @brief the 5th WENO Scheme
- * 
- * @param f 
- * @param delta 
- * @return real_t 
- */
-real_t weno5old_P(real_t *f, real_t delta)
-{
-	int k;
-	real_t v1, v2, v3, v4, v5;
-	real_t a1, a2, a3;
-	real_t w1, w2, w3;
-
-	//assign value to v1, v2,...
-	k = 0;
-	v1 = *(f + k - 2);
-	v2 = *(f + k - 1);
-	v3 = *(f + k);
-	v4 = *(f + k + 1); 
-	v5 = *(f + k + 2);
-
-	// smoothness indicator
-	real_t s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
-	s1 /= _DF(12.0);
-	real_t s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
-	s2 /= _DF(12.0);
-	real_t s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
-	s3 /= _DF(12.0);
-
-	// weights
-	a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
-	a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
-	a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
-	real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
-	w1 = a1 * tw1;
-	w2 = a2 * tw1;
-	w3 = a3 * tw1;
-	real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
-	// return weighted average
-	return temp;
-}
-/**
- * @brief the 5th WENO Scheme
- * 
- * @param f 
- * @param delta 
- * @return real_t 
- */
-real_t weno5old_M(real_t *f, real_t delta)
-{
-	int k;
-	real_t v1, v2, v3, v4, v5;
-	real_t a1, a2, a3;
-	real_t w1, w2, w3;
-
-	//assign value to v1, v2,...
-	k = 1;
-	v1 = *(f + k + 2);
-	v2 = *(f + k + 1);
-	v3 = *(f + k);
-	v4 = *(f + k - 1); 
-	v5 = *(f + k - 2);
-
-	// smoothness indicator
-	double s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
-	s1 /= _DF(12.0);
-	double s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
-	s2 /= _DF(12.0);
-	double s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
-	s3 /= _DF(12.0);
-
-	// weights
-	a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
-	a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
-	a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
-	double tw1 = _DF(1.0) / (a1 + a2 + a3);
-	w1 = a1 * tw1;
-	w2 = a2 * tw1;
-	w3 = a3 * tw1;
-
-	real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
-	// return weighted average
-	return temp;
-}
-
-#ifdef React
+#ifdef COP_CHEME
 /**
  * @brief get_Kf
  */
@@ -1128,7 +1111,7 @@ flag3:
 	gcount++;
 	goto flag1;
 }
-#endif // React
+#endif // end COP_CHEME
 #ifdef Visc
 /**
  * @brief get viscosity at temperature T(unit:K)(fit)
