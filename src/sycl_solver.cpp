@@ -26,7 +26,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			if (Iteration >= Ss.nStepmax)
 				break;
 			// get minmum dt, if MPI used, get the minimum of all ranks
-			dt = 1.0e-4; // ComputeTimeStep(q); //
+			dt = ComputeTimeStep(q); // 2.0e-6; //
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;
@@ -45,6 +45,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			Iteration++;
 			std::cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << " done. \n";
 		}
+		Output(q, rank, Iteration, physicalTime);
 		if (Iteration >= Ss.nStepmax)
 			break;
 	}
@@ -177,11 +178,10 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 		q.memcpy(fluids[n]->h_fstate.v, fluids[n]->d_fstate.v, bytes);
 		q.memcpy(fluids[n]->h_fstate.w, fluids[n]->d_fstate.w, bytes);
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
+		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
 #ifdef COP
 		for (size_t i = 0; i < NUM_SPECIES; i++)
-		{
 			q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
-		}
 #endif // COP
 	}
 	q.wait();
@@ -675,191 +675,60 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 	std::ofstream out(file_name);
 	// defining header for tecplot(plot software)
 	out << "title='View'"
-		<< "\n";
-	int LEN = 3;
-#if (DIM_X + DIM_Y + DIM_Z == 1)
-	out << "variables=x, u, p, rho, T";
-#elif (DIM_X + DIM_Y + DIM_Z == 2)
-	out << "variables=x, y, u, v, p, rho, T";
-#elif (DIM_X + DIM_Y + DIM_Z == 3)
-	out << "variables=x, y, z, u, v, w, p, rho, T";
+		<< "\n"
+		<< "variables=x, u"
+#if DIM_Y
+		<< ", y, v"
 #endif
+#if DIM_Z
+		<< ", z, w"
+#endif
+		<< ", p, rho";
 #ifdef COP
+	out << ", gamma, T"; //
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 		out << ", Y(" << Ss.species_name[n] << ")";
 #endif
 	out << "\n";
-	out << "zone t='filed', i=" << X_inner << ", j=" << Y_inner << ", k=" << Z_inner << "  DATAPACKING=BLOCK, VARLOCATION=([";
-	int pos_s = DIM_X + DIM_Y + DIM_Z + 1;
-	out << pos_s << "-";
-	out << 2 * pos_s - 1 + LEN - 1 + NUM_SPECIES << "]=CELLCENTERED) SOLUTIONTIME=" << Time << "\n";
+	out << "zone t='subdomain_" << 0 << "_" << 0 << "_" << 0 << "', i= " << X_inner << ", j= " << Y_inner << ", k= " << Z_inner << ", SOLUTIONTIME= " << Time << "\n";
 
-#if DIM_X
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
+	real_t offset_x = DIM_X ? -Bwidth_X + 0.5 : 0.0;
+	real_t offset_y = DIM_Y ? -Bwidth_Y + 0.5 : 0.0;
+	real_t offset_z = DIM_Z ? -Bwidth_Z + 0.5 : 0.0;
+
+	out.precision(20);
+	real_t xc, yc, zc, pc, rhoc, uc, vc, wc;
+	for (int k = Bwidth_Z; k < Bwidth_Z + Z_inner; k++)
+		for (int j = Bwidth_Y; j < Bwidth_Y + Y_inner; j++)
+			for (int i = Bwidth_X; i < Bwidth_X + X_inner; i++)
 			{
-				out << (i - Bwidth_X + 0.5) * dx << " ";
-			}
-			out << "\n";
-		}
-	}
-#endif
+				xc = (i + offset_x) * dx;
+				yc = (j + offset_y) * dy;
+				zc = (k + offset_z) * dz;
+
+				int id = Xmax * Ymax * k + Xmax * j + i;
+
+				pc = fluids[0]->h_fstate.p[id];
+				rhoc = fluids[0]->h_fstate.rho[id];
+				uc = fluids[0]->h_fstate.u[id];
+				vc = fluids[0]->h_fstate.v[id];
+				wc = fluids[0]->h_fstate.w[id];
+				out << xc << " " << uc
 #if DIM_Y
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				out << (j - Bwidth_Y + 0.5) * dy << " ";
-			}
-			out << "\n";
-		}
-	}
-#endif
+					<< " " << yc << " " << vc
+#endif // end DIM_Y
 #if DIM_Z
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				out << (k - Bwidth_Z + 0.5) * dz << " ";
-			}
-			out << "\n";
-		}
-	}
+					<< " " << zc << " " << wc
+#endif // end DIM_Z
+					<< " " << pc << " " << rhoc;
+#if COP
+				out << " " << fluids[0]->h_fstate.gamma[id] << " " << fluids[0]->h_fstate.T[id]; //
+				for (int n = 0; n < NUM_SPECIES; n++)
+					out << " " << fluids[0]->h_fstate.y[n][id];
 #endif
-
-#if DIM_X
-	// u
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				int id = Xmax * Ymax * k + Xmax * j + i;
-				// if(levelset->h_phi[id]>= 0.0)
-				out << fluids[0]->h_fstate.u[id] << " ";
-				// else
-				// 	out<<fluids[1]->h_fstate.u[id]<<" ";
-			}
-			out << "\n";
-		}
-	}
-#endif
-
-#if DIM_Y
-	// v
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				int id = Xmax * Ymax * k + Xmax * j + i;
-				// if(levelset->h_phi[id]>= 0.0)
-				out << fluids[0]->h_fstate.v[id] << " ";
-				// else
-				// 	out<<fluids[1]->h_fstate.v[id]<<" ";
-			}
-			out << "\n";
-		}
-	}
-#endif
-
-#if DIM_Z
-	// w
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				int id = Xmax * Ymax * k + Xmax * j + i;
-				// if(levelset->h_phi[id]>= 0.0)
-				out << fluids[0]->h_fstate.w[id] << " ";
-				// else
-				// 	out<<fluids[1]->h_fstate.w[id]<<" ";
-			}
-			out << "\n";
-		}
-	}
-#endif
-
-	// P
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				int id = Xmax * Ymax * k + Xmax * j + i;
-				// if(levelset->h_phi[id]>= 0.0)
-				out << fluids[0]->h_fstate.p[id] << " ";
-				// else
-				// 	out<<fluids[1]->h_fstate.p[id]<<" ";
-			}
-			out << "\n";
-		}
-	}
-
-	// rho
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				int id = Xmax * Ymax * k + Xmax * j + i;
-				// if(levelset->h_phi[id]>= 0.0)
-				out << fluids[0]->h_fstate.rho[id] << " ";
-				// else
-				// 	out<<fluids[1]->h_fstate.rho[id]<<" ";
-			}
-			out << "\n";
-		}
-	}
-
-	// T
-	for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-	{
-		for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-		{
-			for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-			{
-				int id = Xmax * Ymax * k + Xmax * j + i;
-				// if(levelset->h_phi[id]>= 0.0)
-				out << fluids[0]->h_fstate.T[id] << " ";
-				// else
-				// 	out<<fluids[1]->h_fstate.rho[id]<<" ";
-			}
-			out << "\n";
-		}
-	}
-
-#ifdef COP
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-	{
-		for (int k = Bwidth_Z; k < Zmax - Bwidth_Z; k++)
-		{
-			for (int j = Bwidth_Y; j < Ymax - Bwidth_Y; j++)
-			{
-				for (int i = Bwidth_X; i < Xmax - Bwidth_X; i++)
-				{
-					int id = Xmax * Ymax * k + Xmax * j + i;
-					out << fluids[0]->h_fstate.y[n][id] << " ";
-				}
 				out << "\n";
 			}
-		}
-	}
-#endif // end COP
-
 	out.close();
+
 	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
 }

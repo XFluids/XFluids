@@ -39,6 +39,7 @@ EulerSYCL
 build
 build/*
 /*.ini
+!sa*.ini
 
 
 

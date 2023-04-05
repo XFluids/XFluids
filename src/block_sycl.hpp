@@ -113,7 +113,7 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
 
-			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, T, Gamma); }); })
+			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma,T, Gamma); }); })
 		.wait();
 }
 

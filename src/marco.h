@@ -41,89 +41,45 @@
 /**
  * get c2 #ifdef COP inside Reconstructflux
  */
-#define MARCO_COPC2()                                                                                                                                   \
-    real_t _T = (T[id_l] + D * T[id_r]) * D1;                                                                                                           \
-    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], Ri[NUM_SPECIES]; \
-    for (size_t i = 0; i < NUM_SPECIES; i++)                                                                                                            \
-    {                                                                                                                                                   \
-        Ri[i] = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);                                                                                         \
-        hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri[i], i);                                                                          \
-        hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri[i], i);                                                                          \
-    }                                                                                                                                                   \
-    get_yi(y, yi_l, id_l);                                                                                                                              \
-    get_yi(y, yi_r, id_r);                                                                                                                              \
-    real_t _h = _DF(0.0);                                                                                                                               \
-    for (size_t ii = 0; ii < NUM_SPECIES; ii++)                                                                                                         \
-    {                                                                                                                                                   \
-        _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;                                                                                                       \
-        _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;                                                                                                       \
-        _h += _hi[ii] * _yi[ii];                                                                                                                        \
-    }                                                                                                                                                   \
-    real_t _dpdrhoi[NUM_COP], drhoi[NUM_COP];                                                                                                           \
-    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);                                                                                              \
-    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);                                                                                              \
-    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);                                                                                            \
-    real_t e_l = H[id_l] - _DF(0.5) * (u[id_l] * u[id_l] + v[id_l] * v[id_l] + w[id_l] * w[id_l]) - p[id_l] / rho[id_l];                                \
-    real_t e_r = H[id_r] - _DF(0.5) * (u[id_r] * u[id_r] + v[id_r] * v[id_r] + w[id_r] * w[id_r]) - p[id_r] / rho[id_r];                                \
-    real_t _dpdrho = get_RoeAverage(get_DpDrho(hi_l[NUM_COP], Ri[NUM_COP], T[id_l], e_l, gamma_l),                                                      \
-                                    get_DpDrho(hi_r[NUM_COP], Ri[NUM_COP], T[id_r], e_r, gamma_r), D, D1);                                              \
-    real_t Cp_l = get_CopCp(thermal, yi_l, T[id_l]);                                                                                                    \
-    real_t Cp_r = get_CopCp(thermal, yi_r, T[id_r]);                                                                                                    \
-    real_t R_l = get_CopR(thermal->species_chara, yi_l);                                                                                                \
-    real_t R_r = get_CopR(thermal->species_chara, yi_r);                                                                                                \
-    for (size_t i = 0; i < NUM_COP; i++)                                                                                                                \
-    {                                                                                                                                                   \
-        drhoi[i] = rho[id_r] * yi_r[i] - rho[id_l] * yi_l[i];                                                                                           \
-        _dpdrhoi[i] = get_RoeAverage(get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_l, R_l, gamma_l),                              \
-                                     get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_r, R_r, gamma_r), D, D1);                      \
-    }                                                                                                                                                   \
-    real_t _prho = get_RoeAverage(p[id_l] / rho[id_l], p[id_r] / rho[id_r], D, D1);                                                                     \
-    real_t _dpdE = get_RoeAverage(gamma_l - _DF(1.0), gamma_r - _DF(1.0), D, D1);                                                                       \
-    real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);                                           \
-    real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
-/* TODO: real_t c2 = get_CopC2(z, thermal->Ri, _yi, _hi, Gamma0, _h, _T); z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量 */
-
-// real_t _T = (T[id_l] + D * T[id_r]) * D1;
-// real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], Ri[NUM_SPECIES];
-// for (size_t i = 0; i < NUM_SPECIES; i++)
-// {
-//     Ri[i] = Ru / (thermal->species_chara[i * SPCH_Sz + 6]);
-//     hi_l[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], Ri[i], i);
-//     hi_r[i] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], Ri[i], i);
-// }
-// get_yi(y, yi_l, id_l);
-// get_yi(y, yi_r, id_r);
-// real_t _h = _DF(0.0);
-// for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-// {
-//     _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;
-//     _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;
-//     _h += _hi[ii] * _yi[ii];
-// }
-// // real_t Gamma0 = get_CopGamma(thermal, _yi, _T);              // out from RoeAverage_x , 使用半点的数据计算出半点处的Gamma
-// real_t _dpdrhoi[NUM_COP], drhoi[NUM_COP];
-// real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
-// real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
-// real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
-// real_t e_l = H[id_l] - _DF(0.5) * (u[id_l] * u[id_l] + v[id_l] * v[id_l] + w[id_l] * w[id_l]) - p[id_l] / rho[id_l];
-// real_t e_r = H[id_r] - _DF(0.5) * (u[id_r] * u[id_r] + v[id_r] * v[id_r] + w[id_r] * w[id_r]) - p[id_r] / rho[id_r];
-// real_t _dpdrho = get_RoeAverage(get_DpDrho(hi_l[NUM_COP], Ri[NUM_COP], T[id_l], e_l, gamma_l),
-//                                 get_DpDrho(hi_r[NUM_COP], Ri[NUM_COP], T[id_r], e_r, gamma_r), D, D1);
-// real_t Cp_l = get_CopCp(thermal, yi_l, T[id_l]);
-// real_t Cp_r = get_CopCp(thermal, yi_r, T[id_r]);
-// real_t R_l = get_CopR(thermal->species_chara, yi_l);
-// real_t R_r = get_CopR(thermal->species_chara, yi_r);
-// for (size_t i = 0; i < NUM_COP; i++)
-// {
-//     drhoi[i] = rho[id_r] * yi_r[i] - rho[id_l] * yi_l[i];
-//     _dpdrhoi[i] = get_RoeAverage(get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_l, R_l, gamma_l),
-//                                  get_DpDrhoi(hi_l[i], Ri[i], hi_l[NUM_COP], Ri[NUM_COP], T[id_l], Cp_r, R_r, gamma_r), D, D1);
-// }
-// real_t _prho = get_RoeAverage(p[id_l] / rho[id_l], p[id_r] / rho[id_r], D, D1);
-// real_t _dpdE = get_RoeAverage(gamma_l - _DF(1.0), gamma_r - _DF(1.0), D, D1);
-// real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);
-// real_t c2 = SoundSpeedMultiSpecies(z, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
-// TODO: real_t c2 = get_CopC2(z, thermal->Ri, _yi, _hi, Gamma0, _h, _T); // z[NUM_SPECIES] 是一个在该函数中同时计算的数组变量
+#define MARCO_COPC2()                                                                                                                                                                                                                        \
+    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], b1, b3;                                                                                               \
+    for (size_t n = 0; n < NUM_SPECIES; n++)                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                                                        \
+        hi_l[n] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_l], thermal->Ri[n], n);                                                                                                                                                      \
+        hi_r[n] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id_r], thermal->Ri[n], n);                                                                                                                                                      \
+    }                                                                                                                                                                                                                                        \
+    get_yi(y, yi_l, id_l);                                                                                                                                                                                                                   \
+    get_yi(y, yi_r, id_r);                                                                                                                                                                                                                   \
+    real_t _h = _DF(0.0);                                                                                                                                                                                                                    \
+    for (size_t ii = 0; ii < NUM_SPECIES; ii++)                                                                                                                                                                                              \
+    {                                                                                                                                                                                                                                        \
+        _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;                                                                                                                                                                                            \
+        _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;                                                                                                                                                                                            \
+    }                                                                                                                                                                                                                                        \
+    real_t _dpdrhoi[NUM_COP], drhoi[NUM_COP];                                                                                                                                                                                                \
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);                                                                                                                                                                                   \
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);                                                                                                                                                                                   \
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);                                                                                                                                                                                 \
+    real_t q2_l = u[id_l] * u[id_l] + v[id_l] * v[id_l] + w[id_l] * w[id_l];                                                                                                                                                                 \
+    real_t q2_r = u[id_r] * u[id_r] + v[id_r] * v[id_r] + w[id_r] * w[id_r];                                                                                                                                                                 \
+    real_t e_l = H[id_l] - _DF(0.5) * q2_l - p[id_l] / rho[id_l];                                                                                                                                                                            \
+    real_t e_r = H[id_r] - _DF(0.5) * q2_r - p[id_r] / rho[id_r];                                                                                                                                                                            \
+    real_t Cp_l = get_CopCp(thermal, yi_l, T[id_l]);                                                                                                                                                                                         \
+    real_t Cp_r = get_CopCp(thermal, yi_r, T[id_r]);                                                                                                                                                                                         \
+    real_t R_l = get_CopR(thermal->species_chara, yi_l);                                                                                                                                                                                     \
+    real_t R_r = get_CopR(thermal->species_chara, yi_r);                                                                                                                                                                                     \
+    real_t _dpdrho = get_RoeAverage(get_DpDrho(hi_l[NUM_COP], thermal->Ri[NUM_COP], q2_l, Cp_l, R_l, T[id_l], e_l, gamma_l),                                                                                                                 \
+                                    get_DpDrho(hi_r[NUM_COP], thermal->Ri[NUM_COP], q2_r, Cp_r, R_r, T[id_r], e_r, gamma_r), D, D1);                                                                                                         \
+    for (size_t nn = 0; nn < NUM_COP; nn++)                                                                                                                                                                                                  \
+    {                                                                                                                                                                                                                                        \
+        _dpdrhoi[nn] = get_RoeAverage(get_DpDrhoi(hi_l[nn], thermal->Ri[nn], hi_l[NUM_COP], thermal->Ri[NUM_COP], T[id_l], Cp_l, R_l, gamma_l),                                                                                              \
+                                      get_DpDrhoi(hi_r[nn], thermal->Ri[nn], hi_r[NUM_COP], thermal->Ri[NUM_COP], T[id_r], Cp_r, R_r, gamma_r), D, D1);                                                                                      \
+        drhoi[nn] = rho[id_r] * yi_r[nn] - rho[id_l] * yi_l[nn];                                                                                                                                                                             \
+    }                                                                                                                                                                                                                                        \
+    real_t _prho = get_RoeAverage(p[id_l] / rho[id_l], p[id_r] / rho[id_r], D, D1) + _DF(0.5) * D * D1 * D1 * (sycl::pow<real_t>(u[id_r] - u[id_l], 2) + sycl::pow<real_t>(v[id_r] - v[id_l], 2) + sycl::pow<real_t>(w[id_r] - w[id_l], 2)); \
+    real_t _dpdE = get_RoeAverage(gamma_l - _DF(1.0), gamma_r - _DF(1.0), D, D1);                                                                                                                                                            \
+    real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);                                                                                                                                \
+    real_t c2 = SoundSpeedMultiSpecies(z, b1, b3, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
 
 /**
  * get c2 #else COP
@@ -135,12 +91,131 @@
     real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);                                                       \
     real_t c2 = Gamma0 * _P / _rho; /*(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x */ \
     real_t z[] = {0}, _yi[] = {1};
-// real_t yi_l[NUM_SPECIES] = {_DF(1.0)}, yi_r[NUM_SPECIES] = {_DF(1.0)};
-// real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);
-// real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);
-// real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);
-// real_t c2 = Gamma0 * _P / _rho; //(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x
-// real_t z[] = {0}, _yi[] = {1};
+
+/**
+ * Caculate flux_wall
+ */
+#define MARCO_FLUXWALL(_i_1, _j_1, _k_1, _i_2, _j_2, _k_2)                                                                                                   \
+    real_t uf[10], ff[10], pp[10], mm[10], _p[Emax][Emax], f_flux;                                                                                           \
+    for (int n = 0; n < Emax; n++)                                                                                                                           \
+    {                                                                                                                                                        \
+        real_t eigen_local_max = _DF(0.0);                                                                                                                   \
+        eigen_local_max = eigen_value[n];                                                                                                                    \
+        real_t lambda_l = eigen_local[Emax * id_l + n];                                                                                                      \
+        real_t lambda_r = eigen_local[Emax * id_r + n];                                                                                                      \
+        if (lambda_l * lambda_r < 0.0)                                                                                                                       \
+        {                                                                                                                                                    \
+            for (int m = -stencil_P; m < stencil_size - stencil_P; m++)                                                                                      \
+            {                                                                                                                                                \
+                int id_local_1 = Xmax * Ymax * _k_1 + Xmax * _j_1 + _i_1;                                             /*Xmax * Ymax * k + Xmax * j + i + m*/ \
+                eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/              \
+            }                                                                                                                                                \
+        }                                                                                                                                                    \
+        for (size_t m = 0; m < stencil_size; m++)                                                                                                            \
+        {                                                                                                                                                    \
+            int id_local_2 = Xmax * Ymax * _k_2 + Xmax * _j_2 + _i_2; /*Xmax * Ymax * k + Xmax * j + m + i - stencil_P*/                                     \
+            uf[m] = _DF(0.0);                                                                                                                                \
+            ff[m] = _DF(0.0);                                                                                                                                \
+            for (int n1 = 0; n1 < Emax; n1++)                                                                                                                \
+            {                                                                                                                                                \
+                uf[m] = uf[m] + UI[Emax * id_local_2 + n1] * eigen_l[n][n1];                                                                                 \
+                ff[m] = ff[m] + Fx[Emax * id_local_2 + n1] * eigen_l[n][n1];                                                                                 \
+            }                                                                                                                                                \
+            /* for local speed*/                                                                                                                             \
+            pp[m] = _DF(0.5) * (ff[m] + eigen_local_max * uf[m]);                                                                                            \
+            mm[m] = _DF(0.5) * (ff[m] - eigen_local_max * uf[m]);                                                                                            \
+        }                                                                                                                                                    \
+        /* calculate the scalar numerical flux at x direction*/                                                                                              \
+        f_flux = weno7_P(&pp[stencil_P], dx) + weno7_M(&mm[stencil_P], dx);                                                                                  \
+        /* get Fp*/                                                                                                                                          \
+        for (int n1 = 0; n1 < Emax; n1++)                                                                                                                    \
+        {                                                                                                                                                    \
+            _p[n][n1] = f_flux * eigen_r[n1][n];                                                                                                             \
+        }                                                                                                                                                    \
+    }                                                                                                                                                        \
+    /* reconstruction the F-flux terms*/                                                                                                                     \
+    for (int n = 0; n < Emax; n++)                                                                                                                           \
+    {                                                                                                                                                        \
+        real_t temp_flux = _DF(0.0);                                                                                                                         \
+        for (int n1 = 0; n1 < Emax; n1++)                                                                                                                    \
+        {                                                                                                                                                    \
+            temp_flux += _p[n1][n];                                                                                                                          \
+        }                                                                                                                                                    \
+        Fwall[Emax * id_l + n] = temp_flux;                                                                                                                  \
+    }
+
+// real_t uf[10], ff[10], pp[10], mm[10], _p[Emax][Emax], f_flux;
+// // #pragma unroll Emax
+// for (int n = 0; n < Emax; n++)
+// {
+//     real_t eigen_local_max = _DF(0.0);
+//     // for (int m = -2; m <= 3; m++)
+//     // {
+//     //     int id_local = Xmax * Ymax * k + Xmax * j + i + m;
+//     //     eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
+//     // }
+//     // for (int m = i - 3; m <= i + 4; m++)
+//     // { // 3rd oder and can be modified
+//     //     int id_local = Xmax * Ymax * k + Xmax * j + m;
+
+//     //     uf[m - i + 3] = _DF(0.0);
+//     //     ff[m - i + 3] = _DF(0.0);
+
+//     //     for (int n1 = 0; n1 < Emax; n1++)
+//     //     {
+//     //         uf[m - i + 3] = uf[m - i + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
+//     //         ff[m - i + 3] = ff[m - i + 3] + Fx[Emax * id_local + n1] * eigen_l[n][n1];
+//     //     }
+//     //     // for local speed
+//     //     pp[m - i + 3] = _DF(0.5) * (ff[m - i + 3] + eigen_local_max * uf[m - i + 3]);
+//     //     mm[m - i + 3] = _DF(0.5) * (ff[m - i + 3] - eigen_local_max * uf[m - i + 3]);
+//     // }
+//     // // calculate the scalar numerical flux at x direction
+//     // f_flux = (weno5old_P(&pp[3], dx) + weno5old_M(&mm[3], dx));
+
+//     eigen_local_max = eigen_value[n];
+//     real_t lambda_l = eigen_local[Emax * id_l + n];
+//     real_t lambda_r = eigen_local[Emax * id_r + n];
+//     if (lambda_l * lambda_r < 0.0)
+//     {
+//         for (int m = -stencil_P; m < stencil_size - stencil_P; m++)
+//         {
+//             int id_local_1 = Xmax * Ymax * k + Xmax * j + i + m;
+//             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); // local lax-friedrichs}
+//         }
+//     }
+//     for (size_t m = 0; m < stencil_size; m++)
+//     {
+//         int id_local_2 = Xmax * Ymax * k + Xmax * j + m + i - stencil_P;
+
+//         uf[m] = _DF(0.0);
+//         ff[m] = _DF(0.0);
+//         for (int n1 = 0; n1 < Emax; n1++)
+//         {
+//             uf[m] = uf[m] + UI[Emax * id_local_2 + n1] * eigen_l[n][n1];
+//             ff[m] = ff[m] + Fx[Emax * id_local_2 + n1] * eigen_l[n][n1];
+//         }
+//         // for local speed
+//         pp[m] = _DF(0.5) * (ff[m] + eigen_local_max * uf[m]);
+//         mm[m] = _DF(0.5) * (ff[m] - eigen_local_max * uf[m]);
+//     }
+//     // calculate the scalar numerical flux at x direction
+//     f_flux = weno7_P(&pp[stencil_P], dx) + weno7_M(&mm[stencil_P], dx);
+//     // get Fp
+//     for (int n1 = 0; n1 < Emax; n1++)
+//         _p[n][n1] = f_flux * eigen_r[n1][n];
+// }
+
+// // reconstruction the F-flux terms
+// for (int n = 0; n < Emax; n++)
+// {
+//     real_t fluxx = _DF(0.0);
+//     for (int n1 = 0; n1 < Emax; n1++)
+//     {
+//         fluxx += _p[n1][n];
+//     }
+//     Fwall[Emax * id_l + n] = fluxx;
+// }
 
 /**
  * prepare for getting viscous flux
@@ -225,17 +300,10 @@ const bool _Diffu = false;
 /**
  * Pre get eigen_martix
  */
-#define MARCO_PREEIGEN()                               \
-    real_t q2 = _u * _u + _v * _v + _w * _w;           \
-    real_t _c = sqrt(c2);                              \
-    real_t b1 = (Gamma - _DF(1.0)) / c2;               \
-    real_t b2 = _DF(1.0) + b1 * q2 - b1 * _H;          \
-    real_t b3 = _DF(0.0);                              \
-    for (size_t i = 0; i < NUM_COP; i++)               \
-    {                                                  \
-        b3 += yi[i] * z[i]; /* NOTE: related with yi*/ \
-    }                                                  \
-    b3 *= b1;                                          \
+#define MARCO_PREEIGEN()                      \
+    real_t q2 = _u * _u + _v * _v + _w * _w;  \
+    real_t _c = sqrt(c2);                     \
+    real_t b2 = _DF(1.0) + b1 * q2 - b1 * _H; \
     real_t _c1 = _DF(1.0) / _c;
 // =======================================================
 // end repeated code definitions

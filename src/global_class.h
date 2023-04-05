@@ -13,8 +13,13 @@
 // SYCL headers
 #include <sycl/sycl.hpp>
 
-constexpr real_t Gamma = 1.4; // 1.666667;
-const double Reference_params[8] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+// constexpr real_t Gamma = 1.4; // 1.666667;
+//  for flux Reconstruction order
+#define FLUX_method 2       // 0: local LF; 1: global LF, 2: Roe
+const int stencil_P = 3;    // "2" for <=6 order, "3"" for >6 order
+const int stencil_size = 8; // "6" for <=6 order, "8"" for >6 order
+// for nodemisonlizing
+const real_t Reference_params[8] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 // 0: l_ref(unit :m), 1: rho_ref(unit :kg/m3)(air), 2: p_ref(unit :Pa)(air),
 // 3: T_ref(unit :K), 4:W0_ref(air mole mass,unit :g/mol) 5:μ_ref(unit:Pa.s=kg/(m.s))(air)
 // 6: t_ref(unit :s), 7:ReynoldsNumber=rho_ref*u_ref*l_ref/vis_ref
@@ -33,7 +38,7 @@ enum VdeType
 
 typedef struct
 {
-    real_t *rho, *p, *c, *H, *u, *v, *w, *T;
+    real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma;
     real_t *hi, *Vde[9], *y[NUM_SPECIES];
     real_t *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
 } FlowData;

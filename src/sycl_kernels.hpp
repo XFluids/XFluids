@@ -159,11 +159,29 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal->species_chara, yi);
 
     // // TODO: for debug
-    // p[id] = 101325.0;                                                                                            // 36100.0 * sycl::fabs<real_t>(x * y);
-    // u[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
-    // v[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
-    // w[id] = 0.0;                                                                                                 // * sycl::fabs<real_t>(0);
-    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp<real_t>(-(x - 0.5) / 0.05 * (x - 0.5) / 0.05 - (y - 0.5) / 0.05 * (y - 0.5) / 0.05)); // 700.0;//- (y - 0.5) * (y - 0.5)
+    // //  1d debug set
+    // p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(x - 0.45) * (x - 0.45))); //* (Length - fabs(x));
+    // u[id] = 100.0 * sycl::fabs<real_t>(x);                                               // sycl::sin<real_t>(x * 0.5 * M_PI);
+    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(x - 0.35) * (x - 0.35) / 0.07 / 0.07));
+    // rho[id] = p[id] / R / T[id];
+
+    // // GUASS-WAVE
+    // p[id] = 101325.0;
+    // u[id] = 0.0;
+    // v[id] = 0.0;
+    // w[id] = 0.0;
+    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - 0.5 * sycl::exp<real_t>(-(x - 0.5) / 0.05 * (x - 0.5) / 0.05)); // - (y - 0.5) / 0.05 * (y - 0.5) / 0.05
+    // rho[id] = p[id] / R / T[id];
+
+    // // 1D multicomponent insert shock tube
+    T[id] = x < 0.05 ? 400 : 1200;
+    p[id] = x < 0.05 ? 8000 : 80000;
+    rho[id] = p[id] / R / T[id];
+
+    // u[id] = x < 0.5 ? 0.0 : -487.34;
+    // p[id] = x < 0.5 ? 7173 : 35594;
+    // rho[id] = x < 0.5 ? 0.072 : 0.18075; //
+    // T[id] = p[id] / rho[id] / R;         //
 
     // // 2D Riemann problem
     // if (y > 0.5)
@@ -200,22 +218,6 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     //         p[id] = 1;       // 0.3;   // 0.4;
     //     }
     // }
-
-    // // 1D multicomponent insert shock tube
-    // T[id] = x < 0.5 ? 400 : 1200;
-    // p[id] = x < 0.5 ? 8000 : 80000;
-    // rho[id] = p[id] / R / T[id];
-
-    // u[id] = x < 0.5 ? 0.0 : -487.34;
-    // p[id] = x < 0.5 ? 7173 : 35594;
-    // rho[id] = x < 0.5 ? 0.072 : 0.18075; //
-    // T[id] = p[id] / rho[id] / R;         //
-
-    // // for Debug
-    p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(x - 0.45) * (x - 0.45))); //* (Length - fabs(x));
-    u[id] = 100.0 * sycl::sin<real_t>(x * 0.5 * M_PI);
-    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(x - 0.35) * (x - 0.35) / 0.07 / 0.07));
-    rho[id] = p[id] / R / T[id];
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
@@ -283,7 +285,8 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     }
 }
 
-extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fx, real_t *Fxwall, real_t *eigen_local,
+#if DIM_X
+extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fx, real_t *Fwall, real_t *eigen_local,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
@@ -307,61 +310,20 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     MARCO_NOCOPC2();
 #endif
 
-    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
-    RoeAverage_x(eigen_l, eigen_r, z, _yi, c2, _rho, _u, _v, _w, _H, D, D1, Gamma0);
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
+    RoeAverage_x(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
-    real_t uf[10], ff[10], pp[10], mm[10];
-    real_t f_flux, _p[Emax][Emax];
-
-    // construct the right value & the left value scalar equations by characteristic reduction			
-	// at i+1/2 in x direction
-    // #pragma unroll Emax
-	for(int n=0; n<Emax; n++){
-        real_t eigen_local_max = _DF(0.0);
-        for(int m=-2; m<=3; m++){
-            int id_local = Xmax * Ymax * k + Xmax * j + i + m;
-            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
-        }
-
-		for(int m=i-3; m<=i+4; m++){	// 3rd oder and can be modified
-            int id_local = Xmax * Ymax * k + Xmax * j + m;
-
-            uf[m - i + 3] = _DF(0.0);
-            ff[m - i + 3] = _DF(0.0);
-
-            for (int n1 = 0; n1 < Emax; n1++)
-            {
-                uf[m - i + 3] = uf[m - i + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
-                ff[m - i + 3] = ff[m - i + 3] + Fx[Emax * id_local + n1] * eigen_l[n][n1];
-            }
-            // for local speed
-            pp[m - i + 3] = _DF(0.5) * (ff[m - i + 3] + eigen_local_max * uf[m - i + 3]);
-            mm[m - i + 3] = _DF(0.5) * (ff[m - i + 3] - eigen_local_max * uf[m - i + 3]);
-        }
-
-		// calculate the scalar numerical flux at x direction
-        f_flux = (weno5old_P(&pp[3], dx) + weno5old_M(&mm[3], dx));
-
-        // get Fp
-        for (int n1 = 0; n1 < Emax; n1++)
-            _p[n][n1] = f_flux * eigen_r[n1][n];
-    }
-
-	// reconstruction the F-flux terms
-	for(int n=0; n<Emax; n++){
-        real_t fluxx = _DF(0.0);
-        for (int n1 = 0; n1 < Emax; n1++)
-        {
-            fluxx += _p[n1][n];
-        }
-        Fxwall[Emax*id_l+n] = fluxx;
-	}
+    // // construct the right value & the left value scalar equations by characteristic reduction
+    // // at i+1/2 in x direction
+    MARCO_FLUXWALL(i + m, j, k, m + i - stencil_P, j, k);
 
     // real_t de_fw[Emax];
     // get_Array(Fxwall, de_fw, Emax, id_l);
     // real_t de_fx[Emax];
 }
+#endif // end DIM_X
 
+#if DIM_Y
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fy, real_t *Fywall, real_t *eigen_local,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
@@ -395,7 +357,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 #endif
 
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
-    RoeAverage_y(eigen_l, eigen_r, z, _yi, c2, _rho, _u, _v, _w, _H, D, D1, Gamma0);
+    RoeAverage_y(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
     real_t ug[10], gg[10], pp[10], mm[10];
     real_t g_flux, _p[Emax][Emax];
@@ -440,11 +402,14 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
         }
         Fywall[Emax*id_l+n] = fluxy;
 	}
+
     // real_t de_fw[Emax];
     // get_Array(Fywall, de_fw, Emax, id_l);
     // real_t de_fx[Emax];
 }
+#endif // end DIM_Y
 
+#if DIM_Z
 extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fz, real_t *Fzwall, real_t *eigen_local,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
@@ -478,7 +443,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 #endif
 
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
-    RoeAverage_z(eigen_l, eigen_r, z, _yi, c2, _rho, _u, _v, _w, _H, D, D1, Gamma0);
+    RoeAverage_z(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
     real_t uh[10], hh[10], pp[10], mm[10];
     real_t h_flux, _p[Emax][Emax];
@@ -527,6 +492,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     // get_Array(Fzwall, de_fw, Emax, id_l);
     // real_t de_fx[Emax];
 }
+#endif // end DIM_Z
 
 extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA, real_t BB, real_t CC, real_t *eigen_local, real_t *u, real_t *v, real_t *w, real_t *c)
 {
@@ -545,7 +511,7 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     if(k >= Zmax)
     return;
 #endif
-
+#if !FLUX_method
     real_t uu = AA * u[id] + BB * v[id] + CC * w[id];
     real_t uuPc = uu + c[id];
     real_t uuMc = uu - c[id];
@@ -553,7 +519,7 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     // local eigen values
     switch (EIGEN_SYSTEM)
     {
-    case 1: // eigen system form Lyx's master thesis code:react_flow may not actually right,1D multicompoent insert shock tube result line's shape differs from no multicompoent
+    case 1:
     eigen_local[Emax * id + 0] = uuMc;
     for (size_t ii = 1; ii < Emax - 1; ii++)
     {
@@ -574,6 +540,10 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     }
     break;
     }
+#else
+    for (size_t ii = 0; ii < Emax; ii++)
+        eigen_local[Emax * id + ii] = 0.0;
+#endif // end FLUX_method
 
     // real_t de_fw[Emax];
     // get_Array(eigen_local, de_fw, Emax, id);
@@ -615,8 +585,8 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
 }
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-                                                 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *const *_y, real_t *T,
-                                                 real_t const Gamma)
+                                                 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *const *_y,
+                                                 real_t *gamma, real_t *T, real_t const Gamma)
 {
     MARCO_DOMAIN();
     int id = Xmax * Ymax * k + Xmax * j + i;
@@ -634,29 +604,18 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
         return;
 #endif
 
-    real_t U[Emax], yi[NUM_SPECIES];
-    for (size_t n = 0; n < Emax; n++)
-    {
-        U[n] = UI[Emax * id + n];
-    }
-    yi[NUM_COP] = _DF(1.0);
-#ifdef COP
-    for (size_t ii = 5; ii < Emax; ii++)
-    { // calculate yi
-        yi[ii - 5] = U[ii] / U[0];
-        _y[ii - 5][id] = yi[ii - 5];
-        yi[NUM_COP] += -yi[ii - 5];
-    }
-    _y[NUM_COP][id] = yi[NUM_COP];
-#endif // end COP
+    real_t *U = &(UI[Emax * id]), yi[NUM_SPECIES];
 
-    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], T[id], thermal, yi);
+    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);
     real_t *Fz = &(FluxH[Emax * id]);
 
     GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
+
+    for (size_t n = 0; n < NUM_SPECIES; n++)
+        _y[n][id] = yi[n];
 }
 
 extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
@@ -664,7 +623,7 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
     MARCO_DOMAIN();
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    // real_t de_U[Emax], de_U1[Emax], de_LU[Emax];
+    real_t de_U[Emax], de_U1[Emax], de_LU[Emax];
     switch (flag)
     {
     case 1:
@@ -680,6 +639,9 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
             U[Emax * id + n] = (U[Emax * id + n] + _DF(2.0) * U1[Emax * id + n] + _DF(2.0) * dt * LU[Emax * id + n]) / _DF(3.0);
         break;
     }
+    get_Array(U, de_U, Emax, id);
+    get_Array(U1, de_U1, Emax, id);
+    get_Array(LU, de_LU, Emax, id);
 }
 
 extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)

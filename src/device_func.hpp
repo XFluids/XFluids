@@ -139,84 +139,22 @@ real_t get_CopGamma(Thermal *material, const real_t yi[NUM_SPECIES], const real_
  */
 real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
-	real_t T = T0;
-	real_t TT = 30000.0 / Tref;
-	real_t hi = _DF(0.0);
+	real_t hi = _DF(0.0), T = T0;
 #if Thermo
-	// NOTE：Non_dim of Hia && Hib*3+only for h&Cp not for S ATTENTATION
-	//  200K~1000K
-	Hia[n * 7 * 3 + 0 * 3 + 0] = Hia[n * 7 * 3 + 0 * 3 + 0] / sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 1 * 3 + 0] = Hia[n * 7 * 3 + 1 * 3 + 0] / Tref;
-
-	Hia[n * 7 * 3 + 3 * 3 + 0] = Hia[n * 7 * 3 + 3 * 3 + 0] * Tref;
-	Hia[n * 7 * 3 + 4 * 3 + 0] = Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 5 * 3 + 0] = Hia[n * 7 * 3 + 5 * 3 + 0] * sycl::pow<real_t>(Tref, 3);
-	Hia[n * 7 * 3 + 6 * 3 + 0] = Hia[n * 7 * 3 + 6 * 3 + 0] * sycl::pow<real_t>(Tref, 4);
-	Hib[n * 2 * 3 + 0 * 3 + 0] = Hib[n * 2 * 3 + 0 * 3 + 0] / Tref + Hia[n * 7 * 3 + 1 * 3 + 0] * sycl::log(Tref);
-	// 1000K~6000K
-	Hia[n * 7 * 3 + 0 * 3 + 1] = Hia[n * 7 * 3 + 0 * 3 + 1] / sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 1 * 3 + 1] = Hia[n * 7 * 3 + 1 * 3 + 1] / Tref;
-
-	Hia[n * 7 * 3 + 3 * 3 + 1] = Hia[n * 7 * 3 + 3 * 3 + 1] * Tref;
-	Hia[n * 7 * 3 + 4 * 3 + 1] = Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 5 * 3 + 1] = Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(Tref, 3);
-	Hia[n * 7 * 3 + 6 * 3 + 1] = Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(Tref, 4);
-	Hib[n * 2 * 3 + 0 * 3 + 1] = Hib[n * 2 * 3 + 0 * 3 + 1] / Tref + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(Tref);
-	// 6000K~15000K
-	Hia[n * 7 * 3 + 0 * 3 + 2] = Hia[n * 7 * 3 + 0 * 3 + 2] / sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 1 * 3 + 2] = Hia[n * 7 * 3 + 1 * 3 + 2] / Tref;
-
-	Hia[n * 7 * 3 + 3 * 3 + 2] = Hia[n * 7 * 3 + 3 * 3 + 2] * Tref;
-	Hia[n * 7 * 3 + 4 * 3 + 2] = Hia[n * 7 * 3 + 4 * 3 + 2] * sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 5 * 3 + 2] = Hia[n * 7 * 3 + 5 * 3 + 2] * sycl::pow<real_t>(Tref, 3);
-	Hia[n * 7 * 3 + 6 * 3 + 2] = Hia[n * 7 * 3 + 6 * 3 + 2] * sycl::pow<real_t>(Tref, 4);
-	Hib[n * 2 * 3 + 0 * 3 + 2] = Hib[n * 2 * 3 + 0 * 3 + 2] / Tref + Hia[n * 7 * 3 + 1 * 3 + 2] * sycl::log(Tref);
-#else
-	Hia[n * 7 * 3 + 1 * 3 + 0] = Hia[n * 7 * 3 + 1 * 3 + 0] * Tref;
-	Hia[n * 7 * 3 + 2 * 3 + 0] = Hia[n * 7 * 3 + 2 * 3 + 0] * sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 3 * 3 + 0] = Hia[n * 7 * 3 + 3 * 3 + 0] * sycl::pow<real_t>(Tref, 3);
-	Hia[n * 7 * 3 + 4 * 3 + 0] = Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(Tref, 4);
-	Hia[n * 7 * 3 + 5 * 3 + 0] = Hia[n * 7 * 3 + 5 * 3 + 0] / Tref;
-
-	Hia[n * 7 * 3 + 1 * 3 + 1] = Hia[n * 7 * 3 + 1 * 3 + 1] * Tref;
-	Hia[n * 7 * 3 + 2 * 3 + 1] = Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::pow<real_t>(Tref, 2);
-	Hia[n * 7 * 3 + 3 * 3 + 1] = Hia[n * 7 * 3 + 3 * 3 + 1] * sycl::pow<real_t>(Tref, 3);
-	Hia[n * 7 * 3 + 4 * 3 + 1] = Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(Tref, 4);
-	Hia[n * 7 * 3 + 5 * 3 + 1] = Hia[n * 7 * 3 + 5 * 3 + 1] / Tref;
-#endif
-	if (T < 200.0 / Tref)
-	{
-		TT = T;
-		T = 200.0 / Tref;
-	}
-#if Thermo
-	if (T >= (1000.0 / Tref) && T < (6000.0 / Tref))
+	if (T >= 1000.0 && T < 6000.0)
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(T) + Hia[n * 7 * 3 + 2 * 3 + 1] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 1]);
-	else if (T < (1000.0 / Tref))
-	{
+	else if (T < 1000.0)
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 0] * sycl::log(T) + Hia[n * 7 * 3 + 2 * 3 + 0] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 0] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 0] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 0]);
-	}
-	else if (T >= (6000.0 / Tref) && T < (15000.0 / Tref))
-	{
+	else if (T >= 6000.0 && T < 15000.0)
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 2] * sycl::log(T) + Hia[n * 7 * 3 + 2 * 3 + 2] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] * T * T + Hia[n * 7 * 3 + 4 * 3 + 2] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 2] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 2] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 2]);
-	}
-	else
-	{
-		return 0;
-	}
 #else
 	// H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
-	if (T > (1000.0 / Tref))
-		hi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * T + Hia[n * 7 * 3 + 1 * 3 + 0] * T * T / 2.0 + Hia[n * 7 * 3 + 2 * 3 + 0] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 3 * 3 + 0] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(T, 5) / 5.0 + Hia[n * 7 * 3 + 5 * 3 + 0]);
+	if (T > 1000.0)
+		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 0] + T * (Hia[n * 7 * 3 + 1 * 3 + 0] / _DF(2.0) + T * (Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(4.0) + Hia[n * 7 * 3 + 4 * 3 + 0] * T / _DF(5.0))))) + Hia[n * 7 * 3 + 5 * 3 + 0]);
 	else
-		hi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * T + Hia[n * 7 * 3 + 1 * 3 + 1] * T * T / 2.0 + Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 3 * 3 + 1] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(T, 5) / 5.0 + Hia[n * 7 * 3 + 5 * 3 + 1]);
+		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] / _DF(2.0) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] / _DF(4.0) + Hia[n * 7 * 3 + 4 * 3 + 1] * T / _DF(5.0))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
 #endif
-	// get_hi at T>200
-	if (TT < 200.0 / Tref)
-	{
-		real_t Cpi = get_Cpi(Hia, 200.0 / Tref, Ri, n); // get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
-		hi += Cpi * (TT - 200.0 / Tref);
-	}
+	// hi = Ri * (T * Hia[n * 7 * 3 + 0 * 3 + 0] + T * T * Hia[n * 7 * 3 + 1 * 3 + 0] / _DF(2.0) + T * T * T * Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * T * T * T * Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(4.0) + T * T * T * T * T * Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(5.0) + Hia[n * 7 * 3 + 5 * 3 + 0]);
 	return hi;
 }
 
@@ -225,13 +163,13 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
  */
 real_t get_Coph(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
 {
-	real_t H = 0.0, hi[NUM_SPECIES];
+	real_t h = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
 	{
 		real_t hi = get_Enthalpy(material->Hia, material->Hib, T, material->Ri[i], i);
-		H += hi * yi[i];
+		h += hi * yi[i];
 	}
-	return H;
+	return h;
 }
 
 /**
@@ -310,7 +248,7 @@ real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, con
  * @brief Obtain state at a grid point
  */
 void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
-			   real_t &T, Thermal *thermal, const real_t yi[NUM_SPECIES])
+			   real_t &gamma, real_t &T, Thermal *thermal, real_t yi[NUM_SPECIES])
 {
 	rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
@@ -318,13 +256,22 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	v = UI[2] * rho1;
 	w = UI[3] * rho1;
 
+	yi[NUM_COP] = _DF(1.0);
+#ifdef COP
+	for (size_t ii = 5; ii < Emax; ii++)
+	{ // calculate yi
+		yi[ii - 5] = UI[ii] * rho1;
+		yi[NUM_COP] += -yi[ii - 5];
+	}
+#endif // end COP
+
 	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
-	T = get_T(thermal, yi, e, T);
 	real_t R = get_CopR(thermal->species_chara, yi);
+	T = get_T(thermal, yi, e, T);
 	p = rho * R * T; // 对所有气体都适用
-	real_t Gamma = get_CopGamma(thermal, yi, T);
 	H = (UI[4] + p) * rho1;
-	c = sqrt(Gamma * p * rho1);
+	gamma = get_CopGamma(thermal, yi, T);
+	c = sqrt(gamma * p * rho1);
 }
 
 /**
@@ -378,15 +325,18 @@ real_t get_RoeAverage(const real_t left, const real_t right, const real_t D, con
  * @brief \frac{\partial p}{\partial \rho}
  * @param hiN: hi[NUM_COP]
  * @param RiN: Ru/thermal->specie_chara[NUM_COP*SPCH_Sz+6]
+ * @param q2: u*u+v*v+w*w
+ * @param
  * @return real_t
  */
-real_t get_DpDrho(const real_t hN, const real_t RN, const real_t T, const real_t e, const real_t gamma)
+real_t get_DpDrho(const real_t hN, const real_t RN, const real_t q2, const real_t Cp, const real_t R, const real_t T, const real_t e, const real_t gamma)
 {
 #if CJ
 	return (Gamma0 - 1.0) * e; // p/rho;//
 #else
 	double RNT = RN * T; // unit: J/kg
-	return gamma * RNT + (gamma - _DF(1.0)) * (e - hN);
+	return (gamma - _DF(1.0)) * (_DF(0.5) * q2 - hN + Cp * RNT / R);
+	// NOTE:return gamma * RNT + (gamma - _DF(1.0)) * (e - hN); // is not right
 #endif
 }
 
@@ -405,7 +355,8 @@ real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const r
 #else
 	real_t hN_minus_hi = -hin + hiN;  // unit: J/kg
 	real_t Ri_minus_RN = (Rin - RiN); // unit: J/kg/K
-	return (gamma - _DF(1.0)) * (hN_minus_hi + Cp * Ri_minus_RN * T / R);
+	real_t temp = (gamma - _DF(1.0)) * (hN_minus_hi + Cp * Ri_minus_RN * T / R);
+	return temp;
 #endif
 }
 
@@ -414,11 +365,11 @@ real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const r
  * @param zi: for eigen matrix
  * @return real_t c*c
  */
-real_t SoundSpeedMultiSpecies(real_t *zi, real_t *_Yi, real_t *_dpdrhoi, real_t *drhoi, const real_t _dpdrho, const real_t _dpde, const real_t _dpdE,
-							  const real_t _prho, const real_t dp, const real_t drho, const real_t de, const real_t _rho)
+real_t SoundSpeedMultiSpecies(real_t *zi, real_t &b1, real_t &b3, real_t *_Yi, real_t *_dpdrhoi, real_t *drhoi, const real_t _dpdrho, const real_t _dpde,
+							  const real_t _dpdE, const real_t _prho, const real_t dp, const real_t drho, const real_t de, const real_t _rho)
 {
 	// sum
-	real_t Sum_dpdrhoi = _DF(0.0), Sum_drhoi = _DF(0.0), Sum_dpdrhoi2 = _DF(0.0), Sum_Yidpdrhoi = _DF(0.0);
+	real_t _dpdrhoi_new[NUM_COP], Sum_dpdrhoi = _DF(0.0), Sum_drhoi = _DF(0.0), Sum_dpdrhoi2 = _DF(0.0), Sum_Yidpdrhoi = _DF(0.0);
 	for (int n = 0; n < NUM_COP; n++)
 	{
 		Sum_dpdrhoi += _dpdrhoi[n] * drhoi[n];
@@ -428,28 +379,27 @@ real_t SoundSpeedMultiSpecies(real_t *zi, real_t *_Yi, real_t *_dpdrhoi, real_t 
 	real_t temp1 = dp - (_dpdrho * drho + _dpde * de + Sum_dpdrhoi);
 	real_t temp = temp1 / (_dpdrho * _dpdrho * drho * drho + _dpde * de * _dpde * de + Sum_dpdrhoi2 + 1e-19);
 
-	real_t _dpdE_new = _dpdE + _dpdE * _dpdE * de * _rho * temp;
-	real_t _dpdrho_new = _dpdrho + _dpdrho * _dpdrho * drho * temp;
-	// sound speed
-	real_t _dpdrhoi_new[NUM_COP];
-
-	real_t Sum_Yidpdrhoi_new = _DF(0.0);
-	for (int n = 0; n < NUM_COP; n++)
-		_dpdrhoi_new[n] = _dpdrhoi[n] + _dpdrhoi[n] * _dpdrhoi[n] * drhoi[n] * temp;
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		// Sum_drhoi += drhoi[n]*drhoi[n];
+		Sum_drhoi += drhoi[n] * drhoi[n];
 		Sum_Yidpdrhoi += _Yi[n] * _dpdrhoi[n];
-		Sum_Yidpdrhoi_new += _Yi[n] * _dpdrhoi_new[n];
 	}
-	real_t csqr = _dpdrho_new + _dpdE_new * _prho + Sum_Yidpdrhoi_new;
-	// b1 = _dpdE_new / csqr;
+
+	real_t _dpdE_new = _dpdE + _dpdE * _dpdE * de * _rho * temp;
+	real_t _dpdrho_new = _dpdrho + _dpdrho * _dpdrho * drho * temp;
+
+	// sound speed
+	for (int n = 0; n < NUM_COP; n++)
+		_dpdrhoi_new[n] = _dpdrhoi[n] + _dpdrhoi[n] * _dpdrhoi[n] * drhoi[n] * temp;
+
+	real_t csqr = _dpdrho_new + _dpdE_new * _prho + Sum_Yidpdrhoi;
+	b1 = _dpdE_new / csqr;
 	for (int n = 0; n < NUM_COP; n++)
 	{
 		zi[n] = -_dpdrhoi_new[n] / _dpdE_new;
-		// b3 += _Yi[n] * zi[n];
+		b3 += _Yi[n] * zi[n];
 	}
-	// b3 *= b1;
+	b3 *= b1;
 
 	return csqr;
 }
@@ -473,9 +423,8 @@ real_t get_CopC2(real_t z[NUM_SPECIES], real_t const Ri[NUM_SPECIES], real_t con
 	return _CopC2;
 }
 
-inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
-						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
-						 real_t const _H, real_t const D, real_t const D1, real_t Gamma)
+inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
+						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
 {
 
 	MARCO_PREEIGEN();
@@ -541,7 +490,16 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[4][3] = _w;
 	eigen_r[4][Emax - 1] = _H + _u * _c;
 
+	eigen_value[0] = sycl::fabs<real_t>(_u - _c);
+	eigen_value[1] = sycl::fabs<real_t>(_u);
+	eigen_value[2] = eigen_value[1];
+	eigen_value[3] = eigen_value[1];
+	eigen_value[Emax - 1] = sycl::fabs<real_t>(_u + _c);
+
 #ifdef COP
+	for (int n = 0; n < NUM_COP; n++)
+		eigen_value[n + Emax - NUM_SPECIES] = eigen_value[1];
+
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
@@ -583,9 +541,8 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
-inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
-						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
-						 real_t const _H, real_t const D, real_t const D1, real_t const Gamma)
+inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
+						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
 {
 	MARCO_PREEIGEN();
 
@@ -651,7 +608,16 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[4][3] = -_w;
 	eigen_r[4][Emax - 1] = _H + _v * _c;
 
+	eigen_value[0] = sycl::fabs<real_t>(_u - _c);
+	eigen_value[1] = sycl::fabs<real_t>(_u);
+	eigen_value[2] = eigen_value[1];
+	eigen_value[3] = eigen_value[1];
+	eigen_value[Emax - 1] = sycl::fabs<real_t>(_u + _c);
+
 #ifdef COP
+	for (int n = 0; n < NUM_COP; n++)
+		eigen_value[n + Emax - NUM_SPECIES] = eigen_value[1];
+
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{
@@ -693,9 +659,8 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
-inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
-						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w,
-						 real_t const _H, real_t const D, real_t const D1, real_t const Gamma)
+inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
+						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
 {
 	MARCO_PREEIGEN();
 
@@ -761,7 +726,16 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[4][3] = _H * b1 - _DF(1.0);
 	eigen_r[4][Emax - 1] = _H + _w * _c;
 
+	eigen_value[0] = sycl::fabs<real_t>(_u - _c);
+	eigen_value[1] = sycl::fabs<real_t>(_u);
+	eigen_value[2] = eigen_value[1];
+	eigen_value[3] = eigen_value[1];
+	eigen_value[Emax - 1] = sycl::fabs<real_t>(_u + _c);
+
 #ifdef COP
+	for (int n = 0; n < NUM_COP; n++)
+		eigen_value[n + Emax - NUM_SPECIES] = eigen_value[1];
+
 	// left eigen vectors
 	for (int n = 0; n < NUM_COP; n++)
 	{

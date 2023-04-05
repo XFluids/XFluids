@@ -9,7 +9,7 @@
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/setup.ini",
+                "${workspaceFolder}/sa-debug.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -38,7 +38,7 @@
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/setup.ini",
+                "${workspaceFolder}/sa-debug.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
