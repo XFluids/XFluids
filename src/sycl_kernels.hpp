@@ -3,8 +3,6 @@
 #include "marco.h"
 #include "device_func.hpp"
 
-const int EIGEN_SYSTEM = 1;
-
 /**
  * @brief  Initialize Fluid states espically primitive quantity;
  * @return void
@@ -160,10 +158,15 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 
     // // TODO: for debug
     // //  1d debug set
-    // p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(x - 0.45) * (x - 0.45))); //* (Length - fabs(x));
-    // u[id] = 100.0 * sycl::fabs<real_t>(x);                                               // sycl::sin<real_t>(x * 0.5 * M_PI);
-    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(x - 0.35) * (x - 0.35) / 0.07 / 0.07));
-    // rho[id] = p[id] / R / T[id];
+    // x
+    //  p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(x - 0.45) * (x - 0.45))); //* (Length - fabs(x));
+    //  u[id] = 100.0 * sycl::fabs<real_t>(x);                                               // sycl::sin<real_t>(x * 0.5 * M_PI);
+    //  T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(x - 0.35) * (x - 0.35) / 0.07 / 0.07));
+    // y
+    //  p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(y - 0.45) * (y - 0.45))); //* (Length - fabs(x));
+    //  v[id] = 100.0 * sycl::fabs<real_t>(y);                                               // sycl::sin<real_t>(x * 0.5 * M_PI);
+    //  T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(y - 0.35) * (y - 0.35) / 0.07 / 0.07));
+    //  rho[id] = p[id] / R / T[id];
 
     // // GUASS-WAVE
     // p[id] = 101325.0;
@@ -174,8 +177,15 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // rho[id] = p[id] / R / T[id];
 
     // // 1D multicomponent insert shock tube
-    T[id] = x < 0.05 ? 400 : 1200;
-    p[id] = x < 0.05 ? 8000 : 80000;
+    // // x
+    // T[id] = x < 0.05 ? 400 : 1200;
+    // p[id] = x < 0.05 ? 8000 : 80000;
+    /// // y
+    // T[id] = y < 0.05 ? 400 : 1200;
+    // p[id] = y < 0.05 ? 8000 : 80000;
+    // // z
+    T[id] = z < 0.05 ? 400 : 1200;
+    p[id] = z < 0.05 ? 8000 : 80000;
     rho[id] = p[id] / R / T[id];
 
     // u[id] = x < 0.5 ? 0.0 : -487.34;
@@ -395,21 +405,17 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     //     Fywall[Emax*id_l+n] = fluxy;
     // }
 
-    // real_t de_fw[Emax];
-    // get_Array(Fxwall, de_fw, Emax, id_l);
-    // real_t de_fx[Emax];
+    real_t de_fw[Emax];
+    get_Array(Fwall, de_fw, Emax, id_l);
+    real_t de_fx[Emax];
 }
 #endif // end DIM_Y
 
 #if DIM_Z
-extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fz, real_t *Fzwall, real_t *eigen_local,
+extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
-    int id_l = Xmax * Ymax * k + Xmax * j + i;
-    int id_r = Xmax * Ymax * (k + 1) + Xmax * j + i;
-    real_t dz = bl.dz;
-
     if (i >= X_inner + Bwidth_X)
         return;
     if (j >= Y_inner + Bwidth_Y)
@@ -417,16 +423,12 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     if (k >= Z_inner + Bwidth_Z)
         return;
 
-    // preparing some interval value for roe average
-    real_t D = sqrt(rho[id_r] / rho[id_l]);
-    real_t D1 = _DF(1.0) / (D + _DF(1.0));
+    int id_l = Xmax * Ymax * k + Xmax * j + i;
+    int id_r = Xmax * Ymax * (k + 1) + Xmax * j + i;
+    real_t dl = bl.dz;
 
-    real_t _u = (u[id_l] + D * u[id_r]) * D1;
-    real_t _v = (v[id_l] + D * v[id_r]) * D1;
-    real_t _w = (w[id_l] + D * w[id_r]) * D1;
-    real_t _H = (H[id_l] + D * H[id_r]) * D1;
-    real_t _P = (p[id_l] + D * p[id_r]) * D1;
-    real_t _rho = sqrt(rho[id_r] * rho[id_l]);
+    // preparing some interval value for roe average
+    MARCO_ROE();
 
 #ifdef COP
     MARCO_COPC2();
@@ -434,51 +436,54 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     MARCO_NOCOPC2();
 #endif
 
-    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
     RoeAverage_z(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
-    real_t uh[10], hh[10], pp[10], mm[10];
-    real_t h_flux, _p[Emax][Emax];
+    // // construct the right value & the left value scalar equations by characteristic reduction
+    // // at i+1/2 in x direction
+    MARCO_FLUXWALL(i, j, k + m, i, j, k + m - stencil_P);
 
-    //construct the right value & the left value scalar equations by characteristic reduction
-	// at k+1/2 in z direction
-	for(int n=0; n<Emax; n++){
-        real_t eigen_local_max = _DF(0.0);
+    // real_t uh[10], hh[10], pp[10], mm[10], real_t h_flux, _p[Emax][Emax];
 
-        for(int m=-2; m<=3; m++){
-            int id_local = Xmax*Ymax*(k + m) + Xmax*j + i;
-            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
-        }
-		for(int m=k-3; m<=k+4; m++){
-            int id_local = Xmax*Ymax*m + Xmax*j + i;
-            uh[m - k + 3] = _DF(0.0);
-            hh[m - k + 3] = _DF(0.0);
+    // //construct the right value & the left value scalar equations by characteristic reduction
+    // // at k+1/2 in z direction
+    // for(int n=0; n<Emax; n++){
+    //     real_t eigen_local_max = _DF(0.0);
 
-            for (int n1 = 0; n1 < Emax; n1++)
-            {
-                uh[m - k + 3] = uh[m - k + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
-                hh[m - k + 3] = hh[m - k + 3] + Fz[Emax * id_local + n1] * eigen_l[n][n1];
-            }
-            // for local speed
-            pp[m - k + 3] = _DF(0.5) * (hh[m - k + 3] + eigen_local_max * uh[m - k + 3]);
-            mm[m - k + 3] = _DF(0.5) * (hh[m - k + 3] - eigen_local_max * uh[m - k + 3]);
-        }
-		// calculate the scalar numerical flux at y direction
-        h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz));
+    //     for(int m=-2; m<=3; m++){
+    //         int id_local = Xmax*Ymax*(k + m) + Xmax*j + i;
+    //         eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
+    //     }
+    // 	for(int m=k-3; m<=k+4; m++){
+    //         int id_local = Xmax*Ymax*m + Xmax*j + i;
+    //         uh[m - k + 3] = _DF(0.0);
+    //         hh[m - k + 3] = _DF(0.0);
 
-        // get Gp
-        for (int n1 = 0; n1 < Emax; n1++)
-            _p[n][n1] = h_flux*eigen_r[n1][n];
-    }
-	// reconstruction the H-flux terms
-	for(int n=0; n<Emax; n++){
-        real_t fluxz = _DF(0.0);
-        for (int n1 = 0; n1 < Emax; n1++)
-        {
-            fluxz +=  _p[n1][n];
-        }
-        Fzwall[Emax*id_l+n]  = fluxz;
-	}
+    //         for (int n1 = 0; n1 < Emax; n1++)
+    //         {
+    //             uh[m - k + 3] = uh[m - k + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
+    //             hh[m - k + 3] = hh[m - k + 3] + Fz[Emax * id_local + n1] * eigen_l[n][n1];
+    //         }
+    //         // for local speed
+    //         pp[m - k + 3] = _DF(0.5) * (hh[m - k + 3] + eigen_local_max * uh[m - k + 3]);
+    //         mm[m - k + 3] = _DF(0.5) * (hh[m - k + 3] - eigen_local_max * uh[m - k + 3]);
+    //     }
+    // 	// calculate the scalar numerical flux at y direction
+    //     h_flux = (weno5old_P(&pp[3], dz) + weno5old_M(&mm[3], dz));
+
+    //     // get Gp
+    //     for (int n1 = 0; n1 < Emax; n1++)
+    //         _p[n][n1] = h_flux*eigen_r[n1][n];
+    // }
+    // // reconstruction the H-flux terms
+    // for(int n=0; n<Emax; n++){
+    //     real_t fluxz = _DF(0.0);
+    //     for (int n1 = 0; n1 < Emax; n1++)
+    //     {
+    //         fluxz +=  _p[n1][n];
+    //     }
+    //     Fzwall[Emax*id_l+n]  = fluxz;
+    // }
 
     // real_t de_fw[Emax];
     // get_Array(Fzwall, de_fw, Emax, id_l);
@@ -509,29 +514,12 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     real_t uuMc = uu - c[id];
 
     // local eigen values
-    switch (EIGEN_SYSTEM)
-    {
-    case 1:
     eigen_local[Emax * id + 0] = uuMc;
     for (size_t ii = 1; ii < Emax - 1; ii++)
     {
             eigen_local[Emax * id + ii] = uu;
     }
     eigen_local[Emax * id + Emax - 1] = uuPc;
-    break;
-
-    case 2: // eigen system form A detailed verification procedure for compressible reactive multicomponent Navier-Stokes solvers
-    eigen_local[Emax * id + 0] = uuMc;
-    eigen_local[Emax * id + 1] = uu;
-    eigen_local[Emax * id + 2] = uu;
-    eigen_local[Emax * id + 3] = uu;
-    eigen_local[Emax * id + 4] = uuPc;
-    for (size_t ii = 5; ii < Emax; ii++)
-    {
-            eigen_local[Emax * id + ii] = uu;
-    }
-    break;
-    }
 #else
     for (size_t ii = 0; ii < Emax; ii++)
         eigen_local[Emax * id + ii] = 0.0;

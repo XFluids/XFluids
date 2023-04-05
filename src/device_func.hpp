@@ -608,11 +608,11 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[4][3] = -_w;
 	eigen_r[4][Emax - 1] = _H + _v * _c;
 
-	eigen_value[0] = sycl::fabs<real_t>(_u - _c);
-	eigen_value[1] = sycl::fabs<real_t>(_u);
+	eigen_value[0] = sycl::fabs<real_t>(_v - _c);
+	eigen_value[1] = sycl::fabs<real_t>(_v);
 	eigen_value[2] = eigen_value[1];
 	eigen_value[3] = eigen_value[1];
-	eigen_value[Emax - 1] = sycl::fabs<real_t>(_u + _c);
+	eigen_value[Emax - 1] = sycl::fabs<real_t>(_v + _c);
 
 #ifdef COP
 	for (int n = 0; n < NUM_COP; n++)
@@ -726,11 +726,11 @@ inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 	eigen_r[4][3] = _H * b1 - _DF(1.0);
 	eigen_r[4][Emax - 1] = _H + _w * _c;
 
-	eigen_value[0] = sycl::fabs<real_t>(_u - _c);
-	eigen_value[1] = sycl::fabs<real_t>(_u);
+	eigen_value[0] = sycl::fabs<real_t>(_w - _c);
+	eigen_value[1] = sycl::fabs<real_t>(_w);
 	eigen_value[2] = eigen_value[1];
 	eigen_value[3] = eigen_value[1];
-	eigen_value[Emax - 1] = sycl::fabs<real_t>(_u + _c);
+	eigen_value[Emax - 1] = sycl::fabs<real_t>(_w + _c);
 
 #ifdef COP
 	for (int n = 0; n < NUM_COP; n++)
