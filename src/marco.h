@@ -107,26 +107,26 @@
         {                                                                                                                                                    \
             for (int m = -stencil_P; m < stencil_size - stencil_P; m++)                                                                                      \
             {                                                                                                                                                \
-                int id_local_1 = Xmax * Ymax * _k_1 + Xmax * _j_1 + _i_1;                                             /*Xmax * Ymax * k + Xmax * j + i + m*/ \
+                int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /*Xmax * Ymax * k + Xmax * j + i + m*/ \
                 eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/              \
             }                                                                                                                                                \
         }                                                                                                                                                    \
         for (size_t m = 0; m < stencil_size; m++)                                                                                                            \
         {                                                                                                                                                    \
-            int id_local_2 = Xmax * Ymax * _k_2 + Xmax * _j_2 + _i_2; /*Xmax * Ymax * k + Xmax * j + m + i - stencil_P*/                                     \
+            int id_local_2 = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2); /*Xmax * Ymax * k + Xmax * j + m + i - stencil_P*/                               \
             uf[m] = _DF(0.0);                                                                                                                                \
             ff[m] = _DF(0.0);                                                                                                                                \
             for (int n1 = 0; n1 < Emax; n1++)                                                                                                                \
             {                                                                                                                                                \
                 uf[m] = uf[m] + UI[Emax * id_local_2 + n1] * eigen_l[n][n1];                                                                                 \
-                ff[m] = ff[m] + Fx[Emax * id_local_2 + n1] * eigen_l[n][n1];                                                                                 \
+                ff[m] = ff[m] + Fl[Emax * id_local_2 + n1] * eigen_l[n][n1];                                                                                 \
             }                                                                                                                                                \
             /* for local speed*/                                                                                                                             \
             pp[m] = _DF(0.5) * (ff[m] + eigen_local_max * uf[m]);                                                                                            \
             mm[m] = _DF(0.5) * (ff[m] - eigen_local_max * uf[m]);                                                                                            \
         }                                                                                                                                                    \
         /* calculate the scalar numerical flux at x direction*/                                                                                              \
-        f_flux = weno7_P(&pp[stencil_P], dx) + weno7_M(&mm[stencil_P], dx);                                                                                  \
+        f_flux = weno7_P(&pp[stencil_P], dl) + weno7_M(&mm[stencil_P], dl);                                                                                  \
         /* get Fp*/                                                                                                                                          \
         for (int n1 = 0; n1 < Emax; n1++)                                                                                                                    \
         {                                                                                                                                                    \

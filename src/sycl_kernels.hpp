@@ -286,20 +286,20 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 }
 
 #if DIM_X
-extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fx, real_t *Fwall, real_t *eigen_local,
+extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
-    int id_l = Xmax * Ymax * k + Xmax * j + i;
-    int id_r = Xmax * Ymax * k + Xmax * j + i + 1;
-    real_t dx = bl.dx;
-
     if (i >= X_inner + Bwidth_X)
         return;
     if (j >= Y_inner + Bwidth_Y)
         return;
     if (k >= Z_inner + Bwidth_Z)
         return;
+
+    int id_l = Xmax * Ymax * k + Xmax * j + i;
+    int id_r = Xmax * Ymax * k + Xmax * j + i + 1;
+    real_t dl = bl.dx;
 
     // preparing some interval value for roe average
     MARCO_ROE();
@@ -315,7 +315,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 
     // // construct the right value & the left value scalar equations by characteristic reduction
     // // at i+1/2 in x direction
-    MARCO_FLUXWALL(i + m, j, k, m + i - stencil_P, j, k);
+    MARCO_FLUXWALL(i + m, j, k, i + m - stencil_P, j, k);
 
     // real_t de_fw[Emax];
     // get_Array(Fxwall, de_fw, Emax, id_l);
@@ -324,14 +324,10 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 #endif // end DIM_X
 
 #if DIM_Y
-extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fy, real_t *Fywall, real_t *eigen_local,
+extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
-    int id_l = Xmax * Ymax * k + Xmax * j + i;
-    int id_r = Xmax * Ymax * k + Xmax * (j + 1) + i;
-    real_t dy = bl.dy;
-
     if (i >= X_inner + Bwidth_X)
         return;
     if (j >= Y_inner + Bwidth_Y)
@@ -339,16 +335,12 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     if (k >= Z_inner + Bwidth_Z)
         return;
 
-    //preparing some interval value for roe average
-    real_t D = sqrt(rho[id_r] / rho[id_l]);
-    real_t D1 = _DF(1.0) / (D + _DF(1.0));
+    int id_l = Xmax * Ymax * k + Xmax * j + i;
+    int id_r = Xmax * Ymax * k + Xmax * (j + 1) + i;
+    real_t dl = bl.dy;
 
-    real_t _u = (u[id_l] + D * u[id_r]) * D1;
-    real_t _v = (v[id_l] + D * v[id_r]) * D1;
-    real_t _w = (w[id_l] + D * w[id_r]) * D1;
-    real_t _H = (H[id_l] + D * H[id_r]) * D1;
-    real_t _P = (p[id_l] + D * p[id_r]) * D1;
-    real_t _rho = sqrt(rho[id_r] * rho[id_l]);
+    // preparing some interval value for roe average
+    MARCO_ROE();
 
 #ifdef COP
     MARCO_COPC2();
@@ -356,55 +348,55 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     MARCO_NOCOPC2();
 #endif
 
-    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
     RoeAverage_y(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
-    real_t ug[10], gg[10], pp[10], mm[10];
-    real_t g_flux, _p[Emax][Emax];
+    // // construct the right value & the left value scalar equations by characteristic reduction
+    // // at i+1/2 in x direction
+    MARCO_FLUXWALL(i, j + m, k, i, j + m - stencil_P, k);
 
-    //construct the right value & the left value scalar equations by characteristic reduction			
-	// at j+1/2 in y direction
-	for(int n=0; n<Emax; n++){
-        real_t eigen_local_max = _DF(0.0);
+    // real_t ug[10], gg[10], pp[10], mm[10], g_flux, _p[Emax][Emax];
+    // for(int n=0; n<Emax; n++){
+    //     real_t eigen_local_max = _DF(0.0);
 
-        for(int m=-2; m<=3; m++){
-            int id_local = Xmax*Ymax*k + Xmax*(j + m) + i;
-            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
-        }
+    //     for(int m=-2; m<=3; m++){
+    //         int id_local = Xmax*Ymax*k + Xmax*(j + m) + i;
+    //         eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local + n])); // local lax-friedrichs
+    //     }
 
-		for(int m=j-3; m<=j+4; m++){	// 3rd oder and can be modified
-            int id_local = Xmax * Ymax * k + Xmax * m + i;
+    // 	for(int m=j-3; m<=j+4; m++){	// 3rd oder and can be modified
+    //         int id_local = Xmax * Ymax * k + Xmax * m + i;
 
-            ug[m - j + 3] = _DF(0.0);
-            gg[m - j + 3] = _DF(0.0);
+    //         ug[m - j + 3] = _DF(0.0);
+    //         gg[m - j + 3] = _DF(0.0);
 
-            for (int n1 = 0; n1 < Emax; n1++)
-            {
-                ug[m - j + 3] = ug[m - j + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
-                gg[m - j + 3] = gg[m - j + 3] + Fy[Emax * id_local + n1] * eigen_l[n][n1];
-            }
-            // for local speed
-            pp[m - j + 3] = _DF(0.5) * (gg[m - j + 3] + eigen_local_max * ug[m - j + 3]);
-            mm[m - j + 3] = _DF(0.5) * (gg[m - j + 3] - eigen_local_max * ug[m - j + 3]);
-        }
-		// calculate the scalar numerical flux at y direction
-        g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy));
-        // get Gp
-        for (int n1 = 0; n1 < Emax; n1++)
-            _p[n][n1] = g_flux * eigen_r[n1][n];
-    }
-	// reconstruction the G-flux terms
-	for(int n=0; n<Emax; n++){
-        real_t fluxy = _DF(0.0);
-        for (int n1 = 0; n1 < Emax; n1++)
-        {
-            fluxy += _p[n1][n];
-        }
-        Fywall[Emax*id_l+n] = fluxy;
-	}
+    //         for (int n1 = 0; n1 < Emax; n1++)
+    //         {
+    //             ug[m - j + 3] = ug[m - j + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];
+    //             gg[m - j + 3] = gg[m - j + 3] + Fy[Emax * id_local + n1] * eigen_l[n][n1];
+    //         }
+    //         // for local speed
+    //         pp[m - j + 3] = _DF(0.5) * (gg[m - j + 3] + eigen_local_max * ug[m - j + 3]);
+    //         mm[m - j + 3] = _DF(0.5) * (gg[m - j + 3] - eigen_local_max * ug[m - j + 3]);
+    //     }
+    // 	// calculate the scalar numerical flux at y direction
+    //     g_flux = (weno5old_P(&pp[3], dy) + weno5old_M(&mm[3], dy));
+    //     // get Gp
+    //     for (int n1 = 0; n1 < Emax; n1++)
+    //         _p[n][n1] = g_flux * eigen_r[n1][n];
+    // }
+    // // reconstruction the G-flux terms
+    // for(int n=0; n<Emax; n++){
+    //     real_t fluxy = _DF(0.0);
+    //     for (int n1 = 0; n1 < Emax; n1++)
+    //     {
+    //         fluxy += _p[n1][n];
+    //     }
+    //     Fywall[Emax*id_l+n] = fluxy;
+    // }
 
     // real_t de_fw[Emax];
-    // get_Array(Fywall, de_fw, Emax, id_l);
+    // get_Array(Fxwall, de_fw, Emax, id_l);
     // real_t de_fx[Emax];
 }
 #endif // end DIM_Y

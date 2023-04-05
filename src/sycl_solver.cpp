@@ -676,16 +676,19 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 	// defining header for tecplot(plot software)
 	out << "title='View'"
 		<< "\n"
-		<< "variables=x, u"
+		<< "variables="
+#if DIM_X
+		<< "x, u, "
+#endif
 #if DIM_Y
-		<< ", y, v"
+		<< "y, v, "
 #endif
 #if DIM_Z
-		<< ", z, w"
+		<< "z, w, "
 #endif
-		<< ", p, rho";
+		<< "p, rho, ";
 #ifdef COP
-	out << ", gamma, T"; //
+	out << "gamma, T"; //
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 		out << ", Y(" << Ss.species_name[n] << ")";
 #endif
@@ -696,7 +699,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 	real_t offset_y = DIM_Y ? -Bwidth_Y + 0.5 : 0.0;
 	real_t offset_z = DIM_Z ? -Bwidth_Z + 0.5 : 0.0;
 
-	out.precision(20);
+	// out.precision(20);
 	real_t xc, yc, zc, pc, rhoc, uc, vc, wc;
 	for (int k = Bwidth_Z; k < Bwidth_Z + Z_inner; k++)
 		for (int j = Bwidth_Y; j < Bwidth_Y + Y_inner; j++)
@@ -713,16 +716,19 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 				uc = fluids[0]->h_fstate.u[id];
 				vc = fluids[0]->h_fstate.v[id];
 				wc = fluids[0]->h_fstate.w[id];
-				out << xc << " " << uc
+				out
+#if DIM_X
+					<< xc << " " << uc << " "
+#endif
 #if DIM_Y
-					<< " " << yc << " " << vc
+					<< yc << " " << vc << " "
 #endif // end DIM_Y
 #if DIM_Z
-					<< " " << zc << " " << wc
+					<< zc << " " << wc << " "
 #endif // end DIM_Z
-					<< " " << pc << " " << rhoc;
+					<< pc << " " << rhoc << " ";
 #if COP
-				out << " " << fluids[0]->h_fstate.gamma[id] << " " << fluids[0]->h_fstate.T[id]; //
+				out << fluids[0]->h_fstate.gamma[id] << " " << fluids[0]->h_fstate.T[id]; //
 				for (int n = 0; n < NUM_SPECIES; n++)
 					out << " " << fluids[0]->h_fstate.y[n][id];
 #endif
