@@ -9,7 +9,7 @@
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/sa-debug.ini",
+                "${workspaceFolder}/sa-1d-reactive-shock-tube.ini", //sa-debug.ini
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -38,7 +38,7 @@
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/sa-debug.ini",
+                "${workspaceFolder}/sa-1d-reactive-shock-tube.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

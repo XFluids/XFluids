@@ -296,7 +296,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, p, rho, u, v, w, fdata.y, T, H); }); })
+			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, p, rho, u, v, w, fdata.y, T, H); 
+			}); })
 		.wait();
 #endif
 	q.wait();

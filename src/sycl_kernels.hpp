@@ -184,14 +184,24 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // T[id] = y < 0.05 ? 400 : 1200;
     // p[id] = y < 0.05 ? 8000 : 80000;
     // // z
-    T[id] = z < 0.05 ? 400 : 1200;
-    p[id] = z < 0.05 ? 8000 : 80000;
-    rho[id] = p[id] / R / T[id];
+    // T[id] = z < 0.05 ? 400 : 1200;
+    // p[id] = z < 0.05 ? 8000 : 80000;
+    // rho[id] = p[id] / R / T[id];
 
-    // u[id] = x < 0.5 ? 0.0 : -487.34;
-    // p[id] = x < 0.5 ? 7173 : 35594;
-    // rho[id] = x < 0.5 ? 0.072 : 0.18075; //
-    // T[id] = p[id] / rho[id] / R;         //
+    // // 1D reactive shock tube
+    // // x
+    // rho[id] = x < 0.06 ? 0.072 : 0.18075;
+    // u[id] = x < 0.06 ? 0.0 : -487.34;
+    // p[id] = x < 0.06 ? 7173 : 35594;
+    // y
+    // rho[id] = y < 0.06 ? 0.072 : 0.18075;
+    // v[id] = y < 0.06 ? 0.0 : -487.34;
+    // p[id] = y < 0.06 ? 7173 : 35594;
+    // // z
+    rho[id] = z < 0.06 ? 0.072 : 0.18075;
+    w[id] = z < 0.06 ? 0.0 : -487.34;
+    p[id] = z < 0.06 ? 7173 : 35594;
+    T[id] = p[id] / rho[id] / R; //
 
     // // 2D Riemann problem
     // if (y > 0.5)
@@ -328,7 +338,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     MARCO_FLUXWALL(i + m, j, k, i + m - stencil_P, j, k);
 
     // real_t de_fw[Emax];
-    // get_Array(Fxwall, de_fw, Emax, id_l);
+    // get_Array(Fwall, de_fw, Emax, id_l);
     // real_t de_fx[Emax];
 }
 #endif // end DIM_X
@@ -405,9 +415,9 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     //     Fywall[Emax*id_l+n] = fluxy;
     // }
 
-    real_t de_fw[Emax];
-    get_Array(Fwall, de_fw, Emax, id_l);
-    real_t de_fx[Emax];
+    // real_t de_fw[Emax];
+    // get_Array(Fwall, de_fw, Emax, id_l);
+    // real_t de_fx[Emax];
 }
 #endif // end DIM_Y
 
@@ -485,9 +495,9 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     //     Fzwall[Emax*id_l+n]  = fluxz;
     // }
 
-    // real_t de_fw[Emax];
-    // get_Array(Fzwall, de_fw, Emax, id_l);
-    // real_t de_fx[Emax];
+    real_t de_fw[Emax];
+    get_Array(Fwall, de_fw, Emax, id_l);
+    real_t de_fx[Emax];
 }
 #endif // end DIM_Z
 
@@ -596,6 +606,11 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 
     for (size_t n = 0; n < NUM_SPECIES; n++)
         _y[n][id] = yi[n];
+
+    // real_t de_fx[Emax], de_fy[Emax], de_fz[Emax];
+    // get_Array(FluxF, de_fx, Emax, id);
+    // get_Array(FluxG, de_fy, Emax, id);
+    // get_Array(FluxH, de_fz, Emax, id);
 }
 
 extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
@@ -603,7 +618,7 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
     MARCO_DOMAIN();
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t de_U[Emax], de_U1[Emax], de_LU[Emax];
+    // real_t de_U[Emax], de_U1[Emax], de_LU[Emax];
     switch (flag)
     {
     case 1:
@@ -619,9 +634,9 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
             U[Emax * id + n] = (U[Emax * id + n] + _DF(2.0) * U1[Emax * id + n] + _DF(2.0) * dt * LU[Emax * id + n]) / _DF(3.0);
         break;
     }
-    get_Array(U, de_U, Emax, id);
-    get_Array(U1, de_U1, Emax, id);
-    get_Array(LU, de_LU, Emax, id);
+    // get_Array(U, de_U, Emax, id);
+    // get_Array(U1, de_U1, Emax, id);
+    // get_Array(LU, de_LU, Emax, id);
 }
 
 extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
@@ -677,6 +692,10 @@ extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, Block bl, BConditi
         d_UI[Emax * id + 2] = -d_UI[Emax * target_id + 2];
         d_UI[Emax * id + 3] = -d_UI[Emax * target_id + 3];
         d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
+#ifdef COP
+        for (int n = Emax - NUM_COP; n < Emax; n++)
+            d_UI[Emax * id + n] = d_UI[Emax * target_id + n];
+#endif // end COP
         }
         break;
 #ifdef USE_MPI
@@ -741,6 +760,10 @@ extern SYCL_EXTERNAL void FluidBCKernelY(int i, int j, int k, Block bl, BConditi
         d_UI[Emax * id + 2] = -d_UI[Emax * target_id + 2];
         d_UI[Emax * id + 3] = -d_UI[Emax * target_id + 3];
         d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
+#ifdef COP
+        for (int n = Emax - NUM_COP; n < Emax; n++)
+            d_UI[Emax * id + n] = d_UI[Emax * target_id + n];
+#endif // end COP
         }
         break;
 #ifdef USE_MPI
@@ -800,12 +823,16 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
         case Wall:
         {
         int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
-        int target_id = Xmax * Ymax * (k - offset) + Xmax * j + i;
+        int target_id = Xmax * Ymax * (offset - k) + Xmax * j + i;
         d_UI[Emax * id + 0] = d_UI[Emax * target_id + 0];
         d_UI[Emax * id + 1] = -d_UI[Emax * target_id + 1];
         d_UI[Emax * id + 2] = -d_UI[Emax * target_id + 2];
         d_UI[Emax * id + 3] = -d_UI[Emax * target_id + 3];
         d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
+#ifdef COP
+        for (int n = Emax - NUM_COP; n < Emax; n++)
+            d_UI[Emax * id + n] = d_UI[Emax * target_id + n];
+#endif // end COP
         }
         break;
 #ifdef USE_MPI
