@@ -139,7 +139,7 @@ void SYCLSolver::AllocateMemory(sycl::queue &q)
 {
 	d_BCs = static_cast<BConditions *>(malloc_device(6 * sizeof(BConditions), q));
 
-	q.memcpy(d_BCs, Ss.Boundarys, 6 * sizeof(BConditions)).wait();
+	q.memcpy(d_BCs, Ss.Boundarys, 6 * sizeof(BConditions));
 
 	// host arrays for each fluid
 	for (int n = 0; n < NumFluid; n++)
@@ -184,7 +184,6 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 			q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
 #endif // COP
 	}
-	q.wait();
 }
 
 void SYCLSolver::Output(sycl::queue &q, int rank, int interation, real_t Time)

@@ -190,17 +190,17 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 
     // // 1D reactive shock tube
     // // x
-    // rho[id] = x < 0.06 ? 0.072 : 0.18075;
-    // u[id] = x < 0.06 ? 0.0 : -487.34;
-    // p[id] = x < 0.06 ? 7173 : 35594;
+    rho[id] = x < 0.06 ? 0.072 : 0.18075;
+    u[id] = x < 0.06 ? 0.0 : -487.34;
+    p[id] = x < 0.06 ? 7173 : 35594;
     // y
     // rho[id] = y < 0.06 ? 0.072 : 0.18075;
     // v[id] = y < 0.06 ? 0.0 : -487.34;
     // p[id] = y < 0.06 ? 7173 : 35594;
     // // z
-    rho[id] = z < 0.06 ? 0.072 : 0.18075;
-    w[id] = z < 0.06 ? 0.0 : -487.34;
-    p[id] = z < 0.06 ? 7173 : 35594;
+    // rho[id] = z < 0.06 ? 0.072 : 0.18075;
+    // w[id] = z < 0.06 ? 0.0 : -487.34;
+    // p[id] = z < 0.06 ? 7173 : 35594;
     T[id] = p[id] / rho[id] / R; //
 
     // // 2D Riemann problem

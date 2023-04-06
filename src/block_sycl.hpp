@@ -166,8 +166,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
 			CenterDerivativeBCKernelX(i0, j, k, bl, BC0, fdata.Vde, 0, bl.Bwidth_X, 1);
-			CenterDerivativeBCKernelX(i1, j, k, bl, BC1, fdata.Vde, bl.X_inner, bl.Xmax-bl.Bwidth_X-1, -1); }); })
-		.wait();
+			CenterDerivativeBCKernelX(i1, j, k, bl, BC1, fdata.Vde, bl.X_inner, bl.Xmax-bl.Bwidth_X-1, -1); }); });
 #endif // DIM_X
 
 #if DIM_Y
@@ -184,8 +183,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int k = index.get_global_id(2);
 
 			CenterDerivativeBCKernelY(i, j0, k, bl, BC2, fdata.Vde, 0, bl.Bwidth_Y, 1);
-			CenterDerivativeBCKernelY(i, j1, k, bl, BC3, fdata.Vde, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); })
-		.wait();
+			CenterDerivativeBCKernelY(i, j1, k, bl, BC3, fdata.Vde, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); }); });
 #endif // DIM_Y
 
 #if DIM_Z
@@ -202,9 +200,9 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 
 			CenterDerivativeBCKernelZ(i, j, k0, bl, BC4, fdata.Vde, 0, bl.Bwidth_Z, 1);
-			CenterDerivativeBCKernelZ(i, j, k1, bl, BC5, fdata.Vde, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); })
-		.wait();
+			CenterDerivativeBCKernelZ(i, j, k1, bl, BC5, fdata.Vde, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); }); });
 #endif // DIM_Z
+	q.wait();
 }
 #endif // Visc
 
@@ -247,8 +245,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
 			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local, p, rho, u, v, w, fdata.y, T, H);
-			 }); })
-		.wait();
+			 }); });
 #endif
 
 #if DIM_Y
@@ -272,8 +269,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
 			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local, p, rho, u, v, w, fdata.y, T, H); 
-			}); })
-		.wait();
+			}); });
 #endif
 
 #if DIM_Z
@@ -297,8 +293,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
 			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, p, rho, u, v, w, fdata.y, T, H); 
-			}); })
-		.wait();
+			}); });
 #endif
 	q.wait();
 // NOTE: add visc flux to Fluxw
@@ -328,8 +323,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); })
-		.wait();
+			GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); });
 #endif // end DIM_X
 #if DIM_Y
 	q.submit([&](sycl::handler &h)
@@ -338,8 +332,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); })
-		.wait();
+			GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); });
 #endif // end DIM_Y
 #if DIM_Z
 	q.submit([&](sycl::handler &h)
@@ -348,12 +341,11 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); })
-		.wait();
+			GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde); }); });
 #endif // end DIM_Z
 #endif // add Visc flux
-
-// NOTE: update LU from cell-face fluxes
+	q.wait();
+	// NOTE: update LU from cell-face fluxes
 	auto global_ndrange_inner = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 #if NumFluid == 2
 #else
@@ -415,8 +407,7 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 						   FluidMpiCopyKernelX(i1, j, k, bl, Trans.d_mpiData->TransBufRecv_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BufToBC);
 					   else
 #endif // USE_MPI
-						   FluidBCKernelX(i1, j, k, bl, BC1, d_UI, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); })
-		.wait();
+						   FluidBCKernelX(i1, j, k, bl, BC1, d_UI, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); });
 #endif // end DIM_X
 
 #if DIM_Y
@@ -459,8 +450,7 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  else
 #endif																													  // USE_MPI
 									  FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); //
-							  }); })
-		.wait();
+							  }); });
 #endif // end DIM_Y
 
 #if DIM_Z
@@ -503,9 +493,9 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  else
 #endif
 									  FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); //
-							  }); })
-		.wait();
+							  }); });
 #endif // end DIM_Z
+	q.wait();
 }
 
 #ifdef COP_CHEME
