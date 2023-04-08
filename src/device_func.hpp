@@ -247,10 +247,14 @@ real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, con
 /**
  * @brief Obtain state at a grid point
  */
-void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
+bool GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
 			   real_t &gamma, real_t &T, Thermal *thermal, real_t yi[NUM_SPECIES])
 {
 	rho = UI[0];
+	if (rho < 0 || sycl::isnan<real_t>(rho) || sycl::isinf<real_t>(rho))
+	{
+		return true;
+	}
 	real_t rho1 = _DF(1.0) / rho;
 	u = UI[1] * rho1;
 	v = UI[2] * rho1;
@@ -272,6 +276,8 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	H = (UI[4] + p) * rho1;
 	gamma = get_CopGamma(thermal, yi, T);
 	c = sqrt(gamma * p * rho1);
+
+	return false;
 }
 
 /**

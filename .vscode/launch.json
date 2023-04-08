@@ -2,14 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Rebuild",
+            "name": "re-st",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "CMake: clean rebuild",
+            "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/sa-1d-reactive-shock-tube.ini", //sa-debug.ini
+                "${workspaceFolder}/sa-1d-reactive-shock-tube.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -31,14 +31,14 @@
             ]
         },
         {
-            "name": "Usually Run",
+            "name": "under-expanded jet",
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/sa-1d-reactive-shock-tube.ini",
+                "${workspaceFolder}/sa-2d-expanded-jet.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

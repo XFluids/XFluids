@@ -145,16 +145,13 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 #endif
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
+    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     // Ini yi
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
-    // for (size_t n = 0; n < NUM_SPECIES; n++) yi[n] *= sycl::fabs<real_t>(x * y);
-    // Get R of mixture
-    real_t R = get_CopR(thermal->species_chara, yi);
 
     // // TODO: for debug
     // //  1d debug set
@@ -190,9 +187,9 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 
     // // 1D reactive shock tube
     // // x
-    rho[id] = x < 0.06 ? 0.072 : 0.18075;
-    u[id] = x < 0.06 ? 0.0 : -487.34;
-    p[id] = x < 0.06 ? 7173 : 35594;
+    // rho[id] = x < 0.06 ? 0.072 : 0.18075;
+    // u[id] = x < 0.06 ? 0.0 : -487.34;
+    // p[id] = x < 0.06 ? 7173 : 35594;
     // y
     // rho[id] = y < 0.06 ? 0.072 : 0.18075;
     // v[id] = y < 0.06 ? 0.0 : -487.34;
@@ -201,7 +198,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // rho[id] = z < 0.06 ? 0.072 : 0.18075;
     // w[id] = z < 0.06 ? 0.0 : -487.34;
     // p[id] = z < 0.06 ? 7173 : 35594;
-    T[id] = p[id] / rho[id] / R; //
+    // T[id] = p[id] / rho[id] / R; //
 
     // // 2D Riemann problem
     // if (y > 0.5)
@@ -239,6 +236,40 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     //     }
     // }
 
+    // // 2D under-expanded jet
+    if (i <= 3)
+    {
+        if (-0.015 - dy < y && y < 0.015 + dy)
+        {
+            p[id] = 15.0 * 101325.0;
+            T[id] = 1000.0;
+            u[id] = 340.0;
+            yi[0] = 0.0087;
+            yi[1] = 0.2329;
+            yi[2] = 0.7584;
+        }
+        else // if (y < 0.015 * 25)
+        {
+            p[id] = 1.0 * 101325.0;
+            T[id] = 300.0;
+            u[id] = 0.0575 * 340.0;
+            yi[0] = 0.0;
+            yi[1] = 0.233;
+            yi[2] = 0.767;
+        }
+    }
+    else
+    {
+        p[id] = 1.0 * 101325.0;
+        T[id] = 300.0;
+        yi[0] = 0.0;
+        yi[1] = 0.233;
+        yi[2] = 0.767;
+    }
+    // Get R of mixture
+    real_t R = get_CopR(thermal->species_chara, yi);
+    rho[id] = p[id] / R / T[id];
+
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
@@ -259,15 +290,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     U[Emax * id + 1] = rho[id] * u[id];
     U[Emax * id + 2] = rho[id] * v[id];
     U[Emax * id + 3] = rho[id] * w[id];
-#ifdef COP
-    for (size_t ii = 5; ii < Emax; ii++)
-    { // equations of species
-        U[Emax * id + ii] = rho[id] * yi[ii - 5];
-        FluxF[Emax * id + ii] = rho[id] * u[id] * yi[ii - 5];
-        FluxG[Emax * id + ii] = rho[id] * v[id] * yi[ii - 5];
-        FluxH[Emax * id + ii] = rho[id] * w[id] * yi[ii - 5];
-    }
-#endif // end COP
+
     // initial flux terms F, G, H
     FluxF[Emax * id + 0] = U[Emax * id + 1];
     FluxF[Emax * id + 1] = U[Emax * id + 1] * u[id] + p[id];
@@ -286,6 +309,16 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     FluxH[Emax * id + 2] = U[Emax * id + 3] * v[id];
     FluxH[Emax * id + 3] = U[Emax * id + 3] * w[id] + p[id];
     FluxH[Emax * id + 4] = (U[Emax * id + 4] + p[id]) * w[id];
+
+#ifdef COP
+    for (size_t ii = 5; ii < Emax; ii++)
+    { // equations of species
+        U[Emax * id + ii] = rho[id] * yi[ii - 5];
+        FluxF[Emax * id + ii] = rho[id] * u[id] * yi[ii - 5];
+        FluxG[Emax * id + ii] = rho[id] * v[id] * yi[ii - 5];
+        FluxH[Emax * id + ii] = rho[id] * w[id] * yi[ii - 5];
+    }
+#endif // end COP
 
 #if NumFluid != 1
     real_t fraction = material.Rgn_ind > 0.5 ? vof[id] : 1.0 - vof[id];
@@ -576,7 +609,7 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
                                                  real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *const *_y,
-                                                 real_t *gamma, real_t *T, real_t const Gamma)
+                                                 real_t *gamma, real_t *T, real_t const Gamma, bool *error, const sycl::stream &stream_ct1)
 {
     MARCO_DOMAIN();
     int id = Xmax * Ymax * k + Xmax * j + i;
@@ -595,8 +628,12 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 #endif
 
     real_t *U = &(UI[Emax * id]), yi[NUM_SPECIES];
-
-    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
+    *error = GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
+    if (*error)
+    {
+        // stream_ct1 << "Illegal value of rho at i= " << i << ", j= " << j << ", k= " << k << ".\n";
+        return;
+    }
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);

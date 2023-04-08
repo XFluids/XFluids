@@ -106,15 +106,27 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal *thermal, real_t *UI
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
+	bool *h_error, *d_error;
+	h_error = sycl::malloc_host<bool>(1, q);
+	d_error = sycl::malloc_device<bool>(1, q);
+	*h_error = false;
+	q.memcpy(d_error, h_error, sizeof(bool)).wait();
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+			 {         
+				sycl::stream stream_ct1(64 * 1024, 80, h);// for output error 
+				h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
-
-			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma,T, Gamma); }); })
+			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma, T, Gamma, d_error, stream_ct1); }); })
 		.wait();
+	q.memcpy(h_error, d_error, sizeof(bool)).wait();
+	if (*h_error)
+	{
+		std::cout << "Illegal value of rho catched inside UpdateFuidStatesKernel.\n";
+		std::exit(0);
+	}
 }
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)

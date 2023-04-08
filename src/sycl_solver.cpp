@@ -333,7 +333,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 		outHeader << 0 << " " << my * OnbY << " ";
 		outHeader << 0 << " " << mz * OnbZ << "\" GhostLevel=\"0\" "
 				  << "Origin=\""
-				  << Ss.Domain_xmin << " " << Ss.Domain_ymin << " " << Ss.Domain_zmin << "\" "
+				  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
 				  << "Spacing=\""
 				  << dx << " " << dy << " " << dz << "\">"
 				  << std::endl;
@@ -404,7 +404,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			<< ymin << " " << ymax << " "
 			<< zmin << " " << zmax << "\" "
 			<< "Origin=\""
-			<< Ss.Domain_xmin << " " << Ss.Domain_ymin << " " << Ss.Domain_zmin << "\" "
+			<< Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
 			<< "Spacing=\""
 			<< dx << " " << dy << " " << dz << "\">" << std::endl;
 	outFile << "  <Piece Extent=\""
@@ -446,7 +446,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			{
 				for (int i = OminX; i < OmaxX; i++)
 				{
-					real_t tmp = DIM_X ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X - Ss.BlSz.Bwidth_X)) * dx + 0.5 * dx : 0.0;
+					real_t tmp = DIM_X ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X - Ss.BlSz.Bwidth_X)) * dx + 0.5 * dx + Ss.BlSz.Domain_xmin : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
 				} // for i
 			}	  // for j
@@ -479,7 +479,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			{
 				for (int i = OminX; i < OmaxX; i++)
 				{
-					real_t tmp = DIM_Y ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy : 0.0;
+					real_t tmp = DIM_Y ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy + Ss.BlSz.Domain_ymin : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
 				} // for i
 			}	  // for j
@@ -512,7 +512,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 			{
 				for (int i = OminX; i < OmaxX; i++)
 				{
-					real_t tmp = DIM_Z ? (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz : 0.0;
+					real_t tmp = DIM_Z ? (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz + Ss.BlSz.Domain_zmin : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
 				} // for i
 			}	  // for j
@@ -677,13 +677,22 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 		<< "\n"
 		<< "variables="
 #if DIM_X
-		<< "x, u, "
+		<< "x, "
 #endif
 #if DIM_Y
-		<< "y, v, "
+		<< "y, "
 #endif
 #if DIM_Z
-		<< "z, w, "
+		<< "z, "
+#endif
+#if DIM_X
+		<< "u, "
+#endif
+#if DIM_Y
+		<< "v, "
+#endif
+#if DIM_Z
+		<< "w, "
 #endif
 		<< "p, rho, ";
 #ifdef COP
@@ -692,7 +701,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 		out << ", Y(" << Ss.species_name[n] << ")";
 #endif
 	out << "\n";
-	out << "zone t='subdomain_" << 0 << "_" << 0 << "_" << 0 << "', i= " << X_inner << ", j= " << Y_inner << ", k= " << Z_inner << ", SOLUTIONTIME= " << Time << "\n";
+	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << X_inner << ", j= " << Y_inner << ", k= " << Z_inner << ", SOLUTIONTIME= " << Time << "\n";
 
 	real_t offset_x = DIM_X ? -Bwidth_X + 0.5 : 0.0;
 	real_t offset_y = DIM_Y ? -Bwidth_Y + 0.5 : 0.0;
@@ -704,9 +713,9 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 		for (int j = Bwidth_Y; j < Bwidth_Y + Y_inner; j++)
 			for (int i = Bwidth_X; i < Bwidth_X + X_inner; i++)
 			{
-				xc = (i + offset_x) * dx;
-				yc = (j + offset_y) * dy;
-				zc = (k + offset_z) * dz;
+				xc = (i + offset_x) * dx + Ss.BlSz.Domain_xmin;
+				yc = (j + offset_y) * dy + Ss.BlSz.Domain_ymin;
+				zc = (k + offset_z) * dz + Ss.BlSz.Domain_zmin;
 
 				int id = Xmax * Ymax * k + Xmax * j + i;
 
@@ -717,13 +726,22 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Tim
 				wc = fluids[0]->h_fstate.w[id];
 				out
 #if DIM_X
-					<< xc << " " << uc << " "
+					<< xc << " "
 #endif
 #if DIM_Y
-					<< yc << " " << vc << " "
+					<< yc << " "
 #endif // end DIM_Y
 #if DIM_Z
-					<< zc << " " << wc << " "
+					<< zc << " "
+#endif // end DIM_Z
+#if DIM_X
+					<< uc << " "
+#endif
+#if DIM_Y
+					<< vc << " "
+#endif // end DIM_Y
+#if DIM_Z
+					<< wc << " "
 #endif // end DIM_Z
 					<< pc << " " << rhoc << " ";
 #if COP
