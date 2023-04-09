@@ -1,3 +1,9 @@
+message(STATUS "${COP_SAMPLE_PATH}")
+include_directories(
+  BEFORE
+  "${COP_SAMPLE_PATH}"
+) # 依据算例文件中的"case_setup.h"头文件自动设置NUM_SPECIES && NUM_REACTIONS
+
 add_compile_options(-DNumFluid=1)
 
 IF(USE_DOUBLE)
@@ -7,18 +13,6 @@ ENDIF(USE_DOUBLE)
 IF(USE_PLT)
   add_compile_options(-DOUT_PLT) # 将参数从cmakelist传入程序中
 ENDIF(USE_PLT)
-
-IF(Visc)
-  add_compile_options(-DVisc)
-ENDIF(Visc)
-
-IF(Heat)
-  add_compile_options(-DHeat)
-ENDIF(Heat)
-
-IF(Diffu)
-  add_compile_options(-DDiffu)
-ENDIF(Diffu)
 
 IF(DIM_X)
   add_compile_options(-DDIM_X=1)
@@ -38,13 +32,23 @@ ELSE(DIM_Z)
   add_compile_options(-DDIM_Z=0)
 ENDIF(DIM_Z)
 
+IF(Visc)
+  add_compile_options(-DVisc)
+ENDIF(Visc)
+
+IF(Heat)
+  add_compile_options(-DHeat)
+ENDIF(Heat)
+
+IF(Diffu)
+  add_compile_options(-DDiffu)
+ENDIF(Diffu)
+
 add_compile_options(-DRPath="${COP_THERMAL_PATH}")
 add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
 
 IF(COP)
   add_compile_options(-DCOP)
-  add_compile_options(-DNUM_SPECIES=${NUM_SPECIES})
-  add_compile_options(-DNUM_REA=${NUM_REACTIONS})
 
   IF(COP_CHEME)
     add_compile_options(-DCOP_CHEME)
