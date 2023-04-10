@@ -1,4 +1,4 @@
-message(STATUS "${COP_SAMPLE_PATH}")
+#message(STATUS "${COP_SAMPLE_PATH}")
 include_directories(
   BEFORE
   "${COP_SAMPLE_PATH}"
@@ -46,6 +46,7 @@ ENDIF(Diffu)
 
 add_compile_options(-DRPath="${COP_THERMAL_PATH}")
 add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
+add_compile_options(-DMIDDLE_SYCL_ENABLED)
 
 IF(COP)
   add_compile_options(-DCOP)
