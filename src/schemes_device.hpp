@@ -333,7 +333,7 @@ real_t weno5_M(real_t *f, real_t delta)
  */
 const double epsilon_weno = 1.0e-6;
 real_t weno5old_P(real_t *f, real_t delta)
-{
+{ // version from Lyx
     int k;
     real_t v1, v2, v3, v4, v5;
     real_t a1, a2, a3;
@@ -375,7 +375,7 @@ real_t weno5old_P(real_t *f, real_t delta)
  * @return real_t
  */
 real_t weno5old_M(real_t *f, real_t delta)
-{
+{ // version from Lyx
     int k;
     real_t v1, v2, v3, v4, v5;
     real_t a1, a2, a3;

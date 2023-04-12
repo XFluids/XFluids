@@ -64,15 +64,13 @@ real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
  */
 real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
-	real_t T = T0, Cpi = _DF(0.0);
-	if (T < (_DF(200.0) / Tref))
-		T = _DF(200.0) / Tref;
+	real_t T = (T0 < _DF(200.0)) ? _DF(200.0) : T0, Cpi = _DF(0.0);
 #if Thermo
-	if (T >= (1000.0 / Tref) && T < (6000.0 / Tref))
+	if (T >= (1000.0) && T < (6000.0))
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] / T / T + Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] + Hia[n * 7 * 3 + 3 * 3 + 1] * T + Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1] * T * T * T * T);
-	else if (T < (1000.0 / Tref))
+	else if (T < (1000.0))
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] / T / T + Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] + Hia[n * 7 * 3 + 3 * 3 + 0] * T + Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0] * T * T * T * T);
-	else if (T >= (6000.0 / Tref) && T < (15000.0 / Tref))
+	else if (T >= (6000.0) && T < (15000.0))
 	{
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 2] / T / T + Hia[n * 7 * 3 + 1 * 3 + 2] / T + Hia[n * 7 * 3 + 2 * 3 + 2] + Hia[n * 7 * 3 + 3 * 3 + 2] * T + Hia[n * 7 * 3 + 4 * 3 + 2] * T * T + Hia[n * 7 * 3 + 5 * 3 + 2] * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 2] * T * T * T * T);
 	}
@@ -81,8 +79,7 @@ real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 		// TODO printf("T=%lf , Cpi=%lf , T > 15000 K,please check!!!NO Cpi[n] for T>15000 K \n", T, Cpi);
 	}
 #else
-	// Cpi[n)/R = a1 + a2*T + a3*T^2 + a4*T^3 + a5*T^4
-	if (T > (_DF(1000.0) / Tref))
+	if (T > _DF(1000.0))
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] + Hia[n * 7 * 3 + 1 * 3 + 0] * T + Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * T * T * T * T);
 	else
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] + Hia[n * 7 * 3 + 1 * 3 + 1] * T + Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * T * T * T * T);
@@ -139,22 +136,31 @@ real_t get_CopGamma(Thermal *material, const real_t yi[NUM_SPECIES], const real_
  */
 real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
-	real_t hi = _DF(0.0), T = T0;
+	real_t hi = _DF(0.0), TT = _DF(0.0), T = T0;
+	if (T < _DF(200.0))
+	{
+		TT = T;
+		T = _DF(200.0);
+	}
 #if Thermo
-	if (T >= 1000.0 && T < 6000.0)
+	if (T >= _DF(1000.0) && T < _DF(6000.0))
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(T) + Hia[n * 7 * 3 + 2 * 3 + 1] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 1]);
-	else if (T < 1000.0)
+	else if (T < _DF(1000.0))
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 0] * sycl::log(T) + Hia[n * 7 * 3 + 2 * 3 + 0] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 0] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 0] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 0]);
-	else if (T >= 6000.0 && T < 15000.0)
+	else if (T >= _DF(6000.0) && T < _DF(15000.0))
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 2] * sycl::log(T) + Hia[n * 7 * 3 + 2 * 3 + 2] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] * T * T + Hia[n * 7 * 3 + 4 * 3 + 2] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 2] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 2] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 2]);
 #else
 	// H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
-	if (T > 1000.0)
+	if (T > _DF(1000.0))
 		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 0] + T * (Hia[n * 7 * 3 + 1 * 3 + 0] / _DF(2.0) + T * (Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(4.0) + Hia[n * 7 * 3 + 4 * 3 + 0] * T / _DF(5.0))))) + Hia[n * 7 * 3 + 5 * 3 + 0]);
 	else
 		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] / _DF(2.0) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] / _DF(4.0) + Hia[n * 7 * 3 + 4 * 3 + 1] * T / _DF(5.0))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
 #endif
-	// hi = Ri * (T * Hia[n * 7 * 3 + 0 * 3 + 0] + T * T * Hia[n * 7 * 3 + 1 * 3 + 0] / _DF(2.0) + T * T * T * Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * T * T * T * Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(4.0) + T * T * T * T * T * Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(5.0) + Hia[n * 7 * 3 + 5 * 3 + 0]);
+	if (TT < _DF(200.0))							  // take low tempreture into consideration
+	{												  // get_hi at T>200
+		real_t Cpi = get_Cpi(Hia, _DF(200.0), Ri, n); // get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
+		hi += Cpi * (TT - _DF(200.0));
+	}
 	return hi;
 }
 
@@ -1129,7 +1135,7 @@ real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polynominal_f
 {
 	real_t rhoref = Reference_params[1], pref = Reference_params[2];
 	real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
-	real_t kref = visref * (pref / rhoref) / Tref;
+	real_t kref = visref * (pref / rhoref);
 	real_t T = T0 * Tref; // nondimension==>dimension
 	real_t thermal_conductivity = fitted_coefficients_therm[order_polynominal_fitted - 1];
 	for (int i = order_polynominal_fitted - 2; i >= 0; i--)

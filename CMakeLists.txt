@@ -23,7 +23,7 @@ option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" OFF)
 set(COP_THERMAL_PATH "${CMAKE_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
-set(COP_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/runtime.dat/2d-under-expanded-jet") # where to read species and reactions:runtime.dat/1d-mc-insert-shock-tube
+set(COP_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/runtime.dat/inert_2species") # where to read species and reactions:runtime.dat/1d-mc-insert-shock-tube
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
 option(Visc "if add physic viscidity flux" OFF)
 option(Heat "if add heat transfer flux" OFF)

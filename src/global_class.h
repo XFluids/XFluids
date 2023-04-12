@@ -15,9 +15,14 @@
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
 //  for flux Reconstruction order
-#define FLUX_method 2       // 0: local LF; 1: global LF, 2: Roe
+#define FLUX_method 2 //  0: local LF; 1: global LF, 2: Roe
+#if SCHEME_ORDER > 6
 const int stencil_P = 3;    // "2" for <=6 order, "3"" for >6 order
 const int stencil_size = 8; // "6" for <=6 order, "8"" for >6 order
+#elif SCHEME_ORDER <= 6
+const int stencil_P = 2;    // "2" for <=6 order, "3"" for >6 order
+const int stencil_size = 6; // "6" for <=6 order, "8"" for >6 order
+#endif
 // for nodemisonlizing
 const real_t Reference_params[8] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 // 0: l_ref(unit :m), 1: rho_ref(unit :kg/m3)(air), 2: p_ref(unit :Pa)(air),
@@ -74,7 +79,7 @@ public:
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
     void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
-    void UpdateFluidStates(sycl::queue &q, int flag);
+    bool UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
@@ -105,9 +110,9 @@ public:
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
-    void Output(sycl::queue &q, int rank, int interation, real_t Time);
-    void Output_vti(sycl::queue &q, int rank, int interation, real_t Time);
-    void Output_plt(sycl::queue &q, int rank, int interation, real_t Time);
+    void Output(sycl::queue &q, int rank, std::string interation, real_t Time);
+    void Output_vti(sycl::queue &q, int rank, std::string interation, real_t Time);
+    void Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);

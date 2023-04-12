@@ -18,9 +18,9 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		TimeLoop++;
 		while (physicalTime < TimeLoop * Ss.OutTimeStamp)
 		{
-			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
+			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput && physicalTime >= Ss.OutTimeStart || Iteration == 0)
 			{
-				Output(q, rank, Iteration, physicalTime);
+				Output(q, rank, std::to_string(Iteration), physicalTime);
 				OutNum++;
 			}
 			if (Iteration >= Ss.nStepmax)
@@ -35,6 +35,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #endif // end USE_MPI
 			if (physicalTime + dt > TimeLoop * Ss.OutTimeStamp)
 				dt = TimeLoop * Ss.OutTimeStamp - physicalTime;
+			std::cout << "N=" << std::setw(6) << Iteration + 1 << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << " to do. \n";
 			// solved the fluid with 3rd order Runge-Kutta method
 			SinglePhaseSolverRK3rd(q);
 
@@ -43,9 +44,9 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #endif // end COP_CHEME
 			physicalTime = physicalTime + dt;
 			Iteration++;
-			std::cout << "N=" << std::setw(6) << Iteration << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << " done. \n";
 		}
-		Output(q, rank, Iteration, physicalTime);
+		if (physicalTime >= Ss.OutTimeStart)
+			Output(q, rank, std::to_string(Iteration), physicalTime);
 		if (Iteration >= Ss.nStepmax)
 			break;
 	}
@@ -131,8 +132,14 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 
 void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
 {
+	bool error = false;
 	for (int n = 0; n < NumFluid; n++)
-		fluids[n]->UpdateFluidStates(q, flag);
+		error = fluids[n]->UpdateFluidStates(q, flag);
+	if (error)
+	{
+		this->Output(q, 0, "_error", 0);
+		std::exit(0);
+	}
 }
 
 void SYCLSolver::AllocateMemory(sycl::queue &q)
@@ -184,9 +191,10 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 			q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
 #endif // COP
 	}
+	q.wait();
 }
 
-void SYCLSolver::Output(sycl::queue &q, int rank, int interation, real_t Time)
+void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t Time)
 {
 #ifdef OUT_PLT
 	Output_plt(q, rank, interation, Time);
@@ -195,7 +203,7 @@ void SYCLSolver::Output(sycl::queue &q, int rank, int interation, real_t Time)
 #endif // end OUT_PLT
 }
 
-void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Time)
+void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, real_t Time)
 {
 	CopyDataFromDevice(q); // only copy when output
 	real_t Itime = Time * 1.0e8;
@@ -634,7 +642,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, int interation, real_t Tim
 	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
 }
 
-void SYCLSolver::Output_plt(sycl::queue &q, int rank, int interation, real_t Time)
+void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time)
 {
 	CopyDataFromDevice(q); // only copy when output
 

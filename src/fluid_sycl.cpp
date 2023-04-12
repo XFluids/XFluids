@@ -110,12 +110,14 @@ void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 	}
 }
 
-void FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
+bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 {
+	bool error = false;
 	if (flag == 0)
-		UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+		error = UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 	else
-		UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+		error = UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+	return error;
 }
 
 void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)

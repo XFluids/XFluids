@@ -201,81 +201,135 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // T[id] = p[id] / rho[id] / R; //
 
     // // 2D Riemann problem
-    // if (y > 0.5)
-    // {
-    //     if (x > 0.5)
-    //     {                     // 接触间断相互作用// 激波相互作用// 中心稀疏波相互作用
-    //         rho[id] = 0.5197; // 1;   // 1.5; // 1.;
-    //         u[id] = 0.1;      //-0.75; // 0.;
-    //         v[id] = 0.1;      //-0.5;  // 0.;
-    //         p[id] = 0.4;      // 1;     // 1.5; // 1.;
-    //     }
-    //     else
-    //     {
-    //         rho[id] = 1.;    // 2;   // 0.5323; // 0.5197;
-    //         u[id] = -0.6259; //-0.75; // 1.206;    //-0.7259;
-    //         v[id] = 0.1;     // 0.5;     // 0.;
-    //         p[id] = 1;       // 0.3; // 0.4;
-    //     }
-    // }
-    // else
-    // {
-    //     if (x < 0.5)
-    //     {
-    //         rho[id] = 0.8; // 1;  // 0.138; // 1;
-    //         u[id] = 0.1;   // 0.75;  // 1.206;   //-0.7259;
-    //         v[id] = 0.1;   // 0.5;   // 1.206;   //-0.7259;
-    //         p[id] = 1;     // 0.029;   // 1;
-    //     }
-    //     else
-    //     {
-    //         rho[id] = 1;     // 3;  // 0.5323; // 0.51792579;
-    //         u[id] = 0.1;     // 0.75; // 0.;
-    //         v[id] = -0.6259; //-0.5; // 1.206; //-0.7259;
-    //         p[id] = 1;       // 0.3;   // 0.4;
-    //     }
-    // }
-
-    // // 2D under-expanded jet
-    if (i <= 3)
-    {
-        if (-0.015 - dy < y && y < 0.015 + dy)
+    if (y > 0.5)
+    { // dimensionlize ini settings from the non-dimensional settings from the Ref
+        if (x < 0.5)
         {
-            p[id] = 15.0 * 101325.0;
-            T[id] = 1000.0;
-            u[id] = 340.0;
-            yi[0] = 0.0087;
-            yi[1] = 0.2329;
-            yi[2] = 0.7584;
+            // case 3 // left upper
+            p[id] = 0.3 * 160000;
+            rho[id] = 0.5323;
         }
-        else // if (y < 0.015 * 25)
+        else
         {
-            p[id] = 1.0 * 101325.0;
-            T[id] = 300.0;
-            u[id] = 0.0575 * 340.0;
-            yi[0] = 0.0;
-            yi[1] = 0.233;
-            yi[2] = 0.767;
+            // case 3 // right upper
+            p[id] = 1.5 * 160000;
+            rho[id] = 1.5;
         }
     }
     else
     {
-        p[id] = 1.0 * 101325.0;
-        T[id] = 300.0;
-        yi[0] = 0.0;
-        yi[1] = 0.233;
-        yi[2] = 0.767;
+        if (x < 0.5)
+        {
+            // case 3 // left lower
+            p[id] = 0.029 * 160000;
+            rho[id] = 0.138;
+        }
+        else
+        {
+            // case 3 // right lower
+            p[id] = 0.3 * 160000;
+            rho[id] = 0.5323;
+        }
     }
+
     // Get R of mixture
     real_t R = get_CopR(thermal->species_chara, yi);
-    rho[id] = p[id] / R / T[id];
+    T[id] = p[id] / R / rho[id]; // rho[id] = p[id] / R / T[id]; //
+
+    real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
+    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+
+    if (y > 0.5)
+    {
+        if (x < 0.5)
+        {
+            // case 3 // left upper
+            u[id] = 1.206 * sycl::sqrt<real_t>(160000);
+            v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+        }
+        else
+        {
+            // case 3 // right upper
+            u[id] = 0.0 * sycl::sqrt<real_t>(160000);
+            v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+        }
+    }
+    else
+    {
+        if (x < 0.5)
+        {
+            // case 3 // left lower
+            u[id] = 1.206 * sycl::sqrt<real_t>(160000);
+            v[id] = 1.206 * sycl::sqrt<real_t>(160000);
+        }
+        else
+        {
+            // case 3 // right lower
+            u[id] = 0.0 * sycl::sqrt<real_t>(160000);
+            v[id] = 1.206 * sycl::sqrt<real_t>(160000);
+        }
+    }
+
+    // // 2D under-expanded jet
+    // if (i <= 3)
+    // {
+    //     if (-0.015 - dy < y && y < 0.015 + dy)
+    //     {
+    //         p[id] = 15.0 * 101325.0;
+    //         T[id] = 1000.0;
+    //         yi[0] = 0.0087;
+    //         yi[1] = 0.2329;
+    //         yi[2] = 0.7584;
+    //     }
+    //     else if (-0.015 * 25 - dy < y && y < 0.015 * 25 + dy)
+    //     {
+    //         p[id] = 1.0 * 101325.0;
+    //         T[id] = 300.0;
+    //         yi[0] = 0.0;
+    //         yi[1] = 0.233;
+    //         yi[2] = 0.767;
+    //     }
+    //     else
+    //     {
+    //         p[id] = 1.0 * 101325.0;
+    //         T[id] = 300.0;
+    //         yi[0] = 0.0;
+    //         yi[1] = 0.233;
+    //         yi[2] = 0.767;
+    //     }
+    // }
+    // else
+    // {
+    //     p[id] = 1.0 * 101325.0;
+    //     T[id] = 300.0;
+    //     yi[0] = 0.0;
+    //     yi[1] = 0.233;
+    //     yi[2] = 0.767;
+    // }
+
+    // if (i <= 3)
+    // {
+    //     if (-0.015 - dy < y && y < 0.015 + dy)
+    //     {
+    //         u[id] = c[id];
+    //     }
+    //     else if (-0.015 * 25 - dy < y && y < 0.015 * 25 + dy)
+    //     {
+    //         u[id] = 0.0575 * c[id];
+    //     }
+    //     else
+    //     {
+    //         u[id] = 0.0;
+    //     }
+    // }
+    // else
+    // {
+    //     u[id] = 0.0;
+    // }
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
-
-    real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 #if 1 != NumFluid
     //  for both singlephase && multiphase
     c[id] = material.Mtrl_ind == 0 ? sqrt(material.Gamma * p[id] / rho[id]) : sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
@@ -368,8 +422,11 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 
     // // construct the right value & the left value scalar equations by characteristic reduction
     // // at i+1/2 in x direction
-    MARCO_FLUXWALL(i + m, j, k, i + m - stencil_P, j, k);
-
+#if SCHEME_ORDER == 7
+    MARCO_FLUXWALL_WENO7(i + m, j, k, i + m - stencil_P, j, k);
+#elif SCHEME_ORDER == 5
+    MARCO_FLUXWALL_WENO5(i + m, j, k, i + m, j, k);
+#endif
     // real_t de_fw[Emax];
     // get_Array(Fwall, de_fw, Emax, id_l);
     // real_t de_fx[Emax];
@@ -406,8 +463,11 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 
     // // construct the right value & the left value scalar equations by characteristic reduction
     // // at i+1/2 in x direction
-    MARCO_FLUXWALL(i, j + m, k, i, j + m - stencil_P, k);
-
+#if SCHEME_ORDER == 7
+    MARCO_FLUXWALL_WENO7(i, j + m, k, i, j + m - stencil_P, k);
+#elif SCHEME_ORDER == 5
+    MARCO_FLUXWALL_WENO5(i, j + m, k, i, j + m, k);
+#endif
     // real_t ug[10], gg[10], pp[10], mm[10], g_flux, _p[Emax][Emax];
     // for(int n=0; n<Emax; n++){
     //     real_t eigen_local_max = _DF(0.0);
@@ -484,8 +544,11 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 
     // // construct the right value & the left value scalar equations by characteristic reduction
     // // at i+1/2 in x direction
-    MARCO_FLUXWALL(i, j, k + m, i, j, k + m - stencil_P);
-
+#if SCHEME_ORDER == 7
+    MARCO_FLUXWALL_WENO7(i, j, k + m, i, j, k + m - stencil_P);
+#elif SCHEME_ORDER == 5
+    MARCO_FLUXWALL_WENO5(i, j, k + m, i, j, k + m);
+#endif
     // real_t uh[10], hh[10], pp[10], mm[10], real_t h_flux, _p[Emax][Emax];
 
     // //construct the right value & the left value scalar equations by characteristic reduction
@@ -551,7 +614,7 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
     if(k >= Zmax)
     return;
 #endif
-#if !FLUX_method
+#if SCHEME_ORDER == 5
     real_t uu = AA * u[id] + BB * v[id] + CC * w[id];
     real_t uuPc = uu + c[id];
     real_t uuMc = uu - c[id];
@@ -563,7 +626,7 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
             eigen_local[Emax * id + ii] = uu;
     }
     eigen_local[Emax * id + Emax - 1] = uuPc;
-#else
+#elif SCHEME_ORDER == 7
     for (size_t ii = 0; ii < Emax; ii++)
         eigen_local[Emax * id + ii] = 0.0;
 #endif // end FLUX_method
