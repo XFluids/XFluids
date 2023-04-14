@@ -98,7 +98,6 @@ void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
 		UpdateU(q, 3);
 		break;
 	}
-	q.wait();
 }
 
 real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
@@ -661,7 +660,6 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
 	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
-	q.wait();
 }
 
 void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time)
@@ -783,5 +781,4 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 			}
 	out.close();
 	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
-	q.wait();
 }

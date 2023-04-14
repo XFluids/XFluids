@@ -187,9 +187,9 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 
     // // 1D reactive shock tube
     // // x
-    // rho[id] = x < 0.06 ? 0.072 : 0.18075;
-    // u[id] = x < 0.06 ? 0.0 : -487.34;
-    // p[id] = x < 0.06 ? 7173 : 35594;
+    rho[id] = x < 0.06 ? 0.072 : 0.18075;
+    u[id] = x < 0.06 ? 0.0 : -487.34;
+    p[id] = x < 0.06 ? 7173 : 35594;
     // y
     // rho[id] = y < 0.06 ? 0.072 : 0.18075;
     // v[id] = y < 0.06 ? 0.0 : -487.34;
@@ -264,66 +264,67 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // }
 
     // // 2D under-expanded jet
-    if (i <= 3)
-    {
-        if (-0.015 < y && y < 0.015)
-        {
-            p[id] = 10.0 * 101325.0;
-            T[id] = 1000.0;
-            yi[0] = 0.0087;
-            yi[1] = 0.2329;
-            yi[2] = 0.7584;
-        }
-        else if (-0.015 * 25 < y && y < 0.015 * 25)
-        {
-            p[id] = 1.0 * 101325.0;
-            T[id] = 300.0;
-            yi[0] = 0.0;
-            yi[1] = 0.233;
-            yi[2] = 0.767;
-        }
-        else
-        {
-            p[id] = 1.0 * 101325.0;
-            T[id] = 300.0;
-            yi[0] = 0.0;
-            yi[1] = 0.233;
-            yi[2] = 0.767;
-        }
-    }
-    else
-    {
-        p[id] = 1.0 * 101325.0;
-        T[id] = 300.0;
-        yi[0] = 0.0;
-        yi[1] = 0.233;
-        yi[2] = 0.767;
-    }
+    // if (i <= 3)
+    // {
+    //     if (-0.015 < y && y < 0.015)
+    //     {
+    //         p[id] = 10.0 * 101325.0;
+    //         T[id] = 1000.0;
+    //         yi[0] = 0.0087;
+    //         yi[1] = 0.2329;
+    //         yi[2] = 0.7584;
+    //     }
+    //     else if (-0.015 * 25 < y && y < 0.015 * 25)
+    //     {
+    //         p[id] = 1.0 * 101325.0;
+    //         T[id] = 300.0;
+    //         yi[0] = 0.0;
+    //         yi[1] = 0.233;
+    //         yi[2] = 0.767;
+    //     }
+    //     else
+    //     {
+    //         p[id] = 1.0 * 101325.0;
+    //         T[id] = 300.0;
+    //         yi[0] = 0.0;
+    //         yi[1] = 0.233;
+    //         yi[2] = 0.767;
+    //     }
+    // }
+    // else
+    // {
+    //     p[id] = 1.0 * 101325.0;
+    //     T[id] = 300.0;
+    //     yi[0] = 0.0;
+    //     yi[1] = 0.233;
+    //     yi[2] = 0.767;
+    // }
+
     // Get R of mixture
     real_t R = get_CopR(thermal->species_chara, yi);
-    rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
+    T[id] = p[id] / R / rho[id]; // rho[id] = p[id] / R / T[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 
-    if (i <= 3)
-    {
-        if (-0.015 < y && y < 0.015)
-        {
-            u[id] = c[id];
-        }
-        else if (-0.015 * 25 < y && y < 0.015 * 25)
-        {
-            u[id] = 0.0575 * c[id];
-        }
-        else
-        {
-            u[id] = 0.0 * c[id];
-        }
-    }
-    else
-    {
-        u[id] = 0.0 * c[id];
-    }
+    // if (i <= 3)
+    // {
+    //     if (-0.015 < y && y < 0.015)
+    //     {
+    //         u[id] = c[id];
+    //     }
+    //     else if (-0.015 * 25 < y && y < 0.015 * 25)
+    //     {
+    //         u[id] = 0.0575 * c[id];
+    //     }
+    //     else
+    //     {
+    //         u[id] = 0.0 * c[id];
+    //     }
+    // }
+    // else
+    // {
+    //     u[id] = 0.0 * c[id];
+    // }
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
