@@ -72,7 +72,7 @@ real_t KroneckerDelta(const int i, const int j)
  */
 real_t van_Leer(real_t r)
 {
-    return (r + std::abs(r)) / (1.0 + std::abs(r));
+    return (r + sycl::abs<real_t>(r)) / (1.0 + sycl::abs<real_t>(r));
 }
 /**
  * @brief van Albada limiter
@@ -567,7 +567,7 @@ real_t WENOAO53_P(real_t *f, real_t delta)
     real_t s5 = 1.0 * (s51 + 1.0 / 10.0 * s53) * (s51 + 1.0 / 10.0 * s53) + 13.0 / 3.0 * (s52 + 123.0 / 455.0 * s54) * (s52 + 123.0 / 455.0 * s54) + 781.0 / 20.0 * s53 * s53 + 1421461.0 / 2275.0 * s54 * s54;
 
     // Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t tau = (std::abs(s5 - s1) + std::abs(s5 - s2) + std::abs(s5 - s3)) / 3.0;
+    real_t tau = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
     real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
     real_t coef_weights_2 = (1 - 0.85) * 0.85;
     real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -620,7 +620,7 @@ real_t WENOAO53_M(real_t *f, real_t delta)
     real_t s5 = 1.0 * (s51 + 1.0 / 10.0 * s53) * (s51 + 1.0 / 10.0 * s53) + 13.0 / 3.0 * (s52 + 123.0 / 455.0 * s54) * (s52 + 123.0 / 455.0 * s54) + 781.0 / 20.0 * s53 * s53 + 1421461.0 / 2275.0 * s54 * s54;
 
     // Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t tau = (std::abs(s5 - s1) + std::abs(s5 - s2) + std::abs(s5 - s3)) / 3.0;
+    real_t tau = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
     real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
     real_t coef_weights_2 = (1 - 0.85) * 0.85;
     real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -680,7 +680,7 @@ real_t WENOAO73_P(real_t *f, real_t delta)
     real_t s76 = 1.0 / 720.0 * v1 - 6.0 / 720.0 * v2 + 15.0 / 720.0 * v3 - 20.0 / 720.0 * v4 + 15.0 / 720.0 * v5 - 6.0 / 720.0 * v6 + 1 / 720.0 * v7;
     real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
     // Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t tau = (std::abs(s7 - s1) + std::abs(s7 - s2) + std::abs(s7 - s3)) / 3.0;
+    real_t tau = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
     real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
     real_t coef_weights_2 = (1 - 0.85) * 0.85;
     real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -740,7 +740,7 @@ real_t WENOAO73_M(real_t *f, real_t delta)
     real_t s76 = 1.0 / 720.0 * v1 - 6.0 / 720.0 * v2 + 15.0 / 720.0 * v3 - 20.0 / 720.0 * v4 + 15.0 / 720.0 * v5 - 6.0 / 720.0 * v6 + 1 / 720.0 * v7;
     real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
     // Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t tau = (std::abs(s7 - s1) + std::abs(s7 - s2) + std::abs(s7 - s3)) / 3.0;
+    real_t tau = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
     real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
     real_t coef_weights_2 = (1 - 0.85) * 0.85;
     real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -811,8 +811,8 @@ real_t WENOAO753_P(real_t *f, real_t delta)
     real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
 
     // Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t tau_7 = (std::abs(s7 - s1) + std::abs(s7 - s2) + std::abs(s7 - s3)) / 3.0;
-    real_t tau_5 = (std::abs(s5 - s1) + std::abs(s5 - s2) + std::abs(s5 - s3)) / 3.0;
+    real_t tau_7 = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
+    real_t tau_5 = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
     real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
     real_t coef_weights_2 = (1 - 0.85) * 0.85;
     real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -862,7 +862,7 @@ real_t WENOAO753_P(real_t *f, real_t delta)
     real_t polynomial_5 = u0_5 + u1_5 * 1.0 / 2.0 + u2_5 * 1.0 / 6.0 + u3_5 * 1.0 / 20.0 + u4_5 * 1.0 / 70.0;
 
     // Compute normalized weights for hybridization Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t sigma = std::abs(s7 - s5);
+    real_t sigma = sycl::abs<real_t>(s7 - s5);
     real_t b7 = 2.0e-16 * (1 + sigma / (s7 + 2.0e-16));
     real_t b5 = (1 - 2.0e-16) * (1 + sigma / (s5 + 2.0e-16));
 
@@ -916,8 +916,8 @@ real_t WENOAO753_M(real_t *f, real_t delta)
     real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
 
     // Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t tau_7 = (std::abs(s7 - s1) + std::abs(s7 - s2) + std::abs(s7 - s3)) / 3.0;
-    real_t tau_5 = (std::abs(s5 - s1) + std::abs(s5 - s2) + std::abs(s5 - s3)) / 3.0;
+    real_t tau_7 = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
+    real_t tau_5 = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
     real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
     real_t coef_weights_2 = (1 - 0.85) * 0.85;
     real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -967,7 +967,7 @@ real_t WENOAO753_M(real_t *f, real_t delta)
     real_t polynomial_5 = u0_5 + u1_5 * 1.0 / 2.0 + u2_5 * 1.0 / 6.0 + u3_5 * 1.0 / 20.0 + u4_5 * 1.0 / 70.0;
 
     // Compute normalized weights for hybridization Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-    real_t sigma = std::abs(s7 - s5);
+    real_t sigma = sycl::abs<real_t>(s7 - s5);
     real_t b7 = 2.0e-16 * (1 + sigma / (s7 + 2.0e-16));
     real_t b5 = (1 - 2.0e-16) * (1 + sigma / (s5 + 2.0e-16));
 
@@ -1210,7 +1210,7 @@ real_t TENO5_P(real_t *f, real_t delta)
     real_t s2 = 13.0 / 12.0 * (v3 - 2.0 * v4 + v5) * (v3 - 2.0 * v4 + v5) + 3.0 / 12.0 * (3.0 * v3 - 4.0 * v4 + v5) * (3.0 * v3 - 4.0 * v4 + v5);
     real_t s3 = 13.0 / 12.0 * (v1 - 2.0 * v2 + v3) * (v1 - 2.0 * v2 + v3) + 3.0 / 12.0 * (v1 - 4.0 * v2 + 3.0 * v3) * (v1 - 4.0 * v2 + 3.0 * v3);
 
-    real_t tau5 = std::abs(s3 - s2);
+    real_t tau5 = sycl::abs<real_t>(s3 - s2);
 
     a1 = std::pow(1.0 + tau5 / (s1 + 1.0e-40), 6.0);
     a2 = std::pow(1.0 + tau5 / (s2 + 1.0e-40), 6.0);
@@ -1259,7 +1259,7 @@ real_t TENO5_M(real_t *f, real_t delta)
     real_t s2 = 13.0 / 12.0 * (v3 - 2.0 * v4 + v5) * (v3 - 2.0 * v4 + v5) + 3.0 / 12.0 * (3.0 * v3 - 4.0 * v4 + v5) * (3.0 * v3 - 4.0 * v4 + v5);
     real_t s3 = 13.0 / 12.0 * (v1 - 2.0 * v2 + v3) * (v1 - 2.0 * v2 + v3) + 3.0 / 12.0 * (v1 - 4.0 * v2 + 3.0 * v3) * (v1 - 4.0 * v2 + 3.0 * v3);
 
-    real_t tau5 = std::abs(s3 - s2);
+    real_t tau5 = sycl::abs<real_t>(s3 - s2);
 
     a1 = std::pow(1.0 + tau5 / (s1 + 1.0e-40), 6.0);
     a2 = std::pow(1.0 + tau5 / (s2 + 1.0e-40), 6.0);
@@ -1312,7 +1312,7 @@ real_t TENO6_OPT_P(real_t *f, real_t delta)
 
     real_t s64 = 1.0 / 12.0 * std::fabs(139633.0 * v6 * v6 - 1429976.0 * v5 * v6 + 3824847.0 * v5 * v5 + 2863984.0 * v4 * v6 - 15880404.0 * v4 * v5 + 17195652.0 * v4 * v4 - 2792660.0 * v3 * v6 - 35817664.0 * v3 * v4 + 19510972.0 * v3 * v3 + 1325006.0 * v2 * v6 - 7727988.0 * v2 * v5 + 17905032.0 * v2 * v4 - 20427884.0 * v2 * v3 + 5653317.0 * v2 * v2 - 245620.0 * v1 * v6 + 1458762.0 * v1 * v5 - 3462252.0 * v1 * v4 + 4086352.0 * v1 * v3 - 2380800.0 * v1 * v2 + 271779.0 * v1 * v1 + 15929912.0 * v3 * v5) / 10080.0;
 
-    real_t tau6 = std::abs(s64 - (s3 + s2 + 4.0 * s1) / 6.0);
+    real_t tau6 = sycl::abs<real_t>(s64 - (s3 + s2 + 4.0 * s1) / 6.0);
 
     a1 = 1. / 4. * std::pow(1.0 + tau6 / (s1 + 1.0e-40), 6.0);
     a2 = 1. / 4. * std::pow(1.0 + tau6 / (s2 + 1.0e-40), 6.0);
@@ -1369,7 +1369,7 @@ real_t TENO6_OPT_M(real_t *f, real_t delta)
 
     real_t s64 = 1.0 / 12.0 * std::fabs(139633.0 * v6 * v6 - 1429976.0 * v5 * v6 + 3824847.0 * v5 * v5 + 2863984.0 * v4 * v6 - 15880404.0 * v4 * v5 + 17195652.0 * v4 * v4 - 2792660.0 * v3 * v6 - 35817664.0 * v3 * v4 + 19510972.0 * v3 * v3 + 1325006.0 * v2 * v6 - 7727988.0 * v2 * v5 + 17905032.0 * v2 * v4 - 20427884.0 * v2 * v3 + 5653317.0 * v2 * v2 - 245620.0 * v1 * v6 + 1458762.0 * v1 * v5 - 3462252.0 * v1 * v4 + 4086352.0 * v1 * v3 - 2380800.0 * v1 * v2 + 271779.0 * v1 * v1 + 15929912.0 * v3 * v5) / 10080.0;
 
-    real_t tau6 = std::abs(s64 - (s3 + s2 + 4.0 * s1) / 6.0);
+    real_t tau6 = sycl::abs<real_t>(s64 - (s3 + s2 + 4.0 * s1) / 6.0);
 
     a1 = 1. / 4. * std::pow(1.0 + tau6 / (s1 + 1.0e-40), 6.0);
     a2 = 1. / 4. * std::pow(1.0 + tau6 / (s2 + 1.0e-40), 6.0);
@@ -1513,7 +1513,7 @@ real_t weno7Z_P(real_t *f, real_t delta)
     real_t S2 = S12 * S12 + 13.0 / 12.0 * S22 * S22 + 1043.0 / 960.0 * S32 * S32 + 1.0 / 12.0 * S12 * S32;
     real_t S3 = S13 * S13 + 13.0 / 12.0 * S23 * S23 + 1043.0 / 960.0 * S33 * S33 + 1.0 / 12.0 * S13 * S33;
     // Alpha weights
-    real_t tau7 = std::abs(S0 - S3);
+    real_t tau7 = sycl::abs<real_t>(S0 - S3);
     real_t a0 = C0 * (1.0 + tau7 / (S0 + 1.0e-40));
     real_t a1 = C1 * (1.0 + tau7 / (S1 + 1.0e-40));
     real_t a2 = C2 * (1.0 + tau7 / (S2 + 1.0e-40));
@@ -1569,7 +1569,7 @@ real_t weno7Z_M(real_t *f, real_t delta)
     real_t S2 = S12 * S12 + 13.0 / 12.0 * S22 * S22 + 1043.0 / 960.0 * S32 * S32 + 1.0 / 12.0 * S12 * S32;
     real_t S3 = S13 * S13 + 13.0 / 12.0 * S23 * S23 + 1043.0 / 960.0 * S33 * S33 + 1.0 / 12.0 * S13 * S33;
     // Alpha weights
-    real_t tau7 = std::abs(S0 - S3);
+    real_t tau7 = sycl::abs<real_t>(S0 - S3);
     real_t a0 = C0 * (1.0 + tau7 / (S0 + 1.0e-40));
     real_t a1 = C1 * (1.0 + tau7 / (S1 + 1.0e-40));
     real_t a2 = C2 * (1.0 + tau7 / (S2 + 1.0e-40));

@@ -35,7 +35,10 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #endif // end USE_MPI
 			if (physicalTime + dt > TimeLoop * Ss.OutTimeStamp)
 				dt = TimeLoop * Ss.OutTimeStamp - physicalTime;
-			std::cout << "N=" << std::setw(6) << Iteration + 1 << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << " to do. \n";
+#ifdef USE_MPI
+			if (rank == 0)
+#endif // end USE_MPI
+				std::cout << "N=" << std::setw(6) << Iteration + 1 << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << " to do. \n";
 			// solved the fluid with 3rd order Runge-Kutta method
 			SinglePhaseSolverRK3rd(q);
 
@@ -55,14 +58,8 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
-	real_t temp;
-	Ss.mpiTrans->communicator->allReduce(&duration, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-	duration = temp;
-	if (0 == Ss.mpiTrans->myRank)
-		std::cout << SelectDv << " runtime(max of all ranks): " << duration / 1000.0f << std::endl;
-#else
-	std::cout << SelectDv << " runtime: " << duration / 1000.0f << std::endl;
 #endif // end USE_MPI
+	std::cout << SelectDv << " runtime: " << duration / 1000.0f << " of rank: " << rank << std::endl;
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)

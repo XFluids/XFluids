@@ -207,7 +207,7 @@ real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, con
 		sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
 		real_t df = func_T / dfunc_T;
 		T = T - df;
-		if (std::abs(df) <= tol)
+		if (sycl::abs<real_t>(df) <= tol)
 			break;
 		if (i == 100)
 		{
@@ -238,7 +238,7 @@ real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, con
 				f_mid = func_T;
 				if (f_mid <= 0.0)
 					rt_bis = T;
-				if (std::abs(df) <= x_eps || f_mid == 0.0)
+				if (sycl::abs<real_t>(df) <= x_eps || f_mid == 0.0)
 					break;
 				if (j == 100)
 				{
@@ -932,7 +932,7 @@ real_t sign(real_t a)
  */
 real_t sign(real_t a, real_t b)
 {
-	return sign(b) * abs(a);
+	return sign(b) * sycl::abs(a);
 }
 
 /**

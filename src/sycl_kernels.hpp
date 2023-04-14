@@ -948,7 +948,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelX(int i, int j, int k, Block bl, rea
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
     int id = Xmax * Ymax * k + Xmax * j + i;
-    int tid = abs(Bwidth_Xset) * Ymax * k + abs(Bwidth_Xset) * j + (i - index_offset);
+    int tid = sycl::abs(Bwidth_Xset) * Ymax * k + sycl::abs(Bwidth_Xset) * j + (i - index_offset);
     int fid = Xmax * Ymax * k + Xmax * j + (i - Bwidth_Xset);
 
 #if DIM_Y
@@ -976,7 +976,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelY(int i, int j, int k, Block bl, rea
     int Ymax = bl.Ymax;
 
     int id = Xmax * Ymax * k + Xmax * j + i;
-    int tid = Xmax * abs(Bwidth_Yset) * k + Xmax * (j - index_offset) + i;
+    int tid = Xmax * sycl::abs(Bwidth_Yset) * k + Xmax * (j - index_offset) + i;
     int fid = Xmax * Ymax * k + Xmax * (j - Bwidth_Yset) + i;
 
 #if DIM_Y
