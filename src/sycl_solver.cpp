@@ -98,6 +98,7 @@ void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
 		UpdateU(q, 3);
 		break;
 	}
+	q.wait();
 }
 
 real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
@@ -266,7 +267,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	dz = Ss.BlSz.dz;
 
 	// Init var names
-	int Onbvar = 3 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
+	int Onbvar = 4 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
 	Onbvar += NUM_SPECIES;
 #endif // end COP
@@ -294,6 +295,8 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	variables_names[index] = "rho";
 	index++;
 	variables_names[index] = "P";
+	index++;
+	variables_names[index] = "Gamma";
 	index++;
 	variables_names[index] = "T";
 	index++;
@@ -580,7 +583,25 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 				} // for i
 			}	  // for j
 		}		  // for k
-		//[8]T
+				  //[8]Gamma
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.gamma[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.gamma[id] : fluids[1]->h_fstate.gamma[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+		//[9]T
 		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
 		for (int k = OminZ; k < OmaxZ; k++)
 		{
@@ -640,6 +661,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
 	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
+	q.wait();
 }
 
 void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time)
@@ -760,6 +782,6 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 				out << "\n";
 			}
 	out.close();
-
 	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
+	q.wait();
 }

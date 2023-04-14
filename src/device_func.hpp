@@ -64,7 +64,8 @@ real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
  */
 real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
-	real_t T = (T0 < _DF(200.0)) ? _DF(200.0) : T0, Cpi = _DF(0.0);
+	real_t Cpi = _DF(0.0), T = T0;
+	// T = (T0 < _DF(200.0)) ? _DF(200.0) : T0;
 #if Thermo
 	if (T >= (1000.0) && T < (6000.0))
 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] / T / T + Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] + Hia[n * 7 * 3 + 3 * 3 + 1] * T + Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1] * T * T * T * T);
@@ -137,11 +138,11 @@ real_t get_CopGamma(Thermal *material, const real_t yi[NUM_SPECIES], const real_
 real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	real_t hi = _DF(0.0), TT = _DF(0.0), T = T0;
-	if (T < _DF(200.0))
-	{
-		TT = T;
-		T = _DF(200.0);
-	}
+	// if (T < _DF(200.0))
+	// {
+	// 	TT = T;
+	// 	T = _DF(200.0);
+	// }
 #if Thermo
 	if (T >= _DF(1000.0) && T < _DF(6000.0))
 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] * 1.0 / T + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(T) + Hia[n * 7 * 3 + 2 * 3 + 1] * T + 0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * sycl::pow<real_t>(T, 3) / 3.0 + Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(T, 4) / 4.0 + Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(T, 5) / 5.0 + Hib[n * 2 * 3 + 0 * 3 + 1]);
@@ -156,11 +157,11 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 	else
 		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] / _DF(2.0) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] / _DF(4.0) + Hia[n * 7 * 3 + 4 * 3 + 1] * T / _DF(5.0))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
 #endif
-	if (TT < _DF(200.0))							  // take low tempreture into consideration
-	{												  // get_hi at T>200
-		real_t Cpi = get_Cpi(Hia, _DF(200.0), Ri, n); // get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
-		hi += Cpi * (TT - _DF(200.0));
-	}
+	// if (TT < _DF(200.0))							  // take low tempreture into consideration
+	// {												  // get_hi at T>200
+	// 	real_t Cpi = get_Cpi(Hia, _DF(200.0), Ri, n); // get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
+	// 	hi += Cpi * (TT - _DF(200.0));
+	// }
 	return hi;
 }
 

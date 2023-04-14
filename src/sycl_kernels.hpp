@@ -29,9 +29,9 @@ InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialPropert
 #endif
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz : _DF(0.0);
+    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     real_t d2;
     switch (ini.blast_type)
@@ -201,131 +201,129 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // T[id] = p[id] / rho[id] / R; //
 
     // // 2D Riemann problem
-    if (y > 0.5)
-    { // dimensionlize ini settings from the non-dimensional settings from the Ref
-        if (x < 0.5)
+    // if (y > 0.5)
+    // { // dimensionlize ini settings from the non-dimensional settings from the Ref
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left upper
+    //         p[id] = 0.3 * 160000;
+    //         rho[id] = 0.5323;
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right upper
+    //         p[id] = 1.5 * 160000;
+    //         rho[id] = 1.5;
+    //     }
+    // }
+    // else
+    // {
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left lower
+    //         p[id] = 0.029 * 160000;
+    //         rho[id] = 0.138;
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right lower
+    //         p[id] = 0.3 * 160000;
+    //         rho[id] = 0.5323;
+    //     }
+    // }
+
+    // if (y > 0.5)
+    // {
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left upper
+    //         u[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right upper
+    //         u[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //     }
+    // }
+    // else
+    // {
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left lower
+    //         u[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right lower
+    //         u[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //     }
+    // }
+
+    // // 2D under-expanded jet
+    if (i <= 3)
+    {
+        if (-0.015 < y && y < 0.015)
         {
-            // case 3 // left upper
-            p[id] = 0.3 * 160000;
-            rho[id] = 0.5323;
+            p[id] = 10.0 * 101325.0;
+            T[id] = 1000.0;
+            yi[0] = 0.0087;
+            yi[1] = 0.2329;
+            yi[2] = 0.7584;
+        }
+        else if (-0.015 * 25 < y && y < 0.015 * 25)
+        {
+            p[id] = 1.0 * 101325.0;
+            T[id] = 300.0;
+            yi[0] = 0.0;
+            yi[1] = 0.233;
+            yi[2] = 0.767;
         }
         else
         {
-            // case 3 // right upper
-            p[id] = 1.5 * 160000;
-            rho[id] = 1.5;
+            p[id] = 1.0 * 101325.0;
+            T[id] = 300.0;
+            yi[0] = 0.0;
+            yi[1] = 0.233;
+            yi[2] = 0.767;
         }
     }
     else
     {
-        if (x < 0.5)
-        {
-            // case 3 // left lower
-            p[id] = 0.029 * 160000;
-            rho[id] = 0.138;
-        }
-        else
-        {
-            // case 3 // right lower
-            p[id] = 0.3 * 160000;
-            rho[id] = 0.5323;
-        }
+        p[id] = 1.0 * 101325.0;
+        T[id] = 300.0;
+        yi[0] = 0.0;
+        yi[1] = 0.233;
+        yi[2] = 0.767;
     }
-
     // Get R of mixture
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = p[id] / R / rho[id]; // rho[id] = p[id] / R / T[id]; //
-
+    rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 
-    if (y > 0.5)
+    if (i <= 3)
     {
-        if (x < 0.5)
+        if (-0.015 < y && y < 0.015)
         {
-            // case 3 // left upper
-            u[id] = 1.206 * sycl::sqrt<real_t>(160000);
-            v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+            u[id] = c[id];
+        }
+        else if (-0.015 * 25 < y && y < 0.015 * 25)
+        {
+            u[id] = 0.0575 * c[id];
         }
         else
         {
-            // case 3 // right upper
-            u[id] = 0.0 * sycl::sqrt<real_t>(160000);
-            v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+            u[id] = 0.0 * c[id];
         }
     }
     else
     {
-        if (x < 0.5)
-        {
-            // case 3 // left lower
-            u[id] = 1.206 * sycl::sqrt<real_t>(160000);
-            v[id] = 1.206 * sycl::sqrt<real_t>(160000);
-        }
-        else
-        {
-            // case 3 // right lower
-            u[id] = 0.0 * sycl::sqrt<real_t>(160000);
-            v[id] = 1.206 * sycl::sqrt<real_t>(160000);
-        }
+        u[id] = 0.0 * c[id];
     }
-
-    // // 2D under-expanded jet
-    // if (i <= 3)
-    // {
-    //     if (-0.015 - dy < y && y < 0.015 + dy)
-    //     {
-    //         p[id] = 15.0 * 101325.0;
-    //         T[id] = 1000.0;
-    //         yi[0] = 0.0087;
-    //         yi[1] = 0.2329;
-    //         yi[2] = 0.7584;
-    //     }
-    //     else if (-0.015 * 25 - dy < y && y < 0.015 * 25 + dy)
-    //     {
-    //         p[id] = 1.0 * 101325.0;
-    //         T[id] = 300.0;
-    //         yi[0] = 0.0;
-    //         yi[1] = 0.233;
-    //         yi[2] = 0.767;
-    //     }
-    //     else
-    //     {
-    //         p[id] = 1.0 * 101325.0;
-    //         T[id] = 300.0;
-    //         yi[0] = 0.0;
-    //         yi[1] = 0.233;
-    //         yi[2] = 0.767;
-    //     }
-    // }
-    // else
-    // {
-    //     p[id] = 1.0 * 101325.0;
-    //     T[id] = 300.0;
-    //     yi[0] = 0.0;
-    //     yi[1] = 0.233;
-    //     yi[2] = 0.767;
-    // }
-
-    // if (i <= 3)
-    // {
-    //     if (-0.015 - dy < y && y < 0.015 + dy)
-    //     {
-    //         u[id] = c[id];
-    //     }
-    //     else if (-0.015 * 25 - dy < y && y < 0.015 * 25 + dy)
-    //     {
-    //         u[id] = 0.0575 * c[id];
-    //     }
-    //     else
-    //     {
-    //         u[id] = 0.0;
-    //     }
-    // }
-    // else
-    // {
-    //     u[id] = 0.0;
-    // }
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
@@ -674,7 +672,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
                                                  real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *const *_y,
                                                  real_t *gamma, real_t *T, real_t const Gamma, bool *error, const sycl::stream &stream_ct1)
 {
-    MARCO_DOMAIN();
+    MARCO_DOMAIN_GHOST();
     int id = Xmax * Ymax * k + Xmax * j + i;
 
 #if DIM_X
@@ -691,12 +689,10 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 #endif
 
     real_t *U = &(UI[Emax * id]), yi[NUM_SPECIES];
+
     *error = GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
     if (*error)
-    {
-        // stream_ct1 << "Illegal value of rho at i= " << i << ", j= " << j << ", k= " << k << ".\n";
         return;
-    }
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);

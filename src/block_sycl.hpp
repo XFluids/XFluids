@@ -155,7 +155,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 	int offset_y = DIM_Y ? bl.Bwidth_Y - 2 : 0;
 	int offset_z = DIM_Z ? bl.Bwidth_Z - 2 : 0;
 	auto local_ndrange_ck = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange_ck = range<3>(range_x, range_y, range_z);
+	auto global_ndrange_ck = range<3>(((range_x - 1) / bl.dim_block_x + 1) * bl.dim_block_x, ((range_y - 1) / bl.dim_block_y + 1) * bl.dim_block_y, ((range_z - 1) / bl.dim_block_z + 1) * bl.dim_block_z);
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_ck, local_ndrange_ck), [=](sycl::nd_item<3> index)
