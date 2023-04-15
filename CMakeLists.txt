@@ -4,7 +4,7 @@ PROJECT(EulerSYCL LANGUAGES CXX)
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # #cmake features init
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_CXX_COMPILER "clang++")#use clang++ from oneapi/llvm
@@ -15,25 +15,25 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(USE_DOUBLE "if double" ON)
-option(USE_PLT "out plt or vti" ON)
+option(USE_PLT "out plt or vti" OFF)
 option(DIM_X "if enable dim_x" ON)
-option(DIM_Y "if enable dim_y" OFF)
-option(DIM_Z "if enable dim_z" OFF)
+option(DIM_Y "if enable dim_y" ON)
+option(DIM_Z "if enable dim_z" ON)
 option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" ON)
 set(COP_THERMAL_PATH "${CMAKE_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
 set(COP_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/runtime.dat/Reaction/H2O_18_reaction") # where to read species and reactions:runtime.dat/1d-mc-insert-shock-tube
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
-option(Visc "if add physic viscidity flux" ON)
-option(Heat "if add heat transfer flux" ON)
-option(Diffu "if add mass diffusion" ON) # depends on COP=ON
+option(Visc "if add physic viscidity flux" OFF)
+option(Heat "if add heat transfer flux" OFF)
+option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 
 # about platform and device
-set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
+set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
 set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
-option(USE_MPI "if enable mpi" OFF)
+set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
+option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF)
 set(num_GPUs "1") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 

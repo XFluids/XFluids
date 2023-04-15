@@ -59,7 +59,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
-	std::cout << SelectDv << " runtime: " << duration / 1000.0f << " of rank: " << rank << std::endl;
+	std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << float(duration / 1000.0f) << " of rank: " << rank << std::endl;
 }
 
 void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -252,16 +252,15 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 		OminZ = Ss.BlSz.Bwidth_Z;
 		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
 	}
-	xmin = Ss.BlSz.myMpiPos_x * OnbX;
-	xmax = Ss.BlSz.myMpiPos_x * OnbX + OnbX;
-	dx = Ss.BlSz.dx;
-	ymin = Ss.BlSz.myMpiPos_y * OnbY;
-	ymax = Ss.BlSz.myMpiPos_y * OnbY + OnbY;
-	dy = Ss.BlSz.dy;
-	zmin = Ss.BlSz.myMpiPos_z * OnbZ;
-	zmax = Ss.BlSz.myMpiPos_z * OnbZ + OnbZ;
-	dz = Ss.BlSz.dz;
-
+	xmin = DIM_X ? Ss.BlSz.myMpiPos_x * OnbX : 0;
+	xmax = DIM_X ? Ss.BlSz.myMpiPos_x * OnbX + OnbX : 0;
+	ymin = DIM_Y ? Ss.BlSz.myMpiPos_y * OnbY : 0;
+	ymax = DIM_Y ? Ss.BlSz.myMpiPos_y * OnbY + OnbY : 0;
+	zmin = DIM_Z ? (Ss.BlSz.myMpiPos_z * OnbZ) : 0;
+	zmax = DIM_Z ? (Ss.BlSz.myMpiPos_z * OnbZ + OnbZ) : 0;
+	dx = DIM_X ? Ss.BlSz.dx : 0.0;
+	dy = DIM_Y ? Ss.BlSz.dy : 0.0;
+	dz = DIM_Z ? Ss.BlSz.dz : 0.0;
 	// Init var names
 	int Onbvar = 4 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
@@ -656,7 +655,8 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	outFile << "  </AppendedData>" << std::endl;
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
-	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
+	if (rank == 0)
+		std::cout << "Output has been done at Step = " << interation << std::endl;
 }
 
 void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time)
@@ -777,5 +777,6 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 				out << "\n";
 			}
 	out.close();
-	std::cout << "Output of rank: " << rank << " has been done at Step = " << interation << std::endl;
+	if (rank == 0)
+		std::cout << "Output has been done at Step = " << interation << std::endl;
 }
