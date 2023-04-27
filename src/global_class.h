@@ -67,7 +67,7 @@ class FluidSYCL{
 public:
     real_t *uvw_c_max;
     real_t *d_U, *d_U1, *d_LU;
-    real_t *d_eigen_local;
+    real_t *d_eigen_local, *d_eigen_l, *d_eigen_r;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
     FlowData d_fstate, h_fstate;
 

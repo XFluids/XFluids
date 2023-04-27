@@ -436,7 +436,7 @@ real_t get_CopC2(real_t z[NUM_SPECIES], real_t const Ri[NUM_SPECIES], real_t con
 	return _CopC2;
 }
 
-inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
+inline void RoeAverage_x(real_t **eigen_l, real_t **eigen_r, real_t *eigen_value, real_t *z, const real_t *yi, real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
 {
 
@@ -554,7 +554,7 @@ inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
-inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
+inline void RoeAverage_y(real_t **eigen_l, real_t **eigen_r, real_t *eigen_value, real_t *z, const real_t *yi, real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
 {
 	MARCO_PREEIGEN();
@@ -672,7 +672,7 @@ inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax],
 #endif // COP
 }
 
-inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t z[NUM_SPECIES], const real_t yi[NUM_SPECIES], real_t const c2,
+inline void RoeAverage_z(real_t **eigen_l, real_t **eigen_r, real_t *eigen_value, real_t *z, const real_t *yi, real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
 {
 	MARCO_PREEIGEN();
