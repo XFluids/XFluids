@@ -175,8 +175,8 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 
     // // 1D multicomponent insert shock tube
     // // x
-    // T[id] = x < 0.05 ? 400 : 1200;
-    // p[id] = x < 0.05 ? 8000 : 80000;
+    T[id] = x < 0.05 ? 400 : 1200;
+    p[id] = x < 0.05 ? 8000 : 80000;
     /// // y
     // T[id] = y < 0.05 ? 400 : 1200;
     // p[id] = y < 0.05 ? 8000 : 80000;
@@ -187,9 +187,9 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 
     // // 1D reactive shock tube
     // // x
-    rho[id] = x < 0.06 ? 0.072 : 0.18075;
-    u[id] = x < 0.06 ? 0.0 : -487.34;
-    p[id] = x < 0.06 ? 7173 : 35594;
+    // rho[id] = x < 0.06 ? 0.072 : 0.18075;
+    // u[id] = x < 0.06 ? 0.0 : -487.34;
+    // p[id] = x < 0.06 ? 7173 : 35594;
     // y
     // rho[id] = y < 0.06 ? 0.072 : 0.18075;
     // v[id] = y < 0.06 ? 0.0 : -487.34;
@@ -302,7 +302,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 
     // Get R of mixture
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = p[id] / R / rho[id]; // rho[id] = p[id] / R / T[id]; //
+    rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 
