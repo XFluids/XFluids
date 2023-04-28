@@ -21,14 +21,20 @@ int main(int argc, char *argv[])
 	Setup setup(configMap, q);
 	SYCLSolver syclsolver(setup);
 	// AllocateMemory
+	// std::cout << "sleep(1)\n";
+	// // sleep(10);
 	syclsolver.AllocateMemory(q);
-	// Initialize original states
+	// std::cout << "sleep(2)\n";
+	// // sleep(10);
+	//  Initialize original states
 	syclsolver.InitialCondition(q);
 	// boundary conditions
 	syclsolver.BoundaryCondition(q, 0);
 	// update states by U
 	syclsolver.UpdateStates(q, 0);
 	// time marching by SYCL device
+	// std::cout << "sleep(3)\n";
+	// // sleep(10);
 	syclsolver.Evolution(q);
 	return 0;
 }

@@ -224,7 +224,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 
 void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_t *UI, real_t *LU,
 		   real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-		   real_t const Gamma, int const Mtrl_ind, FlowData &fdata, real_t *eigen_local)
+		   real_t const Gamma, int const Mtrl_ind, FlowData &fdata, real_t *eigen_local, real_t *eigen_l, real_t *eigen_r)
 {
 	real_t *rho = fdata.rho;
 	real_t *p = fdata.p;
@@ -240,6 +240,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 
+	// std::cout << "sleep(6)\n";
+	// sleep(5);
 #if DIM_X
 	// proceed at x directiom and get F-flux terms at node wall
 	auto global_ndrange_x = range<3>(bl.X_inner + local_ndrange[0], bl.Y_inner, bl.Z_inner);
@@ -260,10 +262,12 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local, p, rho, u, v, w, fdata.y, T, H);
+			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H);
 			 }); })
 		.wait();
 #endif
+	// std::cout << "sleep(7)\n";
+	// sleep(5);
 
 #if DIM_Y
 	// proceed at y directiom and get G-flux terms at node wall
@@ -285,7 +289,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local, p, rho, u, v, w, fdata.y, T, H); 
+			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H); 
 			}); })
 		.wait();
 #endif
@@ -310,7 +314,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, p, rho, u, v, w, fdata.y, T, H); 
+			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H); 
 			}); })
 		.wait();
 #endif
@@ -377,7 +381,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal *thermal, real_
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-
+			
 			UpdateFluidLU(i, j, k, bl, LU, FluxFw, FluxGw, FluxHw); }); })
 		.wait();
 #endif

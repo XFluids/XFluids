@@ -2,21 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "2d-rie",
+            "name": "insert-st",
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/sa-2d-riemann-case3.ini",
+                "${workspaceFolder}/sa-1d-shock-tube.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/bin/gdb-oneapi",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -45,7 +45,36 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/bin/gdb-oneapi",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Disable target async",
+                    "text": "set target-async off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "2d-rie",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "",
+            "postDebugTask": "",
+            "program": "${workspaceFolder}/build/src/EulerSYCL",
+            "args": [
+                "${workspaceFolder}/sa-2d-riemann-case3.ini",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -74,7 +103,7 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/bin/gdb-oneapi",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

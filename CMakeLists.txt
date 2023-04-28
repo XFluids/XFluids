@@ -1,15 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
 PROJECT(EulerSYCL LANGUAGES CXX)
-##default local cmake macro repository
+
+# #default local cmake macro repository
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # #cmake features init
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(CMAKE_CXX_COMPILER "clang++")#use clang++ from oneapi/llvm
+set(CMAKE_CXX_COMPILER "clang++") # use clang++ from oneapi/llvm
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-#some options in CMAKE && Kokkos need CACHE STRING FORCE set
+
+# some options in CMAKE && Kokkos need CACHE STRING FORCE set
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
 endif()
@@ -23,7 +25,7 @@ option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" OFF)
 set(COP_THERMAL_PATH "${CMAKE_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
-set(COP_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/runtime.dat/1d-mc-insert-shock-tube") # where to read species and reactions:runtime.dat/1d-mc-insert-shock-tube
+set(COP_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/runtime.dat/Reaction/H2O_18_reaction") # where to read species and reactions:runtime.dat/1d-mc-insert-shock-tube
 set(CHEME_SOLVER "Q2") # "Q2", "CVODE" form LLNL, NONE for no Cheme reaction compoent caculate
 option(Visc "if add physic viscidity flux" OFF)
 option(Heat "if add heat transfer flux" OFF)
