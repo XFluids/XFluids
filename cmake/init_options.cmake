@@ -47,7 +47,7 @@ ENDIF(Diffu)
 add_compile_options(-DRPath="${COP_THERMAL_PATH}")
 add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
 add_compile_options(-DMIDDLE_SYCL_ENABLED)
-add_compile_options(-DSCHEME_ORDER=5)
+add_compile_options(-DSCHEME_ORDER=7)
 
 IF(COP)
   add_compile_options(-DCOP)
