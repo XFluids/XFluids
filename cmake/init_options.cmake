@@ -1,9 +1,3 @@
-#message(STATUS "${COP_SAMPLE_PATH}")
-include_directories(
-  BEFORE
-  "${COP_SAMPLE_PATH}"
-) # 依据算例文件中的"case_setup.h"头文件自动设置NUM_SPECIES && NUM_REACTIONS
-
 add_compile_options(-DNumFluid=1)
 
 IF(USE_DOUBLE)
@@ -44,16 +38,12 @@ IF(Diffu)
   add_compile_options(-DDiffu)
 ENDIF(Diffu)
 
-add_compile_options(-DRPath="${COP_THERMAL_PATH}")
-add_compile_options(-DRFile="${COP_SAMPLE_PATH}")
-add_compile_options(-DMIDDLE_SYCL_ENABLED)
-add_compile_options(-DSCHEME_ORDER=7)
-
 IF(COP)
   add_compile_options(-DCOP)
 
   IF(COP_CHEME)
     add_compile_options(-DCOP_CHEME)
+    set(COP_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/runtime.dat/Reaction/${REACTION_MODEL}") # where to read species including reactions
 
     IF(${CHEME_SOLVER} MATCHES "Q2")
       add_compile_options(-DCHEME_SOLVER=0)
@@ -66,6 +56,9 @@ ELSE(COP)
   add_compile_options(-DNUM_SPECIES=1)
   add_compile_options(-DNUM_REA=0)
 ENDIF(COP)
+
+add_compile_options(-DMIDDLE_SYCL_ENABLED)
+add_compile_options(-DSCHEME_ORDER=7)
 
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
@@ -97,6 +90,8 @@ message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "  CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "  CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
+
+include(init_sample)
 
 IF(USE_MPI)
   include(init_mpi)

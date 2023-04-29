@@ -1,4 +1,5 @@
 add_executable(${PROJECT_NAME} "main.cpp")
+
 add_library(cxxsrc
   STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/fluid_sycl.cpp

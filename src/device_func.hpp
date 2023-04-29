@@ -1165,7 +1165,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_w + _c);
+		eigen_value = sycl::fabs<real_t>(_w);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = (n + NUM_SPECIES - Emax == m) ? _DF(1.0) : _DF(0.0);
 		break;
