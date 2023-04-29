@@ -2,6 +2,35 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "sa-debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "",
+            "postDebugTask": "",
+            "program": "${workspaceFolder}/build/src/EulerSYCL",
+            "args": [
+                "${workspaceFolder}/sa-debug.ini",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Disable target async",
+                    "text": "set target-async off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "insert-st",
             "type": "cppdbg",
             "request": "launch",

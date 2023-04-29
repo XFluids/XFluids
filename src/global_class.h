@@ -14,7 +14,7 @@
 #include <sycl/sycl.hpp>
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
-//  for flux Reconstruction order
+// for flux Reconstruction order
 #define FLUX_method 2 //  0: local LF; 1: global LF, 2: Roe
 #if SCHEME_ORDER > 6
 const int stencil_P = 3;    // "2" for <=6 order, "3"" for >6 order
