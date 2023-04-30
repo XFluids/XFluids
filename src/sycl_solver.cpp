@@ -668,15 +668,36 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 {
 	CopyDataFromDevice(q); // only copy when output
 
-	int Xmax = Ss.BlSz.Xmax;
-	int Ymax = Ss.BlSz.Ymax;
-	int Zmax = Ss.BlSz.Zmax;
-	int X_inner = Ss.BlSz.X_inner;
-	int Y_inner = Ss.BlSz.Y_inner;
-	int Z_inner = Ss.BlSz.Z_inner;
-	int Bwidth_X = Ss.BlSz.Bwidth_X;
-	int Bwidth_Y = Ss.BlSz.Bwidth_Y;
-	int Bwidth_Z = Ss.BlSz.Bwidth_Z;
+	int OnbX, OnbY, OnbZ, OminX, OminY, OminZ, OmaxX, OmaxY, OmaxZ;
+	if (Ss.OutBoundary)
+	{
+		OnbX = Ss.BlSz.Xmax;
+		OminX = 0;
+		OmaxX = Ss.BlSz.Xmax;
+
+		OnbY = Ss.BlSz.Ymax;
+		OminY = 0;
+		OmaxY = Ss.BlSz.Ymax;
+
+		OnbZ = Ss.BlSz.Zmax;
+		OminZ = 0;
+		OmaxZ = Ss.BlSz.Zmax;
+	}
+	else
+	{
+		OnbX = Ss.BlSz.X_inner;
+		OminX = Ss.BlSz.Bwidth_X;
+		OmaxX = Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X;
+
+		OnbY = Ss.BlSz.Y_inner;
+		OminY = Ss.BlSz.Bwidth_Y;
+		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
+
+		OnbZ = Ss.BlSz.Z_inner;
+		OminZ = Ss.BlSz.Bwidth_Z;
+		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
+	}
+
 	real_t dx = Ss.BlSz.dx;
 	real_t dy = Ss.BlSz.dy;
 	real_t dz = Ss.BlSz.dz;
@@ -731,23 +752,25 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 		out << ", Y(" << Ss.species_name[n] << ")";
 #endif
 	out << "\n";
-	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << X_inner << ", j= " << Y_inner << ", k= " << Z_inner << ", SOLUTIONTIME= " << Time << "\n";
+	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << OnbX << ", j= " << OnbY << ", k= " << OnbZ << ", SOLUTIONTIME= " << Time << "\n";
 
-	real_t offset_x = DIM_X ? -Bwidth_X + 0.5 : 0.0;
-	real_t offset_y = DIM_Y ? -Bwidth_Y + 0.5 : 0.0;
-	real_t offset_z = DIM_Z ? -Bwidth_Z + 0.5 : 0.0;
+	real_t offset_x = DIM_X ? -Ss.BlSz.Bwidth_X + 0.5 : 0.0;
+	real_t offset_y = DIM_Y ? -Ss.BlSz.Bwidth_Y + 0.5 : 0.0;
+	real_t offset_z = DIM_Z ? -Ss.BlSz.Bwidth_Z + 0.5 : 0.0;
 
-	// out.precision(20);
+#ifdef DEBUG
+	out.precision(20);
+#endif // end DEBUG
 	real_t xc, yc, zc, pc, rhoc, uc, vc, wc;
-	for (int k = Bwidth_Z; k < Bwidth_Z + Z_inner; k++)
-		for (int j = Bwidth_Y; j < Bwidth_Y + Y_inner; j++)
-			for (int i = Bwidth_X; i < Bwidth_X + X_inner; i++)
+	for (int k = OminZ; k < OmaxZ; k++)
+		for (int j = OminY; j < OmaxY; j++)
+			for (int i = OminX; i < OmaxX; i++)
 			{
 				xc = (i + offset_x) * dx + Ss.BlSz.Domain_xmin;
 				yc = (j + offset_y) * dy + Ss.BlSz.Domain_ymin;
 				zc = (k + offset_z) * dz + Ss.BlSz.Domain_zmin;
 
-				int id = Xmax * Ymax * k + Xmax * j + i;
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 
 				pc = fluids[0]->h_fstate.p[id];
 				rhoc = fluids[0]->h_fstate.rho[id];

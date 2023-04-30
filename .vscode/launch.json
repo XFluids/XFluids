@@ -8,9 +8,34 @@
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [
-                "${workspaceFolder}/sa-debug.ini",
-            ],
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Disable target async",
+                    "text": "set target-async off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "guass-wave",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "",
+            "postDebugTask": "",
+            "program": "${workspaceFolder}/build/src/EulerSYCL",
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -37,9 +62,7 @@
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [
-                "${workspaceFolder}/sa-1d-shock-tube.ini",
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -66,9 +89,7 @@
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [
-                "${workspaceFolder}/sa-1d-reactive-shock-tube.ini",
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -95,9 +116,7 @@
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [
-                "${workspaceFolder}/sa-2d-riemann-case3.ini",
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -124,9 +143,7 @@
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [
-                "${workspaceFolder}/sa-2d-expanded-jet.ini",
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

@@ -38,27 +38,8 @@ IF(Diffu)
   add_compile_options(-DDiffu)
 ENDIF(Diffu)
 
-IF(COP)
-  add_compile_options(-DCOP)
-
-  IF(COP_CHEME)
-    add_compile_options(-DCOP_CHEME)
-    set(COP_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/runtime.dat/Reaction/${REACTION_MODEL}") # where to read species including reactions
-
-    IF(${CHEME_SOLVER} MATCHES "Q2")
-      add_compile_options(-DCHEME_SOLVER=0)
-    ELSEIF(${CHEME_SOLVER} MATCHES "CVODE")
-      add_compile_options(-DCHEME_SOLVER=1)
-    ELSE()
-    ENDIF()
-  ENDIF(COP_CHEME)
-ELSE(COP)
-  add_compile_options(-DNUM_SPECIES=1)
-  add_compile_options(-DNUM_REA=0)
-ENDIF(COP)
-
 add_compile_options(-DMIDDLE_SYCL_ENABLED)
-add_compile_options(-DSCHEME_ORDER=7)
+add_compile_options(-DSCHEME_ORDER=${WENO_ORDER})
 
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
@@ -84,7 +65,7 @@ ELSEIF(SelectDv STREQUAL "intel")
   message(STATUS "  Compile for ARCH: ${ARCH}")
 ENDIF(SelectDv STREQUAL "host")
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDEBUG")
 message(STATUS "CMAKE STATUS:")
 message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
@@ -95,5 +76,4 @@ include(init_sample)
 
 IF(USE_MPI)
   include(init_mpi)
-  message(STATUS "  Number of ${SelectDv} for MPI: ${num_GPUs}")
 ENDIF(USE_MPI)

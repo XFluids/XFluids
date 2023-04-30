@@ -31,17 +31,45 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
-    real_t d2 = x;
-
+    real_t d2;
+    switch (ini.blast_type)
+    {
+    case 0:
+        d2 = _DF(0.0);
+        break;
+    case 1:
+        d2 = x;
+        break;
+    case 2:
+        d2 = (sycl::pow<real_t>(x - ini.blast_center_x, 2) + sycl::pow<real_t>(y - ini.blast_center_y, 2));
+        break;
+    case 3:
+        d2 = (sycl::pow<real_t>(x - ini.blast_center_x, 2) + sycl::pow<real_t>(y - ini.blast_center_y, 2) + sycl::pow<real_t>(z - ini.blast_center_z, 2));
+        break;
+    }
 #ifdef COP
     real_t dy2;
     real_t copBin = int(ini.cop_radius / bl.dl) * bl.dl;
     real_t copBout = copBin + 2 * bl.dl;
-    // for 3D shock-bubble interactive
-    dy2 = (sycl::pow<real_t>(x - ini.cop_center_x, 2) + sycl::pow<real_t>(y - ini.cop_center_y, 2) + sycl::pow<real_t>(z - ini.cop_center_z, 2));
-    copBin = copBin * copBin;
-    copBout = copBout * copBout;
-    break;
+    switch (ini.cop_type)
+    { // 可以选择组分不同区域，圆形或类shock-wave
+    case 0:
+        dy2 = _DF(0.0);
+        break;
+    case 1:
+        dy2 = x;
+        break;
+    case 2:
+        dy2 = (sycl::pow<real_t>(x - ini.cop_center_x, 2) + sycl::pow<real_t>(y - ini.cop_center_y, 2));
+        copBin = copBin * copBin;
+        copBout = copBout * copBout;
+        break;
+    case 3: // for 3D shock-bubble interactive
+        dy2 = (sycl::pow<real_t>(x - ini.cop_center_x, 2) + sycl::pow<real_t>(y - ini.cop_center_y, 2) + sycl::pow<real_t>(z - ini.cop_center_z, 2));
+        copBin = copBin * copBin;
+        copBout = copBout * copBout;
+        break;
+    }
 #endif
 
 #if 1 == NumFluid
@@ -123,11 +151,181 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t yi[NUM_SPECIES];
     get_yi(_y, yi, id);
 
+    // // TODO: for debug
+    // //  1d debug set
+    // x
+    // p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(x - 0.45) * (x - 0.45))); //* (Length - fabs(x));
+    // u[id] = 100.0 * sycl::fabs<real_t>(x);                                               // sycl::sin<real_t>(x * 0.5 * M_PI);
+    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(x - 0.55) * (x - 0.55)));
+    // y
+    // p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(y - 0.45) * (y - 0.45)));
+    // v[id] = 100.0 * sycl::fabs<real_t>(y);
+    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(y - 0.55) * (y - 0.55)));
+    // z
+    // p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(z - 0.45) * (z - 0.45)));
+    // w[id] = 100.0 * sycl::fabs<real_t>(z);
+    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(z - 0.55) * (z - 0.55)));
+
+    // // GUASS-WAVE
+    // p[id] = 101325.0;
+    // u[id] = 0.0;
+    // v[id] = 0.0;
+    // w[id] = 0.0;
+    // T[id] = 1350.0 + (320.0 - 1350.0) * (1 - 0.5 * sycl::exp<real_t>(-(x - 0.5) / 0.05 * (x - 0.5) / 0.05)); // - (y - 0.5) / 0.05 * (y - 0.5) / 0.05
+    // rho[id] = p[id] / R / T[id];
+
+    // // 1D multicomponent insert shock tube
+    // // x
+    T[id] = x < 0.05 ? 400 : 1200;
+    p[id] = x < 0.05 ? 8000 : 80000;
+    /// // y
+    // T[id] = y < 0.05 ? 400 : 1200;
+    // p[id] = y < 0.05 ? 8000 : 80000;
+    // // z
+    // T[id] = z < 0.05 ? 400 : 1200;
+    // p[id] = z < 0.05 ? 8000 : 80000;
+    // rho[id] = p[id] / R / T[id];
+
+    // // 1D reactive shock tube
+    // // x
+    // rho[id] = x < 0.06 ? 0.072 : 0.18075;
+    // u[id] = x < 0.06 ? 0.0 : -487.34;
+    // p[id] = x < 0.06 ? 7173 : 35594;
+    // y
+    // rho[id] = y < 0.06 ? 0.072 : 0.18075;
+    // v[id] = y < 0.06 ? 0.0 : -487.34;
+    // p[id] = y < 0.06 ? 7173 : 35594;
+    // // z
+    // rho[id] = z < 0.06 ? 0.072 : 0.18075;
+    // w[id] = z < 0.06 ? 0.0 : -487.34;
+    // p[id] = z < 0.06 ? 7173 : 35594;
+    // T[id] = p[id] / rho[id] / R; //
+
+    // // 2D Riemann problem
+    // if (y > 0.5)
+    // { // dimensionlize ini settings from the non-dimensional settings from the Ref
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left upper
+    //         p[id] = 0.3 * 160000;
+    //         rho[id] = 0.5323;
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right upper
+    //         p[id] = 1.5 * 160000;
+    //         rho[id] = 1.5;
+    //     }
+    // }
+    // else
+    // {
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left lower
+    //         p[id] = 0.029 * 160000;
+    //         rho[id] = 0.138;
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right lower
+    //         p[id] = 0.3 * 160000;
+    //         rho[id] = 0.5323;
+    //     }
+    // }
+
+    // if (y > 0.5)
+    // {
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left upper
+    //         u[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right upper
+    //         u[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //     }
+    // }
+    // else
+    // {
+    //     if (x < 0.5)
+    //     {
+    //         // case 3 // left lower
+    //         u[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //     }
+    //     else
+    //     {
+    //         // case 3 // right lower
+    //         u[id] = 0.0 * sycl::sqrt<real_t>(160000);
+    //         v[id] = 1.206 * sycl::sqrt<real_t>(160000);
+    //     }
+    // }
+
+    // // 2D under-expanded jet
+    // if (i <= 3)
+    // {
+    //     if (-0.015 < y && y < 0.015)
+    //     {
+    //         p[id] = 10.0 * 101325.0;
+    //         T[id] = 1000.0;
+    //         yi[0] = 0.0087;
+    //         yi[1] = 0.2329;
+    //         yi[2] = 0.7584;
+    //     }
+    //     else if (-0.015 * 25 < y && y < 0.015 * 25)
+    //     {
+    //         p[id] = 1.0 * 101325.0;
+    //         T[id] = 300.0;
+    //         yi[0] = 0.0;
+    //         yi[1] = 0.233;
+    //         yi[2] = 0.767;
+    //     }
+    //     else
+    //     {
+    //         p[id] = 1.0 * 101325.0;
+    //         T[id] = 300.0;
+    //         yi[0] = 0.0;
+    //         yi[1] = 0.233;
+    //         yi[2] = 0.767;
+    //     }
+    // }
+    // else
+    // {
+    //     p[id] = 1.0 * 101325.0;
+    //     T[id] = 300.0;
+    //     yi[0] = 0.0;
+    //     yi[1] = 0.233;
+    //     yi[2] = 0.767;
+    // }
+
     // Get R of mixture
     real_t R = get_CopR(thermal->species_chara, yi);
-    T[id] = p[id] / R / rho[id]; //
+    rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+
+    // if (i <= 3)
+    // {
+    //     if (-0.015 < y && y < 0.015)
+    //     {
+    //         u[id] = c[id];
+    //     }
+    //     else if (-0.015 * 25 < y && y < 0.015 * 25)
+    //     {
+    //         u[id] = 0.0575 * c[id];
+    //     }
+    //     else
+    //     {
+    //         u[id] = 0.0 * c[id];
+    //     }
+    // }
+    // else
+    // {
+    //     u[id] = 0.0 * c[id];
+    // }
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);

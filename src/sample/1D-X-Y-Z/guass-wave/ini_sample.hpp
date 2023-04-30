@@ -62,7 +62,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 #if DIM_Y
     T[id] = 1350.0 + (320.0 - 1350.0) * (1 - 0.5 * sycl::exp<real_t>(-(y - 0.5) / 0.05 * (y - 0.5) / 0.05));
 #endif // end DIM_Y
-#if DIM_Y
+#if DIM_Z
     T[id] = 1350.0 + (320.0 - 1350.0) * (1 - 0.5 * sycl::exp<real_t>(-(z - 0.5) / 0.05 * (z - 0.5) / 0.05));
 #endif // end DIM_Y
 

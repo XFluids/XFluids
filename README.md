@@ -1,45 +1,74 @@
 # Euler-SYCL
 
-## 1. [intel oneapi 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline) && [codeplay Solutions for Nvidia and AMD backends](https://codeplay.com/solutions/oneapi/) needed
+## 1. Dependencies
 
-## 2. use clang++ in /llvm-bin inside where oneapi installed as compiler && some compiling options
+- ### [intel oneapi version >= 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline)
 
-- environment set:
+- ### [codeplay Solutions for Nvidia and AMD backends](https://codeplay.com/solutions/oneapi/)
+
+- ### environment set for oneAPI appended codeplay sultion libs
 
     ````bash
     source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
     ````
 
-- compile options for backends:
+## 2. Compile and usage of this project
 
-  - host and intel backends:
+- ### Read ${workspaceFolder}/CMakeLists.txt
 
-    ````cmake
-    set(CMAKE_CXX_COMPILER "clang++")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-    ````
+  - CMAKE_BUILD_TYPE is set to "Debug" by default, SYCL code would target to host while ${CMAKE_BUILD_TYPE}==Debug
+  - set INIT_SAMPLE as the problem being tested, path to "species_list.dat" should be given to COP_SPECIES
+  - if COP_CHEME is set to "ON", path to "species_list.dat" and "reaction_list.dat" would be rewriten by the given value of REACTION_MODEL
+  - value of SelectDv must match with the value of Pform_id, details referenced in [4-device-discovery](#4-device-discovery)
+  - MPI and AWARE-MPI support added in project, AWARE_MPI need specific GPU-ENABLED mpi version, details referenced in [5-mpi-libs](#5-mpi-libs)  
 
-  - cuda backends,${ARCH} like sm_75,sm_86 tested:
+- ### BUILD
 
-    ````cmake
-    set(CMAKE_CXX_COMPILER "clang++")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --cuda-gpu-arch=${ARCH}")
-    ````
+  ````bash
+  cd ./EulerSYCL
+  mkdir build && cd ./build
+  cmake -DCMAKE_BUILD_TYPE=Release ..
+  make -j
+  ````
 
-  - amd backends,${ARCH} like gfx906 tested:
+- ###  RUN
 
-    ````cmake
-    set(CMAKE_CXX_COMPILER "clang++")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=${ARCH}")
-    ````
+  - EulerSYCL automatically read ${workspaceFolder}/*.ini file depending on INIT_SAMPLE setting, you can still append other specific .ini file to EulerSYCL in cmd
 
-## 3. device discovery
+  ````bash
+  $./EulerSYCL ./setup.ini
+  ````
 
-- sycl-ls in cmd for device counting
+## 3. Compiler and compile options for backends
+
+- ### host and intel backends
+
+  ````cmake
+  set(CMAKE_CXX_COMPILER "clang++")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+  ````
+
+- ### cuda backends,${ARCH} like sm_75,sm_86 tested
+
+  ````cmake
+  set(CMAKE_CXX_COMPILER "clang++")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --cuda-gpu-arch=${ARCH}")
+  ````
+
+- ### amd backends,${ARCH} like gfx906 tested
+
+  ````cmake
+  set(CMAKE_CXX_COMPILER "clang++")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=${ARCH}")
+  ````
+
+## 4. Device discovery
+
+- ### exec "sycl-ls" in cmd for device counting
 
     ````cmd
     $sycl-ls
@@ -48,7 +77,8 @@
     [ext_oneapi_cuda:gpu:0] NVIDIA CUDA BACKEND, NVIDIA T600 0.0 [CUDA 11.5]
     ````
 
-- select target device in SYCL project
+- ### select target device in SYCL project
+
   - set device_id=1 for targetting host and throwing mission to AMD Ryzen 7 5800X 8-Core Processor
   - set device_id=2 for targetting nvidia GPU and throwing mission to NVIDIA T600
 
@@ -57,17 +87,27 @@
     sycl::queue q(device);
     ````
 
-## 4. MPI libs
+## 5. MPI libs
 
-- set MPI_PATH browsed by cmake before build
+- ### set MPI_PATH browsed by cmake before build
+
+  - cmake system of this project browse libmpi.so automatically in path of ${MPI_PATH}/lib, please export MPI_PATH to the mpi you want:
 
     ````cmd
-    export MPI_PATH=/path/to/mpi
+    export MPI_PATH=/home/ompi
     ````
 
-- libmpi.so located in $MPI_PATH/lib/libmpi.so
+- ### the value of MPI_HOME, MPI_INC, path of MPI_CXX(libmpi.so) output on screen while libmpi.so is found
 
-## 5. .ini file arguments
+    ````cmake
+    -- MPI settings:
+    --   MPI_HOME:/home/ompi
+    --   MPI_INC: /home/ompi/include added
+    --   MPI_CXX lib located: /home/ompi/lib/libmpi.so found
+    --   Number of host for MPI: 1
+    ````
+
+## 6. .ini file arguments
 
 - ### [run] parameters
 
@@ -98,7 +138,9 @@
 
     |name of parameters|function|type|default value|
     |:-----------------|:------:|:--:|:------------|
-    |DOMAIN_length|size of the longest edge of the domain|float|1.0|
+    |DOMAIN_length|size of the XDIR edge of the domain|float|1.0|
+    |DOMAIN_width|size of the YDIR edge of the domain|float|1.0|
+    |DOMAIN_height|size of the ZDIR edge of the domain|float|1.0|
     |xmin|starting coordinate at X direction of the domain|float|0.0|
     |ymin|starting coordinate at Y direction of the domain|float|0.0|
     |zmin|starting coordinate at Z direction of the domain|float|0.0|
@@ -117,6 +159,8 @@
     |boundary_zmax|type of Boundary at zmax edge of the domain,influce values of ghost cells|int|2|
 
 - ### [init] parameters
+
+- #### Some arguments may be invalid due to samples settings kernel function inside /src/sample/
 
     |name of parameters|function|type|default value|
     |:-----------------|:------:|:--:|:------------|

@@ -12,7 +12,15 @@ int main(int argc, char *argv[])
 	int rank = 0;
 	int nRanks = 1;
 #endif // USE_MPI
-	ConfigMap configMap = broadcast_parameters(std::string(argv[1]));
+	std::string ini_path;
+	if (argc < 2)
+		ini_path = std::string(IniFile);
+	else if (argc == 2)
+		ini_path = std::string(argv[1]);
+	else
+		std::cout << "Too much argcs appended to EulerSYCL while running\n";
+
+	ConfigMap configMap = broadcast_parameters(ini_path);
 	// num_GPUS:number of GPU on this cluster, Pform_id: the first GPU's ID in all accelerators sycl detected
 	int device_id = rank % num_GPUs + Pform_id;
 	// accelerator_selector device;
