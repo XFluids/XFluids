@@ -40,8 +40,10 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_eigen_local = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	// d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
-	// d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
+#if 2 == EIGEN_ALLOC
+	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
+	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
+#endif // end EIGEN_ALLOC
 	d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));

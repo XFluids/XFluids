@@ -41,6 +41,17 @@ ENDIF(Diffu)
 add_compile_options(-DMIDDLE_SYCL_ENABLED)
 add_compile_options(-DSCHEME_ORDER=${WENO_ORDER})
 
+IF(EIGEN_ALLOC STREQUAL "OROC")
+  add_compile_options(-DEIGEN_ALLOC=0)
+ELSEIF(EIGEN_ALLOC STREQUAL "RGIF")
+  add_compile_options(-DEIGEN_ALLOC=1)
+ELSEIF(EIGEN_ALLOC STREQUAL "AIGE")
+  add_compile_options(-DEIGEN_ALLOC=2)
+ENDIF()
+
+# // =======================================================
+##### about device select
+# // =======================================================
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
   set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
