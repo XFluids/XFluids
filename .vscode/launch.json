@@ -2,6 +2,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "mpi-debug",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "${workspaceFolder}/build/src/EulerSYCL",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Disable target async",
+                    "text": "set target-async off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "sa-debug",
             "type": "cppdbg",
             "request": "launch",
@@ -35,7 +55,9 @@
             "preLaunchTask": "",
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [],
+            "args": [
+                "${workspaceFolder}/sa-guss-wave.ini",
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

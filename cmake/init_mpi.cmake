@@ -1,4 +1,9 @@
 add_compile_options(-DUSE_MPI)
+# set(USE_PLT "OFF")
+
+IF(EXPLICIT_ALLOC)
+  add_compile_options(-DEXPLICIT_ALLOC)
+ENDIF()
 
 include_directories($ENV{MPI_PATH}/include)
 find_library(MPI_CXX NAMES libmpi.so HINTS "$ENV{MPI_PATH}/lib")

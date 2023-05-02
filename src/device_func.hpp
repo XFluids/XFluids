@@ -91,11 +91,11 @@ real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 /**
  * @brief Compute the Cp of the mixture at given point unit:J/kg/K
  */
-real_t get_CopCp(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
+real_t get_CopCp(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t T)
 {
 	real_t _CopCp = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-		_CopCp += yi[ii] * get_Cpi(material->Hia, T, material->Ri[ii], ii); // real_t Cpi = get_Cpi(material->Hia, T, Ri, ii) ;
+		_CopCp += yi[ii] * get_Cpi(thermal.Hia, T, thermal.Ri[ii], ii); // real_t Cpi = get_Cpi(thermal.Hia, T, Ri, ii) ;
 	// printf("Cpi=%lf , %lf , yi=%lf , %lf , _CopCp=%lf \n", Cpi[0], Cpi[1], yi[0], yi[1], _CopCp);
 	return _CopCp;
 }
@@ -103,12 +103,12 @@ real_t get_CopCp(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T
 /**
  * @brief calculate W of the mixture at given point
  */
-real_t get_CopW(Thermal *material, const real_t yi[NUM_SPECIES])
+real_t get_CopW(Thermal thermal, const real_t yi[NUM_SPECIES])
 {
 	real_t _W = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
 	{
-		_W += yi[ii] / (material->species_chara[ii * SPCH_Sz + 6]); // Wi
+		_W += yi[ii] / (thermal.species_chara[ii * SPCH_Sz + 6]); // Wi
 	}
 	// printf("W=%lf \n", 1.0 / _W);
 	return _DF(1.0) / _W;
@@ -117,10 +117,10 @@ real_t get_CopW(Thermal *material, const real_t yi[NUM_SPECIES])
 /**
  * @brief calculate Gamma of the mixture at given point
  */
-real_t get_CopGamma(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
+real_t get_CopGamma(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t T)
 {
-	real_t Cp = get_CopCp(material, yi, T);
-	real_t CopW = get_CopW(material, yi);
+	real_t Cp = get_CopCp(thermal, yi, T);
+	real_t CopW = get_CopW(thermal, yi);
 	real_t _CopGamma = Cp / (Cp - Ru / CopW);
 	if (_CopGamma > 1)
 	{
@@ -168,12 +168,12 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 /**
  * @brief calculate Hi of Mixture at given point	unit:J/kg/K
  */
-real_t get_Coph(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
+real_t get_Coph(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t T)
 {
 	real_t h = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
 	{
-		real_t hi = get_Enthalpy(material->Hia, material->Hib, T, material->Ri[i], i);
+		real_t hi = get_Enthalpy(thermal.Hia, thermal.Hib, T, thermal.Ri[i], i);
 		h += hi * yi[i];
 	}
 	return h;
@@ -182,10 +182,10 @@ real_t get_Coph(Thermal *material, const real_t yi[NUM_SPECIES], const real_t T)
 /**
  *@brief sub_function_Steps of update T
  */
-void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T)
+void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T)
 {
 	real_t h = get_Coph(thermal, yi, T);			 // J/kg/K
-	real_t R = get_CopR(thermal->species_chara, yi); // J/kg/K
+	real_t R = get_CopR(thermal.species_chara, yi);	 // J/kg/K
 	real_t Cp = get_CopCp(thermal, yi, T);			 // J/kg/K
 	func_T = h - R * T - e;							 // unit:J/kg/K
 	dfunc_T = Cp - R;								 // unit:J/kg/K
@@ -194,7 +194,7 @@ void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal *thermal, const real_t y
 /**
  *@brief update T through Newtonian dynasty
  */
-real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T0)
+real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T0)
 {
 	real_t T = T0;
 	real_t tol = 1.0e-6, T_dBdr = 100.0, T_uBdr = 1.0e4, x_eps = 1.0e-3;
@@ -255,7 +255,7 @@ real_t get_T(Thermal *thermal, const real_t yi[NUM_SPECIES], const real_t e, con
  * @brief Obtain state at a grid point
  */
 bool GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
-			   real_t &gamma, real_t &T, Thermal *thermal, real_t yi[NUM_SPECIES])
+			   real_t &gamma, real_t &T, Thermal thermal, real_t yi[NUM_SPECIES])
 {
 	rho = UI[0];
 	if (rho < 0 || sycl::isnan<real_t>(rho) || sycl::isinf<real_t>(rho))
@@ -277,7 +277,7 @@ bool GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 #endif // end COP
 
 	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
-	real_t R = get_CopR(thermal->species_chara, yi);
+	real_t R = get_CopR(thermal.species_chara, yi);
 	T = get_T(thermal, yi, e, T);
 	p = rho * R * T; // 对所有气体都适用
 	H = (UI[4] + p) * rho1;
@@ -337,7 +337,7 @@ real_t get_RoeAverage(const real_t left, const real_t right, const real_t D, con
 /**
  * @brief \frac{\partial p}{\partial \rho}
  * @param hiN: hi[NUM_COP]
- * @param RiN: Ru/thermal->specie_chara[NUM_COP*SPCH_Sz+6]
+ * @param RiN: Ru/thermal.specie_chara[NUM_COP*SPCH_Sz+6]
  * @param q2: u*u+v*v+w*w
  * @param
  * @return real_t
@@ -1412,7 +1412,7 @@ real_t sign(real_t a, real_t b)
 /**
  * @brief Chemeq2
  */
-void Chemeq2(Thermal *material, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
+void Chemeq2(Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
 			 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 real_t y[NUM_SPECIES], const real_t dtg, real_t &TT, const real_t rho, const real_t e)
 {
@@ -1449,7 +1449,7 @@ void Chemeq2(Thermal *material, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef,
 		y[i] = sycl::max(y[i], ymin);
 		rhoi[i] = y[i] * rho;
 	}
-	real_t *species_chara = material->species_chara, *Hia = material->Hia, *Hib = material->Hib;
+	real_t *species_chara = thermal.species_chara, *Hia = thermal.Hia, *Hib = thermal.Hib;
 	//=========================================================
 	// to initilize the first 'dt', q, d
 	get_KbKf(Kf, Kb, Rargus, species_chara, Hia, Hib, Nu_d_, TTn);
@@ -1498,7 +1498,7 @@ flag2:
 			y[i] = sycl::max(ys[i] + dt * scrarray[i], ymin); // predicted y
 			rhoi[i] = y[i] * rho;
 		}
-		TTn = get_T(material, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // predicted T
+		TTn = get_T(thermal, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // predicted T
 		// GetKfKb(TTn);
 		if (iter == 1)
 		{
@@ -1540,8 +1540,8 @@ flag2:
 		{
 			for (int i = 0; i < NUM_SPECIES; i++)
 				rhoi[i] = y[i] * rho;
-			TT = get_T(material, y, e, TTs); //  UpdateTemperature(-1, rhoi, rho, e, TTs); // final T
-											 // GetKfKb(TT);
+			TT = get_T(thermal, y, e, TTs); //  UpdateTemperature(-1, rhoi, rho, e, TTs); // final T
+											// GetKfKb(TT);
 			return;
 		}
 	}
@@ -1566,7 +1566,7 @@ flag2:
 flag3:
 	for (int i = 0; i < NUM_SPECIES; i++)
 		rhoi[i] = y[i] * rho;
-	TTn = get_T(material, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // new T
+	TTn = get_T(thermal, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // new T
 	// GetKfKb(TTn);
 	QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	gcount++;
@@ -1642,12 +1642,12 @@ real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, const rea
  * @brief get average transport coefficient
  * @param chemi is set to get species information
  */
-void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
+void Get_transport_coeff_aver(Thermal thermal, real_t *Dkm_aver_id, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
 							  const real_t rho, const real_t p, const real_t T, const real_t C_total)
 {
-	real_t **fcv = thermal->fitted_coefficients_visc;
-	real_t **fct = thermal->fitted_coefficients_therm;
-	real_t **Dkj = thermal->Dkj_matrix;
+	real_t **fcv = thermal.fitted_coefficients_visc;
+	real_t **fct = thermal.fitted_coefficients_therm;
+	real_t **Dkj = thermal.Dkj_matrix;
 	viscosity_aver = _DF(0.0);
 #ifdef Heat
 	thermal_conduct_aver = _DF(0.0);
@@ -1655,7 +1655,7 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 	real_t denominator = _DF(0.0);
 	real_t *specie[NUM_SPECIES];
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-		specie[ii] = &(thermal->species_chara[ii * SPCH_Sz]);
+		specie[ii] = &(thermal.species_chara[ii * SPCH_Sz]);
 	for (int k = 0; k < NUM_SPECIES; k++)
 	{
 		denominator = _DF(0.0);
@@ -1689,7 +1689,7 @@ void Get_transport_coeff_aver(Thermal *thermal, real_t *Dkm_aver_id, real_t &vis
 			{
 				if (i != k)
 				{
-					temp1 += X[i] * thermal->Wi[i];
+					temp1 += X[i] * thermal.Wi[i];
 					temp2 += X[i] / GetDkj(specie[i], specie[k], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k], refstat);
 				}
 			}

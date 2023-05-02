@@ -1,0 +1,11 @@
+Selected Device: NVIDIA T600 based Driver Version: 0.0
+Memory Usage: 2.53748 GB
+
+Output has been done at Step = 0
+N=     1 physicalTime:          0	dt: 1.2388179e-06 to do. 
+N=     2 physicalTime: 1.2388179e-06	dt: 1.2350307e-06 to do. 
+N=     3 physicalTime: 2.4738486e-06	dt: 1.2271473e-06 to do. 
+N=     4 physicalTime: 3.7009959e-06	dt: 1.2204263e-06 to do. 
+N=     5 physicalTime: 4.9214222e-06	dt: 1.2151754e-06 to do. 
+Output has been done at Step = 5
+nvidia runtime:  46.7549 of rank: 0

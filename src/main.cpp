@@ -20,6 +20,16 @@ int main(int argc, char *argv[])
 	else
 		std::cout << "Too much argcs appended to EulerSYCL while running\n";
 
+#ifdef DEBUG
+#ifdef USE_MPI
+	int a = 0;
+	while (0 != a)
+	{
+		// sleep(5);
+	}
+#endif // end USE_MPI
+#endif // end  DEBUG
+
 	ConfigMap configMap = broadcast_parameters(ini_path);
 	// num_GPUS:number of GPU on this cluster, Pform_id: the first GPU's ID in all accelerators sycl detected
 	int device_id = rank % num_GPUs + Pform_id;
@@ -29,11 +39,7 @@ int main(int argc, char *argv[])
 	Setup setup(configMap, q);
 	SYCLSolver syclsolver(setup);
 	// AllocateMemory
-	// std::cout << "sleep(1)\n";
-	// // sleep(10);
 	syclsolver.AllocateMemory(q);
-	// std::cout << "sleep(2)\n";
-	// // sleep(10);
 	//  Initialize original states
 	syclsolver.InitialCondition(q);
 	// boundary conditions

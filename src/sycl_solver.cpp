@@ -31,18 +31,20 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			dt = ComputeTimeStep(q); // 2.0e-6; //
 									 // std::cout << "sleep(5)\n";
 									 // sleep(5);
+			if (rank == 0)
+				std::cout << "N=" << std::setw(7) << Iteration + 1 << "     physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime;
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;
 			Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 			dt = temp;
+			if (rank == 0)
+				std::cout << "     mpi communicated";
 #endif // end USE_MPI
 			if (physicalTime + dt > TimeLoop * Ss.OutTimeStamp)
 				dt = TimeLoop * Ss.OutTimeStamp - physicalTime;
-#ifdef USE_MPI
 			if (rank == 0)
-#endif // end USE_MPI
-				std::cout << "N=" << std::setw(6) << Iteration + 1 << " physicalTime: " << std::setw(10) << std::setprecision(8) << physicalTime << "	dt: " << dt << " to do. \n";
+				std::cout << "   dt: " << dt << " to do. \n";
 			// solved the fluid with 3rd order Runge-Kutta method
 			SinglePhaseSolverRK3rd(q);
 			// std::cout << "sleep(9)\n";
@@ -203,6 +205,9 @@ void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t
 #else
 	Output_vti(q, rank, interation, Time);
 #endif // end OUT_PLT
+
+	if (rank == 0)
+		std::cout << "Output has been done at Step = " << interation << std::endl;
 }
 
 void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, real_t Time)
@@ -314,7 +319,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 
 	std::string file_name;
 	std::string headerfile_name;
-	std::string outputPrefix = "FlowField";
+	std::string outputPrefix = INI_SAMPLE;
 #ifdef USE_MPI
 	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_mpi_" + rankFormat.str() + ".vti"; //"_Time" + timeFormat.str() +
 	headerfile_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
@@ -660,8 +665,6 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	outFile << "  </AppendedData>" << std::endl;
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
-	if (rank == 0)
-		std::cout << "Output has been done at Step = " << interation << std::endl;
 }
 
 void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time)
@@ -719,8 +722,13 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 	rankFormat.fill('0');
 	rankFormat << rank;
 
-	std::string outputPrefix = "FlowField";
-	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".plt";
+	std::string file_name;
+	std::string outputPrefix = INI_SAMPLE;
+#ifdef USE_MPI
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_mpi_" + rankFormat.str() + ".plt";
+#else
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".plt";
+#endif
 
 	std::ofstream out(file_name);
 	// defining header for tecplot(plot software)
@@ -805,6 +813,4 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 				out << "\n";
 			}
 	out.close();
-	if (rank == 0)
-		std::cout << "Output has been done at Step = " << interation << std::endl;
 }

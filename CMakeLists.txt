@@ -4,22 +4,26 @@ PROJECT(EulerSYCL LANGUAGES CXX)
 # #default local cmake macro repository
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# #cmake features init
+# // =======================================================
+# #### cmake features init
+# // =======================================================
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_CXX_COMPILER "clang++") # use clang++ from oneapi/llvm
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 
-# some options in CMAKE && Kokkos need CACHE STRING FORCE set
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+# // =======================================================
+# #### function option
+# // =======================================================
 option(USE_DOUBLE "if double" ON)
 option(USE_PLT "out plt or vti" ON)
-option(DIM_X "if enable dim_x" OFF)
-option(DIM_Y "if enable dim_y" OFF)
+option(DIM_X "if enable dim_x" ON)
+option(DIM_Y "if enable dim_y" ON)
 option(DIM_Z "if enable dim_z" ON)
 option(Multi "if enable multi , OFF for component" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
@@ -28,6 +32,27 @@ option(Visc "if add physic viscidity flux" OFF)
 option(Heat "if add heat transfer flux" OFF)
 option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 
+# // =======================================================
+# #### mpi settings
+# // =======================================================
+# #### Method of mpi buffer allocation and transfer:
+# # ON: allocate each device buffer and transfer
+# # OFF: allocate struct ptr in device
+option(USE_MPI "if enable mpi" OFF)
+option(AWARE_MPI "if enable aware-mpi" OFF)
+option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" OFF)
+set(num_GPUs "1") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
+
+# // =======================================================
+# #### about platform and device
+# // =======================================================
+set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
+set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
+set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
+
+# // =======================================================
+# #### init sample
+# // =======================================================
 # #### Set INIT_SAMPLE for method of eigen_l, eigen_r allocation:
 # # OROC: calculate one row and column once in for loop(eigen_lr[Emax])
 # # RGIF: allocate eigen matrix in regesters of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]),which makes regesters spills out as Emax increases
@@ -46,18 +71,10 @@ option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 # # H2O_18_new_reaction  # # H2O_18_reaction  # # H2O_19_reaction     # # H2O_23_reaction
 set(WENO_ORDER "7") # 5 or 7: WENO5 or WENO7 for FluxWall reconstruction
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "1d-insert-st")
+set(INIT_SAMPLE "for-debug")
 set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/1d-mc-insert-shock-tube") # Be invalid while option COP_CHEME "ON"
 set(REACTION_MODEL "H2O_18_reaction") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
-
-# about platform and device
-set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "1") # first device id in sycl-ls list #1 for host, 2 for GPU
-option(USE_MPI "if enable mpi" OFF)
-option(AWARE_MPI "if enable aware-mpi" OFF)
-set(num_GPUs "1") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 
 # cmake modules
 include(init_options) # add main exec

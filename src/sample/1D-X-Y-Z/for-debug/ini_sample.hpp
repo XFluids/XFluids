@@ -6,14 +6,14 @@
  * @brief  Initialize Fluid states espically primitive quantity;
  * @return void
  */
-extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal,
+extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
                                               real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T) {}
 
 /**
  * @brief  Initialize conservative quantity;
  * @return void
  */
-extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal *thermal, real_t *U, real_t *U1, real_t *LU,
+extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
                                           real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
                                           real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T, real_t *H, real_t *c)
 {
@@ -47,7 +47,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     w[id] = _DF(0.0);
 #ifdef COP // to be 1d shock without define React
     for (size_t i = 0; i < NUM_SPECIES; i++)
-        _y[i][id] = thermal->species_ratio_out[i];
+        _y[i][id] = thermal.species_ratio_out[i];
 #endif // end COP
 
     // Ini yi
@@ -55,27 +55,31 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     get_yi(_y, yi, id);
 
     // //  1d debug set
+    real_t tmp = _DF(0.0);
+    real_t tmt = _DF(0.0);
     // x
 #if DIM_X
-    p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(x - 0.45) * (x - 0.45)));
+    tmp += -(x - 0.45) * (x - 0.45);
+    tmt += -(x - 0.55) * (x - 0.55);
     u[id] = 100.0 * sycl::fabs<real_t>(x);
-    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(x - 0.55) * (x - 0.55)));
 #endif // end DIM_X
     // y
 #if DIM_Y
-    p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(y - 0.45) * (y - 0.45)));
+    tmp += -(y - 0.45) * (y - 0.45);
+    tmt += -(y - 0.55) * (y - 0.55);
     v[id] = 100.0 * sycl::fabs<real_t>(y);
-    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(y - 0.55) * (y - 0.55)));
 #endif // end DIM_Y
     // z
 #if DIM_Z
-    p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(-(z - 0.45) * (z - 0.45)));
+    tmp += -(z - 0.45) * (z - 0.45);
+    tmt += -(z - 0.55) * (z - 0.55);
     w[id] = 100.0 * sycl::fabs<real_t>(z);
-    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(-(z - 0.55) * (z - 0.55)));
 #endif // end DIM_Z
+    p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(tmp));
+    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(tmt));
 
     // Get R of mixture
-    real_t R = get_CopR(thermal->species_chara, yi);
+    real_t R = get_CopR(thermal.species_chara, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);

@@ -6,7 +6,7 @@
  * @brief  Initialize Fluid states espically primitive quantity;
  * @return void
  */
-extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal *thermal,
+extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
                                               real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T)
 {
     MARCO_DOMAIN_GHOST();
@@ -82,7 +82,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         w[id] = ini.blast_w_in;
 #ifdef COP // to be 1d shock without define React
         for (size_t i = 0; i < NUM_SPECIES; i++)
-            _y[i][id] = thermal->species_ratio_out[i];
+            _y[i][id] = thermal.species_ratio_out[i];
 #endif // end COP
     }
     else
@@ -98,19 +98,19 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
             rho[id] = ini.cop_density_in; // 气泡内单独赋值密度以和气泡外区分
             p[id] = ini.cop_pressure_in;  // 气泡内单独赋值压力以和气泡外区分
             for (size_t i = 0; i < NUM_SPECIES; i++)
-                _y[i][id] = thermal->species_ratio_in[i];
+                _y[i][id] = thermal.species_ratio_in[i];
         }
         else if (dy2 > copBout)
         { // out of bubble
             for (size_t i = 0; i < NUM_SPECIES; i++)
-                _y[i][id] = thermal->species_ratio_out[i];
+                _y[i][id] = thermal.species_ratio_out[i];
         }
         else
         { // boundary of bubble && shock
             rho[id] = _DF(0.5) * (ini.cop_density_in + ini.blast_density_out);
             p[id] = _DF(0.5) * (ini.cop_pressure_in + ini.blast_pressure_out);
             for (size_t i = 0; i < NUM_SPECIES; i++)
-                _y[i][id] = _DF(0.5) * (thermal->species_ratio_in[i] + thermal->species_ratio_out[i]);
+                _y[i][id] = _DF(0.5) * (thermal.species_ratio_in[i] + thermal.species_ratio_out[i]);
         }
 #endif // end COP
     }
@@ -121,7 +121,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
  * @brief  Initialize conservative quantity;
  * @return void
  */
-extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal *thermal, real_t *U, real_t *U1, real_t *LU,
+extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
                                           real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
                                           real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T, real_t *H, real_t *c)
 {
@@ -302,7 +302,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // }
 
     // Get R of mixture
-    real_t R = get_CopR(thermal->species_chara, yi);
+    real_t R = get_CopR(thermal.species_chara, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);

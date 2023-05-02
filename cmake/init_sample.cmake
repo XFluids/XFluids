@@ -6,6 +6,9 @@ ELSE()
     set(APPEND ".ini")
 ENDIF()
 
+# // =======================================================
+# #### 1d sample
+# // =======================================================
 IF(INIT_SAMPLE STREQUAL "for-debug")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/for-debug")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-debug${APPEND}")
@@ -23,6 +26,9 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/reactive-st")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-1d-reactive-st${APPEND}")
 
+# // =======================================================
+# #### 2d sample
+# // =======================================================
 ELSEIF(INIT_SAMPLE STREQUAL "2d-guass-wave")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/2D-XY/guass-wave")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-guss-wave${APPEND}")
@@ -35,6 +41,9 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/2D-XY/under-expanded-jet")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-expanded-jet${APPEND}")
 
+# // =======================================================
+# #### 3d sample
+# // =======================================================
 ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/3D-XYZ/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-shock-bubble${APPEND}")
@@ -63,6 +72,8 @@ ELSE(COP)
     add_compile_options(-DNUM_REA=0)
 ENDIF(COP)
 
+add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
+message(STATUS "  Sample select: ${INIT_SAMPLE}")
 message(STATUS "  Sample init sample path: ${INI_SAMPLE_PATH}")
 message(STATUS "  Sample COP  header path: ${COP_SPECIES}")
 message(STATUS "  Sample ini  file   path: ${INI_FILE}")

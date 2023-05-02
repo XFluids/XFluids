@@ -5,7 +5,7 @@
 #include "ini_sample.hpp"
 
 #if DIM_X
-extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
                                            real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
@@ -40,7 +40,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
         eigen_r[n] = &(eigen_rt[Emax * Emax * id_l + n * Emax]);
     }
 #endif // end EIGEN_ALLOC
-    RoeAverage_x(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+    // RoeAverage_x(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
     // construct the right value & the left value scalar equations by characteristic reduction
     // at i+1/2 in x direction
@@ -158,7 +158,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 #endif // end DIM_X
 
 #if DIM_Y
-extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
                                            real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
@@ -223,7 +223,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 #endif // end DIM_Y
 
 #if DIM_Z
-extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
                                            real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
 {
@@ -415,7 +415,7 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
     // get_Array(LU, de_LU, Emax, id);
 }
 
-extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal *thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
                                                  real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *const *_y,
                                                  real_t *gamma, real_t *T, real_t const Gamma, bool *error, const sycl::stream &stream_ct1)
 {
@@ -1023,7 +1023,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
     }
 }
 
-extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal *thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
+extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
                                                   real_t *Dkm_aver, real_t *const *y, real_t *hi, real_t *rho, real_t *p, real_t *T)
 {
 #ifdef DIM_X
@@ -1043,10 +1043,10 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
     real_t X[NUM_SPECIES] = {_DF(0.0)}, yi[NUM_SPECIES] = {_DF(0.0)};
 #ifdef Diffu
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-            hi[ii + NUM_SPECIES * id] = get_Enthalpy(thermal->Hia, thermal->Hib, T[id], thermal->Ri[ii], ii);
+            hi[ii + NUM_SPECIES * id] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id], thermal.Ri[ii], ii);
 #endif // end Diffu
     get_yi(y, yi, id);
-    real_t C_total = get_xi(X, yi, thermal->Wi, rho[id]);
+    real_t C_total = get_xi(X, yi, thermal.Wi, rho[id]);
     //  real_t *temp = &(Dkm_aver[NUM_SPECIES * id]);
     //  real_t *temp = &(hi[NUM_SPECIES * id]);
     Get_transport_coeff_aver(thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
@@ -1336,14 +1336,14 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
 #endif // Visc
 
 #ifdef COP_CHEME
-extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal *thermal, Reaction *react, real_t *UI, real_t *const *y, real_t *rho, real_t *T, const real_t dt)
+extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *const *y, real_t *rho, real_t *T, const real_t dt)
 {
     MARCO_DOMAIN();
     int id = Xmax * Ymax * k + Xmax * j + i;
 
     real_t yi[NUM_SPECIES], Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP];
     get_yi(y, yi, id);
-    get_KbKf(Kf, Kb, react->Rargus, thermal->species_chara, thermal->Hia, thermal->Hib, react->Nu_d_, T[id]); // get_e
+    get_KbKf(Kf, Kb, react.Rargus, thermal.species_chara, thermal.Hia, thermal.Hib, react.Nu_d_, T[id]); // get_e
     for (size_t n = 0; n < Emax - NUM_COP; n++)
     {
             U[n] = UI[Emax * id + n];
@@ -1353,8 +1353,8 @@ extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, 
     real_t v = U[2] * rho1;
     real_t w = U[3] * rho1;
     real_t e = U[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
-    Chemeq2(thermal, Kf, Kb, react->React_ThirdCoef, react->Rargus, react->Nu_b_, react->Nu_f_, react->Nu_d_, react->third_ind,
-            react->reaction_list, react->reactant_list, react->product_list, react->rns, react->rts, react->pls, yi, dt, T[id], rho[id], e);
+    Chemeq2(thermal, Kf, Kb, react.React_ThirdCoef, react.Rargus, react.Nu_b_, react.Nu_f_, react.Nu_d_, react.third_ind,
+            react.reaction_list, react.reactant_list, react.product_list, react.rns, react.rts, react.pls, yi, dt, T[id], rho[id], e);
     // update partial density according to C0
     for (int n = 0; n < NUM_COP; n++)
     { // NOTE: related with yi[n]

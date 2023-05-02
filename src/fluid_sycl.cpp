@@ -86,7 +86,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
 
 #if USE_MPI
-	Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
+	MemMbSize += Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
 	if (0 == Fs.mpiTrans->myRank)
 #endif // end USE_MPI
 	{
