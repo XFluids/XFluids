@@ -38,10 +38,10 @@ option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 # #### Method of mpi buffer allocation and transfer:
 # # ON: allocate each device buffer and transfer
 # # OFF: allocate struct ptr in device
+# # set [mpi]:NUM: number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF)
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" OFF)
-set(num_GPUs "1") # number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 
 # // =======================================================
 # #### about platform and device

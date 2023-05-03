@@ -16,7 +16,6 @@ ENDIF()
 
 add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
 add_compile_options(-DPform_id=${Pform_id}) # first device id in sycl-ls list
-add_compile_options(-Dnum_GPUs=${num_GPUs}) # number of mpi devices in sycl-ls list
 message(STATUS "Compile settings: ")
 message(STATUS "  Compile for platform: ${SelectDv}")
 

@@ -31,11 +31,13 @@ int main(int argc, char *argv[])
 #endif // end  DEBUG
 
 	ConfigMap configMap = broadcast_parameters(ini_path);
-	// num_GPUS:number of GPU on this cluster, Pform_id: the first GPU's ID in all accelerators sycl detected
-	int device_id = rank % num_GPUs + Pform_id;
 	// accelerator_selector device;
+	// num_GPUS:number of GPU on this cluster, Pform_id: the first GPU's ID in all accelerators sycl detected
+	int num_GPUs = configMap.getInteger("mpi", "NUM", 1);
+	int device_id = rank % num_GPUs + Pform_id;
 	auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
 	sycl::queue q(device);
+	// Setup Initialize
 	Setup setup(configMap, q);
 	SYCLSolver syclsolver(setup);
 	// AllocateMemory
