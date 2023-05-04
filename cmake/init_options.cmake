@@ -6,6 +6,8 @@ ELSEIF(EIGEN_ALLOC STREQUAL "AIGE")
   add_compile_options(-DEIGEN_ALLOC=2)
 ENDIF()
 
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
+
 # // =======================================================
 # #### about device select
 # // =======================================================
@@ -57,8 +59,12 @@ IF(USE_DOUBLE)
 ENDIF(USE_DOUBLE)
 
 IF(USE_PLT)
-  add_compile_options(-DOUT_PLT) # 将参数从cmakelist传入程序中
+  add_compile_options(-DOUT_PLT)
 ENDIF(USE_PLT)
+
+IF(ESTIM_NAN)
+  add_compile_options(-DESTIM_NAN)
+ENDIF(ESTIM_NAN)
 
 IF(DIM_X)
   add_compile_options(-DDIM_X=1)

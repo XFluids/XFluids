@@ -22,6 +22,7 @@ endif()
 # // =======================================================
 option(USE_DOUBLE "if double" ON)
 option(USE_PLT "out plt or vti" ON)
+option(ESTIM_NAN "estimate if rho is nan or <0 or inf" OFF)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" ON)
 option(DIM_Z "if enable dim_z" ON)
@@ -39,15 +40,15 @@ option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 # # ON: allocate each device buffer and transfer
 # # OFF: allocate struct ptr in device
 # # set [mpi]:NUM: number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
-option(USE_MPI "if enable mpi" OFF)
-option(AWARE_MPI "if enable aware-mpi" OFF)
-option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" OFF)
+option(USE_MPI "if enable mpi" ON)
+option(AWARE_MPI "if enable aware-mpi" ON)# only be valid while EXPLICIT_ALLOC is set "ON"
+option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
 
 # // =======================================================
 # #### about platform and device
 # // =======================================================
 set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
+set(ARCH "sm_86") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
 set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 
 # // =======================================================
@@ -58,9 +59,9 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # RGIF: allocate eigen matrix in regesters of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]),which makes regesters spills out as Emax increases
 # # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l,Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t)))
 # #### Set INIT_SAMPLE for Initializing settings:
-# # for-debug, 1d-guass-wave, 1d-insert-st
+# # for-debug, guass-wave ## util for 1D, 2D, 3D
+# # 1d-insert-st
 # # 1d-reactive-st ## automatically rewrite COP_CHEME to "ON", path to "reaction_list.dat" depends on value of REACTION_MODEL
-# # 2d-guass-wave  ## XY, XZ, YZ supported
 # # 2d-shock-bubble, 2d-under-expanded-jet ## only XY DIR support
 # # 3d-shock-bubble, 3d-under-expanded-jet
 # #### Set COP_SPECIES for location of species_list.dat read in project
@@ -71,7 +72,7 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # H2O_18_new_reaction  # # H2O_18_reaction  # # H2O_19_reaction     # # H2O_23_reaction
 set(WENO_ORDER "7") # 5 or 7: WENO5 or WENO7 for FluxWall reconstruction
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "for-debug")
+set(INIT_SAMPLE "guass-wave")
 set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/1d-mc-insert-shock-tube") # Be invalid while option COP_CHEME "ON"
 set(REACTION_MODEL "H2O_18_reaction") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"

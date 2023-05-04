@@ -1,5 +1,3 @@
-message(STATUS "Sample init include settings: ")
-
 IF(USE_MPI)
     set(APPEND "-mpi.ini")
 ELSE()
@@ -7,16 +5,19 @@ ELSE()
 ENDIF()
 
 # // =======================================================
-# #### 1d sample
+# #### util sample
 # // =======================================================
 IF(INIT_SAMPLE STREQUAL "for-debug")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/for-debug")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-debug${APPEND}")
 
-ELSEIF(INIT_SAMPLE STREQUAL "1d-guass-wave")
+ELSEIF(INIT_SAMPLE STREQUAL "guass-wave")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/guass-wave")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-guss-wave${APPEND}")
 
+# // =======================================================
+# #### 1d sample
+# // =======================================================
 ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/insert-st")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-1d-shock-tube${APPEND}")
@@ -29,10 +30,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
 # // =======================================================
 # #### 2d sample
 # // =======================================================
-ELSEIF(INIT_SAMPLE STREQUAL "2d-guass-wave")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/2D-XY/guass-wave")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-guss-wave${APPEND}")
-
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/2D-XY/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-shock-bubble${APPEND}")
@@ -51,6 +48,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
 ELSEIF(INIT_SAMPLE STREQUAL "3d-under-expanded-jet")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/3D-XYZ/under-expanded-jet")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-expanded-jet${APPEND}")
+ELSE()
+    message(FATAL_ERROR "ini sample isn't given.")
 ENDIF()
 
 IF(COP)
@@ -73,6 +72,7 @@ ELSE(COP)
 ENDIF(COP)
 
 add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
+message(STATUS "Sample init include settings: ")
 message(STATUS "  Sample select: ${INIT_SAMPLE}")
 message(STATUS "  Sample init sample path: ${INI_SAMPLE_PATH}")
 message(STATUS "  Sample COP  header path: ${COP_SPECIES}")

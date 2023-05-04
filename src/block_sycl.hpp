@@ -396,43 +396,43 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 #ifdef EXPLICIT_ALLOC
 	// =======================================================
 #if DIM_X
-	real_t *TransBufSend_xmin = Trans.d_mpiData.TransBufSend_xmin;
-	real_t *TransBufSend_xmax = Trans.d_mpiData.TransBufSend_xmax;
-	real_t *TransBufRecv_xmin = Trans.d_mpiData.TransBufRecv_xmin;
-	real_t *TransBufRecv_xmax = Trans.d_mpiData.TransBufRecv_xmax;
+	real_t *ptr_TransBufSend_xmin = Trans.d_mpiData.TransBufSend_xmin;
+	real_t *ptr_TransBufSend_xmax = Trans.d_mpiData.TransBufSend_xmax;
+	real_t *ptr_TransBufRecv_xmin = Trans.d_mpiData.TransBufRecv_xmin;
+	real_t *ptr_TransBufRecv_xmax = Trans.d_mpiData.TransBufRecv_xmax;
 #endif // end DIM_X
 #if DIM_Y
-	real_t *TransBufSend_ymin = Trans.d_mpiData.TransBufSend_ymin;
-	real_t *TransBufSend_ymax = Trans.d_mpiData.TransBufSend_ymax;
-	real_t *TransBufRecv_ymin = Trans.d_mpiData.TransBufRecv_ymin;
-	real_t *TransBufRecv_ymax = Trans.d_mpiData.TransBufRecv_ymax;
+	real_t *ptr_TransBufSend_ymin = Trans.d_mpiData.TransBufSend_ymin;
+	real_t *ptr_TransBufSend_ymax = Trans.d_mpiData.TransBufSend_ymax;
+	real_t *ptr_TransBufRecv_ymin = Trans.d_mpiData.TransBufRecv_ymin;
+	real_t *ptr_TransBufRecv_ymax = Trans.d_mpiData.TransBufRecv_ymax;
 #endif // end DIM_Y
 #if DIM_Z
-	real_t *TransBufSend_zmin = Trans.d_mpiData.TransBufSend_zmin;
-	real_t *TransBufSend_zmax = Trans.d_mpiData.TransBufSend_zmax;
-	real_t *TransBufRecv_zmin = Trans.d_mpiData.TransBufRecv_zmin;
-	real_t *TransBufRecv_zmax = Trans.d_mpiData.TransBufRecv_zmax;
+	real_t *ptr_TransBufSend_zmin = Trans.d_mpiData.TransBufSend_zmin;
+	real_t *ptr_TransBufSend_zmax = Trans.d_mpiData.TransBufSend_zmax;
+	real_t *ptr_TransBufRecv_zmin = Trans.d_mpiData.TransBufRecv_zmin;
+	real_t *ptr_TransBufRecv_zmax = Trans.d_mpiData.TransBufRecv_zmax;
 #endif // end DIM_Z
 	   // =======================================================
 #else
 	// =======================================================
 #if DIM_X
-	real_t *TransBufSend_xmin = Trans.d_mpiData->TransBufSend_xmin;
-	real_t *TransBufSend_xmax = Trans.d_mpiData->TransBufSend_xmax;
-	real_t *TransBufRecv_xmin = Trans.d_mpiData->TransBufRecv_xmin;
-	real_t *TransBufRecv_xmax = Trans.d_mpiData->TransBufRecv_xmax;
+#define ptr_TransBufSend_xmin Trans.d_mpiData->TransBufSend_xmin
+#define ptr_TransBufSend_xmax Trans.d_mpiData->TransBufSend_xmax
+#define ptr_TransBufRecv_xmin Trans.d_mpiData->TransBufRecv_xmin
+#define ptr_TransBufRecv_xmax Trans.d_mpiData->TransBufRecv_xmax
 #endif // end DIM_X
 #if DIM_Y
-	real_t *TransBufSend_ymin = Trans.d_mpiData->TransBufSend_ymin;
-	real_t *TransBufSend_ymax = Trans.d_mpiData->TransBufSend_ymax;
-	real_t *TransBufRecv_ymin = Trans.d_mpiData->TransBufRecv_ymin;
-	real_t *TransBufRecv_ymax = Trans.d_mpiData->TransBufRecv_ymax;
+#define ptr_TransBufSend_ymin Trans.d_mpiData->TransBufSend_ymin
+#define ptr_TransBufSend_ymax Trans.d_mpiData->TransBufSend_ymax
+#define ptr_TransBufRecv_ymin Trans.d_mpiData->TransBufRecv_ymin
+#define ptr_TransBufRecv_ymax Trans.d_mpiData->TransBufRecv_ymax
 #endif // end DIM_Y
 #if DIM_Z
-	real_t *TransBufSend_zmin = Trans.d_mpiData->TransBufSend_zmin;
-	real_t *TransBufSend_zmax = Trans.d_mpiData->TransBufSend_zmax;
-	real_t *TransBufRecv_zmin = Trans.d_mpiData->TransBufRecv_zmin;
-	real_t *TransBufRecv_zmax = Trans.d_mpiData->TransBufRecv_zmax;
+#define ptr_TransBufSend_zmin Trans.d_mpiData->TransBufSend_zmin
+#define ptr_TransBufSend_zmax Trans.d_mpiData->TransBufSend_zmax
+#define ptr_TransBufRecv_zmin Trans.d_mpiData->TransBufRecv_zmin
+#define ptr_TransBufRecv_zmax Trans.d_mpiData->TransBufRecv_zmax
 #endif // end DIM_Z
 	// =======================================================
 #endif // end EXPLICIT_ALLOC
@@ -451,8 +451,8 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  int j = index.get_global_id(1);
 								  int k = index.get_global_id(2);
 
-								  FluidMpiCopyKernelX(i0, j, k, bl, TransBufSend_xmin, d_UI, 0, -bl.Bwidth_X, BorToBuf);					// X_MIN
-								  FluidMpiCopyKernelX(i1, j, k, bl, TransBufSend_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BorToBuf); // X_MAX
+								  FluidMpiCopyKernelX(i0, j, k, bl, ptr_TransBufSend_xmin, d_UI, 0, -bl.Bwidth_X, BorToBuf);					// X_MIN
+								  FluidMpiCopyKernelX(i1, j, k, bl, ptr_TransBufSend_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BorToBuf); // X_MAX
 							  }); })
 		.wait();
 
@@ -469,13 +469,13 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 					   int k = index.get_global_id(2);
 #if USE_MPI
 					   if (Trans.neighborsBC[XMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
-						   FluidMpiCopyKernelX(i0, j, k, bl, TransBufRecv_xmin, d_UI, 0, -bl.Bwidth_X, BufToBC);
+						   FluidMpiCopyKernelX(i0, j, k, bl, ptr_TransBufRecv_xmin, d_UI, 0, -bl.Bwidth_X, BufToBC);
 					   else
 #endif // USE_MPI
 						   FluidBCKernelX(i0, j, k, bl, BC0, d_UI, 0, bl.Bwidth_X, 1);
 #ifdef USE_MPI
 					   if (Trans.neighborsBC[XMAX] == BC_COPY)
-						   FluidMpiCopyKernelX(i1, j, k, bl, TransBufRecv_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BufToBC);
+						   FluidMpiCopyKernelX(i1, j, k, bl, ptr_TransBufRecv_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BufToBC);
 					   else
 #endif // USE_MPI
 						   FluidBCKernelX(i1, j, k, bl, BC1, d_UI, bl.X_inner, bl.Xmax - bl.Bwidth_X - 1, -1); }); })
@@ -495,8 +495,8 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
 								  int k = index.get_global_id(2);
 
-								  FluidMpiCopyKernelY(i, j0, k, bl, TransBufSend_ymin, d_UI, 0, -bl.Bwidth_Y, BorToBuf);					// X_MIN
-								  FluidMpiCopyKernelY(i, j1, k, bl, TransBufSend_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BorToBuf); // X_MAX
+								  FluidMpiCopyKernelY(i, j0, k, bl, ptr_TransBufSend_ymin, d_UI, 0, -bl.Bwidth_Y, BorToBuf);					// X_MIN
+								  FluidMpiCopyKernelY(i, j1, k, bl, ptr_TransBufSend_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BorToBuf); // X_MAX
 							  }); })
 		.wait();
 
@@ -512,13 +512,13 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  int k = index.get_global_id(2);
 #if USE_MPI
 								  if (Trans.neighborsBC[YMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
-									  FluidMpiCopyKernelY(i, j0, k, bl, TransBufRecv_ymin, d_UI, 0, -bl.Bwidth_Y, BufToBC);
+									  FluidMpiCopyKernelY(i, j0, k, bl, ptr_TransBufRecv_ymin, d_UI, 0, -bl.Bwidth_Y, BufToBC);
 								  else
 #endif // USE_MPI
 									  FluidBCKernelY(i, j0, k, bl, BC2, d_UI, 0, bl.Bwidth_Y, 1);
 #ifdef USE_MPI
 								  if (Trans.neighborsBC[YMAX] == BC_COPY)
-									  FluidMpiCopyKernelY(i, j1, k, bl, TransBufRecv_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BufToBC);
+									  FluidMpiCopyKernelY(i, j1, k, bl, ptr_TransBufRecv_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BufToBC);
 								  else
 #endif																													  // USE_MPI
 									  FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); //
@@ -539,8 +539,8 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  int k0 = index.get_global_id(2) + 0;
 								  int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 
-								  FluidMpiCopyKernelZ(i, j, k0, bl, TransBufSend_zmin, d_UI, 0, -bl.Bwidth_Z, BorToBuf);					// X_MIN
-								  FluidMpiCopyKernelZ(i, j, k1, bl, TransBufSend_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BorToBuf); // X_MAX
+								  FluidMpiCopyKernelZ(i, j, k0, bl, ptr_TransBufSend_zmin, d_UI, 0, -bl.Bwidth_Z, BorToBuf);					// X_MIN
+								  FluidMpiCopyKernelZ(i, j, k1, bl, ptr_TransBufSend_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BorToBuf); // X_MAX
 							  }); })
 		.wait();
 
@@ -556,13 +556,13 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 								  int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 #if USE_MPI
 								  if (Trans.neighborsBC[ZMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
-									  FluidMpiCopyKernelZ(i, j, k0, bl, TransBufRecv_zmin, d_UI, 0, -bl.Bwidth_Z, BufToBC);
+									  FluidMpiCopyKernelZ(i, j, k0, bl, ptr_TransBufRecv_zmin, d_UI, 0, -bl.Bwidth_Z, BufToBC);
 								  else
 #endif // USE_MPI
 									  FluidBCKernelZ(i, j, k0, bl, BC4, d_UI, 0, bl.Bwidth_Z, 1);
 #ifdef USE_MPI
 								  if (Trans.neighborsBC[ZMAX] == BC_COPY)
-									  FluidMpiCopyKernelZ(i, j, k1, bl, TransBufRecv_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BufToBC);
+									  FluidMpiCopyKernelZ(i, j, k1, bl, ptr_TransBufRecv_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BufToBC);
 								  else
 #endif
 									  FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); //

@@ -104,7 +104,6 @@
     --   MPI_HOME:/home/ompi
     --   MPI_INC: /home/ompi/include added
     --   MPI_CXX lib located: /home/ompi/lib/libmpi.so found
-    --   Number of host for MPI: 1
     ````
 
 ## 6. .ini file arguments
@@ -130,6 +129,7 @@
 
     |name of parameters|function|type|default value|
     |:-----------------|:------:|:--:|:------------|
+    |NUM|number of MPI devices can be selected|int|1|
     |mx|number of MPI threads at X direction in MPI Cartesian space|int|1|
     |my|number of MPI threads at Y direction in MPI Cartesian space|int|1|
     |mz|number of MPI threads at Z direction in MPI Cartesian space|int|1|

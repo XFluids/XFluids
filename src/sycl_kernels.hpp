@@ -438,8 +438,11 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     real_t *U = &(UI[Emax * id]), yi[NUM_SPECIES];
 
     *error = GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
+
+#ifdef ESTIM_NAN
     if (*error)
         return;
+#endif // end ESTIM_NAN
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);

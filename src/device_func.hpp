@@ -258,10 +258,14 @@ bool GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 			   real_t &gamma, real_t &T, Thermal thermal, real_t yi[NUM_SPECIES])
 {
 	rho = UI[0];
+
+#ifdef ESTIM_NAN
 	if (rho < 0 || sycl::isnan<real_t>(rho) || sycl::isinf<real_t>(rho))
 	{
 		return true;
 	}
+#endif // end ESTIM_NAN
+
 	real_t rho1 = _DF(1.0) / rho;
 	u = UI[1] * rho1;
 	v = UI[2] * rho1;
