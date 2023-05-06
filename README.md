@@ -10,6 +10,12 @@
   source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
   ````
 
+  or you can use the script files before cmake,
+
+  ````bash
+  source ./script/oneapi_xx.sh
+  ````
+
 ## 2. Compile and usage of this project
 
 - ### Read $/CMakeLists.txt
@@ -64,12 +70,12 @@
 
 - ### exec "sycl-ls" in cmd for device counting
 
-  ````cmd
+  ```cmd
   $sycl-ls
   [opencl:acc:0] Intel(R) FPGA Emulation Platform for OpenCL(TM), Intel(R) FPGA Emulation Device 1.2 [2022.15.12.0.01_081451]
   [opencl:cpu:1] Intel(R) OpenCL, AMD Ryzen 7 5800X 8-Core Processor              3.0 [2022.15.12.0.01_081451]
   [ext_oneapi_cuda:gpu:0] NVIDIA CUDA BACKEND, NVIDIA T600 0.0 [CUDA 11.5]
-  ````
+  ```
 - ### select target device in SYCL project
 
   - set device_id=1 for targetting host and throwing mission to AMD Ryzen 7 5800X 8-Core Processor
