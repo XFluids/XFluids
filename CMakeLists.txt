@@ -14,14 +14,14 @@ set(CMAKE_CXX_COMPILER "clang++") # use clang++ from oneapi/llvm
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
 # // =======================================================
 # #### function option
 # // =======================================================
 option(USE_DOUBLE "if double" ON)
-option(USE_PLT "out plt or vti" ON)
+option(USE_PLT "out plt or vti" OFF)
 option(ESTIM_NAN "estimate if rho is nan or <0 or inf" OFF)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" ON)
@@ -41,7 +41,7 @@ option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
 # # OFF: allocate struct ptr in device
 # # set [mpi]:NUM: number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 option(USE_MPI "if enable mpi" ON)
-option(AWARE_MPI "if enable aware-mpi" ON)# only be valid while EXPLICIT_ALLOC is set "ON"
+option(AWARE_MPI "if enable aware-mpi" OFF)# only be valid while EXPLICIT_ALLOC is set "ON"
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
 
 # // =======================================================
