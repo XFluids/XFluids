@@ -4,6 +4,31 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
+extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, Block bl, real_t *rho, bool *error)
+{
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+#if DIM_X
+    if (i >= Xmax)
+        return;
+#endif
+#if DIM_Y
+    if (j >= Ymax)
+        return;
+#endif
+#if DIM_Z
+    if (k >= bl.Zmax)
+        return;
+#endif
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    // rho[id] = -0.1;
+    if (sycl::isnan(rho[id]) || rho[id] < 0 || sycl::isinf(rho[id]))
+    {
+        *error = true;
+        return;
+    }
+}
+
 #if DIM_X
 extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
                                            real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
@@ -417,7 +442,7 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
                                                  real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *const *_y,
-                                                 real_t *gamma, real_t *T, real_t const Gamma, bool *error, const sycl::stream &stream_ct1)
+                                                 real_t *gamma, real_t *T, real_t const Gamma, const sycl::stream &stream_ct1)
 {
     MARCO_DOMAIN_GHOST();
     int id = Xmax * Ymax * k + Xmax * j + i;
@@ -437,12 +462,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 
     real_t *U = &(UI[Emax * id]), yi[NUM_SPECIES];
 
-    *error = GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
-
-#ifdef ESTIM_NAN
-    if (*error)
-        return;
-#endif // end ESTIM_NAN
+    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);

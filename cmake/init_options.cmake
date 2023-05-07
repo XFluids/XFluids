@@ -7,6 +7,7 @@ ELSEIF(EIGEN_ALLOC STREQUAL "AIGE")
 ENDIF()
 
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
 
 # // =======================================================
 # #### about device select
@@ -65,6 +66,13 @@ ENDIF(USE_PLT)
 IF(ESTIM_NAN)
   add_compile_options(-DESTIM_NAN)
 ENDIF(ESTIM_NAN)
+
+# define Thermo 1				  // 1 for NASA and 0 for JANAF
+IF(THERMAL STREQUAL "NASA")
+  add_compile_options(-DThermo=1)
+ELSEIF(THERMAL STREQUAL "JANAF")
+  add_compile_options(-DThermo=0)
+ENDIF()
 
 IF(DIM_X)
   add_compile_options(-DDIM_X=1)

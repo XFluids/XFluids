@@ -79,10 +79,11 @@ public:
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
     void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
-    bool UpdateFluidStates(sycl::queue &q, int flag);
+    void UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
+    bool EstimateFluidNAN(sycl::queue &q);
 #ifdef COP_CHEME
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 #endif                                           // end COP_CHEME
@@ -116,7 +117,7 @@ public:
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);
-    void SinglePhaseSolverRK3rd(sycl::queue &q);
+    bool SinglePhaseSolverRK3rd(sycl::queue &q);
     void RungeKuttaSP3rd(sycl::queue &q, int flag);
     void UpdateU(sycl::queue &q,int flag);
     void ComputeLU(sycl::queue &q, int flag);

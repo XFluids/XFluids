@@ -3,10 +3,8 @@
 void SYCLSolver::Evolution(sycl::queue &q)
 {
 	real_t physicalTime = 0.0;
-	int Iteration = 0;
-	int OutNum = 1;
-	int rank = 0;
-	int TimeLoop = 0;
+	int Iteration = 0, OutNum = 1, rank = 0, TimeLoop = 0;
+	bool error_out = false;
 #if USE_MPI
 	rank = Ss.mpiTrans->myRank;
 #endif // end USE_MPI
@@ -18,9 +16,16 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		TimeLoop++;
 		while (physicalTime < TimeLoop * Ss.OutTimeStamp)
 		{
-			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput && physicalTime >= Ss.OutTimeStart || Iteration == 0)
+			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput && physicalTime >= Ss.OutTimeStart || Iteration == 0 || error_out == true)
 			{
-				Output(q, rank, std::to_string(Iteration), physicalTime);
+				if (error_out == true)
+				{
+					Output(q, rank, "error", physicalTime);
+					std::cout << "An error: illegal value of rho Captured." << std::endl;
+					std::exit(EXIT_FAILURE);
+				}
+				else
+					Output(q, rank, std::to_string(Iteration), physicalTime);
 				OutNum++;
 			}
 			if (Iteration >= Ss.nStepmax)
@@ -46,7 +51,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			if (rank == 0)
 				std::cout << "   dt: " << dt << " to do. \n";
 			// solved the fluid with 3rd order Runge-Kutta method
-			SinglePhaseSolverRK3rd(q);
+			error_out = SinglePhaseSolverRK3rd(q);
 			// std::cout << "sleep(9)\n";
 			// sleep(10);
 #ifdef COP_CHEME
@@ -69,11 +74,25 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << float(duration / 1000.0f) << " of rank: " << rank << std::endl;
 }
 
-void SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
+bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
 {
 	RungeKuttaSP3rd(q, 1);
 	RungeKuttaSP3rd(q, 2);
 	RungeKuttaSP3rd(q, 3);
+
+	// estimate if rho is_nan or <0 or is_inf
+	bool error = false;
+#ifdef ESTIM_NAN
+	for (int n = 0; n < NumFluid; n++)
+	{
+		if (fluids[n]->EstimateFluidNAN(q))
+		{
+			error = true;
+			break;
+		}
+	}
+#endif // end
+	return error;
 }
 
 void SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int flag)
@@ -136,14 +155,8 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 
 void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
 {
-	bool error = false;
 	for (int n = 0; n < NumFluid; n++)
-		error = fluids[n]->UpdateFluidStates(q, flag);
-	if (error)
-	{
-		this->Output(q, 0, "_error", 0);
-		std::exit(0);
-	}
+		fluids[n]->UpdateFluidStates(q, flag);
 }
 
 void SYCLSolver::AllocateMemory(sycl::queue &q)
@@ -272,7 +285,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	dy = DIM_Y ? Ss.BlSz.dy : 0.0;
 	dz = DIM_Z ? Ss.BlSz.dz : 0.0;
 	// Init var names
-	int Onbvar = 4 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
+	int Onbvar = 5 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
 	Onbvar += NUM_SPECIES;
 #endif // end COP
@@ -281,22 +294,24 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 #if DIM_X
 	variables_names[index] = "DIR-X";
 	index++;
-	variables_names[index] = "u";
+	variables_names[index] = "V-u";
 	index++;
 #endif // end DIM_X
 #if DIM_Y
 	variables_names[index] = "DIR-Y";
 	index++;
-	variables_names[index] = "v";
+	variables_names[index] = "V-v";
 	index++;
 #endif // end DIM_Y
 #if DIM_Z
 	variables_names[index] = "DIR-Z";
 	index++;
-	variables_names[index] = "w";
+	variables_names[index] = "V-w";
 	index++;
 #endif // end DIM_Z
 
+	variables_names[index] = "V-c";
+	index++;
 	variables_names[index] = "rho";
 	index++;
 	variables_names[index] = "P";
@@ -562,6 +577,24 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 				{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.c[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.c[id] : fluids[1]->h_fstate.c[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+				} // for i
+			}	  // for j
+		}		  // for k
+		//[6]rho
+		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
+		for (int k = OminZ; k < OmaxZ; k++)
+		{
+			for (int j = OminY; j < OmaxY; j++)
+			{
+				for (int i = OminX; i < OmaxX; i++)
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.rho[id];
 #elif 2 == NumFluid
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
@@ -753,7 +786,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 #if DIM_Z
 		<< "w, "
 #endif
-		<< "p, rho, ";
+		<< "c, p, rho, ";
 #ifdef COP
 	out << "gamma, T"; //
 	for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -769,7 +802,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 #ifdef DEBUG
 	out.precision(20);
 #endif // end DEBUG
-	real_t xc, yc, zc, pc, rhoc, uc, vc, wc;
+	real_t xc, yc, zc, cc, pc, rhoc, uc, vc, wc;
 	for (int k = OminZ; k < OmaxZ; k++)
 		for (int j = OminY; j < OmaxY; j++)
 			for (int i = OminX; i < OmaxX; i++)
@@ -780,6 +813,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 
+				cc = fluids[0]->h_fstate.c[id];
 				pc = fluids[0]->h_fstate.p[id];
 				rhoc = fluids[0]->h_fstate.rho[id];
 				uc = fluids[0]->h_fstate.u[id];
@@ -804,7 +838,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 #if DIM_Z
 					<< wc << " "
 #endif // end DIM_Z
-					<< pc << " " << rhoc << " ";
+					<< cc << pc << " " << rhoc << " ";
 #if COP
 				out << fluids[0]->h_fstate.gamma[id] << " " << fluids[0]->h_fstate.T[id]; //
 				for (int n = 0; n < NUM_SPECIES; n++)

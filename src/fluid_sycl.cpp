@@ -114,14 +114,12 @@ void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 	}
 }
 
-bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
+void FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 {
-	bool error = false;
 	if (flag == 0)
-		error = UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
+		UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 	else
-		error = UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
-	return error;
+		UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 }
 
 void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
@@ -139,6 +137,36 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local, d_eigen_l, d_eigen_r);
 	}
+}
+
+bool FluidSYCL::EstimateFluidNAN(sycl::queue &q)
+{
+	real_t *rho = d_fstate.rho;
+	Block bl = Fs.BlSz;
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+
+	bool *h_error, *d_error;
+	h_error = middle::MallocHost<bool>(h_error, 1, q);
+	d_error = middle::MallocDevice<bool>(d_error, 1, q);
+	*h_error = false;
+	middle::MemCpy<bool>(d_error, h_error, 1, q);
+	// std::cout << "sleep(6)\n";
+	// sleep(5);
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0);
+			int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+			EstimateFluidNANKernel(i, j, k, bl, rho, d_error); }); })
+		.wait();
+	// std::cout << "sleep(6)\n";
+	// sleep(5);
+	middle::MemCpy<bool>(h_error, d_error, 1, q);
+	if (*h_error)
+		return true;
+	return false;
 }
 
 #ifdef COP_CHEME

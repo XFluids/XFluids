@@ -1,9 +1,18 @@
 --------------------------- JANAF Thermodynamic Data Coefficients ------------------------------
 ! using JANAF polynomials
-!   
+! reference html: https://www.osti.gov/biblio/7073290
+! reference "./References/thermo_The_Chemkin_Thermodynamic_Data_Base.pdf" for original data and more species 
+!
 !   Cp/R = a1 + a2*T + a3*T^2 + a4*T^3 + a5*T^4
 !   H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
 !   S/R = a1*ln(T) + a2*T + a3/2*T^2 + a4/3*T^3 + a5/4*T^4 + a7
+!
+! First line: 
+! 	Species Name
+! Lines 2-4 (2-8):
+! 	a1-a5;  a6,a7 b1-b3;  b4-b7   ##a1-a7 for T>1000, a1-a7 for T<1000 
+! Last Line:
+!   mole weight(g/mol)
 -----------------------------------------------------------------------------------------------------
 *H
 2.50000001E+00 -2.30842973E-11 1.61561948E-14 -4.73515235E-18 4.98197357E-22
