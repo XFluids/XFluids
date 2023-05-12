@@ -229,9 +229,11 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 
-	// std::cout << "sleep(6)\n";
-	// sleep(5);
 #if DIM_X
+#ifdef DEBUG
+	std::cout << "  sleep before ReconstructFluxX\n";
+	sleep(5);
+#endif // end DEBUG
 	// proceed at x directiom and get F-flux terms at node wall
 	auto global_ndrange_x = range<3>(bl.X_inner + local_ndrange[0], bl.Y_inner, bl.Z_inner);
 
@@ -254,11 +256,18 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H);
 			 }); })
 		.wait();
+
+#ifdef DEBUG
+	std::cout << "  sleep after ReconstructFluxX\n";
+	sleep(5);
+#endif // end DEBUG
 #endif
-	// std::cout << "sleep(7)\n";
-	// sleep(5);
 
 #if DIM_Y
+#ifdef DEBUG
+	std::cout << "  sleep before ReconstructFluxY\n";
+	sleep(5);
+#endif // end DEBUG
 	// proceed at y directiom and get G-flux terms at node wall
 	auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + local_ndrange[1], bl.Z_inner);
 
@@ -281,9 +290,18 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H); 
 			}); })
 		.wait();
+#ifdef DEBUG
+	std::cout << "  sleep after ReconstructFluxY\n";
+	sleep(5);
+#endif // end DEBUG
+
 #endif
 
 #if DIM_Z
+#ifdef DEBUG
+	std::cout << "  sleep before ReconstructFluxZ\n";
+	sleep(5);
+#endif // end DEBUG
 	// proceed at y directiom and get G-flux terms at node wall
 	auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + local_ndrange[2]);
 
@@ -306,6 +324,11 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H); 
 			}); })
 		.wait();
+#ifdef DEBUG
+	std::cout << "  sleep after ReconstructFluxZ\n";
+	sleep(5);
+#endif // end DEBUG
+
 #endif
 	q.wait();
 // NOTE: add visc flux to Fluxw

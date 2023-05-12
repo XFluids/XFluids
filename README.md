@@ -6,6 +6,7 @@
 - ### [codeplay Solutions for Nvidia and AMD backends](https://codeplay.com/solutions/oneapi/)
 - ### environment set for oneAPI appended codeplay sultion libs
 
+
   ````bash
   source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
   ````
@@ -20,7 +21,7 @@
 
 - ### Read $/CMakeLists.txt
 
-  - CMAKE_BUILD_TYPE is set to "Debug" by default, SYCL code would target to host while ${CMAKE_BUILD_TYPE}==Debug
+  - CMAKE_BUILD_TYPE is set to "Release" by default, SYCL code would target to host while ${CMAKE_BUILD_TYPE}==Debug
   - set INIT_SAMPLE as the problem being tested, path to "species_list.dat" should be given to COP_SPECIES
   - if COP_CHEME is set to "ON", path to "species_list.dat" and "reaction_list.dat" would be rewriten by the given value of REACTION_MODEL
   - value of SelectDv must match with the value of Pform_id, details referenced in [4-device-discovery](#4-device-discovery)

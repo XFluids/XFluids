@@ -31,11 +31,15 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			if (Iteration >= Ss.nStepmax)
 				break;
 			// get minmum dt, if MPI used, get the minimum of all ranks
-			// std::cout << "sleep(4)\n";
-			// sleep(5);
+#ifdef DEBUG
+			std::cout << "  sleep before ComputeTimeStep\n";
+			sleep(5);
+#endif								 // end DEBUG
 			dt = ComputeTimeStep(q); // 2.0e-6; //
-									 // std::cout << "sleep(5)\n";
-									 // sleep(5);
+#ifdef DEBUG
+			std::cout << "  sleep after ComputeTimeStep\n";
+			sleep(5);
+#endif // end DEBUG
 			if (rank == 0)
 				std::cout << "N=" << std::setw(7) << Iteration + 1 << "     physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime;
 #ifdef USE_MPI
@@ -52,8 +56,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				std::cout << "   dt: " << dt << " to do. \n";
 			// solved the fluid with 3rd order Runge-Kutta method
 			error_out = SinglePhaseSolverRK3rd(q);
-			// std::cout << "sleep(9)\n";
-			// sleep(10);
+
 #ifdef COP_CHEME
 			Reaction(q, dt);
 #endif // end COP_CHEME
@@ -170,6 +173,9 @@ void SYCLSolver::AllocateMemory(sycl::queue &q)
 		fluids[n]->AllocateFluidMemory(q);
 
 	// levelset->AllocateLSMemory();
+#ifdef DEBUG
+	std::cout << "Debug version causes increase of global memory in GetDt.\n\n";
+#endif // end DEBUG
 }
 
 void SYCLSolver::InitialCondition(sycl::queue &q)

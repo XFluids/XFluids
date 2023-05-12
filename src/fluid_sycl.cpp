@@ -40,10 +40,6 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_eigen_local = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#if 2 == EIGEN_ALLOC
-	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
-	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
-#endif // end EIGEN_ALLOC
 	d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));
@@ -53,7 +49,12 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	long double MemMbSize = ((4) * cellbytes + 9 * bytes) / 1024.0 / 1024.0; //+ 2 * Emax
+	long double MemMbSize = (4.0 * (double(cellbytes) / 1024.0) + 9.0 * (double(bytes) / 1024.0)) / 1024.0;
+#if 2 == EIGEN_ALLOC
+	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
+	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
+	MemMbSize += ((double(cellbytes) / 1024.0) * 2 * Emax) / 1024.0;
+#endif // end EIGEN_ALLOC
 #ifdef Visc
 	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0;
@@ -90,7 +91,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	if (0 == Fs.mpiTrans->myRank)
 #endif // end USE_MPI
 	{
-		std::cout << "Memory Usage: " << MemMbSize / 1024.0 << " GB\n\n";
+		std::cout << "Memory Usage: " << MemMbSize / 1024.0 << " GB\n";
 	}
 }
 

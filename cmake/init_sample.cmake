@@ -32,7 +32,7 @@ IF(INIT_SAMPLE STREQUAL "for-debug")
 
 ELSEIF(INIT_SAMPLE STREQUAL "guass-wave")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/guass-wave")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-guss-wave${APPEND}")
+    set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-guass-wave${APPEND}")
 
 # // =======================================================
 # #### 1d sample

@@ -14,7 +14,7 @@ set(CMAKE_CXX_COMPILER "clang++") # use clang++ from oneapi/llvm
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
 # // =======================================================
@@ -24,8 +24,8 @@ option(USE_DOUBLE "if double" ON)
 option(USE_PLT "out plt or vti" OFF)
 option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
 option(DIM_X "if enable dim_x" ON)
-option(DIM_Y "if enable dim_y" OFF)
-option(DIM_Z "if enable dim_z" OFF)
+option(DIM_Y "if enable dim_y" ON)
+option(DIM_Z "if enable dim_z" ON)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" OFF)
 option(Visc "if add physic viscidity flux" OFF)
@@ -73,7 +73,7 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 set(THERMAL "NASA") # NASA or JANAF fit
 set(WENO_ORDER "5") # 5 or 7: WENO5 or WENO7 for FluxWall reconstruction
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "2d-shock-bubble")
+set(INIT_SAMPLE "guass-wave")
 set(REACTION_MODEL "RSBI-18REA") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
 

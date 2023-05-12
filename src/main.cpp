@@ -49,8 +49,9 @@ int main(int argc, char *argv[])
 	// update states by U
 	syclsolver.UpdateStates(q, 0);
 	// time marching by SYCL device
-	// std::cout << "sleep(3)\n";
-	// // sleep(10);
 	syclsolver.Evolution(q);
+#ifdef USE_MPI
+	MPI_Finalize();
+#endif // end USE_MPI
 	return 0;
 }
