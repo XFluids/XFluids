@@ -7,6 +7,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	bool error_out = false;
 #if USE_MPI
 	rank = Ss.mpiTrans->myRank;
+	int nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
 	float duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
@@ -70,11 +71,29 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	}
 
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
-	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count();
+	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
+	float Ttemp;
+	Ss.mpiTrans->communicator->allReduce(&duration, &Ttemp, 1, mpiUtils::MpiComm::FLOAT, mpiUtils::MpiComm::SUM);
+	duration = Ttemp;
+	if (rank == 0)
+	{
+		std::cout << "MPI averaged of " << nranks << " ranks ";
+///////////////////////////
+#ifdef AWARE_MPI
+		std::cout << "with    AWARE_MPI ";
+#else
+		std::cout << "without AWARE_MPI ";
+#endif // end AWARE_MPI
+///////////////////////////
 #endif // end USE_MPI
-	std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << float(duration / 1000.0f) << " of rank: " << rank << std::endl;
+		std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
+		// std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << duration  << " of rank: " << rank << std::endl;
+#ifdef USE_MPI
+	}
+#endif
+	sleep(5);
 }
 
 bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
