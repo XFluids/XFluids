@@ -497,7 +497,7 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
         break;
     case 3:
         for (int n = 0; n < Emax; n++)
-            U[Emax * id + n] = (U[Emax * id + n] + _DF(2.0) * U1[Emax * id + n] + _DF(2.0) * dt * LU[Emax * id + n]) / _DF(3.0);
+            U[Emax * id + n] = (U[Emax * id + n] + _DF(2.0) * U1[Emax * id + n] + _DF(2.0) * dt * LU[Emax * id + n]) * _OT;
         break;
     }
     // get_Array(U, de_U, Emax, id);
@@ -1105,7 +1105,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, rea
     MARCO_PREVISCFLUX();
     // real_t F_x_wall_v[Emax];
     // real_t mue = (_DF(9.0) * (viscosity_aver[id_p1] + viscosity_aver[id]) - (viscosity_aver[id_p2] + viscosity_aver[id_m1])) / _DF(16.0);
-    // real_t lamada = -_DF(2.0) / _DF(3.0) * mue;
+    // real_t lamada = -_DF(2.0) * _OT * mue;
     // real_t f_x, f_y, f_z;
     // real_t u_hlf, v_hlf, w_hlf;
 
@@ -1200,7 +1200,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, rea
     // // mue at wall
     // real_t F_y_wall_v[Emax];
     // real_t mue = (_DF(9.0) * (viscosity_aver[id_p1] + viscosity_aver[id]) - (viscosity_aver[id_p2] + viscosity_aver[id_m1])) / _DF(16.0);
-    // real_t lamada = -_DF(2.0) / _DF(3.0) * mue;
+    // real_t lamada = -_DF(2.0) * _OT * mue;
     // real_t f_x, f_y, f_z;
     // real_t u_hlf, v_hlf, w_hlf;
 
@@ -1294,7 +1294,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
     MARCO_PREVISCFLUX();
     // real_t F_z_wall_v[Emax];
     // real_t mue = (_DF(9.0) * (viscosity_aver[id_p1] + viscosity_aver[id]) - (viscosity_aver[id_p2] + viscosity_aver[id_m1])) / _DF(16.0);
-    // real_t lamada = -_DF(2.0) / _DF(3.0) * mue;
+    // real_t lamada = -_DF(2.0) * _OT * mue;
     // real_t f_x, f_y, f_z;
     // real_t u_hlf, v_hlf, w_hlf;
 

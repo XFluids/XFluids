@@ -2,6 +2,7 @@
 // =======================================================
 // repeated code definitions
 // =======================================================
+
 /**
  * set Domain size
  */
@@ -305,7 +306,7 @@
 #define MARCO_PREVISCFLUX()                                                                                                                               \
     real_t F_wall_v[Emax], f_x, f_y, f_z, u_hlf, v_hlf, w_hlf;                                                                                            \
     real_t mue = (_DF(9.0) * (viscosity_aver[id_p1] + viscosity_aver[id]) - (viscosity_aver[id_p2] + viscosity_aver[id_m1])) / _DF(16.0); /*mue at wall*/ \
-    real_t lamada = -_DF(2.0) / _DF(3.0) * mue;
+    real_t lamada = -_DF(2.0) * _OT * mue;
 
 /**
  * get viscous flux

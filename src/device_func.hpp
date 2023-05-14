@@ -29,6 +29,18 @@ void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
 }
 
 /**
+ *@brief calculate yi : mass fraction from xi : mole fraction.
+ */
+void get_yi(real_t yi[NUM_SPECIES], real_t const xi[NUM_SPECIES], real_t const Wi[NUM_SPECIES])
+{
+	real_t W_mix = _DF(0.0);
+	for (size_t i = 0; i < NUM_SPECIES; i++)
+		W_mix += xi[i] * Wi[i];
+	for (size_t n = 0; n < NUM_SPECIES; n++) // Ri=Ru/Wi
+		yi[n] = xi[n] * Wi[n] / W_mix;
+}
+
+/**
  *@brief calculate xi : mole fraction
  */
 real_t get_xi(real_t xi[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const *Wi, const real_t rho)
@@ -62,23 +74,33 @@ real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
  * @brief calculate Cpi of the specie at given point
  * unit: J/kg/K
  */
-real_t get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
+real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
-	real_t T = T0 > _DF(200.0) ? T0 : _DF(200.0);
-	real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
+	// 	real_t T = T0; // sycl::max<real_t>(T0, _DF(200.0));
+	// 	real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
+	// #if Thermo
+	// 	if (T >= (_DF(1000.0)) && T < (_DF(6000.0)))
+	// 		Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 1] * _T + Hia[n * 7 * 3 + 1 * 3 + 1]) * _T + Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] + (Hia[n * 7 * 3 + 5 * 3 + 1] + Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T);
+	// 	else if (T < (_DF(1000.0)))
+	// 		Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 0] * _T + Hia[n * 7 * 3 + 1 * 3 + 0]) * _T + Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] + (Hia[n * 7 * 3 + 5 * 3 + 0] + Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T);
+	// 	else if (T >= _DF(6000.0))
+	// 		Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 2] * _T + Hia[n * 7 * 3 + 1 * 3 + 2]) * _T + Hia[n * 7 * 3 + 2 * 3 + 2] + (Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] + (Hia[n * 7 * 3 + 5 * 3 + 2] + Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T);
+	// #else
+	// 	// if (T > _DF(1000.0))
+	// 	// 	Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] + (Hia[n * 7 * 3 + 1 * 3 + 0] + (Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + Hia[n * 7 * 3 + 4 * 3 + 0] * T) * T) * T) * T);
+	// 	// else
+	// 	// 	Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] + (Hia[n * 7 * 3 + 1 * 3 + 1] + (Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + Hia[n * 7 * 3 + 4 * 3 + 1] * T) * T) * T) * T);
+	// 	if (T > _DF(1000.0))
+	// 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] + Hia[n * 7 * 3 + 1 * 3 + 0] * T + Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * T * T * T * T);
+	// 	else
+	// 		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] + Hia[n * 7 * 3 + 1 * 3 + 1] * T + Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * T * T * T * T);
+	// #endif
 #if Thermo
-	if (T >= (_DF(1000.0)) && T < (_DF(6000.0)))
-		Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 1] * _T + Hia[n * 7 * 3 + 1 * 3 + 1]) * _T + Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] + (Hia[n * 7 * 3 + 5 * 3 + 1] + Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T);
-	else if (T < (_DF(1000.0)))
-		Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 0] * _T + Hia[n * 7 * 3 + 1 * 3 + 0]) * _T + Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] + (Hia[n * 7 * 3 + 5 * 3 + 0] + Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T);
-	else if (T >= _DF(6000.0))
-		Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 2] * _T + Hia[n * 7 * 3 + 1 * 3 + 2]) * _T + Hia[n * 7 * 3 + 2 * 3 + 2] + (Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] + (Hia[n * 7 * 3 + 5 * 3 + 2] + Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T);
+	MARCO_HeatCapacity_NASA();
 #else
-	if (T > _DF(1000.0))
-		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] + (Hia[n * 7 * 3 + 1 * 3 + 0] + (Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + Hia[n * 7 * 3 + 4 * 3 + 0] * T) * T) * T) * T);
-	else
-		Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] + (Hia[n * 7 * 3 + 1 * 3 + 1] + (Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + Hia[n * 7 * 3 + 4 * 3 + 1] * T) * T) * T) * T);
-#endif
+	MARCO_HeatCapacity_JANAF();
+#endif // end Thermo
+
 	return Cpi;
 }
 
@@ -89,8 +111,7 @@ real_t get_CopCp(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t T)
 {
 	real_t _CopCp = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-		_CopCp += yi[ii] * get_Cpi(thermal.Hia, T, thermal.Ri[ii], ii); // real_t Cpi = get_Cpi(thermal.Hia, T, Ri, ii) ;
-	// printf("Cpi=%lf , %lf , yi=%lf , %lf , _CopCp=%lf \n", Cpi[0], Cpi[1], yi[0], yi[1], _CopCp);
+		_CopCp += yi[ii] * HeatCapacity(thermal.Hia, T, thermal.Ri[ii], ii);
 	return _CopCp;
 }
 
@@ -131,31 +152,37 @@ real_t get_CopGamma(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t 
  */
 real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
-	real_t hi = _DF(0.0), TT = _DF(0.0), T = T0;
-	if (T < _DF(200.0))
-	{
-		TT = T;
-		T = _DF(200.0);
-	}
+	// 	real_t hi = _DF(0.0), TT = T0, T = TT; // sycl::max<real_t>(T0, _DF(200.0));
+	// #if Thermo
+	// 	if (T >= _DF(1000.0) && T < _DF(6000.0))
+	// 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] / T + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 1] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 1] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 1]);
+	// 	else if (T < _DF(1000.0))
+	// 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] / T + Hia[n * 7 * 3 + 1 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 0] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 0] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 0]);
+	// 	else if (T >= _DF(6000.0))
+	// 		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] / T + Hia[n * 7 * 3 + 1 * 3 + 2] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 2] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 2] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 2]);
+	// #else
+	// 	// H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
+	// 	// if (T > _DF(1000.0))
+	// 	// 	hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 0] + T * (Hia[n * 7 * 3 + 1 * 3 + 0] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 0] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 0] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 0]);
+	// 	// else
+	// 	// 	hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 1] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
+	// 	if (T > _DF(1000.0))
+	// 		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 0] + T * (Hia[n * 7 * 3 + 1 * 3 + 0] / _DF(2.0) + T * (Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(4.0) + Hia[n * 7 * 3 + 4 * 3 + 0] * T / _DF(5.0))))) + Hia[n * 7 * 3 + 5 * 3 + 0]);
+	// 	else
+	// 		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] / _DF(2.0) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] / _DF(4.0) + Hia[n * 7 * 3 + 4 * 3 + 1] * T / _DF(5.0))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
+	// #endif
+	// 	// if (TT < _DF(200.0))							  // take low tempreture into consideration
+	// 	// {												  // get_hi at T>200
+	// 	// 	real_t Cpi = HeatCapacity(Hia, _DF(200.0), Ri, n);
+	// 	// 	hi += Cpi * (TT - _DF(200.0));
+	// 	// }
+
 #if Thermo
-	if (T >= _DF(1000.0) && T < _DF(6000.0))
-		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] / T + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 1] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 1] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 1]);
-	else if (T < _DF(1000.0))
-		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] / T + Hia[n * 7 * 3 + 1 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 0] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 0] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 0]);
-	else if (T >= _DF(6000.0))
-		hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] / T + Hia[n * 7 * 3 + 1 * 3 + 2] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 2] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 2] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 2]);
+	MARCO_Enthalpy_NASA();
 #else
-	// H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
-	if (T > _DF(1000.0))
-		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 0] + T * (Hia[n * 7 * 3 + 1 * 3 + 0] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 0] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 0] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 0]);
-	else
-		hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 1] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
+	MARCO_Enthalpy_JANAF();
 #endif
-	if (TT < _DF(200.0))							  // take low tempreture into consideration
-	{												  // get_hi at T>200
-		real_t Cpi = get_Cpi(Hia, _DF(200.0), Ri, n); // get_Cpi(real_t *Hia, const real_t T0, const real_t Ri, const int n)
-		hi += Cpi * (TT - _DF(200.0));
-	}
+
 	return hi;
 }
 
@@ -438,7 +465,9 @@ inline void RoeAverage_x(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 
 	MARCO_PREEIGEN();
 
-	eigen_l[0][0] = _DF(0.5) * (b2 + _u / _c + b3);
+	real_t _u_c = _u * _c1;
+
+	eigen_l[0][0] = _DF(0.5) * (b2 + _u_c + b3);
 	eigen_l[0][1] = -_DF(0.5) * (b1 * _u + _c1);
 	eigen_l[0][2] = -_DF(0.5) * (b1 * _v);
 	eigen_l[0][3] = -_DF(0.5) * (b1 * _w);
@@ -462,7 +491,7 @@ inline void RoeAverage_x(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 	eigen_l[3][3] = _DF(1.0);
 	eigen_l[3][4] = _DF(0.0);
 
-	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _u / _c + b3);
+	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _u_c + b3);
 	eigen_l[Emax - 1][1] = _DF(0.5) * (-b1 * _u + _c1);
 	eigen_l[Emax - 1][2] = _DF(0.5) * (-b1 * _v);
 	eigen_l[Emax - 1][3] = _DF(0.5) * (-b1 * _w);
@@ -560,8 +589,10 @@ inline void RoeAverage_y(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 {
 	MARCO_PREEIGEN();
 
+	real_t _v_c = _v * _c1;
+
 	// left eigen vectors
-	eigen_l[0][0] = _DF(0.5) * (b2 + _v / _c + b3);
+	eigen_l[0][0] = _DF(0.5) * (b2 + _v_c + b3);
 	eigen_l[0][1] = -_DF(0.5) * (b1 * _u);
 	eigen_l[0][2] = -_DF(0.5) * (b1 * _v + _c1);
 	eigen_l[0][3] = -_DF(0.5) * (b1 * _w);
@@ -585,7 +616,7 @@ inline void RoeAverage_y(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 	eigen_l[3][3] = -_DF(1.0);
 	eigen_l[3][4] = _DF(0.0);
 
-	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _v / _c + b3);
+	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _v_c + b3);
 	eigen_l[Emax - 1][1] = _DF(0.5) * (-b1 * _u);
 	eigen_l[Emax - 1][2] = _DF(0.5) * (-b1 * _v + _c1);
 	eigen_l[Emax - 1][3] = _DF(0.5) * (-b1 * _w);
@@ -683,8 +714,10 @@ inline void RoeAverage_z(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 {
 	MARCO_PREEIGEN();
 
+	real_t _w_c = _w * _c1;
+
 	// left eigen vectors
-	eigen_l[0][0] = _DF(0.5) * (b2 + _w / _c + b3);
+	eigen_l[0][0] = _DF(0.5) * (b2 + _w_c + b3);
 	eigen_l[0][1] = -_DF(0.5) * (b1 * _u);
 	eigen_l[0][2] = -_DF(0.5) * (b1 * _v);
 	eigen_l[0][3] = -_DF(0.5) * (b1 * _w + _c1);
@@ -708,7 +741,7 @@ inline void RoeAverage_z(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 	eigen_l[3][3] = _w;
 	eigen_l[3][4] = -_DF(1.0);
 
-	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _w / _c + b3);
+	eigen_l[Emax - 1][0] = _DF(0.5) * (b2 - _w_c + b3);
 	eigen_l[Emax - 1][1] = _DF(0.5) * (-b1 * _u);
 	eigen_l[Emax - 1][2] = _DF(0.5) * (-b1 * _v);
 	eigen_l[Emax - 1][3] = _DF(0.5) * (-b1 * _w + _c1);
@@ -804,10 +837,12 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 
 	MARCO_PREEIGEN();
 
+	real_t _u_c = _u * _c1;
+
 	switch (n)
 	{
 	case 0:
-		eigen_l[0] = _DF(0.5) * (b2 + _u / _c + b3);
+		eigen_l[0] = _DF(0.5) * (b2 + _u_c + b3);
 		eigen_l[1] = -_DF(0.5) * (b1 * _u + _c1);
 		eigen_l[2] = -_DF(0.5) * (b1 * _v);
 		eigen_l[3] = -_DF(0.5) * (b1 * _w);
@@ -851,7 +886,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		break;
 
 	case Emax - 1:
-		eigen_l[0] = _DF(0.5) * (b2 - _u / _c + b3);
+		eigen_l[0] = _DF(0.5) * (b2 - _u_c + b3);
 		eigen_l[1] = _DF(0.5) * (-b1 * _u + _c1);
 		eigen_l[2] = _DF(0.5) * (-b1 * _v);
 		eigen_l[3] = _DF(0.5) * (-b1 * _w);
@@ -956,10 +991,12 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 
 	MARCO_PREEIGEN();
 
+	real_t _v_c = _v * _c1;
+
 	switch (n)
 	{
 	case 0:
-		eigen_l[0] = _DF(0.5) * (b2 + _v / _c + b3);
+		eigen_l[0] = _DF(0.5) * (b2 + _v_c + b3);
 		eigen_l[1] = -_DF(0.5) * (b1 * _u);
 		eigen_l[2] = -_DF(0.5) * (b1 * _v + _c1);
 		eigen_l[3] = -_DF(0.5) * (b1 * _w);
@@ -1003,7 +1040,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		break;
 
 	case Emax - 1:
-		eigen_l[0] = _DF(0.5) * (b2 - _v / _c + b3);
+		eigen_l[0] = _DF(0.5) * (b2 - _v_c + b3);
 		eigen_l[1] = _DF(0.5) * (-b1 * _u);
 		eigen_l[2] = _DF(0.5) * (-b1 * _v + _c1);
 		eigen_l[3] = _DF(0.5) * (-b1 * _w);
@@ -1108,10 +1145,12 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 
 	MARCO_PREEIGEN();
 
+	real_t _w_c = _w * _c1;
+
 	switch (n)
 	{
 	case 0:
-		eigen_l[0] = _DF(0.5) * (b2 + _w / _c + b3);
+		eigen_l[0] = _DF(0.5) * (b2 + _w_c + b3);
 		eigen_l[1] = -_DF(0.5) * (b1 * _u);
 		eigen_l[2] = -_DF(0.5) * (b1 * _v);
 		eigen_l[3] = -_DF(0.5) * (b1 * _w + _c1);
@@ -1155,7 +1194,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		break;
 
 	case Emax - 1:
-		eigen_l[0] = _DF(0.5) * (b2 - _w / _c + b3);
+		eigen_l[0] = _DF(0.5) * (b2 - _w_c + b3);
 		eigen_l[1] = _DF(0.5) * (-b1 * _u);
 		eigen_l[2] = _DF(0.5) * (-b1 * _v);
 		eigen_l[3] = _DF(0.5) * (-b1 * _w + _c1);
@@ -1267,21 +1306,39 @@ real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const
  */
 real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t Ri, const real_t T0, const int n)
 {
-	real_t T = T0 > _DF(200.0) ? T0 : _DF(200.0);
+	real_t T = sycl::max<real_t>(T0, _DF(200.0));
 	real_t S = _DF(0.0), _T = _DF(1.0) / T;
 #if Thermo
 	if (T >= _DF(1000.0) && T < _DF(6000.0))
-		S = Ri * ((-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 1] * _T - Hia[n * 7 * 3 + 1 * 3 + 1]) * _T + Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 3 * 3 + 1] + (_DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 1] + (Hia[n * 7 * 3 + 5 * 3 + 1] / _DF(3.0) + Hia[n * 7 * 3 + 6 * 3 + 1] * _DF(0.25) * T) * T) * T) * T + Hib[n * 2 * 3 + 1 * 3 + 1]);
+		S = Ri * ((-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 1] * _T - Hia[n * 7 * 3 + 1 * 3 + 1]) * _T + Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 3 * 3 + 1] + (_DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 1] + (Hia[n * 7 * 3 + 5 * 3 + 1] * _OT + Hia[n * 7 * 3 + 6 * 3 + 1] * _DF(0.25) * T) * T) * T) * T + Hib[n * 2 * 3 + 1 * 3 + 1]);
 	else if (T < _DF(1000.0))
-		S = Ri * ((-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 0] * _T - Hia[n * 7 * 3 + 1 * 3 + 0]) * _T + Hia[n * 7 * 3 + 2 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 3 * 3 + 0] + (_DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 0] + (Hia[n * 7 * 3 + 5 * 3 + 0] / _DF(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * _DF(0.25) * T) * T) * T) * T + Hib[n * 2 * 3 + 1 * 3 + 0]);
+		S = Ri * ((-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 0] * _T - Hia[n * 7 * 3 + 1 * 3 + 0]) * _T + Hia[n * 7 * 3 + 2 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 3 * 3 + 0] + (_DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 0] + (Hia[n * 7 * 3 + 5 * 3 + 0] * _OT + Hia[n * 7 * 3 + 6 * 3 + 0] * _DF(0.25) * T) * T) * T) * T + Hib[n * 2 * 3 + 1 * 3 + 0]);
 	else if (T >= _DF(6000.0))
-		S = Ri * ((-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 2] * _T - Hia[n * 7 * 3 + 1 * 3 + 2]) * _T + Hia[n * 7 * 3 + 2 * 3 + 2] * sycl::log(T) + (Hia[n * 7 * 3 + 3 * 3 + 2] + (_DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 2] + (Hia[n * 7 * 3 + 5 * 3 + 2] / _DF(3.0) + Hia[n * 7 * 3 + 6 * 3 + 2] * _DF(0.25) * T) * T) * T) * T + Hib[n * 2 * 3 + 1 * 3 + 2]);
+		S = Ri * ((-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 2] * _T - Hia[n * 7 * 3 + 1 * 3 + 2]) * _T + Hia[n * 7 * 3 + 2 * 3 + 2] * sycl::log(T) + (Hia[n * 7 * 3 + 3 * 3 + 2] + (_DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 2] + (Hia[n * 7 * 3 + 5 * 3 + 2] * _OT + Hia[n * 7 * 3 + 6 * 3 + 2] * _DF(0.25) * T) * T) * T) * T + Hib[n * 2 * 3 + 1 * 3 + 2]);
 #else
 	if (T > 1000)
-		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * sycl::log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] / _DF(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * _DF(0.25) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 1 * 3 + 0] + (_DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] * _OT + Hia[n * 7 * 3 + 4 * 3 + 0] * _DF(0.25) * T) * T) * T) * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
 	else
-		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * sycl::log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] / _DF(3.0) * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * _DF(0.25) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
+		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 1 * 3 + 1] + (_DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] * _OT + Hia[n * 7 * 3 + 4 * 3 + 1] * _DF(0.25) * T) * T) * T) * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
+		// if (T > 1000)
+		// 	S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * sycl::log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] * _OT * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] * _DF(0.25) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
+		// else
+		// 	S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * sycl::log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] * _OT * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] * _DF(0.25) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
 #endif
+
+	// 	real_t S = _DF(0.0), T = T0;
+	// #if Thermo
+	// 	if (T > 1000) // Hia[n * 7 * 3 + 0 * 3 + 1]//Hib[n * 2 * 3 + 0 * 3 + 1]
+	// 		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 1] / T / T - Hia[n * 7 * 3 + 1 * 3 + 1] / T + Hia[n * 7 * 3 + 2 * 3 + 1] * sycl::log(T) + Hia[n * 7 * 3 + 3 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 1] * T * T + Hia[n * 7 * 3 + 5 * 3 + 1] * sycl::pow<real_t>(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 1] * sycl::pow<real_t>(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 1]);
+	// 	else
+	// 		S = Ri * (-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 0] / T / T - Hia[n * 7 * 3 + 1 * 3 + 0] / T + Hia[n * 7 * 3 + 2 * 3 + 0] * sycl::log(T) + Hia[n * 7 * 3 + 3 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 0] * T * T + Hia[n * 7 * 3 + 5 * 3 + 0] * sycl::pow<real_t>(T, 3) / real_t(3.0) + Hia[n * 7 * 3 + 6 * 3 + 0] * sycl::pow<real_t>(T, 4) / real_t(4.0) + Hib[n * 2 * 3 + 1 * 3 + 0]);
+	// #else
+	// 	if (T > 1000)
+	// 		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * sycl::log(T) + Hia[n * 7 * 3 + 1 * 3 + 0] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] * T * T + Hia[n * 7 * 3 + 3 * 3 + 0] * _OT * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
+	// 	else
+	// 		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * sycl::log(T) + Hia[n * 7 * 3 + 1 * 3 + 1] * T + _DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] * T * T + Hia[n * 7 * 3 + 3 * 3 + 1] * _OT * T * T * T + Hia[n * 7 * 3 + 4 * 3 + 1] / _DF(4.0) * T * T * T * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
+	// #endif
+
 	return S;
 }
 
@@ -1290,7 +1347,7 @@ real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const rea
  */
 real_t get_Gibson(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t T, const real_t Ri, const int n)
 {
-	return get_Entropy(Hia, Hib, Ri, T, n) / Ri - get_Enthalpy(Hia, Hib, T, Ri, n) / Ri / T;
+	return (get_Entropy(Hia, Hib, Ri, T, n) - get_Enthalpy(Hia, Hib, T, Ri, n) / T) / Ri;
 }
 
 /**

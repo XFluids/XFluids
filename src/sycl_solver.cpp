@@ -3,19 +3,20 @@
 void SYCLSolver::Evolution(sycl::queue &q)
 {
 	real_t physicalTime = 0.0;
-	int Iteration = 0, OutNum = 1, rank = 0, TimeLoop = 0;
+	int Iteration = 0, OutNum = 1, rank = 0, TimeLoop = 0, nranks = 1;
 	bool error_out = false;
 #if USE_MPI
 	rank = Ss.mpiTrans->myRank;
-	int nranks = Ss.mpiTrans->nProcs;
+	nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
 	float duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 
 	while (TimeLoop < Ss.nOutTimeStamps)
 	{
+		real_t target_t = std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
 		TimeLoop++;
-		while (physicalTime < TimeLoop * Ss.OutTimeStamp)
+		while (physicalTime < target_t)
 		{
 			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput && physicalTime >= Ss.OutTimeStart || Iteration == 0 || error_out == true)
 			{
@@ -51,8 +52,8 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			if (rank == 0)
 				std::cout << "     mpi communicated";
 #endif // end USE_MPI
-			if (physicalTime + dt > TimeLoop * Ss.OutTimeStamp)
-				dt = TimeLoop * Ss.OutTimeStamp - physicalTime;
+			if (physicalTime + dt > target_t)
+				dt = target_t - physicalTime;
 			if (rank == 0)
 				std::cout << "   dt: " << dt << " to do. \n";
 			// solved the fluid with 3rd order Runge-Kutta method
@@ -93,7 +94,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #ifdef USE_MPI
 	}
 #endif
-	sleep(5);
+	// sleep(5);
 }
 
 bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -811,7 +812,8 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 #if DIM_Z
 		<< "w, "
 #endif
-		<< "c, p, rho, ";
+		// << "c, "
+		<< "p, rho, ";
 #ifdef COP
 	out << "gamma, T"; //
 	for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -863,7 +865,8 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 #if DIM_Z
 					<< wc << " "
 #endif // end DIM_Z
-					<< cc << pc << " " << rhoc << " ";
+	   // << cc << " "
+					<< pc << " " << rhoc << " ";
 #if COP
 				out << fluids[0]->h_fstate.gamma[id] << " " << fluids[0]->h_fstate.T[id]; //
 				for (int n = 0; n < NUM_SPECIES; n++)

@@ -39,73 +39,102 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
 #ifdef COP
-    // for 2D shock-bubble interactive
-    real_t dy_in = -_DF(1.0), dy_out = -_DF(1.0), tmp = _DF(0.0);
+    // for 2D/3D shock-bubble interactive
+    real_t dy_ = _DF(0.0), tmp = _DF(0.0);
+    // real_t dy_in = -_DF(1.0), dy_out = -_DF(1.0);
 #if DIM_X
     tmp = (x - ini.cop_center_x) * (x - ini.cop_center_x);
-    dy_in += tmp * ini._xa2_in;
-    dy_out += tmp * ini._xa2_out;
+    dy_ += tmp * ini._xa2;
+    // dy_in += tmp * ini._xa2_in;
+    // dy_out += tmp * ini._xa2_out;
 #endif // end DIM_X
 #if DIM_Y
     tmp = (y - ini.cop_center_y) * (y - ini.cop_center_y);
-    dy_in += tmp * ini._yb2_in;
-    dy_out += tmp * ini._yb2_out;
+    dy_ += tmp * ini._yb2;
+    // dy_in += tmp * ini._yb2_in;
+    // dy_out += tmp * ini._yb2_out;
 #endif // end DIM_Y
     // for 3D shock-bubble interactive
 #if DIM_Z
     tmp = (z - ini.cop_center_z) * (z - ini.cop_center_z);
-    dy_in += tmp * ini._zc2_in;
-    dy_out += tmp * ini._zc2_out;
+    dy_ += tmp * ini._zc2;
+    // dy_in += tmp * ini._zc2_in;
+    // dy_out += tmp * ini._zc2_out;
 #endif // end DIM_Z
+    dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    // Ini bubble
+    real_t xi[NUM_SPECIES] = {0.0}, yi[NUM_SPECIES] = {0.0};
+    xi[8] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
 #endif
 
-    if (x > ini.blast_center_x) // downstream of the shock
+    if (i > 3)
     {
         T[id] = ini.blast_T_out;
-        rho[id] = ini.blast_density_out;
         p[id] = ini.blast_pressure_out;
         u[id] = ini.blast_u_out;
         v[id] = ini.blast_v_out;
         w[id] = ini.blast_w_out;
-#ifdef COP
-        if (dy_in < 0 && dy_out < 0)
-        {                                 // in bubble
-            rho[id] = ini.cop_density_in; // 气泡内单独赋值密度以和气泡外区分
-            p[id] = ini.cop_pressure_in;  // 气泡内单独赋值压力以和气泡外区分
-            for (size_t i = 0; i < NUM_SPECIES; i++)
-                _y[i][id] = thermal.species_ratio_in[i];
-        }
-        else if (dy_in > 0 && dy_out < 0)
-        { // boundary of bubble && shock
-            rho[id] = _DF(0.5) * (ini.cop_density_in + ini.blast_density_out);
-            p[id] = _DF(0.5) * (ini.cop_pressure_in + ini.blast_pressure_out);
-            for (size_t i = 0; i < NUM_SPECIES; i++)
-                _y[i][id] = _DF(0.5) * (thermal.species_ratio_in[i] + thermal.species_ratio_out[i]);
-        }
-        else
-        { // out of bubble
-            for (size_t i = 0; i < NUM_SPECIES; i++)
-                _y[i][id] = thermal.species_ratio_out[i];
-        }
-#endif // end COP
     }
-    else // upstream of the shock
+    else
     {
         T[id] = ini.blast_T_in;
-        rho[id] = ini.blast_density_in;
         p[id] = ini.blast_pressure_in;
         u[id] = ini.blast_u_in;
         v[id] = ini.blast_v_in;
         w[id] = ini.blast_w_in;
-#ifdef COP // to be 1d shock without define React
-        for (size_t i = 0; i < NUM_SPECIES; i++)
-            _y[i][id] = thermal.species_ratio_out[i];
-#endif // end COP
     }
-    // #ifdef COP // to be 1d shock without define React
-    //     for (size_t i = 0; i < NUM_SPECIES; i++)
-    //         _y[i][id] = thermal.species_ratio_out[i];
+#ifdef COP
+    xi[0] = _DF(0.3) * (_DF(1.0) - xi[8]);  // H2
+    xi[1] = _DF(0.15) * (_DF(1.0) - xi[8]); // O2
+    xi[9] = _DF(0.55) * (_DF(1.0) - xi[8]); // Xe
+    get_yi(yi, xi, thermal.Wi);
+    for (size_t n = 0; n < NUM_SPECIES; n++)
+        _y[n][id] = yi[n];
+#endif // end COP
+
+    // if (x > ini.blast_center_x) // downstream of the shock
+    //     {
+    //         T[id] = ini.blast_T_out;
+    //         rho[id] = ini.blast_density_out;
+    //         p[id] = ini.blast_pressure_out;
+    //         u[id] = ini.blast_u_out;
+    //         v[id] = ini.blast_v_out;
+    //         w[id] = ini.blast_w_out;
+    // #ifdef COP
+    //         if (dy_in < 0 && dy_out < 0)
+    //         {                                 // in bubble
+    //             rho[id] = ini.cop_density_in; // 气泡内单独赋值密度以和气泡外区分
+    //             p[id] = ini.cop_pressure_in;  // 气泡内单独赋值压力以和气泡外区分
+    //             for (size_t i = 0; i < NUM_SPECIES; i++)
+    //                 _y[i][id] = thermal.species_ratio_in[i];
+    //         }
+    //         else if (dy_in > 0 && dy_out < 0)
+    //         { // boundary of bubble && shock
+    //             rho[id] = _DF(0.5) * (ini.cop_density_in + ini.blast_density_out);
+    //             p[id] = _DF(0.5) * (ini.cop_pressure_in + ini.blast_pressure_out);
+    //             for (size_t i = 0; i < NUM_SPECIES; i++)
+    //                 _y[i][id] = _DF(0.5) * (thermal.species_ratio_in[i] + thermal.species_ratio_out[i]);
+    //         }
+    //         else
+    //         { // out of bubble
+    //             for (size_t i = 0; i < NUM_SPECIES; i++)
+    //                 _y[i][id] = thermal.species_ratio_out[i];
+    //         }
     // #endif // end COP
+    //     }
+    //     else // upstream of the shock
+    //     {
+    //         T[id] = ini.blast_T_in;
+    //         rho[id] = ini.blast_density_in;
+    //         p[id] = ini.blast_pressure_in;
+    //         u[id] = ini.blast_u_in;
+    //         v[id] = ini.blast_v_in;
+    //         w[id] = ini.blast_w_in;
+    // #ifdef COP // to be 1d shock without define React
+    //         for (size_t i = 0; i < NUM_SPECIES; i++)
+    //             _y[i][id] = thermal.species_ratio_out[i];
+    // #endif // end COP
+    //     }
 }
 
 /**
@@ -146,20 +175,12 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal.species_chara, yi);
     rho[id] = p[id] / R / T[id];
 
-    real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+    // real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
+    // c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
-#if 1 != NumFluid
-    //  for both singlephase && multiphase
-    c[id] = material.Mtrl_ind == 0 ? sqrt(material.Gamma * p[id] / rho[id]) : sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
-    if (material.Mtrl_ind == 0)
-        U[Emax * id + 4] = p[id] / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
-    else
-        U[Emax * id + 4] = (p[id] + material.Gamma * (material.B - material.A)) / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
-#endif // COP
     H[id] = (U[Emax * id + 4] + p[id]) / rho[id];
     // initial U[0]-U[3]
     U[Emax * id + 0] = rho[id];
