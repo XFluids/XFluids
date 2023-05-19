@@ -6,7 +6,7 @@ using namespace sycl;
 void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialProperty material, Thermal thermal, FlowData &fdata, real_t *U, real_t *U1, real_t *LU,
 						   real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
 {
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto local_ndrange = range<3>((bl.dim_block_x + 1) / 2, (bl.dim_block_y + 1) / 2, (bl.dim_block_z + 1) / 2); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 
 	real_t *rho = fdata.rho;
@@ -231,8 +231,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 
 #if DIM_X
 #ifdef DEBUG
-	std::cout << "  sleep before ReconstructFluxX\n";
-	sleep(5);
+	// std::cout << "  sleep before ReconstructFluxX\n";
+	// sleep(5);
 #endif // end DEBUG
 	// proceed at x directiom and get F-flux terms at node wall
 	auto global_ndrange_x = range<3>(bl.X_inner + local_ndrange[0], bl.Y_inner, bl.Z_inner);
@@ -258,15 +258,15 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 		.wait();
 
 #ifdef DEBUG
-	std::cout << "  sleep after ReconstructFluxX\n";
-	sleep(5);
+	// std::cout << "  sleep after ReconstructFluxX\n";
+	// sleep(5);
 #endif // end DEBUG
 #endif
 
 #if DIM_Y
 #ifdef DEBUG
-	std::cout << "  sleep before ReconstructFluxY\n";
-	sleep(5);
+	// std::cout << "  sleep before ReconstructFluxY\n";
+	// sleep(5);
 #endif // end DEBUG
 	// proceed at y directiom and get G-flux terms at node wall
 	auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + local_ndrange[1], bl.Z_inner);
@@ -291,16 +291,16 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 			}); })
 		.wait();
 #ifdef DEBUG
-	std::cout << "  sleep after ReconstructFluxY\n";
-	sleep(5);
+	// std::cout << "  sleep after ReconstructFluxY\n";
+	// sleep(5);
 #endif // end DEBUG
 
 #endif
 
 #if DIM_Z
 #ifdef DEBUG
-	std::cout << "  sleep before ReconstructFluxZ\n";
-	sleep(5);
+	// std::cout << "  sleep before ReconstructFluxZ\n";
+	// sleep(5);
 #endif // end DEBUG
 	// proceed at y directiom and get G-flux terms at node wall
 	auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + local_ndrange[2]);
@@ -325,8 +325,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 			}); })
 		.wait();
 #ifdef DEBUG
-	std::cout << "  sleep after ReconstructFluxZ\n";
-	sleep(5);
+	// std::cout << "  sleep after ReconstructFluxZ\n";
+	// sleep(5);
 #endif // end DEBUG
 
 #endif

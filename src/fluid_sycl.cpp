@@ -140,12 +140,16 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 	}
 }
 
-bool FluidSYCL::EstimateFluidNAN(sycl::queue &q)
+bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 {
-	real_t *rho = d_fstate.rho;
 	Block bl = Fs.BlSz;
+	real_t *UI = d_U;
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+	auto global_ndrange_max = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+
+	int x_offset = Fs.OutBoundary ? 0 : bl.Bwidth_X;
+	int y_offset = Fs.OutBoundary ? 0 : bl.Bwidth_Y;
+	int z_offset = Fs.OutBoundary ? 0 : bl.Bwidth_Z;
 
 	bool *h_error, *d_error;
 	h_error = middle::MallocHost<bool>(h_error, 1, q);
@@ -155,12 +159,14 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q)
 	// std::cout << "sleep(6)\n";
 	// sleep(5);
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
+			 { 
+				sycl::stream error_out(64 * 1024, 80, h);
+				h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
-    		int i = index.get_global_id(0);
-			int j = index.get_global_id(1);
-			int k = index.get_global_id(2);
-			EstimateFluidNANKernel(i, j, k, bl, rho, d_error); }); })
+    		int i = index.get_global_id(0) + x_offset;
+			int j = index.get_global_id(1) + y_offset;
+			int k = index.get_global_id(2) + z_offset;
+			EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, UI, d_error, error_out); }); })
 		.wait();
 	// std::cout << "sleep(6)\n";
 	// sleep(5);

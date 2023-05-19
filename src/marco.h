@@ -29,15 +29,15 @@
 /**
  * get Roe values insde Reconstructflux
  */
-#define MARCO_ROE()                           \
-    real_t D = sqrt(rho[id_r] / rho[id_l]);   \
-    real_t D1 = _DF(1.0) / (D + _DF(1.0));    \
-    real_t _u = (u[id_l] + D * u[id_r]) * D1; \
-    real_t _v = (v[id_l] + D * v[id_r]) * D1; \
-    real_t _w = (w[id_l] + D * w[id_r]) * D1; \
-    real_t _H = (H[id_l] + D * H[id_r]) * D1; \
-    real_t _P = (p[id_l] + D * p[id_r]) * D1; \
-    real_t _rho = sqrt(rho[id_r] * rho[id_l]);
+#define MARCO_ROE()                                       \
+    real_t D = sycl::sqrt<real_t>(rho[id_r] / rho[id_l]); \
+    real_t D1 = _DF(1.0) / (D + _DF(1.0));                \
+    real_t _u = (u[id_l] + D * u[id_r]) * D1;             \
+    real_t _v = (v[id_l] + D * v[id_r]) * D1;             \
+    real_t _w = (w[id_l] + D * w[id_r]) * D1;             \
+    real_t _H = (H[id_l] + D * H[id_r]) * D1;             \
+    real_t _P = (p[id_l] + D * p[id_r]) * D1;             \
+    real_t _rho = sycl::sqrt<real_t>(rho[id_r] * rho[id_l]);
 
 /**
  * get c2 #ifdef COP inside Reconstructflux
@@ -79,7 +79,10 @@
     real_t _prho = get_RoeAverage(p[id_l] / rho[id_l], p[id_r] / rho[id_r], D, D1) + _DF(0.5) * D * D1 * D1 * (sycl::pow<real_t>(u[id_r] - u[id_l], 2) + sycl::pow<real_t>(v[id_r] - v[id_l], 2) + sycl::pow<real_t>(w[id_r] - w[id_l], 2)); \
     real_t _dpdE = get_RoeAverage(gamma_l - _DF(1.0), gamma_r - _DF(1.0), D, D1);                                                                                                                                                            \
     real_t _dpde = get_RoeAverage((gamma_l - _DF(1.0)) * rho[id_l], (gamma_r - _DF(1.0)) * rho[id_r], D, D1);                                                                                                                                \
-    real_t c2 = SoundSpeedMultiSpecies(z, b1, b3, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);
+    real_t c2 = SoundSpeedMultiSpecies(z, b1, b3, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);                                                                            \
+    /*add support while c2<0 use c2 Refed in https://doi.org/10.1006/jcph.1996.5622 */                                                                                                                                                       \
+    real_t c2w = sycl::step(c2, _DF(0.0)); /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/                                                                                                                                  \
+    c2 = Gamma0 * _P * _rho * c2w + (_DF(1.0) - c2w) * c2;
 
 /**
  * get c2 #else COP

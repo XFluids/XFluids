@@ -31,13 +31,13 @@ void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
 /**
  *@brief calculate yi : mass fraction from xi : mole fraction.
  */
-void get_yi(real_t yi[NUM_SPECIES], real_t const xi[NUM_SPECIES], real_t const Wi[NUM_SPECIES])
+void get_yi(real_t xi[NUM_SPECIES], real_t const Wi[NUM_SPECIES])
 {
 	real_t W_mix = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
 		W_mix += xi[i] * Wi[i];
 	for (size_t n = 0; n < NUM_SPECIES; n++) // Ri=Ru/Wi
-		yi[n] = xi[n] * Wi[n] / W_mix;
+		xi[n] = xi[n] * Wi[n] / W_mix;
 }
 
 /**
@@ -290,7 +290,9 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	for (size_t ii = 5; ii < Emax; ii++)
 	{ // calculate yi
 		yi[ii - 5] = UI[ii] * rho1;
+		// yi[ii - 5] = sycl::max(_DF(0.0), UI[ii] * rho1);
 		yi[NUM_COP] += -yi[ii - 5];
+		// UI[ii] = yi[ii - 5] * rho;
 	}
 #endif // end COP
 
@@ -1691,7 +1693,7 @@ real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, const rea
  * @brief get average transport coefficient
  * @param chemi is set to get species information
  */
-void Get_transport_coeff_aver(Thermal thermal, real_t *Dkm_aver_id, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
+void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Thermal thermal, real_t *Dkm_aver_id, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
 							  const real_t rho, const real_t p, const real_t T, const real_t C_total)
 {
 	real_t **fcv = thermal.fitted_coefficients_visc;
@@ -1722,14 +1724,9 @@ void Get_transport_coeff_aver(Thermal thermal, real_t *Dkm_aver_id, real_t &visc
 	}
 #ifdef Diffu
 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
-	if (1 == NUM_SPECIES)
+	if (1 < NUM_SPECIES)
 	{
-		Dkm_aver_id[0] = GetDkj(specie[0], specie[0], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[0], chemi.species[0], refstat);
-		Dkm_aver_id[0] *= _DF(1.0e-1);							  // cm2/s==>m2/s
-	}
-	else
-	{
-		double temp1 = _DF(0.0), temp2 = _DF(0.0), temp3 = _DF(0.0);
+		double temp1, temp2;
 		for (int k = 0; k < NUM_SPECIES; k++)
 		{
 			temp1 = _DF(0.0);
@@ -1741,10 +1738,18 @@ void Get_transport_coeff_aver(Thermal thermal, real_t *Dkm_aver_id, real_t &visc
 					temp1 += X[i] * thermal.Wi[i];
 					temp2 += X[i] / GetDkj(specie[i], specie[k], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k], refstat);
 				}
-			}
-			Dkm_aver_id[k] = temp1 / temp2 / (rho / C_total); // rho/C_total:the mole mass of mixture;
-			Dkm_aver_id[k] *= _DF(1.0e-1);					  // cm2/s==>m2/s
+			}											 // cause nan error while only one yi of the mixture given(temp1/temp2=0/0).
+			if (sycl::step(sycl::ceil(temp1), _DF(0.0))) // =1 while temp1==0.0;
+				Dkm_aver_id[k] = GetDkj(specie[k], specie[k], Dkj, T, p);
+			else
+				Dkm_aver_id[k] = temp1 / temp2 / rho * C_total; // rho/C_total:the mole mass of mixture;
+			Dkm_aver_id[k] *= _DF(1.0e-1);						// cm2/s==>m2/s
 		}
+	}
+	else
+	{															  // NUM_SPECIES==1
+		Dkm_aver_id[0] = GetDkj(specie[0], specie[0], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[0], chemi.species[0], refstat);
+		Dkm_aver_id[0] *= _DF(1.0e-1);							  // cm2/s==>m2/s
 	}
 #endif // end Diffu
 }

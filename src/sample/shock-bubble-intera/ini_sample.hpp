@@ -41,6 +41,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 #ifdef COP
     // for 2D/3D shock-bubble interactive
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
+    // real_t dy_in = _DF(0.0), dy_out = _DF(0.0);
     // real_t dy_in = -_DF(1.0), dy_out = -_DF(1.0);
 #if DIM_X
     tmp = (x - ini.cop_center_x) * (x - ini.cop_center_x);
@@ -61,13 +62,48 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // dy_in += tmp * ini._zc2_in;
     // dy_out += tmp * ini._zc2_out;
 #endif // end DIM_Z
-    dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
+    // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;
     // Ini bubble
-    real_t xi[NUM_SPECIES] = {0.0}, yi[NUM_SPECIES] = {0.0};
-    xi[8] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
-#endif
+    real_t xi[NUM_SPECIES] = {0.0};
+    dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
+    xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
+    xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
+    xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
 
-    if (i > 3)
+    // xi[NUM_SPECIES - 2] = real_t(outbubble) * _DF(1.0) + real_t(bcbubble) * _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
+    // if (inbubble)
+    // {
+    //     xi[0] = _DF(0.3);                //* (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // H2
+    //     xi[1] = _DF(0.15);               //* (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // O2
+    //     xi[NUM_SPECIES - 1] = _DF(0.55); //* (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // Xe
+    // }
+    // else if (outbubble)
+    // {
+    //     xi[NUM_SPECIES - 2] = _DF(1.0);
+    //     // xi[NUM_SPECIES - 3] = _DF(0.5); //_DF(1.0);
+    //     // xi[NUM_SPECIES - 2] = _DF(0.5); //_DF(1.0);
+    //     // xi[1] = _DF(1.0) - xi[8];
+    // }
+    // else
+    // {
+    //     xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
+
+    //     // xi[NUM_SPECIES - 3] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //_DF(0.71) *
+    //     // xi[NUM_SPECIES - 2] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //_DF(0.71) *
+
+    //     // xi[1] = _DF(0.575) * _DF(0.29) * _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); // for 0.71 N2 + 0.29 O2 = AIR
+    //     xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]);                // H2
+    //     xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]);               // O2
+    //     xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // Xe
+    // }
+    get_yi(xi, thermal.Wi);
+    for (size_t n = 0; n < NUM_SPECIES; n++)
+        _y[n][id] = xi[n];
+#endif // end COP
+
+    if (x > ini.blast_center_x) //(i > 3)
     {
         T[id] = ini.blast_T_out;
         p[id] = ini.blast_pressure_out;
@@ -83,14 +119,6 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         v[id] = ini.blast_v_in;
         w[id] = ini.blast_w_in;
     }
-#ifdef COP
-    xi[0] = _DF(0.3) * (_DF(1.0) - xi[8]);  // H2
-    xi[1] = _DF(0.15) * (_DF(1.0) - xi[8]); // O2
-    xi[9] = _DF(0.55) * (_DF(1.0) - xi[8]); // Xe
-    get_yi(yi, xi, thermal.Wi);
-    for (size_t n = 0; n < NUM_SPECIES; n++)
-        _y[n][id] = yi[n];
-#endif // end COP
 
     // if (x > ini.blast_center_x) // downstream of the shock
     //     {

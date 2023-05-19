@@ -83,7 +83,7 @@ public:
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
-    bool EstimateFluidNAN(sycl::queue &q);
+    bool EstimateFluidNAN(sycl::queue &q, int flag);
 #ifdef COP_CHEME
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 #endif                                           // end COP_CHEME
@@ -91,29 +91,21 @@ public:
 
 class SYCLSolver{
     Setup Ss;
+    int OnbX, OnbY, OnbZ, OminX, OminY, OminZ, OmaxX, OmaxY, OmaxZ;
 
 public:
     real_t dt;
     BConditions *d_BCs; // boundary condition indicators
     FluidSYCL *fluids[NumFluid];
 
-    SYCLSolver(Setup &setup) : Ss(setup), dt(setup.dt)
-    {
-        for (int n = 0; n < NumFluid; n++)
-        {
-            fluids[n] = new FluidSYCL(setup);
-#if 1 != NumFluid
-            fluids[n]->initialize(n);
-#endif
-        }
-    }
+    SYCLSolver(Setup &setup);
     void Evolution(sycl::queue &q);
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q);
     void Output(sycl::queue &q, int rank, std::string interation, real_t Time);
-    void Output_vti(sycl::queue &q, int rank, std::string interation, real_t Time);
-    void Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time);
+    void Output_vti(sycl::queue &q, int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
+    void Output_plt(sycl::queue &q, int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);

@@ -21,7 +21,7 @@ ENDIF()
 message(STATUS "Sample init include settings: ")
 
 # message(STATUS "DIM_NUM: ${DIM_NUM}")
-set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/1d-mc-insert-shock-tube") # Be invalid while option COP_CHEME "ON"
+set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/${COP_SPECIES}") # Be invalid while option COP_CHEME "ON"
 
 # // =======================================================
 # #### util sample
@@ -64,7 +64,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(THERMAL "NASA") # NASA fit of Xe
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
-    set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/Reaction/RSBI-18REA")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
@@ -84,7 +83,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(THERMAL "NASA") # NASA fit of Xe
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
-    set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/Reaction/RSBI-18REA")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "3d-under-expanded-jet")

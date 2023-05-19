@@ -4,27 +4,28 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
-extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, Block bl, real_t *rho, bool *error)
+extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, real_t *UI, bool *error, sycl::stream stream_ct1)
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
 #if DIM_X
-    if (i >= Xmax)
+    if (i >= Xmax - bl.Bwidth_X)
         return;
 #endif
 #if DIM_Y
-    if (j >= Ymax)
+    if (j >= Ymax - bl.Bwidth_Y)
         return;
 #endif
 #if DIM_Z
-    if (k >= bl.Zmax)
+    if (k >= bl.Zmax - bl.Bwidth_Z)
         return;
 #endif
     int id = Xmax * Ymax * k + Xmax * j + i;
     // rho[id] = -0.1;
-    if (sycl::isnan(rho[id]) || rho[id] < 0 || sycl::isinf(rho[id]))
+    if (sycl::isnan(UI[0 + id * Emax]) || UI[0 + id * Emax] < 0 || sycl::isinf(UI[0 + id * Emax]))
     {
         *error = true;
+        stream_ct1 << "Illegal value of rho located at id (i= " << i - x_offset << ", j= " << j - y_offset << ", k= " << k - z_offset << ")\n";
         return;
     }
 }
@@ -463,6 +464,10 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     real_t *U = &(UI[Emax * id]), yi[NUM_SPECIES];
 
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
+
+    // real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * X_inner + _DF(0.5)) * bl.dx + bl.Domain_xmin : _DF(0.0);
+    // real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * Y_inner + _DF(0.5)) * bl.dy + bl.Domain_ymin : _DF(0.0);
+    // real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * Z_inner + _DF(0.5)) * bl.dz + bl.Domain_zmin : _DF(0.0);
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);
@@ -1072,7 +1077,7 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
     real_t C_total = get_xi(X, yi, thermal.Wi, rho[id]);
     //  real_t *temp = &(Dkm_aver[NUM_SPECIES * id]);
     //  real_t *temp = &(hi[NUM_SPECIES * id]);
-    Get_transport_coeff_aver(thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
+    Get_transport_coeff_aver(i, j, k, thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
 }
 
 #if DIM_X

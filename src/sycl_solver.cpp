@@ -1,46 +1,84 @@
 #include "global_class.h"
 
+SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0))
+{
+	for (int n = 0; n < NumFluid; n++)
+	{
+		fluids[n] = new FluidSYCL(setup);
+#if 1 != NumFluid
+		fluids[n]->initialize(n);
+#endif
+	}
+	if (Ss.OutBoundary)
+	{
+		OnbX = Ss.BlSz.Xmax;
+		OminX = 0;
+		OmaxX = Ss.BlSz.Xmax;
+
+		OnbY = Ss.BlSz.Ymax;
+		OminY = 0;
+		OmaxY = Ss.BlSz.Ymax;
+
+		OnbZ = Ss.BlSz.Zmax;
+		OminZ = 0;
+		OmaxZ = Ss.BlSz.Zmax;
+	}
+	else
+	{
+		OnbX = Ss.BlSz.X_inner;
+		OminX = Ss.BlSz.Bwidth_X;
+		OmaxX = Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X;
+
+		OnbY = Ss.BlSz.Y_inner;
+		OminY = Ss.BlSz.Bwidth_Y;
+		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
+
+		OnbZ = Ss.BlSz.Z_inner;
+		OminZ = Ss.BlSz.Bwidth_Z;
+		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
+	}
+}
+
 void SYCLSolver::Evolution(sycl::queue &q)
 {
 	real_t physicalTime = 0.0;
 	int Iteration = 0, OutNum = 1, rank = 0, TimeLoop = 0, nranks = 1;
-	bool error_out = false;
+	bool error_out = false, Stepstop = false;
+	dt = 0;
 #if USE_MPI
 	rank = Ss.mpiTrans->myRank;
 	nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
+
 	float duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
-
 	while (TimeLoop < Ss.nOutTimeStamps)
 	{
-		real_t target_t = std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
+		real_t target_t = Ss.OutTimeStamps[TimeLoop]; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
 		TimeLoop++;
 		while (physicalTime < target_t)
 		{
-			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput && physicalTime >= Ss.OutTimeStart || Iteration == 0 || error_out == true)
+			if (TimeLoop && Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
 			{
-				if (error_out == true)
-				{
-					Output(q, rank, "error", physicalTime);
-					std::cout << "An error: illegal value of rho Captured." << std::endl;
-					std::exit(EXIT_FAILURE);
-				}
-				else
-					Output(q, rank, std::to_string(Iteration), physicalTime);
+				Output(q, rank, std::to_string(Iteration), physicalTime);
 				OutNum++;
 			}
-			if (Iteration >= Ss.nStepmax)
-				break;
+			else if (error_out)
+			{
+				std::cout << "Errors Captured." << std::endl;
+				Output(q, rank, "_error", physicalTime);
+				std::exit(EXIT_FAILURE);
+			}
+			physicalTime = physicalTime + dt;
 			// get minmum dt, if MPI used, get the minimum of all ranks
 #ifdef DEBUG
-			std::cout << "  sleep before ComputeTimeStep\n";
-			sleep(5);
+				// std::cout << "  sleep before ComputeTimeStep\n";
+				// sleep(5);
 #endif								 // end DEBUG
 			dt = ComputeTimeStep(q); // 2.0e-6; //
 #ifdef DEBUG
-			std::cout << "  sleep after ComputeTimeStep\n";
-			sleep(5);
+			// std::cout << "  sleep after ComputeTimeStep\n";
+			// sleep(5);
 #endif // end DEBUG
 			if (rank == 0)
 				std::cout << "N=" << std::setw(7) << Iteration + 1 << "     physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime;
@@ -56,18 +94,21 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				dt = target_t - physicalTime;
 			if (rank == 0)
 				std::cout << "   dt: " << dt << " to do. \n";
+
 			// solved the fluid with 3rd order Runge-Kutta method
 			error_out = SinglePhaseSolverRK3rd(q);
 
 #ifdef COP_CHEME
 			Reaction(q, dt);
 #endif // end COP_CHEME
-			physicalTime = physicalTime + dt;
+
 			Iteration++;
+			Stepstop = Ss.nStepmax <= Iteration ? true : false; /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/
+			if (Stepstop)
+				break;
 		}
-		if (physicalTime >= Ss.OutTimeStart)
 			Output(q, rank, std::to_string(Iteration), physicalTime);
-		if (Iteration >= Ss.nStepmax)
+			if (Stepstop)
 			break;
 	}
 
@@ -93,6 +134,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 		// std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << duration  << " of rank: " << rank << std::endl;
 #ifdef USE_MPI
 	}
+	Ss.mpiTrans->communicator->synchronize();
 #endif
 	// sleep(5);
 }
@@ -108,7 +150,7 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
 #ifdef ESTIM_NAN
 	for (int n = 0; n < NumFluid; n++)
 	{
-		if (fluids[n]->EstimateFluidNAN(q))
+		if (fluids[n]->EstimateFluidNAN(q, 0))
 		{
 			error = true;
 			break;
@@ -239,23 +281,10 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 
 void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t Time)
 {
-#ifdef OUT_PLT
-	Output_plt(q, rank, interation, Time);
-#else
-	Output_vti(q, rank, interation, Time);
-#endif // end OUT_PLT
-
-	if (rank == 0)
-		std::cout << "Output has been done at Step = " << interation << std::endl;
-}
-
-void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, real_t Time)
-{
-	CopyDataFromDevice(q); // only copy when output
-	real_t Itime = Time * 1.0e8;
+	real_t Itime = Time;
 	// Write time in string timeFormat
 	std::ostringstream timeFormat;
-	timeFormat.width(4);
+	timeFormat.width(11);
 	timeFormat.fill('0');
 	timeFormat << Itime;
 	// Write istep in string stepFormat
@@ -269,38 +298,23 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	rankFormat.fill('0');
 	rankFormat << rank;
 
+#ifdef OUT_PLT
+	Output_plt(q, rank, timeFormat, stepFormat, rankFormat);
+#else
+	Output_vti(q, rank, timeFormat, stepFormat, rankFormat);
+#endif // end OUT_PLT
+
+	if (rank == 0)
+		std::cout << "Output has been done at Step = " << interation << std::endl;
+}
+
+void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
+{
+	CopyDataFromDevice(q); // only copy when output
+
 	int xmin, ymin, xmax, ymax, zmin, zmax, mx, my, mz;
-	int OnbX, OnbY, OnbZ, OminX, OminY, OminZ, OmaxX, OmaxY, OmaxZ;
 	real_t dx, dy, dz;
 
-	if (Ss.OutBoundary)
-	{
-		OnbX = Ss.BlSz.Xmax;
-		OminX = 0;
-		OmaxX = Ss.BlSz.Xmax;
-
-		OnbY = Ss.BlSz.Ymax;
-		OminY = 0;
-		OmaxY = Ss.BlSz.Ymax;
-
-		OnbZ = Ss.BlSz.Zmax;
-		OminZ = 0;
-		OmaxZ = Ss.BlSz.Zmax;
-	}
-	else
-	{
-		OnbX = Ss.BlSz.X_inner;
-		OminX = Ss.BlSz.Bwidth_X;
-		OmaxX = Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X;
-
-		OnbY = Ss.BlSz.Y_inner;
-		OminY = Ss.BlSz.Bwidth_Y;
-		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
-
-		OnbZ = Ss.BlSz.Z_inner;
-		OminZ = Ss.BlSz.Bwidth_Z;
-		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
-	}
 	xmin = DIM_X ? Ss.BlSz.myMpiPos_x * OnbX : 0;
 	xmax = DIM_X ? Ss.BlSz.myMpiPos_x * OnbX + OnbX : 0;
 	ymin = DIM_Y ? Ss.BlSz.myMpiPos_y * OnbY : 0;
@@ -362,11 +376,10 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	std::string headerfile_name;
 	std::string outputPrefix = INI_SAMPLE;
 #ifdef USE_MPI
-	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_mpi_" + rankFormat.str() + ".vti"; //"_Time" + timeFormat.str() +
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_Time_" + timeFormat.str() + "_rank_" + rankFormat.str() + ".vti"; //"_Time" + timeFormat.str() +
 	headerfile_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
-	// std::cout << file_name << "of rank " << rank << std::endl;
 #else
-	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".vti";
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_Time_" + timeFormat.str() + ".vti";
 #endif
 #ifdef USE_MPI
 	mx = Ss.BlSz.mx;
@@ -411,7 +424,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 			pieceFormat.width(5);
 			pieceFormat.fill('0');
 			pieceFormat << iPiece;
-			std::string pieceFilename = "./" + outputPrefix + "_Step_" + stepFormat.str() + "_mpi_" + pieceFormat.str() + ".vti";
+			std::string pieceFilename = "./" + outputPrefix + "_Step_" + stepFormat.str() + "_Time_" + timeFormat.str() + "_rank_" + pieceFormat.str() + ".vti";
 // get MPI coords corresponding to MPI rank iPiece
 #if 3 == DIM_X + DIM_Y + DIM_Z
 			int coords[3];
@@ -726,67 +739,16 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::string interation, re
 	outFile.close();
 }
 
-void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, real_t Time)
+void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
 {
 	CopyDataFromDevice(q); // only copy when output
-
-	int OnbX, OnbY, OnbZ, OminX, OminY, OminZ, OmaxX, OmaxY, OmaxZ;
-	if (Ss.OutBoundary)
-	{
-		OnbX = Ss.BlSz.Xmax;
-		OminX = 0;
-		OmaxX = Ss.BlSz.Xmax;
-
-		OnbY = Ss.BlSz.Ymax;
-		OminY = 0;
-		OmaxY = Ss.BlSz.Ymax;
-
-		OnbZ = Ss.BlSz.Zmax;
-		OminZ = 0;
-		OmaxZ = Ss.BlSz.Zmax;
-	}
-	else
-	{
-		OnbX = Ss.BlSz.X_inner;
-		OminX = Ss.BlSz.Bwidth_X;
-		OmaxX = Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X;
-
-		OnbY = Ss.BlSz.Y_inner;
-		OminY = Ss.BlSz.Bwidth_Y;
-		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
-
-		OnbZ = Ss.BlSz.Z_inner;
-		OminZ = Ss.BlSz.Bwidth_Z;
-		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
-	}
-
-	real_t dx = Ss.BlSz.dx;
-	real_t dy = Ss.BlSz.dy;
-	real_t dz = Ss.BlSz.dz;
-
-	real_t Itime = Time * 1.0e8;
-	// Write time in string timeFormat
-	std::ostringstream timeFormat;
-	timeFormat.width(4);
-	timeFormat.fill('0');
-	timeFormat << Itime;
-	// Write istep in string stepFormat
-	std::ostringstream stepFormat;
-	stepFormat.width(7);
-	stepFormat.fill('0');
-	stepFormat << interation;
-	// Write Mpi Rank in string rankFormat
-	std::ostringstream rankFormat;
-	rankFormat.width(5);
-	rankFormat.fill('0');
-	rankFormat << rank;
 
 	std::string file_name;
 	std::string outputPrefix = INI_SAMPLE;
 #ifdef USE_MPI
-	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_mpi_" + rankFormat.str() + ".plt";
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_Time_" + timeFormat.str() + "_rank_" + rankFormat.str() + ".plt";
 #else
-	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".plt";
+	file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + "_Time_" + timeFormat.str() + ".plt";
 #endif
 
 	std::ofstream out(file_name);
@@ -820,7 +782,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 		out << ", Y(" << Ss.species_name[n] << ")";
 #endif
 	out << "\n";
-	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << OnbX << ", j= " << OnbY << ", k= " << OnbZ << ", SOLUTIONTIME= " << Time << "\n";
+	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << OnbX << ", j= " << OnbY << ", k= " << OnbZ << ", SOLUTIONTIME= " << timeFormat.str() << "\n";
 
 	real_t offset_x = DIM_X ? -Ss.BlSz.Bwidth_X + 0.5 : 0.0;
 	real_t offset_y = DIM_Y ? -Ss.BlSz.Bwidth_Y + 0.5 : 0.0;
@@ -834,9 +796,9 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::string interation, re
 		for (int j = OminY; j < OmaxY; j++)
 			for (int i = OminX; i < OmaxX; i++)
 			{
-				xc = (i + offset_x) * dx + Ss.BlSz.Domain_xmin;
-				yc = (j + offset_y) * dy + Ss.BlSz.Domain_ymin;
-				zc = (k + offset_z) * dz + Ss.BlSz.Domain_zmin;
+				xc = (i + offset_x) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin;
+				yc = (j + offset_y) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin;
+				zc = (k + offset_z) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin;
 
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 
