@@ -69,7 +69,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				Output(q, rank, "_error", physicalTime);
 				std::exit(EXIT_FAILURE);
 			}
-			physicalTime = physicalTime + dt;
+
 			// get minmum dt, if MPI used, get the minimum of all ranks
 #ifdef DEBUG
 				// std::cout << "  sleep before ComputeTimeStep\n";
@@ -80,8 +80,8 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			// std::cout << "  sleep after ComputeTimeStep\n";
 			// sleep(5);
 #endif // end DEBUG
-			if (rank == 0)
-				std::cout << "N=" << std::setw(7) << Iteration + 1 << "     physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime;
+			if (rank == 0) // An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
+				std::cout << "N=" << std::setw(7) << Iteration + 1 << "     beginning physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime;
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;
@@ -102,6 +102,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			Reaction(q, dt);
 #endif // end COP_CHEME
 
+			physicalTime += dt;
 			Iteration++;
 			Stepstop = Ss.nStepmax <= Iteration ? true : false; /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/
 			if (Stepstop)
@@ -272,8 +273,9 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q)
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
 #ifdef COP
-		for (size_t i = 0; i < NUM_SPECIES; i++)
-			q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
+		// for (size_t i = 0; i < NUM_SPECIES; i++)
+		// 	q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
+		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
 	}
 	q.wait();
@@ -726,7 +728,7 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::ostringstream &timeFo
 					for (int i = OminX; i < OmaxX; i++)
 					{
 						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.y[ii][id];
+						real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
 						outFile.write((char *)&tmp, sizeof(real_t));
 					} // for i
 				}	  // for j
@@ -832,7 +834,7 @@ void SYCLSolver::Output_plt(sycl::queue &q, int rank, std::ostringstream &timeFo
 #if COP
 				out << fluids[0]->h_fstate.gamma[id] << " " << fluids[0]->h_fstate.T[id]; //
 				for (int n = 0; n < NUM_SPECIES; n++)
-					out << " " << fluids[0]->h_fstate.y[n][id];
+					out << " " << fluids[0]->h_fstate.y[n + NUM_SPECIES * id]; // h_fstate.y[n][id];
 #endif
 				out << "\n";
 			}

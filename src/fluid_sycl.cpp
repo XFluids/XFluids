@@ -32,8 +32,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 #ifdef COP
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-		h_fstate.y[n] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	//	for (size_t n = 0; n < NUM_SPECIES; n++)
+	h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
 #endif // COP
 	// NOTE: 设备内存
 	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -72,8 +72,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	MemMbSize += bytes / 1024.0 / 1024.0 * 9.0;
 #endif // end Visc
 #ifdef COP
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-		d_fstate.y[n] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// for (size_t n = 0; n < NUM_SPECIES; n++)
+	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
 	MemMbSize += bytes / 1024.0 / 1024.0 * (NUM_SPECIES);
 #endif // COP
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));

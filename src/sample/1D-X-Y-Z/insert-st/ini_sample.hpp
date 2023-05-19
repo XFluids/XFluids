@@ -7,7 +7,7 @@
  * @return void
  */
 extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
-                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T) {}
+                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T) {}
 
 /**
  * @brief  Initialize conservative quantity;
@@ -15,7 +15,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
  */
 extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
                                           real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-                                          real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T, real_t *H, real_t *c)
+                                          real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
     real_t dx = bl.dx;
@@ -45,17 +45,22 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     u[id] = _DF(0.0);
     v[id] = _DF(0.0);
     w[id] = _DF(0.0);
+
+    real_t *yi = &(_y[NUM_SPECIES * id]);
+    for (size_t n = 0; n < NUM_SPECIES; n++)
+        yi[n] = thermal.species_ratio_out[n];
+
 #ifdef COP // to be 1d shock without define React
-    for (size_t i = 0; i < NUM_SPECIES; i++)
-        _y[i][id] = thermal.species_ratio_out[i];
+           // for (size_t i = 0; i < NUM_SPECIES; i++)
+           //     _y[i][id] = thermal.species_ratio_out[i];
 #endif // end COP
 
-    // Ini yi
-    real_t yi[NUM_SPECIES];
-    get_yi(_y, yi, id);
+        // // Ini yi
+        // real_t yi[NUM_SPECIES];
+        // get_yi(_y, yi, id);
 
-    // // 1D multicomponent insert shock tube
-    // // x
+        // // 1D multicomponent insert shock tube
+        // // x
 #if DIM_X
     T[id] = x < 0.05 ? 400 : 1200;
     p[id] = x < 0.05 ? 8000 : 80000;

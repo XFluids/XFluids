@@ -43,14 +43,13 @@
  * get c2 #ifdef COP inside Reconstructflux
  */
 #define MARCO_COPC2()                                                                                                                                                                                                                        \
-    real_t _yi[NUM_SPECIES], yi_l[NUM_SPECIES], yi_r[NUM_SPECIES], /*_hi[NUM_SPECIES],*/ hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], b1 = _DF(0.0), b3 = _DF(0.0);                                                                     \
+    real_t _yi[NUM_SPECIES], /*yi_l[NUM_SPECIES], yi_r[NUM_SPECIES],_hi[NUM_SPECIES],*/ hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], b1 = _DF(0.0), b3 = _DF(0.0);                                                                      \
     for (size_t n = 0; n < NUM_SPECIES; n++)                                                                                                                                                                                                 \
     {                                                                                                                                                                                                                                        \
         hi_l[n] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id_l], thermal.Ri[n], n);                                                                                                                                                         \
         hi_r[n] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id_r], thermal.Ri[n], n);                                                                                                                                                         \
     }                                                                                                                                                                                                                                        \
-    get_yi(y, yi_l, id_l);                                                                                                                                                                                                                   \
-    get_yi(y, yi_r, id_r);                                                                                                                                                                                                                   \
+    real_t *yi_l = &(y[NUM_SPECIES * id_l]), *yi_r = &(y[NUM_SPECIES * id_r]); /*get_yi(y, yi_l, id_l);*/ /*get_yi(y, yi_r, id_r);*/                                                                                                         \
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)                                                                                                                                                                                              \
     {                                                                                                                                                                                                                                        \
         _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;                                                                                                                                                                                            \
@@ -329,58 +328,58 @@ const bool _Diffu = true;
 #else
 const bool _Diffu = false;
 #endif
-#define MARCO_VISCFLUX()                                                                                                                                                                               \
-    F_wall_v[0] = _DF(0.0);                                                                                                                                                                            \
-    F_wall_v[1] = f_x;                                                                                                                                                                                 \
-    F_wall_v[2] = f_y;                                                                                                                                                                                 \
-    F_wall_v[3] = f_z;                                                                                                                                                                                 \
-    F_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;                                                                                                                                             \
-    if (_Heat) /* Fourier thermal conductivity*/                                                                                                                                                       \
-    {                                                                                                                                                                                                  \
-        real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0); /* thermal conductivity at wall*/ \
-        kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dl / _DF(24.0);                                                                             /* temperature gradient at wall*/ \
-        F_wall_v[4] += kk;                                                                                                                                                                             \
-    }                                                                                                                                                                                                  \
-    if (_Diffu) /* energy fiffusion depends on mass diffusion*/                                                                                                                                        \
-    {                                                                                                                                                                                                  \
-        real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);                                                                                                 \
-        real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];                                                                                               \
-        for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                          \
-        {                                                                                                                                                                                              \
-            hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);                              \
-            Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);     \
-            if (_COP)                                                                                                                                                                                  \
-            {                                                                                                                                                                                          \
-                Yi_wall[l] = (_DF(9.0) * (Yi[l][id_p1] + Yi[l][id]) - (Yi[l][id_p2] + Yi[l][id_m1])) / _DF(16.0);                                                                                      \
-                Yil_wall[l] = (_DF(27.0) * (Yi[l][id_p1] - Yi[l][id]) - (Yi[l][id_p2] - Yi[l][id_m1])) / dl / _DF(24.0); /* temperature gradient at wall*/                                             \
-            }                                                                                                                                                                                          \
-            else                                                                                                                                                                                       \
-            {                                                                                                                                                                                          \
-                Yil_wall[l] = _DF(0.0);                                                                                                                                                                \
-            }                                                                                                                                                                                          \
-        }                                                                                                                                                                                              \
-        if (_Heat)                                                                                                                                                                                     \
-            for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                      \
-            {                                                                                                                                                                                          \
-                F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l];                                                                                                                      \
-            }                                                                                                                                                                                          \
-        if (_COP) /* visc flux for cop equations*/                                                                                                                                                     \
-        {                                                                                                                                                                                              \
-            real_t CorrectTerm = _DF(0.0);                                                                                                                                                             \
-            for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                      \
-            {                                                                                                                                                                                          \
-                CorrectTerm += Dim_wall[l] * Yil_wall[l];                                                                                                                                              \
-            }                                                                                                                                                                                          \
-            CorrectTerm *= rho_wall;                                                                                                                                                                   \
-            for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/                                                                                                                     \
-            {                                                                                                                                                                                          \
-                F_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yil_wall[p - 5] - Yi_wall[p - 5] * CorrectTerm;                                                                                             \
-            }                                                                                                                                                                                          \
-        }                                                                                                                                                                                              \
-    }                                                                                                                                                                                                  \
-    for (size_t n = 0; n < Emax; n++) /* add viscous flux to fluxwall*/                                                                                                                                \
-    {                                                                                                                                                                                                  \
-        Flux_wall[n + Emax * id] -= F_wall_v[n];                                                                                                                                                       \
+#define MARCO_VISCFLUX()                                                                                                                                                                                               \
+    F_wall_v[0] = _DF(0.0);                                                                                                                                                                                            \
+    F_wall_v[1] = f_x;                                                                                                                                                                                                 \
+    F_wall_v[2] = f_y;                                                                                                                                                                                                 \
+    F_wall_v[3] = f_z;                                                                                                                                                                                                 \
+    F_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;                                                                                                                                                             \
+    if (_Heat) /* Fourier thermal conductivity*/                                                                                                                                                                       \
+    {                                                                                                                                                                                                                  \
+        real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0); /* thermal conductivity at wall*/                 \
+        kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dl / _DF(24.0);                                                                             /* temperature gradient at wall*/                 \
+        F_wall_v[4] += kk;                                                                                                                                                                                             \
+    }                                                                                                                                                                                                                  \
+    if (_Diffu) /* energy fiffusion depends on mass diffusion*/                                                                                                                                                        \
+    {                                                                                                                                                                                                                  \
+        real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);                                                                                                                 \
+        real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];                                                                                                               \
+        for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                                          \
+        {                                                                                                                                                                                                              \
+            hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);                                              \
+            Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);                     \
+            if (_COP)                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                          \
+                Yi_wall[l] = (_DF(9.0) * (Yi[l + NUM_SPECIES * id_p1] + Yi[l + NUM_SPECIES * id]) - (Yi[l + NUM_SPECIES * id_p2] + Yi[l + NUM_SPECIES * id_m1])) / _DF(16.0);                                          \
+                Yil_wall[l] = (_DF(27.0) * (Yi[l + NUM_SPECIES * id_p1] - Yi[l + NUM_SPECIES * id]) - (Yi[l + NUM_SPECIES * id_p2] - Yi[l + NUM_SPECIES * id_m1])) / dl / _DF(24.0); /* temperature gradient at wall*/ \
+            }                                                                                                                                                                                                          \
+            else                                                                                                                                                                                                       \
+            {                                                                                                                                                                                                          \
+                Yil_wall[l] = _DF(0.0);                                                                                                                                                                                \
+            }                                                                                                                                                                                                          \
+        }                                                                                                                                                                                                              \
+        if (_Heat)                                                                                                                                                                                                     \
+            for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                                      \
+            {                                                                                                                                                                                                          \
+                F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l];                                                                                                                                      \
+            }                                                                                                                                                                                                          \
+        if (_COP) /* visc flux for cop equations*/                                                                                                                                                                     \
+        {                                                                                                                                                                                                              \
+            real_t CorrectTerm = _DF(0.0);                                                                                                                                                                             \
+            for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                                      \
+            {                                                                                                                                                                                                          \
+                CorrectTerm += Dim_wall[l] * Yil_wall[l];                                                                                                                                                              \
+            }                                                                                                                                                                                                          \
+            CorrectTerm *= rho_wall;                                                                                                                                                                                   \
+            for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/                                                                                                                                     \
+            {                                                                                                                                                                                                          \
+                F_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yil_wall[p - 5] - Yi_wall[p - 5] * CorrectTerm;                                                                                                             \
+            }                                                                                                                                                                                                          \
+        }                                                                                                                                                                                                              \
+    }                                                                                                                                                                                                                  \
+    for (size_t n = 0; n < Emax; n++) /* add viscous flux to fluxwall*/                                                                                                                                                \
+    {                                                                                                                                                                                                                  \
+        Flux_wall[n + Emax * id] -= F_wall_v[n];                                                                                                                                                                       \
     }
 
 /**

@@ -33,7 +33,7 @@ extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offs
 #if DIM_X
 extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
                                            real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
-                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
+                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
     if (i >= X_inner + Bwidth_X)
@@ -186,7 +186,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 #if DIM_Y
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
                                            real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
-                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
+                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
     if (i >= X_inner + Bwidth_X)
@@ -251,7 +251,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 #if DIM_Z
 extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
                                            real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
-                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *const *y, real_t *T, real_t *H)
+                                           real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
     if (i >= X_inner + Bwidth_X)
@@ -442,7 +442,7 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
 }
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-                                                 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *const *_y,
+                                                 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y,
                                                  real_t *gamma, real_t *T, real_t const Gamma, const sycl::stream &stream_ct1)
 {
     MARCO_DOMAIN_GHOST();
@@ -461,7 +461,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
         return;
 #endif
 
-    real_t *U = &(UI[Emax * id]), yi[NUM_SPECIES];
+    real_t *U = &(UI[Emax * id]), *yi = &(_y[NUM_SPECIES * id]); //, yi[NUM_SPECIES];
 
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
 
@@ -475,8 +475,8 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 
     GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
 
-    for (size_t n = 0; n < NUM_SPECIES; n++)
-        _y[n][id] = yi[n];
+    // for (size_t n = 0; n < NUM_SPECIES; n++)
+    //     _y[n][id] = yi[n];
 
     // real_t de_fx[Emax], de_fy[Emax], de_fz[Emax];
     // get_Array(FluxF, de_fx, Emax, id);
@@ -1052,7 +1052,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
 }
 
 extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
-                                                  real_t *Dkm_aver, real_t *const *y, real_t *hi, real_t *rho, real_t *p, real_t *T)
+                                                  real_t *Dkm_aver, real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T)
 {
 #ifdef DIM_X
     if (i >= bl.Xmax)
@@ -1068,12 +1068,12 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
 #endif // DIM_Z
     int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
     // get mole fraction of each specie
-    real_t X[NUM_SPECIES] = {_DF(0.0)}, yi[NUM_SPECIES] = {_DF(0.0)};
+    real_t X[NUM_SPECIES] = {_DF(0.0)}; //, yi[NUM_SPECIES] = {_DF(0.0)};
 #ifdef Diffu
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
             hi[ii + NUM_SPECIES * id] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id], thermal.Ri[ii], ii);
 #endif // end Diffu
-    get_yi(y, yi, id);
+    real_t *yi = &(y[NUM_SPECIES * id]); // get_yi(y, yi, id);
     real_t C_total = get_xi(X, yi, thermal.Wi, rho[id]);
     //  real_t *temp = &(Dkm_aver[NUM_SPECIES * id]);
     //  real_t *temp = &(hi[NUM_SPECIES * id]);
@@ -1082,7 +1082,7 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
 
 #if DIM_X
 extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
-                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
+                                              real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 { // compute Physical、Heat、Diffu viscity in this function
 #ifdef DIM_X
     if (i >= bl.X_inner + bl.Bwidth_X)
@@ -1176,7 +1176,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, rea
 
 #if DIM_Y
 extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
-                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
+                                              real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 { // compute Physical、Heat、Diffu viscity in this function
 #ifdef DIM_X
     if (i >= bl.X_inner + bl.Bwidth_X)
@@ -1271,7 +1271,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, rea
 
 #if DIM_Z
 extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
-                                              real_t *T, real_t *rho, real_t *hi, real_t *const *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
+                                              real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
 { // compute Physical、Heat、Diffu viscity in this function
 #ifdef DIM_X
     if (i >= bl.X_inner + bl.Bwidth_X)
@@ -1364,13 +1364,13 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
 #endif // Visc
 
 #ifdef COP_CHEME
-extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *const *y, real_t *rho, real_t *T, const real_t dt)
+extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, const real_t dt)
 {
     MARCO_DOMAIN();
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t yi[NUM_SPECIES], Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP];
-    get_yi(y, yi, id);
+    real_t Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP]; // yi[NUM_SPECIES],//get_yi(y, yi, id);
+    real_t *yi = &(y[NUM_SPECIES * id]);
     get_KbKf(Kf, Kb, react.Rargus, thermal.species_chara, thermal.Hia, thermal.Hib, react.Nu_d_, T[id]); // get_e
     for (size_t n = 0; n < Emax - NUM_COP; n++)
     {

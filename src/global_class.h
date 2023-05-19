@@ -44,7 +44,7 @@ enum VdeType
 typedef struct
 {
     real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma;
-    real_t *hi, *Vde[9], *y[NUM_SPECIES];
+    real_t *hi, *Vde[9], *y;
     real_t *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
 } FlowData;
 

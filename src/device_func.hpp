@@ -13,20 +13,20 @@ void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
 	}
 }
 
-/**
- *@brief calculate yi from y
- */
-void get_yi(real_t *const *y, real_t yi[NUM_SPECIES], const int id)
-{
-#ifdef COP
-	for (size_t i = 0; i < NUM_SPECIES; i++)
-	{
-		yi[i] = y[i][id];
-	}
-#else
-	yi[NUM_COP] = _DF(1.0);
-#endif
-}
+// /**
+//  *@brief calculate yi from y
+//  */
+// void get_yi(real_t *y, real_t yi[NUM_SPECIES], const int id)
+// {
+// #ifdef COP
+// 	for (size_t i = 0; i < NUM_SPECIES; i++)
+// 	{
+// 		yi[i] = y[i][id];
+// 	}
+// #else
+// 	yi[NUM_COP] = _DF(1.0);
+// #endif
+// }
 
 /**
  *@brief calculate yi : mass fraction from xi : mole fraction.

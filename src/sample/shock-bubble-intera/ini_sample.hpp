@@ -7,7 +7,7 @@
  * @return void
  */
 extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
-                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T)
+                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T)
 {
     MARCO_DOMAIN_GHOST();
     real_t dx = bl.dx;
@@ -65,7 +65,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
     // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;
     // Ini bubble
-    real_t xi[NUM_SPECIES] = {0.0};
+    real_t *xi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES] = {0.0};
     dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
     xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
     xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
@@ -98,9 +98,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     //     xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]);               // O2
     //     xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // Xe
     // }
+
     get_yi(xi, thermal.Wi);
-    for (size_t n = 0; n < NUM_SPECIES; n++)
-        _y[n][id] = xi[n];
+    // for (size_t n = 0; n < NUM_SPECIES; n++)
+    //     _y[n][id] = xi[n];
 #endif // end COP
 
     if (x > ini.blast_center_x) //(i > 3)
@@ -171,7 +172,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
  */
 extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
                                           real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-                                          real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *const *_y, real_t *T, real_t *H, real_t *c)
+                                          real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
     real_t dx = bl.dx;
@@ -195,10 +196,10 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
-    // Ini yi
-    real_t yi[NUM_SPECIES];
-    get_yi(_y, yi, id);
+    // // Ini yi
+    // get_yi(_y, yi, id);
     // Get R of mixture
+    real_t *yi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES];
 
     real_t R = get_CopR(thermal.species_chara, yi);
     rho[id] = p[id] / R / T[id];
