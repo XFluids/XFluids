@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
 	syclsolver.UpdateStates(q, 0);
 	// time marching by SYCL device
 	syclsolver.Evolution(q);
+
 #ifdef USE_MPI
 	MPI_Finalize();
 #endif // end USE_MPI

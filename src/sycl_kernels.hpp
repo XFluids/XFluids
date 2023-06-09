@@ -50,11 +50,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
     // preparing some interval value for roe average
     MARCO_ROE();
 
-#ifdef COP
-    MARCO_COPC2();
-#else
-    MARCO_NOCOPC2();
-#endif
+    MARCO_GETC2()
 
 #if 1 == EIGEN_ALLOC
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
@@ -66,10 +62,10 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
         eigen_r[n] = &(eigen_rt[Emax * Emax * id_l + n * Emax]);
     }
 #endif // end EIGEN_ALLOC
-    // RoeAverage_x(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+//     // RoeAverage_x(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
-    // construct the right value & the left value scalar equations by characteristic reduction
-    // at i+1/2 in x direction
+//     // construct the right value & the left value scalar equations by characteristic reduction
+//     // at i+1/2 in x direction
 #if 0 == EIGEN_ALLOC
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
@@ -88,98 +84,98 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif // end EIGEN_ALLOC
 
-    // real_t uf[10], ff[10], pp[10], mm[10], f_flux, _p[Emax][Emax], eigen_lr[Emax], eigen_value;
-    // for (int n = 0; n < Emax; n++)
-    // {
-    //     real_t eigen_local_max = _DF(0.0);
-    //     RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); /*get eigen_l*/
-    //     for (int m = -stencil_P; m < stencil_size - stencil_P; m++)
-    //     {
-    //         int _i_1 = i + m, _j_1 = j, _k_1 = k;
-    //         int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /*int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m*/
-    //         eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
-    //     }
-    //     for (int m = -3; m <= 4; m++)
-    //     {
-    //         int _i_2 = i + m, _j_2 = j, _k_2 = k;                         /* int _i_2 = i + m, _j_2 = j, _k_2 = k; 3rd oder and can be modified*/
-    //         int id_local = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2); /*Xmax * Ymax * k + Xmax * j + m + i;*/
-    //         uf[m + 3] = _DF(0.0);
-    //         ff[m + 3] = _DF(0.0);
-    //         for (int n1 = 0; n1 < Emax; n1++)
-    //         {
-    //             uf[m + 3] = uf[m + 3] + UI[Emax * id_local + n1] * eigen_lr[n1]; /* eigen_l actually */
-    //             ff[m + 3] = ff[m + 3] + Fl[Emax * id_local + n1] * eigen_lr[n1];
-    //         } /*  for local speed*/
-    //         pp[m + 3] = _DF(0.5) * (ff[m + 3] + eigen_local_max * uf[m + 3]);
-    //         mm[m + 3] = _DF(0.5) * (ff[m + 3] - eigen_local_max * uf[m + 3]);
-    //     }                                                                                                                                     /* calculate the scalar numerical flux at x direction*/
-    //     f_flux = (weno5old_P(&pp[3], dl) + weno5old_M(&mm[3], dl)); /* f_flux = (linear_5th_P(&pp[3], dx) + linear_5th_M(&mm[3], dx))/60.0;*/ /* f_flux = weno_P(&pp[3], dx) + weno_M(&mm[3], dx);*/
-    //     RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);                                                     /* get eigen_r */
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {                                      /* get Fp */
-    //         _p[n][n1] = f_flux * eigen_lr[n1]; /* eigen_r actually */
-    //     }
-    // }
-    // for (int n = 0; n < Emax; n++)
-    // { /* reconstruction the F-flux terms*/
-    //     Fwall[Emax * id_l + n] = _DF(0.0);
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {
-    //         Fwall[Emax * id_l + n] += _p[n1][n];
-    //     }
-    // }
+    //     // real_t uf[10], ff[10], pp[10], mm[10], f_flux, _p[Emax][Emax], eigen_lr[Emax], eigen_value;
+    //     // for (int n = 0; n < Emax; n++)
+    //     // {
+    //     //     real_t eigen_local_max = _DF(0.0);
+    //     //     RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); /*get eigen_l*/
+    //     //     for (int m = -stencil_P; m < stencil_size - stencil_P; m++)
+    //     //     {
+    //     //         int _i_1 = i + m, _j_1 = j, _k_1 = k;
+    //     //         int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /*int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m*/
+    //     //         eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
+    //     //     }
+    //     //     for (int m = -3; m <= 4; m++)
+    //     //     {
+    //     //         int _i_2 = i + m, _j_2 = j, _k_2 = k;                         /* int _i_2 = i + m, _j_2 = j, _k_2 = k; 3rd oder and can be modified*/
+    //     //         int id_local = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2); /*Xmax * Ymax * k + Xmax * j + m + i;*/
+    //     //         uf[m + 3] = _DF(0.0);
+    //     //         ff[m + 3] = _DF(0.0);
+    //     //         for (int n1 = 0; n1 < Emax; n1++)
+    //     //         {
+    //     //             uf[m + 3] = uf[m + 3] + UI[Emax * id_local + n1] * eigen_lr[n1]; /* eigen_l actually */
+    //     //             ff[m + 3] = ff[m + 3] + Fl[Emax * id_local + n1] * eigen_lr[n1];
+    //     //         } /*  for local speed*/
+    //     //         pp[m + 3] = _DF(0.5) * (ff[m + 3] + eigen_local_max * uf[m + 3]);
+    //     //         mm[m + 3] = _DF(0.5) * (ff[m + 3] - eigen_local_max * uf[m + 3]);
+    //     //     }                                                                                                                                     /* calculate the scalar numerical flux at x direction*/
+    //     //     f_flux = (weno5old_P(&pp[3], dl) + weno5old_M(&mm[3], dl)); /* f_flux = (linear_5th_P(&pp[3], dx) + linear_5th_M(&mm[3], dx))/60.0;*/ /* f_flux = weno_P(&pp[3], dx) + weno_M(&mm[3], dx);*/
+    //     //     RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);                                                     /* get eigen_r */
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {                                      /* get Fp */
+    //     //         _p[n][n1] = f_flux * eigen_lr[n1]; /* eigen_r actually */
+    //     //     }
+    //     // }
+    //     // for (int n = 0; n < Emax; n++)
+    //     // { /* reconstruction the F-flux terms*/
+    //     //     Fwall[Emax * id_l + n] = _DF(0.0);
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {
+    //     //         Fwall[Emax * id_l + n] += _p[n1][n];
+    //     //     }
+    //     // }
 
-    // real_t uf[10], ff[10], pp[10], mm[10], _p[Emax][Emax], f_flux, eigen_lr[Emax], eigen_value;
-    // for (int n = 0; n < Emax; n++)
-    // {
-    //     real_t eigen_local_max = _DF(0.0);
-    //     MARCO_ROEAVERAGE_LEFTX; // MARCO_ROE_LEFT; /* eigen_r actually */ /* RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_l */
-    //     eigen_local_max = eigen_value;
-    //     real_t lambda_l = eigen_local[Emax * id_l + n];
-    //     real_t lambda_r = eigen_local[Emax * id_r + n];
-    //     if (lambda_l * lambda_r < 0.0)
-    //     {
-    //         for (int m = -stencil_P; m < stencil_size - stencil_P; m++)
-    //         {
-    //             int _i_1 = i + m, _j_1 = j, _k_1 = k;
-    //             int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /* int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m */
-    //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
-    //         }
-    //     }
-    //     for (size_t m = 0; m < stencil_size; m++)
-    //     {
-    //         int _i_2 = i + m - stencil_P, _j_2 = j, _k_2 = k;
-    //         int id_local_2 = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2); /* int _i_2 = i + m, _j_2 = j, _k_2 = k; Xmax * Ymax * k + Xmax * j + m + i - stencil_P */
-    //         uf[m] = _DF(0.0);
-    //         ff[m] = _DF(0.0);
-    //         for (int n1 = 0; n1 < Emax; n1++)
-    //         {
-    //             uf[m] = uf[m] + UI[Emax * id_local_2 + n1] * eigen_lr[n1];
-    //             ff[m] = ff[m] + Fl[Emax * id_local_2 + n1] * eigen_lr[n1];
-    //         } /* for local speed*/
-    //         pp[m] = _DF(0.5) * (ff[m] + eigen_local_max * uf[m]);
-    //         mm[m] = _DF(0.5) * (ff[m] - eigen_local_max * uf[m]);
-    //     }                                                                   /* calculate the scalar numerical flux at x direction*/
-    //     f_flux = weno7_P(&pp[stencil_P], dl) + weno7_M(&mm[stencil_P], dl); /* get Fp*/
-    //     MARCO_ROEAVERAGE_RIGHTX;                                            // MARCO_ROE_RIGHT; /* eigen_r actually */                                                    /* RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_r */
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {
-    //         _p[n][n1] = f_flux * eigen_lr[n1];
-    //     }
-    // } /* reconstruction the F-flux terms*/
-    // for (int n = 0; n < Emax; n++)
-    // {
-    //     real_t temp_flux = _DF(0.0);
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {
-    //         temp_flux += _p[n1][n];
-    //     }
-    //     Fwall[Emax * id_l + n] = temp_flux;
-    // }
+    //     // real_t uf[10], ff[10], pp[10], mm[10], _p[Emax][Emax], f_flux, eigen_lr[Emax], eigen_value;
+    //     // for (int n = 0; n < Emax; n++)
+    //     // {
+    //     //     real_t eigen_local_max = _DF(0.0);
+    //     //     MARCO_ROEAVERAGE_LEFTX; // MARCO_ROE_LEFT; /* eigen_r actually */ /* RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_l */
+    //     //     eigen_local_max = eigen_value;
+    //     //     real_t lambda_l = eigen_local[Emax * id_l + n];
+    //     //     real_t lambda_r = eigen_local[Emax * id_r + n];
+    //     //     if (lambda_l * lambda_r < 0.0)
+    //     //     {
+    //     //         for (int m = -stencil_P; m < stencil_size - stencil_P; m++)
+    //     //         {
+    //     //             int _i_1 = i + m, _j_1 = j, _k_1 = k;
+    //     //             int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /* int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m */
+    //     //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
+    //     //         }
+    //     //     }
+    //     //     for (size_t m = 0; m < stencil_size; m++)
+    //     //     {
+    //     //         int _i_2 = i + m - stencil_P, _j_2 = j, _k_2 = k;
+    //     //         int id_local_2 = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2); /* int _i_2 = i + m, _j_2 = j, _k_2 = k; Xmax * Ymax * k + Xmax * j + m + i - stencil_P */
+    //     //         uf[m] = _DF(0.0);
+    //     //         ff[m] = _DF(0.0);
+    //     //         for (int n1 = 0; n1 < Emax; n1++)
+    //     //         {
+    //     //             uf[m] = uf[m] + UI[Emax * id_local_2 + n1] * eigen_lr[n1];
+    //     //             ff[m] = ff[m] + Fl[Emax * id_local_2 + n1] * eigen_lr[n1];
+    //     //         } /* for local speed*/
+    //     //         pp[m] = _DF(0.5) * (ff[m] + eigen_local_max * uf[m]);
+    //     //         mm[m] = _DF(0.5) * (ff[m] - eigen_local_max * uf[m]);
+    //     //     }                                                                   /* calculate the scalar numerical flux at x direction*/
+    //     //     f_flux = weno7_P(&pp[stencil_P], dl) + weno7_M(&mm[stencil_P], dl); /* get Fp*/
+    //     //     MARCO_ROEAVERAGE_RIGHTX;                                            // MARCO_ROE_RIGHT; /* eigen_r actually */                                                    /* RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_r */
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {
+    //     //         _p[n][n1] = f_flux * eigen_lr[n1];
+    //     //     }
+    //     // } /* reconstruction the F-flux terms*/
+    //     // for (int n = 0; n < Emax; n++)
+    //     // {
+    //     //     real_t temp_flux = _DF(0.0);
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {
+    //     //         temp_flux += _p[n1][n];
+    //     //     }
+    //     //     Fwall[Emax * id_l + n] = temp_flux;
+    //     // }
 
-    // real_t de_fw[Emax];
-    // get_Array(Fwall, de_fw, Emax, id_l);
-    // real_t de_fx[Emax];
+    //     // real_t de_fw[Emax];
+    //     // get_Array(Fwall, de_fw, Emax, id_l);
+    //     // real_t de_fx[Emax];
 }
 #endif // end DIM_X
 
@@ -203,11 +199,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
     // preparing some interval value for roe average
     MARCO_ROE();
 
-#ifdef COP
-    MARCO_COPC2();
-#else
-    MARCO_NOCOPC2();
-#endif
+    MARCO_GETC2()
 
 #if 1 == EIGEN_ALLOC
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
@@ -219,10 +211,10 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
         eigen_r[n] = &(eigen_rt[Emax * Emax * id_l + n * Emax]);
     }
 #endif // end EIGEN_ALLOC
-    // RoeAverage_y(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+    //     // RoeAverage_y(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
-    // // construct the right value & the left value scalar equations by characteristic reduction
-    // // at i+1/2 in x direction
+    //     // // construct the right value & the left value scalar equations by characteristic reduction
+    //     // // at i+1/2 in x direction
 
 #if 0 == EIGEN_ALLOC
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -242,9 +234,9 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif // end EIGEN_ALLOC
 
-    // real_t de_fw[Emax];
-    // get_Array(Fwall, de_fw, Emax, id_l);
-    // real_t de_fx[Emax];
+    //     // real_t de_fw[Emax];
+    //     // get_Array(Fwall, de_fw, Emax, id_l);
+    //     // real_t de_fx[Emax];
 }
 #endif // end DIM_Y
 
@@ -268,11 +260,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
     // preparing some interval value for roe average
     MARCO_ROE();
 
-#ifdef COP
-    MARCO_COPC2();
-#else
-    MARCO_NOCOPC2();
-#endif
+    MARCO_GETC2()
 
 #if 1 == EIGEN_ALLOC
     real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
@@ -284,10 +272,10 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
         eigen_r[n] = &(eigen_rt[Emax * Emax * id_l + n * Emax]);
     }
 #endif // end EIGEN_ALLOC
-    // RoeAverage_z(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+    //     // RoeAverage_z(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
-    // // construct the right value & the left value scalar equations by characteristic reduction
-    // // at i+1/2 in x direction
+    //     // // construct the right value & the left value scalar equations by characteristic reduction
+    //     // // at i+1/2 in x direction
 
 #if 0 == EIGEN_ALLOC
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -307,64 +295,64 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif // end EIGEN_ALLOC
 
-    // real_t uf[10], ff[10], pp[10], mm[10], _p[Emax][Emax], f_flux, eigen_lr[Emax], eigen_value, eigen_l[Emax][Emax], eigen_r[Emax][Emax];
-    // for (int n = 0; n < Emax; n++)
-    // {
-    //     real_t eigen_local_max = _DF(0.0);
-    //     MARCO_ROEAVERAGE_LEFTZ; /* eigen_r actually */ /* RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_l */
-    //     eigen_local_max = eigen_value;
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {
-    //         eigen_l[n][n1] = eigen_lr[n1];
-    //     }
-    //     real_t lambda_l = eigen_local[Emax * id_l + n];
-    //     real_t lambda_r = eigen_local[Emax * id_r + n];
-    //     if (lambda_l * lambda_r < 0.0)
-    //     {
-    //         for (int m = -stencil_P; m < stencil_size - stencil_P; m++)
-    //         {
-    //             int _i_1 = i, _j_1 = j, _k_1 = k + m;
-    //             int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /* int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m */
-    //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
-    //         }
-    //     }
-    //     for (size_t m = 0; m < stencil_size; m++)
-    //     {
-    //         int _i_2 = i, _j_2 = j, _k_2 = k + m - stencil_P;
-    //         int id_local_2 = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2); /* int _i_2 = i + m, _j_2 = j, _k_2 = k; Xmax * Ymax * k + Xmax * j + m + i - stencil_P */
-    //         uf[m] = _DF(0.0);
-    //         ff[m] = _DF(0.0);
-    //         for (int n1 = 0; n1 < Emax; n1++)
-    //         {
-    //             uf[m] = uf[m] + UI[Emax * id_local_2 + n1] * eigen_lr[n1];
-    //             ff[m] = ff[m] + Fl[Emax * id_local_2 + n1] * eigen_lr[n1];
-    //         } /* for local speed*/
-    //         pp[m] = _DF(0.5) * (ff[m] + eigen_local_max * uf[m]);
-    //         mm[m] = _DF(0.5) * (ff[m] - eigen_local_max * uf[m]);
-    //     }                                                                   /* calculate the scalar numerical flux at x direction*/
-    //     f_flux = weno7_P(&pp[stencil_P], dl) + weno7_M(&mm[stencil_P], dl); /* get Fp*/
-    //     MARCO_ROEAVERAGE_RIGHTZ; /* eigen_r actually */                     /* RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_r */
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {
-    //         eigen_r[n1][n] = eigen_lr[n1];
-    //     }
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {
-    //         _p[n][n1] = f_flux * eigen_lr[n1];
-    //     }
-    // }
-    // for (int n = 0; n < Emax; n++)
-    // { /* reconstruction the F-flux terms*/
-    //     Fwall[Emax * id_l + n] = _DF(0.0);
-    //     for (int n1 = 0; n1 < Emax; n1++)
-    //     {
-    //         Fwall[Emax * id_l + n] += _p[n1][n];
-    //     }
-    // }
+    //     // real_t uf[10], ff[10], pp[10], mm[10], _p[Emax][Emax], f_flux, eigen_lr[Emax], eigen_value, eigen_l[Emax][Emax], eigen_r[Emax][Emax];
+    //     // for (int n = 0; n < Emax; n++)
+    //     // {
+    //     //     real_t eigen_local_max = _DF(0.0);
+    //     //     MARCO_ROEAVERAGE_LEFTZ; /* eigen_r actually */ /* RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_l */
+    //     //     eigen_local_max = eigen_value;
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {
+    //     //         eigen_l[n][n1] = eigen_lr[n1];
+    //     //     }
+    //     //     real_t lambda_l = eigen_local[Emax * id_l + n];
+    //     //     real_t lambda_r = eigen_local[Emax * id_r + n];
+    //     //     if (lambda_l * lambda_r < 0.0)
+    //     //     {
+    //     //         for (int m = -stencil_P; m < stencil_size - stencil_P; m++)
+    //     //         {
+    //     //             int _i_1 = i, _j_1 = j, _k_1 = k + m;
+    //     //             int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /* int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m */
+    //     //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
+    //     //         }
+    //     //     }
+    //     //     for (size_t m = 0; m < stencil_size; m++)
+    //     //     {
+    //     //         int _i_2 = i, _j_2 = j, _k_2 = k + m - stencil_P;
+    //     //         int id_local_2 = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2); /* int _i_2 = i + m, _j_2 = j, _k_2 = k; Xmax * Ymax * k + Xmax * j + m + i - stencil_P */
+    //     //         uf[m] = _DF(0.0);
+    //     //         ff[m] = _DF(0.0);
+    //     //         for (int n1 = 0; n1 < Emax; n1++)
+    //     //         {
+    //     //             uf[m] = uf[m] + UI[Emax * id_local_2 + n1] * eigen_lr[n1];
+    //     //             ff[m] = ff[m] + Fl[Emax * id_local_2 + n1] * eigen_lr[n1];
+    //     //         } /* for local speed*/
+    //     //         pp[m] = _DF(0.5) * (ff[m] + eigen_local_max * uf[m]);
+    //     //         mm[m] = _DF(0.5) * (ff[m] - eigen_local_max * uf[m]);
+    //     //     }                                                                   /* calculate the scalar numerical flux at x direction*/
+    //     //     f_flux = weno7_P(&pp[stencil_P], dl) + weno7_M(&mm[stencil_P], dl); /* get Fp*/
+    //     //     MARCO_ROEAVERAGE_RIGHTZ; /* eigen_r actually */                     /* RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_r */
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {
+    //     //         eigen_r[n1][n] = eigen_lr[n1];
+    //     //     }
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {
+    //     //         _p[n][n1] = f_flux * eigen_lr[n1];
+    //     //     }
+    //     // }
+    //     // for (int n = 0; n < Emax; n++)
+    //     // { /* reconstruction the F-flux terms*/
+    //     //     Fwall[Emax * id_l + n] = _DF(0.0);
+    //     //     for (int n1 = 0; n1 < Emax; n1++)
+    //     //     {
+    //     //         Fwall[Emax * id_l + n] += _p[n1][n];
+    //     //     }
+    //     // }
 
-    // real_t de_fw[Emax];
-    // get_Array(Fwall, de_fw, Emax, id_l);
-    // real_t de_fx[Emax];
+    //     // real_t de_fw[Emax];
+    //     // get_Array(Fwall, de_fw, Emax, id_l);
+    //     // real_t de_fx[Emax];
 }
 #endif // end DIM_Z
 
@@ -426,13 +414,13 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
     {
     real_t LU0 = _DF(0.0);
 #if DIM_X
-    LU0 += (FluxFw[Emax * id_im + n] - FluxFw[Emax * id + n]) / bl.dx;
+    LU0 += (FluxFw[Emax * id_im + n] - FluxFw[Emax * id + n]) * bl._dx;
 #endif
 #if DIM_Y
-    LU0 += (FluxGw[Emax * id_jm + n] - FluxGw[Emax * id + n]) / bl.dy;
+    LU0 += (FluxGw[Emax * id_jm + n] - FluxGw[Emax * id + n]) * bl._dy;
 #endif
 #if DIM_Z
-    LU0 += (FluxHw[Emax * id_km + n] - FluxHw[Emax * id + n]) / bl.dz;
+    LU0 += (FluxHw[Emax * id_km + n] - FluxHw[Emax * id + n]) * bl._dz;
 #endif
     LU[Emax * id + n] = LU0;
     }
@@ -443,31 +431,31 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
                                                  real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y,
-                                                 real_t *gamma, real_t *T, real_t const Gamma, const sycl::stream &stream_ct1)
+                                                 real_t *gamma, real_t *T, real_t const Gamma) //, const sycl::stream &stream_ct1
 {
     MARCO_DOMAIN_GHOST();
     int id = Xmax * Ymax * k + Xmax * j + i;
 
 #if DIM_X
     if (i >= Xmax)
-        return;
+    return;
 #endif
 #if DIM_Y
     if (j >= Ymax)
-        return;
+    return;
 #endif
 #if DIM_Z
     if (k >= Zmax)
-        return;
+    return;
 #endif
 
     real_t *U = &(UI[Emax * id]), *yi = &(_y[NUM_SPECIES * id]); //, yi[NUM_SPECIES];
 
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
 
-    // real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * X_inner + _DF(0.5)) * bl.dx + bl.Domain_xmin : _DF(0.0);
-    // real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * Y_inner + _DF(0.5)) * bl.dy + bl.Domain_ymin : _DF(0.0);
-    // real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * Z_inner + _DF(0.5)) * bl.dz + bl.Domain_zmin : _DF(0.0);
+    // // real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * X_inner + _DF(0.5)) * bl.dx + bl.Domain_xmin : _DF(0.0);
+    // // real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * Y_inner + _DF(0.5)) * bl.dy + bl.Domain_ymin : _DF(0.0);
+    // // real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * Z_inner + _DF(0.5)) * bl.dz + bl.Domain_zmin : _DF(0.0);
 
     real_t *Fx = &(FluxF[Emax * id]);
     real_t *Fy = &(FluxG[Emax * id]);
@@ -475,13 +463,13 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 
     GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
 
-    // for (size_t n = 0; n < NUM_SPECIES; n++)
-    //     _y[n][id] = yi[n];
+    // // for (size_t n = 0; n < NUM_SPECIES; n++)
+    // //     _y[n][id] = yi[n];
 
-    // real_t de_fx[Emax], de_fy[Emax], de_fz[Emax];
-    // get_Array(FluxF, de_fx, Emax, id);
-    // get_Array(FluxG, de_fy, Emax, id);
-    // get_Array(FluxH, de_fz, Emax, id);
+    // // real_t de_fx[Emax], de_fy[Emax], de_fz[Emax];
+    // // get_Array(FluxF, de_fx, Emax, id);
+    // // get_Array(FluxG, de_fy, Emax, id);
+    // // get_Array(FluxH, de_fz, Emax, id);
 }
 
 extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
@@ -815,50 +803,64 @@ extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k
 #endif // DIM_Z
     int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 
+    Vde[ducx][id] = _DF(0.0);
+    Vde[dvcx][id] = _DF(0.0);
+    Vde[dwcx][id] = _DF(0.0);
+    Vde[ducy][id] = _DF(0.0);
+    Vde[dvcy][id] = _DF(0.0);
+    Vde[dwcy][id] = _DF(0.0);
+    Vde[ducz][id] = _DF(0.0);
+    Vde[dvcz][id] = _DF(0.0);
+    Vde[dwcz][id] = _DF(0.0);
+
 #if DIM_X
-    real_t dx = bl.dx;
+    real_t _dx = bl._dx;
     int id_m1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
     int id_m2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
     int id_p1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
     int id_p2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 2;
 
-    Vde[ducx][id] = (_DF(8.0) * (u[id_p1_x] - u[id_m1_x]) - (u[id_p2_x] - u[id_m2_x])) / dx / _DF(12.0);
-    Vde[dvcx][id] = DIM_Y ? (_DF(8.0) * (v[id_p1_x] - v[id_m1_x]) - (v[id_p2_x] - v[id_m2_x])) / dx / _DF(12.0) : _DF(0.0);
-    Vde[dwcx][id] = DIM_Z ? (_DF(8.0) * (w[id_p1_x] - w[id_m1_x]) - (w[id_p2_x] - w[id_m2_x])) / dx / _DF(12.0) : _DF(0.0);
-#else
-    Vde[ducx][id] = _DF(0.0);
-    Vde[dvcx][id] = _DF(0.0);
-    Vde[dwcx][id] = _DF(0.0);
-#endif // end DIM_X
+    Vde[ducx][id] = (_DF(8.0) * (u[id_p1_x] - u[id_m1_x]) - (u[id_p2_x] - u[id_m2_x])) * _dx * _twle;
 #if DIM_Y
-    real_t dy = bl.dy;
+    Vde[dvcx][id] = (_DF(8.0) * (v[id_p1_x] - v[id_m1_x]) - (v[id_p2_x] - v[id_m2_x])) * _dx * _twle;
+#endif // DIM_Y
+#if DIM_Z
+    Vde[dwcx][id] = (_DF(8.0) * (w[id_p1_x] - w[id_m1_x]) - (w[id_p2_x] - w[id_m2_x])) * _dx * _twle;
+#endif // DIM_Z
+#endif // end DIM_X
+
+#if DIM_Y
+    real_t _dy = bl._dy;
     int id_m1_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 1) + i;
     int id_m2_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 2) + i;
     int id_p1_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i;
     int id_p2_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 2) + i;
 
-    Vde[ducy][id] = DIM_X ? (_DF(8.0) * (u[id_p1_y] - u[id_m1_y]) - (u[id_p2_y] - u[id_m2_y])) / dy / _DF(12.0) : _DF(0.0);
-    Vde[dvcy][id] = (_DF(8.0) * (v[id_p1_y] - v[id_m1_y]) - (v[id_p2_y] - v[id_m2_y])) / dy / _DF(12.0);
-    Vde[dwcy][id] = DIM_Z ? (_DF(8.0) * (w[id_p1_y] - w[id_m1_y]) - (w[id_p2_y] - w[id_m2_y])) / dy / _DF(12.0) : _DF(0.0);
-#else
-    Vde[ducy][id] = _DF(0.0);
-    Vde[dvcy][id] = _DF(0.0);
-    Vde[dwcy][id] = _DF(0.0);
-#endif // end DIM_Y
+#if DIM_X
+    Vde[ducy][id] = (_DF(8.0) * (u[id_p1_y] - u[id_m1_y]) - (u[id_p2_y] - u[id_m2_y])) * _dy * _twle;
+#endif // DIM_X
+    Vde[dvcy][id] = (_DF(8.0) * (v[id_p1_y] - v[id_m1_y]) - (v[id_p2_y] - v[id_m2_y])) * _dy * _twle;
 #if DIM_Z
-    real_t dz = bl.dz;
+    Vde[dwcy][id] = (_DF(8.0) * (w[id_p1_y] - w[id_m1_y]) - (w[id_p2_y] - w[id_m2_y])) * _dy * _twle;
+#endif // DIM_Z
+
+#endif // end DIM_Y
+
+#if DIM_Z
+    real_t _dz = bl._dz;
     int id_m1_z = bl.Xmax * bl.Ymax * (k - 1) + bl.Xmax * j + i;
     int id_m2_z = bl.Xmax * bl.Ymax * (k - 2) + bl.Xmax * j + i;
     int id_p1_z = bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i;
     int id_p2_z = bl.Xmax * bl.Ymax * (k + 2) + bl.Xmax * j + i;
 
-    Vde[ducz][id] = DIM_X ? (_DF(8.0) * (u[id_p1_z] - u[id_m1_z]) - (u[id_p2_z] - u[id_m2_z])) / dz / _DF(12.0) : _DF(0.0);
-    Vde[dvcz][id] = DIM_Y ? (_DF(8.0) * (v[id_p1_z] - v[id_m1_z]) - (v[id_p2_z] - v[id_m2_z])) / dz / _DF(12.0) : _DF(0.0);
-    Vde[dwcz][id] = (_DF(8.0) * (w[id_p1_z] - w[id_m1_z]) - (w[id_p2_z] - w[id_m2_z])) / dz / _DF(12.0);
-#else
-    Vde[ducz][id] = _DF(0.0);
-    Vde[dvcz][id] = _DF(0.0);
-    Vde[dwcz][id] = _DF(0.0);
+#if DIM_X
+    Vde[ducz][id] = (_DF(8.0) * (u[id_p1_z] - u[id_m1_z]) - (u[id_p2_z] - u[id_m2_z])) * _dz * _twle;
+#endif // DIM_X
+#if DIM_Y
+    Vde[dvcz][id] = (_DF(8.0) * (v[id_p1_z] - v[id_m1_z]) - (v[id_p2_z] - v[id_m2_z])) * _dz * _twle;
+#endif // DIM_Y
+    Vde[dwcz][id] = (_DF(8.0) * (w[id_p1_z] - w[id_m1_z]) - (w[id_p2_z] - w[id_m2_z])) * _dz * _twle;
+
 #endif // end DIM_Z
 }
 
@@ -1105,7 +1107,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, rea
     real_t *Ducz = Vde[ducz];
     real_t *Dvcy = Vde[dvcy];
     real_t *Dwcz = Vde[dwcz];
-    real_t dl = bl.dx;
+    real_t _dl = bl._dx;
 
     MARCO_PREVISCFLUX();
     // real_t F_x_wall_v[Emax];
@@ -1114,17 +1116,32 @@ extern SYCL_EXTERNAL void GetWallViscousFluxX(int i, int j, int k, Block bl, rea
     // real_t f_x, f_y, f_z;
     // real_t u_hlf, v_hlf, w_hlf;
 
-    f_x = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) / dl / _DF(24.0);
-    f_y = DIM_Y ? mue * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) / dl / _DF(24.0) : _DF(0.0);
-    f_z = DIM_Z ? mue * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) / dl / _DF(24.0) : _DF(0.0);
+    f_x = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) * _dl * _twfr;
+    f_x += lamada * (_DF(9.0) * (Dvcy[id_p1] + Dvcy[id]) - (Dvcy[id_p2] + Dvcy[id_m1]) + _DF(9.0) * (Dwcz[id_p1] + Dwcz[id]) - (Dwcz[id_p2] + Dwcz[id_m1])) * _sxtn;
+#if DIM_Y
+    f_y = mue * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) * _dl * _twfr;
+    f_y += mue * (_DF(9.0) * (Ducy[id_p1] + Ducy[id]) - (Ducy[id_p2] + Ducy[id_m1])) * _sxtn;
+#else
+    f_y = _DF(0.0);
+#endif // DIM_Y
+#if DIM_Z
+    f_z = mue * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) * _dl * _twfr;
+    f_z += mue * (_DF(9.0) * (Ducz[id_p1] + Ducz[id]) - (Ducz[id_p2] + Ducz[id_m1])) * _sxtn;
+#else
+    f_z = _DF(0.0);
+#endif // DIM_Z
 
-    f_x += lamada * (_DF(9.0) * (Dvcy[id_p1] + Dvcy[id]) - (Dvcy[id_p2] + Dvcy[id_m1]) + _DF(9.0) * (Dwcz[id_p1] + Dwcz[id]) - (Dwcz[id_p2] + Dwcz[id_m1])) / _DF(16.0);
-    f_y += DIM_Y ? mue * (_DF(9.0) * (Ducy[id_p1] + Ducy[id]) - (Ducy[id_p2] + Ducy[id_m1])) / _DF(16.0) : _DF(0.0);
-    f_z += DIM_Z ? mue * (_DF(9.0) * (Ducz[id_p1] + Ducz[id]) - (Ducz[id_p2] + Ducz[id_m1])) / _DF(16.0) : _DF(0.0);
-
-    u_hlf = (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) / _DF(16.0);
-    v_hlf = DIM_Y ? (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) / _DF(16.0) : _DF(0.0);
-    w_hlf = DIM_Z ? (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) / _DF(16.0) : _DF(0.0);
+    u_hlf = (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) * _sxtn;
+#if DIM_Y
+    v_hlf = (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) * _sxtn;
+#else
+    v_hlf = _DF(0.0);
+#endif // DIM_Y
+#if DIM_Z
+    w_hlf = (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) * _sxtn;
+#else
+    w_hlf = _DF(0.0);
+#endif // DIM_Z
 
     MARCO_VISCFLUX();
 
@@ -1199,7 +1216,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, rea
     real_t *Dvcz = Vde[dvcz];
     real_t *Ducx = Vde[ducx];
     real_t *Dwcz = Vde[dwcz];
-    real_t dl = bl.dy;
+    real_t _dl = bl._dy;
 
     MARCO_PREVISCFLUX();
     // // mue at wall
@@ -1209,18 +1226,32 @@ extern SYCL_EXTERNAL void GetWallViscousFluxY(int i, int j, int k, Block bl, rea
     // real_t f_x, f_y, f_z;
     // real_t u_hlf, v_hlf, w_hlf;
 
-    f_x = DIM_X ? mue * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) / dl / _DF(24.0) : _DF(0.0);
-    f_y = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) / dl / _DF(24.0);
-    f_z = DIM_Z ? mue * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) / dl / _DF(24.0) : _DF(0.0);
+#if DIM_X
+    f_x = mue * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) * _dl * _twfr;
+    f_x += mue * (_DF(9.0) * (Dvcx[id_p1] + Dvcx[id]) - (Dvcx[id_p2] + Dvcx[id_m1])) * _sxtn;
+#else
+    f_x = _DF(0.0);
+#endif // DIM_X
+    f_y = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) * _dl * _twfr;
+    f_y += lamada * (_DF(9.0) * (Ducx[id_p1] + Ducx[id]) - (Ducx[id_p2] + Ducx[id_m1]) + _DF(9.0) * (Dwcz[id_p1] + Dwcz[id]) - (Dwcz[id_p2] + Dwcz[id_m1])) * _sxtn;
+#if DIM_Z
+    f_z = mue * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) * _dl * _twfr;
+    f_z += mue * (_DF(9.0) * (Dvcz[id_p1] + Dvcz[id]) - (Dvcz[id_p2] + Dvcz[id_m1])) * _sxtn;
+#else
+    f_z = _DF(0.0);
+#endif // DIM_Z
 
-    f_x += DIM_X ? mue * (_DF(9.0) * (Dvcx[id_p1] + Dvcx[id]) - (Dvcx[id_p2] + Dvcx[id_m1])) / _DF(16.0) : _DF(0.0);
-    f_y += lamada * (_DF(9.0) * (Ducx[id_p1] + Ducx[id]) - (Ducx[id_p2] + Ducx[id_m1]) + _DF(9.0) * (Dwcz[id_p1] + Dwcz[id]) - (Dwcz[id_p2] + Dwcz[id_m1])) / _DF(16.0);
-    f_z += DIM_Z ? mue * (_DF(9.0) * (Dvcz[id_p1] + Dvcz[id]) - (Dvcz[id_p2] + Dvcz[id_m1])) / _DF(16.0) : _DF(0.0);
-
-    u_hlf = DIM_X ? (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) / _DF(16.0) : _DF(0.0);
-    v_hlf = (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) / _DF(16.0);
-    w_hlf = DIM_Z ? (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) / _DF(16.0) : _DF(0.0);
-
+#if DIM_X
+    u_hlf = (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) * _sxtn;
+#else
+    u_hlf = _DF(0.0);
+#endif // DIM_X
+    v_hlf = (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) * _sxtn;
+#if DIM_Z
+    w_hlf = (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) * _sxtn;
+#else
+    w_hlf = _DF(0.0);
+#endif // DIMZ
     MARCO_VISCFLUX();
 
     //     F_y_wall_v[0] = _DF(0.0);
@@ -1294,7 +1325,7 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
     real_t *Dwcy = Vde[dwcy];
     real_t *Ducx = Vde[ducx];
     real_t *Dvcy = Vde[dvcy];
-    real_t dl = bl.dz;
+    real_t _dl = bl._dz;
 
     MARCO_PREVISCFLUX();
     // real_t F_z_wall_v[Emax];
@@ -1303,16 +1334,32 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
     // real_t f_x, f_y, f_z;
     // real_t u_hlf, v_hlf, w_hlf;
 
-    f_x = DIM_X ? mue * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) / dl / _DF(24.0) : _DF(0.0);
-    f_y = DIM_Y ? mue * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) / dl / _DF(24.0) : _DF(0.0);
-    f_z = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) / dl / _DF(24.0);
+#if DIM_X
+    f_x = mue * (_DF(27.0) * (u[id_p1] - u[id]) - (u[id_p2] - u[id_m1])) * _dl * _twfr;
+    f_x += mue * (_DF(9.0) * (Dwcx[id_p1] + Dwcx[id]) - (Dwcx[id_p2] + Dwcx[id_m1])) * _sxtn;
+#else
+    f_x = _DF(0.0);
+#endif // DIM_X
+#if DIM_Y
+    f_y = mue * (_DF(27.0) * (v[id_p1] - v[id]) - (v[id_p2] - v[id_m1])) * _dl * _twfr;
+    f_y += mue * (_DF(9.0) * (Dwcy[id_p1] + Dwcy[id]) - (Dwcy[id_p2] + Dwcy[id_m1])) * _sxtn;
+#else
+    f_y = _DF(0.0);
+#endif
+    f_z = (_DF(2.0) * mue + lamada) * (_DF(27.0) * (w[id_p1] - w[id]) - (w[id_p2] - w[id_m1])) * _dl * _twfr;
+    f_z += lamada * (_DF(9.0) * (Ducx[id_p1] + Ducx[id]) - (Ducx[id_p2] + Ducx[id_m1]) + _DF(9.0) * (Dvcy[id_p1] + Dvcy[id]) - (Dvcy[id_p2] + Dvcy[id_m1])) * _sxtn;
 
-    f_x += DIM_X ? mue * (_DF(9.0) * (Dwcx[id_p1] + Dwcx[id]) - (Dwcx[id_p2] + Dwcx[id_m1])) / _DF(16.0) : _DF(0.0);
-    f_y += DIM_Y ? mue * (_DF(9.0) * (Dwcy[id_p1] + Dwcy[id]) - (Dwcy[id_p2] + Dwcy[id_m1])) / _DF(16.0) : _DF(0.0);
-    f_z += lamada * (_DF(9.0) * (Ducx[id_p1] + Ducx[id]) - (Ducx[id_p2] + Ducx[id_m1]) + _DF(9.0) * (Dvcy[id_p1] + Dvcy[id]) - (Dvcy[id_p2] + Dvcy[id_m1])) / _DF(16.0);
-    u_hlf = DIM_X ? (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) / _DF(16.0) : _DF(0.0);
-    v_hlf = DIM_Y ? (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) / _DF(16.0) : _DF(0.0);
-    w_hlf = (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) / _DF(16.0);
+#if DIM_X
+    u_hlf = (_DF(9.0) * (u[id_p1] + u[id]) - (u[id_p2] + u[id_m1])) * _sxtn;
+#else
+    u_hlf = _DF(0.0);
+#endif // DIM_X
+#if DIM_Y
+    v_hlf = (_DF(9.0) * (v[id_p1] + v[id]) - (v[id_p2] + v[id_m1])) * _sxtn;
+#else
+    v_hlf = _DF(0.0);
+#endif // DIM_Y
+    w_hlf = (_DF(9.0) * (w[id_p1] + w[id]) - (w[id_p2] + w[id_m1])) * _sxtn;
 
     MARCO_VISCFLUX();
 

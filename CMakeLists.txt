@@ -21,8 +21,8 @@ endif()
 # #### function option
 # // =======================================================
 option(USE_DOUBLE "if double" ON)
-option(USE_PLT "out plt or vti" OFF)
-option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
+option(USE_PLT "out plt or vti" ON)
+option(ESTIM_NAN "estimate if rho is nan or <0 or inf" OFF)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" OFF)
@@ -73,7 +73,7 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 set(THERMAL "NASA") # NASA or JANAF fit
 set(WENO_ORDER "5") # 5 or 7: WENO5 or WENO7 for FluxWall reconstruction
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "2d-shock-bubble")
+set(INIT_SAMPLE "1d-insert-st")
 set(COP_SPECIES "insert-RSBI") # name of the folder under ./runtime.dat/
 set(REACTION_MODEL "RSBI-18REA") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"

@@ -296,13 +296,18 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	}
 #endif // end COP
 
+#ifdef COP
 	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 	real_t R = get_CopR(thermal.species_chara, yi);
 	T = get_T(thermal, yi, e, T);
 	p = rho * R * T; // 对所有气体都适用
-	H = (UI[4] + p) * rho1;
 	gamma = get_CopGamma(thermal, yi, T);
-	c = sqrt(gamma * p * rho1);
+#else
+	gamma = NCOP_Gamma;
+	p = (NCOP_Gamma - _DF(1.0)) * (UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
+#endif // end COP
+	H = (UI[4] + p) * rho1;
+	c = sycl::sqrt(gamma * p * rho1);
 }
 
 /**
@@ -1434,8 +1439,8 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_S
 			q[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPf + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPb;
 			d[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPb + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPf;
 		}
-		q[n] *= species_chara[n * SPCH_Sz + 6] / rho * 1e6;
-		d[n] *= species_chara[n * SPCH_Sz + 6] / rho * 1e6;
+		q[n] *= species_chara[n * SPCH_Sz + 6] / rho * _DF(1.0e6);
+		d[n] *= species_chara[n * SPCH_Sz + 6] / rho * _DF(1.0e6);
 	}
 }
 
@@ -1716,15 +1721,16 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 			denominator = denominator + X[i] * PHI(specie[k], specie[i], fcv, T);
 		}
 		// calculate viscosity_aver via equattion(5-49)//
-		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) / denominator; // Pa.s=kg/(m.s)
+		real_t _denominator = _DF(1.0) / denominator;
+		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) * _denominator; // Pa.s=kg/(m.s)
 #ifdef Heat
 		// calculate thermal_conduct via Su Hongmin//
-		thermal_conduct_aver = thermal_conduct_aver + X[k] * Thermal_conductivity(fct[int(specie[k][SID])], T) / denominator;
+		thermal_conduct_aver = thermal_conduct_aver + X[k] * Thermal_conductivity(fct[int(specie[k][SID])], T) * _denominator;
 #endif // end Heat
 	}
 #ifdef Diffu
 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
-	if (1 < NUM_SPECIES)
+#if 1 < NUM_SPECIES
 	{
 		double temp1, temp2;
 		for (int k = 0; k < NUM_SPECIES; k++)
@@ -1746,11 +1752,12 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 			Dkm_aver_id[k] *= _DF(1.0e-1);						// cm2/s==>m2/s
 		}
 	}
-	else
+#else
 	{															  // NUM_SPECIES==1
 		Dkm_aver_id[0] = GetDkj(specie[0], specie[0], Dkj, T, p); // trans_coeff.GetDkj(T, p, chemi.species[0], chemi.species[0], refstat);
 		Dkm_aver_id[0] *= _DF(1.0e-1);							  // cm2/s==>m2/s
 	}
+#endif // end NUM_SPECIES>1
 #endif // end Diffu
 }
 #endif // end Visc

@@ -31,10 +31,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.w = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-#ifdef COP
-	//	for (size_t n = 0; n < NUM_SPECIES; n++)
 	h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
-#endif // COP
+
 	// NOTE: 设备内存
 	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -49,7 +47,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	long double MemMbSize = (4.0 * (double(cellbytes) / 1024.0) + 9.0 * (double(bytes) / 1024.0)) / 1024.0;
+	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+	long double MemMbSize = (4.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0;
 #if 2 == EIGEN_ALLOC
 	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
 	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
@@ -71,11 +70,6 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0 * 9.0;
 #endif // end Visc
-#ifdef COP
-	// for (size_t n = 0; n < NUM_SPECIES; n++)
-	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
-	MemMbSize += bytes / 1024.0 / 1024.0 * (NUM_SPECIES);
-#endif // COP
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));

@@ -109,13 +109,13 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 
 	q.submit([&](sycl::handler &h)
 			 {         
-				sycl::stream stream_ct1(64 * 1024, 80, h);// for output error 
+				// sycl::stream stream_ct1(64 * 1024, 80, h);// for output error: sycl::stream decline running efficiency
 				h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
-			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma, T, Gamma, stream_ct1); }); })
+			UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma, T, Gamma); }); }) //, stream_ct1
 		.wait();
 }
 

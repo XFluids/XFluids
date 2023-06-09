@@ -3,63 +3,63 @@
 #include "global_class.h"
 // TODO: NO std::cmath functions used if schemes function referenced, use sycl::math_function<real_t>
 
-real_t minmod(real_t r);
-real_t van_Leer(real_t r);
-real_t van_Albada(real_t r);
-void MUSCL(real_t p[4], real_t &LL, real_t &RR, int flag);
-real_t KroneckerDelta(const int i, const int j);
+inline real_t minmod(real_t r);
+inline real_t van_Leer(real_t r);
+inline real_t van_Albada(real_t r);
+inline void MUSCL(real_t p[4], real_t &LL, real_t &RR, int flag);
+inline real_t KroneckerDelta(const int i, const int j);
 // schemes
-real_t upwind_P(real_t *f, real_t delta);
-real_t upwind_M(real_t *f, real_t delta);
+inline real_t upwind_P(real_t *f, real_t delta);
+inline real_t upwind_M(real_t *f, real_t delta);
 // 5th-upwind
-real_t linear_5th_P(real_t *f, real_t delta);
-real_t linear_5th_M(real_t *f, real_t delta);
-real_t linear_2th(real_t *f, real_t delta);
-real_t linear_4th(real_t *f, real_t delta);
-real_t linear_6th(real_t *f, real_t delta);
-real_t linear_3rd_P(real_t *f, real_t delta);
-real_t linear_3rd_M(real_t *f, real_t delta);
-real_t du_upwind5(real_t *f, real_t delta);
-real_t f2_upwind5(real_t *f, real_t delta);
+inline real_t linear_5th_P(real_t *f, real_t delta);
+inline real_t linear_5th_M(real_t *f, real_t delta);
+inline real_t linear_2th(real_t *f, real_t delta);
+inline real_t linear_4th(real_t *f, real_t delta);
+inline real_t linear_6th(real_t *f, real_t delta);
+inline real_t linear_3rd_P(real_t *f, real_t delta);
+inline real_t linear_3rd_M(real_t *f, real_t delta);
+inline real_t du_upwind5(real_t *f, real_t delta);
+inline real_t f2_upwind5(real_t *f, real_t delta);
 // original weno
-real_t weno5_P(real_t *f, real_t delta);
-real_t weno5_M(real_t *f, real_t delta);
-real_t weno5old_P(real_t *f, real_t delta);
-real_t weno5old_M(real_t *f, real_t delta);
-real_t weno7_P(real_t *f, real_t delta);
-real_t weno7_M(real_t *f, real_t delta);
+inline real_t weno5_P(real_t *f, real_t delta);
+inline real_t weno5_M(real_t *f, real_t delta);
+inline real_t weno5old_P(real_t *f, real_t delta);
+inline real_t weno5old_M(real_t *f, real_t delta);
+inline real_t weno7_P(real_t *f, real_t delta);
+inline real_t weno7_M(real_t *f, real_t delta);
 // 6th-order weno
-real_t WENOCU6_P(real_t *f, real_t delta);
-real_t WENOCU6_M(real_t *f, real_t delta);
-real_t WENOCU6M1_P(real_t *f, real_t delta);
-real_t WENOCU6M1_M(real_t *f, real_t delta);
-real_t WENOCU6M2_P(real_t *f, real_t delta);
-real_t WENOCU6M2_M(real_t *f, real_t delta);
-real_t TENO5_P(real_t *f, real_t delta);
-real_t TENO5_M(real_t *f, real_t delta);
-real_t TENO6_OPT_P(real_t *f, real_t delta);
-real_t TENO6_OPT_M(real_t *f, real_t delta);
+inline real_t WENOCU6_P(real_t *f, real_t delta);
+inline real_t WENOCU6_M(real_t *f, real_t delta);
+inline real_t WENOCU6M1_P(real_t *f, real_t delta);
+inline real_t WENOCU6M1_M(real_t *f, real_t delta);
+inline real_t WENOCU6M2_P(real_t *f, real_t delta);
+inline real_t WENOCU6M2_M(real_t *f, real_t delta);
+inline real_t TENO5_P(real_t *f, real_t delta);
+inline real_t TENO5_M(real_t *f, real_t delta);
+inline real_t TENO6_OPT_P(real_t *f, real_t delta);
+inline real_t TENO6_OPT_M(real_t *f, real_t delta);
 // wenoZ
-real_t weno5Z_P(real_t *f, real_t delta);
-real_t weno5Z_M(real_t *f, real_t delta);
-real_t weno7Z_P(real_t *f, real_t delta);
-real_t weno7Z_M(real_t *f, real_t delta);
+inline real_t weno5Z_P(real_t *f, real_t delta);
+inline real_t weno5Z_M(real_t *f, real_t delta);
+inline real_t weno7Z_P(real_t *f, real_t delta);
+inline real_t weno7Z_M(real_t *f, real_t delta);
 // WENO-AO
-real_t WENOAO53_P(real_t *f, real_t delta);
-real_t WENOAO53_M(real_t *f, real_t delta);
-real_t WENOAO73_P(real_t *f, real_t delta);
-real_t WENOAO73_M(real_t *f, real_t delta);
-real_t WENOAO753_P(real_t *f, real_t delta);
-real_t WENOAO753_M(real_t *f, real_t delta);
+inline real_t WENOAO53_P(real_t *f, real_t delta);
+inline real_t WENOAO53_M(real_t *f, real_t delta);
+inline real_t WENOAO73_P(real_t *f, real_t delta);
+inline real_t WENOAO73_M(real_t *f, real_t delta);
+inline real_t WENOAO753_P(real_t *f, real_t delta);
+inline real_t WENOAO753_M(real_t *f, real_t delta);
 
-real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda);
-real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda);
+inline real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda);
+inline real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda);
 
 /**
  * @brief KroneckerDelta
  * @return real_t
  */
-real_t KroneckerDelta(const int i, const int j)
+inline real_t KroneckerDelta(const int i, const int j)
 {
     real_t f = i == j ? 1 : 0;
     return f;
@@ -70,7 +70,7 @@ real_t KroneckerDelta(const int i, const int j)
  * @param r
  * @return real_t
  */
-real_t van_Leer(real_t r)
+inline real_t van_Leer(real_t r)
 {
     return (r + sycl::abs<real_t>(r)) / (1.0 + sycl::abs<real_t>(r));
 }
@@ -80,7 +80,7 @@ real_t van_Leer(real_t r)
  * @param r
  * @return real_t
  */
-real_t van_Albada(real_t r)
+inline real_t van_Albada(real_t r)
 {
     return (r * r + r) / (1.0 + r * r);
 }
@@ -90,7 +90,7 @@ real_t van_Albada(real_t r)
  * @param r
  * @return real_t
  */
-real_t minmod(real_t r)
+inline real_t minmod(real_t r)
 {
     real_t minmod = 0;
     real_t aa = 1.0;
@@ -106,7 +106,7 @@ real_t minmod(real_t r)
  * @param RR
  * @param flag
  */
-void MUSCL(real_t p[4], real_t &LL, real_t &RR, int flag)
+inline void MUSCL(real_t p[4], real_t &LL, real_t &RR, int flag)
 {
     real_t tol = 1e-20, k = 1.0 / 3.0;
     real_t a0 = p[1] - p[0], a1 = p[2] - p[1], a2 = p[3] - p[2];
@@ -146,15 +146,15 @@ void MUSCL(real_t p[4], real_t &LL, real_t &RR, int flag)
  * @param delta
  * @return real_t
  */
-real_t upwind_P(real_t *f, real_t delta)
+inline real_t upwind_P(real_t *f, real_t delta)
 {
     return *f;
 }
-real_t upwind_M(real_t *f, real_t delta)
+inline real_t upwind_M(real_t *f, real_t delta)
 {
     return *(f + 1);
 }
-real_t linear_3rd_P(real_t *f, real_t delta)
+inline real_t linear_3rd_P(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 2);
     real_t v2 = *(f - 1);
@@ -166,7 +166,7 @@ real_t linear_3rd_P(real_t *f, real_t delta)
 
     return vv;
 }
-real_t linear_3rd_M(real_t *f, real_t delta)
+inline real_t linear_3rd_M(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 2);
     real_t v2 = *(f - 1);
@@ -178,7 +178,7 @@ real_t linear_3rd_M(real_t *f, real_t delta)
 
     return vv;
 }
-real_t linear_5th_P(real_t *f, real_t delta)
+inline real_t linear_5th_P(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 2);
     real_t v2 = *(f - 1);
@@ -190,7 +190,8 @@ real_t linear_5th_P(real_t *f, real_t delta)
 
     return vv;
 }
-real_t linear_5th_M(real_t *f, real_t delta)
+
+inline real_t linear_5th_M(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 2);
     real_t v2 = *(f - 1);
@@ -202,7 +203,8 @@ real_t linear_5th_M(real_t *f, real_t delta)
 
     return vv;
 }
-real_t linear_2th(real_t *f, real_t delta)
+
+inline real_t linear_2th(real_t *f, real_t delta)
 {
     real_t v1 = *f;
     real_t v2 = *(f + 1);
@@ -210,7 +212,8 @@ real_t linear_2th(real_t *f, real_t delta)
 
     return vv;
 }
-real_t linear_4th(real_t *f, real_t delta)
+
+inline real_t linear_4th(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 1);
     real_t v2 = *f;
@@ -220,7 +223,8 @@ real_t linear_4th(real_t *f, real_t delta)
 
     return vv;
 }
-real_t linear_6th(real_t *f, real_t delta)
+
+inline real_t linear_6th(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 2);
     real_t v2 = *(f - 1);
@@ -235,7 +239,7 @@ real_t linear_6th(real_t *f, real_t delta)
 //-------------------------------------------------------------------------------------------------
 //  linear scheme for hybrid method
 //-------------------------------------------------------------------------------------------------
-real_t du_upwind5(real_t *f, real_t delta)
+inline real_t du_upwind5(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 2);
     real_t v2 = *(f - 1);
@@ -248,7 +252,7 @@ real_t du_upwind5(real_t *f, real_t delta)
 //-------------------------------------------------------------------------------------------------
 //  linear scheme for hybrid method
 //-------------------------------------------------------------------------------------------------
-real_t f2_upwind5(real_t *f, real_t delta)
+inline real_t f2_upwind5(real_t *f, real_t delta)
 {
     real_t v1 = *(f - 2);
     real_t v2 = *(f - 1);
@@ -259,7 +263,7 @@ real_t f2_upwind5(real_t *f, real_t delta)
     return (v1 - 8.0 * v2 + 37.0 * v3 + 37.0 * v4 - 8.0 * v5 + v6) / 60.0;
 }
 
-real_t weno5_P(real_t *f, real_t delta)
+inline real_t weno5_P(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5;
@@ -291,7 +295,8 @@ real_t weno5_P(real_t *f, real_t delta)
     // return weighted average
     return w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) / 6.0 + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) / 6.0 + w3 * (2.0 * v3 + 5.0 * v4 - v5) / 6.0;
 }
-real_t weno5_M(real_t *f, real_t delta)
+
+inline real_t weno5_M(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5;
@@ -331,14 +336,11 @@ real_t weno5_M(real_t *f, real_t delta)
  * @param delta
  * @return real_t
  */
-const double epsilon_weno = 1.0e-6;
-real_t weno5old_P(real_t *f, real_t delta)
-{ // version from Lyx
+inline real_t weno5old_P(real_t *f, real_t delta)
+{
     int k;
-    real_t v1, v2, v3, v4, v5;
-    real_t a1, a2, a3;
-    real_t w1, w2, w3;
-
+    real_t v1, v2, v3, v4, v5, a1, a2, a3;
+    real_t dtwo = _DF(2.0), dtre = _DF(3.0);
     // assign value to v1, v2,...
     k = 0;
     v1 = *(f + k - 2);
@@ -347,26 +349,37 @@ real_t weno5old_P(real_t *f, real_t delta)
     v4 = *(f + k + 1);
     v5 = *(f + k + 2);
 
-    // smoothness indicator
-    real_t s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
-    s1 /= _DF(12.0);
-    real_t s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
-    s2 /= _DF(12.0);
-    real_t s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
-    s3 /= _DF(12.0);
+    a1 = v1 - dtwo * v2 + v3;
+    real_t s1 = _DF(13.0) * a1 * a1;
+    a1 = v1 - _DF(4.0) * v2 + dtre * v3;
+    s1 += dtre * a1 * a1;
+    a1 = v2 - dtwo * v3 + v4;
+    real_t s2 = _DF(13.0) * a1 * a1;
+    a1 = v2 - v4;
+    s2 += dtre * a1 * a1;
+    a1 = v3 - dtwo * v4 + v5;
+    real_t s3 = _DF(13.0) * a1 * a1;
+    a1 = dtre * v3 - _DF(4.0) * v4 + v5;
+    s3 += dtre * a1 * a1;
 
-    // weights
-    a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
-    a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
-    a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
+    real_t tol = _DF(1.0e-6);
+    a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+    a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+    a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+
     real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
-    w1 = a1 * tw1;
-    w2 = a2 * tw1;
-    w3 = a3 * tw1;
-    real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
-    // return weighted average
-    return temp;
+
+    a1 = a1 * tw1;
+    a2 = a2 * tw1;
+    a3 = a3 * tw1;
+
+    s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
+    s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
+    s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
+
+    return (s1 + s2 + s3); /// _DF(6.0)
 }
+
 /**
  * @brief the 5th WENO Scheme
  *
@@ -374,13 +387,12 @@ real_t weno5old_P(real_t *f, real_t delta)
  * @param delta
  * @return real_t
  */
-real_t weno5old_M(real_t *f, real_t delta)
-{ // version from Lyx
-    int k;
-    real_t v1, v2, v3, v4, v5;
-    real_t a1, a2, a3;
-    real_t w1, w2, w3;
 
+inline real_t weno5old_M(real_t *f, real_t delta)
+{
+    int k;
+    real_t v1, v2, v3, v4, v5, a1, a2, a3;
+    real_t dtwo = _DF(2.0), dtre = _DF(3.0);
     // assign value to v1, v2,...
     k = 1;
     v1 = *(f + k + 2);
@@ -389,31 +401,128 @@ real_t weno5old_M(real_t *f, real_t delta)
     v4 = *(f + k - 1);
     v5 = *(f + k - 2);
 
-    // smoothness indicator
-    double s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
-    s1 /= _DF(12.0);
-    double s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
-    s2 /= _DF(12.0);
-    double s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
-    s3 /= _DF(12.0);
+    a1 = v1 - dtwo * v2 + v3;
+    real_t s1 = _DF(13.0) * a1 * a1;
+    a1 = v1 - _DF(4.0) * v2 + dtre * v3;
+    s1 += dtre * a1 * a1;
+    a1 = v2 - dtwo * v3 + v4;
+    real_t s2 = _DF(13.0) * a1 * a1;
+    a1 = v2 - v4;
+    s2 += dtre * a1 * a1;
+    a1 = v3 - dtwo * v4 + v5;
+    real_t s3 = _DF(13.0) * a1 * a1;
+    a1 = dtre * v3 - _DF(4.0) * v4 + v5;
+    s3 += dtre * a1 * a1;
 
-    // weights
-    a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
-    a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
-    a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
-    double tw1 = _DF(1.0) / (a1 + a2 + a3);
-    w1 = a1 * tw1;
-    w2 = a2 * tw1;
-    w3 = a3 * tw1;
+    real_t tol = _DF(1.0e-6);
+    a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+    a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+    a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
 
-    real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
-    // return weighted average
-    return temp;
+    real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
+
+    a1 = a1 * tw1;
+    a2 = a2 * tw1;
+    a3 = a3 * tw1;
+
+    s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
+    s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
+    s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
+
+    return (s1 + s2 + s3); /// _DF(6.0)
 }
+
+// /**
+//  * @brief the 5th WENO Scheme
+//  * // version from Lyx
+//  *
+//  * @param f
+//  * @param delta
+//  * @return real_t
+//  */
+// const double epsilon_weno = 1.0e-6;
+// inline real_t weno5old_P(real_t *f, real_t delta)
+// {
+//     int k;
+//     real_t v1, v2, v3, v4, v5;
+//     real_t a1, a2, a3;
+//     real_t w1, w2, w3;
+
+//     // assign value to v1, v2,...
+//     k = 0;
+//     v1 = *(f + k - 2);
+//     v2 = *(f + k - 1);
+//     v3 = *(f + k);
+//     v4 = *(f + k + 1);
+//     v5 = *(f + k + 2);
+
+//     // smoothness indicator
+//     real_t s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
+//     s1 /= _DF(12.0);
+//     real_t s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
+//     s2 /= _DF(12.0);
+//     real_t s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
+//     s3 /= _DF(12.0);
+
+//     // weights
+//     a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
+//     a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
+//     a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
+//     real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
+//     w1 = a1 * tw1;
+//     w2 = a2 * tw1;
+//     w3 = a3 * tw1;
+//     real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
+//     // return weighted average
+//     return temp;
+// }
+// /**
+//  * @brief the 5th WENO Scheme
+//  *
+//  * @param f
+//  * @param delta
+//  * @return real_t
+//  */
+// inline real_t weno5old_M(real_t *f, real_t delta)
+// { // version from Lyx
+//     int k;
+//     real_t v1, v2, v3, v4, v5;
+//     real_t a1, a2, a3;
+//     real_t w1, w2, w3;
+
+//     // assign value to v1, v2,...
+//     k = 1;
+//     v1 = *(f + k + 2);
+//     v2 = *(f + k + 1);
+//     v3 = *(f + k);
+//     v4 = *(f + k - 1);
+//     v5 = *(f + k - 2);
+
+//     // smoothness indicator
+//     double s1 = _DF(13.0) * (v1 - _DF(2.0) * v2 + v3) * (v1 - _DF(2.0) * v2 + v3) + _DF(3.0) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3) * (v1 - _DF(4.0) * v2 + _DF(3.0) * v3);
+//     s1 /= _DF(12.0);
+//     double s2 = _DF(13.0) * (v2 - _DF(2.0) * v3 + v4) * (v2 - _DF(2.0) * v3 + v4) + _DF(3.0) * (v2 - v4) * (v2 - v4);
+//     s2 /= _DF(12.0);
+//     double s3 = _DF(13.0) * (v3 - _DF(2.0) * v4 + v5) * (v3 - _DF(2.0) * v4 + v5) + _DF(3.0) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5) * (_DF(3.0) * v3 - _DF(4.0) * v4 + v5);
+//     s3 /= _DF(12.0);
+
+//     // weights
+//     a1 = _DF(0.1) / ((epsilon_weno + s1) * (epsilon_weno + s1));
+//     a2 = _DF(0.6) / ((epsilon_weno + s2) * (epsilon_weno + s2));
+//     a3 = _DF(0.3) / ((epsilon_weno + s3) * (epsilon_weno + s3));
+//     double tw1 = _DF(1.0) / (a1 + a2 + a3);
+//     w1 = a1 * tw1;
+//     w2 = a2 * tw1;
+//     w3 = a3 * tw1;
+
+//     real_t temp = w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3) / _DF(6.0) + w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4) / _DF(6.0) + w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5) / _DF(6.0);
+//     // return weighted average
+//     return temp;
+// }
 //-----------------------------------------------------------------------------------------
 //		the 7th WENO Scheme
 //-----------------------------------------------------------------------------------------
-real_t weno7_P(real_t *f, real_t delta)
+inline real_t weno7_P(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 0;
@@ -473,7 +582,8 @@ real_t weno7_P(real_t *f, real_t delta)
     // 由4个4阶差分格式组合成1个7阶差分格式
     return W0 * q0 + W1 * q1 + W2 * q2 + W3 * q3;
 }
-real_t weno7_M(real_t *f, real_t delta)
+
+inline real_t weno7_M(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 1;
@@ -539,7 +649,7 @@ real_t weno7_M(real_t *f, real_t delta)
  *                  Balsara et al., An efficient class of WENO schemes with adaptive order. (2016)
  *                  Kumar et al., Simple smoothness indicator and multi-level adaptive order WENO scheme for hyperbolic conservation laws. (2018)
  */
-real_t WENOAO53_P(real_t *f, real_t delta)
+inline real_t WENOAO53_P(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5;
@@ -592,7 +702,7 @@ real_t WENOAO53_P(real_t *f, real_t delta)
     return u0 + u1 * 1.0 / 2.0 + u2 * 1.0 / 6.0 + u3 * 1.0 / 20.0 + u4 * 1.0 / 70.0;
 }
 
-real_t WENOAO53_M(real_t *f, real_t delta)
+inline real_t WENOAO53_M(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5;
@@ -644,10 +754,11 @@ real_t WENOAO53_M(real_t *f, real_t delta)
     // Return value of reconstructed polynomial
     return u0 + u1 * 1.0 / 2.0 + u2 * 1.0 / 6.0 + u3 * 1.0 / 20.0 + u4 * 1.0 / 70.0;
 }
+
 /**
  * @brief  WENO-AO(7,3) scheme from Balsara (2016)
  */
-real_t WENOAO73_P(real_t *f, real_t delta)
+inline real_t WENOAO73_P(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6, v7;
@@ -707,7 +818,8 @@ real_t WENOAO73_P(real_t *f, real_t delta)
     // Return value of reconstructed polynomial
     return u0 + u1 * 1.0 / 2.0 + u2 * 1.0 / 6.0 + u3 * 1.0 / 20.0 + u4 * 1.0 / 70.0 + u5 * 1.0 / 252.0 + u6 * 1.0 / 924.0;
 }
-real_t WENOAO73_M(real_t *f, real_t delta)
+
+inline real_t WENOAO73_M(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6, v7;
@@ -767,10 +879,11 @@ real_t WENOAO73_M(real_t *f, real_t delta)
     // Return value of reconstructed polynomial
     return u0 + u1 * 1.0 / 2.0 + u2 * 1.0 / 6.0 + u3 * 1.0 / 20.0 + u4 * 1.0 / 70.0 + u5 * 1.0 / 252.0 + u6 * 1.0 / 924.0;
 }
+
 /**
  * @brief  WENO-AO(7,5,3) scheme from Balsara (2016)
  */
-real_t WENOAO753_P(real_t *f, real_t delta)
+inline real_t WENOAO753_P(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6, v7;
@@ -875,7 +988,7 @@ real_t WENOAO753_P(real_t *f, real_t delta)
     return (w_ao_7 / 2.0e-16) * (polynomial_7 - (1 - 2.0e-16) * polynomial_5) + w_ao_5 * polynomial_5;
 }
 
-real_t WENOAO753_M(real_t *f, real_t delta)
+inline real_t WENOAO753_M(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6, v7;
@@ -980,7 +1093,7 @@ real_t WENOAO753_M(real_t *f, real_t delta)
     return (w_ao_7 / 2.0e-16) * (polynomial_7 - (1 - 2.0e-16) * polynomial_5) + w_ao_5 * polynomial_5;
 }
 
-real_t WENOCU6_P(real_t *f, real_t delta)
+inline real_t WENOCU6_P(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 0;
@@ -1032,8 +1145,9 @@ real_t WENOCU6_P(real_t *f, real_t delta)
     // return weighted average
     return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
+
 // this is WENOCU6
-real_t WENOCU6_M(real_t *f, real_t delta)
+inline real_t WENOCU6_M(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 1;
@@ -1085,7 +1199,7 @@ real_t WENOCU6_M(real_t *f, real_t delta)
     return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
 
-real_t WENOCU6M1_P(real_t *f, real_t delta)
+inline real_t WENOCU6M1_P(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 0;
@@ -1137,8 +1251,9 @@ real_t WENOCU6M1_P(real_t *f, real_t delta)
     // return weighted average
     return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
+
 // this is WENOCU6_M
-real_t WENOCU6M1_M(real_t *f, real_t delta)
+inline real_t WENOCU6M1_M(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 1;
@@ -1190,7 +1305,7 @@ real_t WENOCU6M1_M(real_t *f, real_t delta)
     return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
 
-real_t TENO5_P(real_t *f, real_t delta)
+inline real_t TENO5_P(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5;
@@ -1239,7 +1354,7 @@ real_t TENO5_P(real_t *f, real_t delta)
     return 1.0 / 6.0 * (w1 * Variation1 + w2 * Variation2 + w3 * Variation3);
 }
 
-real_t TENO5_M(real_t *f, real_t delta)
+inline real_t TENO5_M(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5;
@@ -1288,7 +1403,7 @@ real_t TENO5_M(real_t *f, real_t delta)
     return 1.0 / 6.0 * (w1 * Variation1 + w2 * Variation2 + w3 * Variation3);
 }
 
-real_t TENO6_OPT_P(real_t *f, real_t delta)
+inline real_t TENO6_OPT_P(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6;
@@ -1346,7 +1461,8 @@ real_t TENO6_OPT_P(real_t *f, real_t delta)
 
     return v3 + w1 * Variation1 + w2 * Variation2 + w3 * Variation3 + w4 * Variation4;
 }
-real_t TENO6_OPT_M(real_t *f, real_t delta)
+
+inline real_t TENO6_OPT_M(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6;
@@ -1404,7 +1520,7 @@ real_t TENO6_OPT_M(real_t *f, real_t delta)
     return v3 + w1 * Variation1 + w2 * Variation2 + w3 * Variation3 + w4 * Variation4;
 }
 
-real_t weno5Z_P(real_t *f, real_t delta)
+inline real_t weno5Z_P(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6;
@@ -1439,7 +1555,8 @@ real_t weno5Z_P(real_t *f, real_t delta)
     // return weighted average
     return w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) / 6.0 + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) / 6.0 + w3 * (2.0 * v3 + 5.0 * v4 - v5) / 6.0;
 }
-real_t weno5Z_M(real_t *f, real_t delta)
+
+inline real_t weno5Z_M(real_t *f, real_t delta)
 {
     int k;
     real_t v1, v2, v3, v4, v5, v6;
@@ -1475,7 +1592,7 @@ real_t weno5Z_M(real_t *f, real_t delta)
     return w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) / 6.0 + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) / 6.0 + w3 * (2.0 * v3 + 5.0 * v4 - v5) / 6.0;
 }
 
-real_t weno7Z_P(real_t *f, real_t delta)
+inline real_t weno7Z_P(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 0;
@@ -1531,7 +1648,8 @@ real_t weno7Z_P(real_t *f, real_t delta)
     // 由4个4阶差分格式组合成1个7阶差分格式
     return W0 * q0 + W1 * q1 + W2 * q2 + W3 * q3;
 }
-real_t weno7Z_M(real_t *f, real_t delta)
+
+inline real_t weno7Z_M(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 1;
@@ -1588,7 +1706,7 @@ real_t weno7Z_M(real_t *f, real_t delta)
     return W0 * q0 + W1 * q1 + W2 * q2 + W3 * q3;
 }
 
-real_t WENOCU6M2_P(real_t *f, real_t delta)
+inline real_t WENOCU6M2_P(real_t *f, real_t delta)
 {
     real_t epsilon = 1.0e-8;
     int k = 0;
@@ -1630,7 +1748,8 @@ real_t WENOCU6M2_P(real_t *f, real_t delta)
     // return weighted average
     return (w0 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w1 * (-v2 + 5.0 * v3 + 2.0 * v4) + w2 * (2.0 * v3 + 5.0 * v4 - v5) + w3 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
-real_t WENOCU6M2_M(real_t *f, real_t delta)
+
+inline real_t WENOCU6M2_M(real_t *f, real_t delta)
 {
     // assign value to v1, v2,...
     int k = 1;
@@ -1679,7 +1798,7 @@ real_t WENOCU6M2_M(real_t *f, real_t delta)
     return (w0 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w1 * (-v2 + 5.0 * v3 + 2.0 * v4) + w2 * (2.0 * v3 + 5.0 * v4 - v5) + w3 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
 
-real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda)
+inline real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda)
 {
     // assign value to v1, v2,...
     int k = 0;
@@ -1722,7 +1841,8 @@ real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda)
     // return weighted average
     return (w3 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (2.0 * v3 + 5.0 * v4 - v5) + w1 * (-3.0 * v2 + 9.0 * v3) + w0 * (3.0 * v3 + 3.0 * v4)) / 6.0;
 }
-real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda)
+
+inline real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda)
 {
     // assign value to v1, v2,...
     int k = 1;

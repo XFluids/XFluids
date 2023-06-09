@@ -42,9 +42,8 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0))
 void SYCLSolver::Evolution(sycl::queue &q)
 {
 	real_t physicalTime = 0.0;
-	int Iteration = 0, OutNum = 1, rank = 0, TimeLoop = 0, nranks = 1;
-	bool error_out = false, Stepstop = false;
-	dt = 0;
+	int Iteration = 0, OutNum = 1, rank = 0, nranks = 1, TimeLoop = 0;
+	bool error_out = false, TimeLoopOut = false, Stepstop = false;
 #if USE_MPI
 	rank = Ss.mpiTrans->myRank;
 	nranks = Ss.mpiTrans->nProcs;
@@ -54,14 +53,15 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 	while (TimeLoop < Ss.nOutTimeStamps)
 	{
-		real_t target_t = Ss.OutTimeStamps[TimeLoop]; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
-		TimeLoop++;
+		real_t target_t = physicalTime < Ss.OutTimeStamps[TimeLoop] ? Ss.OutTimeStamps[TimeLoop] : Ss.OutTimeStamps[TimeLoop++]; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
+		// TimeLoop++;
 		while (physicalTime < target_t)
 		{
-			if (TimeLoop && Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput)
+			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput || TimeLoopOut)
 			{
 				Output(q, rank, std::to_string(Iteration), physicalTime);
 				OutNum++;
+				TimeLoopOut = false;
 			}
 			else if (error_out)
 			{
@@ -70,18 +70,21 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				std::exit(EXIT_FAILURE);
 			}
 
+			Iteration++;
 			// get minmum dt, if MPI used, get the minimum of all ranks
 #ifdef DEBUG
 				// std::cout << "  sleep before ComputeTimeStep\n";
 				// sleep(5);
 #endif								 // end DEBUG
+
 			dt = ComputeTimeStep(q); // 2.0e-6; //
+
 #ifdef DEBUG
 			// std::cout << "  sleep after ComputeTimeStep\n";
 			// sleep(5);
 #endif // end DEBUG
 			if (rank == 0) // An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
-				std::cout << "N=" << std::setw(7) << Iteration + 1 << "     beginning physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime;
+				std::cout << "N=" << std::setw(7) << Iteration << "     beginning physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime;
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;
@@ -103,13 +106,12 @@ void SYCLSolver::Evolution(sycl::queue &q)
 #endif // end COP_CHEME
 
 			physicalTime += dt;
-			Iteration++;
 			Stepstop = Ss.nStepmax <= Iteration ? true : false; /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/
 			if (Stepstop)
 				break;
 		}
-			Output(q, rank, std::to_string(Iteration), physicalTime);
-			if (Stepstop)
+		TimeLoopOut = true;
+		if (Stepstop)
 			break;
 	}
 
@@ -132,12 +134,11 @@ void SYCLSolver::Evolution(sycl::queue &q)
 ///////////////////////////
 #endif // end USE_MPI
 		std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
-		// std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << duration  << " of rank: " << rank << std::endl;
 #ifdef USE_MPI
 	}
 	Ss.mpiTrans->communicator->synchronize();
 #endif
-	// sleep(5);
+	// Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
 
 bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)
@@ -317,15 +318,34 @@ void SYCLSolver::Output_vti(sycl::queue &q, int rank, std::ostringstream &timeFo
 	int xmin, ymin, xmax, ymax, zmin, zmax, mx, my, mz;
 	real_t dx, dy, dz;
 
-	xmin = DIM_X ? Ss.BlSz.myMpiPos_x * OnbX : 0;
-	xmax = DIM_X ? Ss.BlSz.myMpiPos_x * OnbX + OnbX : 0;
-	ymin = DIM_Y ? Ss.BlSz.myMpiPos_y * OnbY : 0;
-	ymax = DIM_Y ? Ss.BlSz.myMpiPos_y * OnbY + OnbY : 0;
-	zmin = DIM_Z ? (Ss.BlSz.myMpiPos_z * OnbZ) : 0;
-	zmax = DIM_Z ? (Ss.BlSz.myMpiPos_z * OnbZ + OnbZ) : 0;
-	dx = DIM_X ? Ss.BlSz.dx : 0.0;
-	dy = DIM_Y ? Ss.BlSz.dy : 0.0;
-	dz = DIM_Z ? Ss.BlSz.dz : 0.0;
+#if DIM_X
+	xmin = Ss.BlSz.myMpiPos_x * OnbX;
+	xmax = Ss.BlSz.myMpiPos_x * OnbX + OnbX;
+	dx = Ss.BlSz.dx;
+#else
+	xmin = 0;
+	xmax = 0;
+	dx = 0.0;
+#endif // DIM_X
+#if DIM_Y
+	ymin = Ss.BlSz.myMpiPos_y * OnbY;
+	ymax = Ss.BlSz.myMpiPos_y * OnbY + OnbY;
+	dy = Ss.BlSz.dy;
+#else
+	ymin = 0;
+	ymax = 0;
+	dy = 0.0;
+#endif // DIM_Y
+#if DIM_Z
+	zmin = (Ss.BlSz.myMpiPos_z * OnbZ);
+	zmax = (Ss.BlSz.myMpiPos_z * OnbZ + OnbZ);
+	dz = Ss.BlSz.dz;
+#else
+	zmin = 0;
+	zmax = 0;
+	dz = 0.0;
+#endif // DIM_Z
+
 	// Init var names
 	int Onbvar = 5 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP

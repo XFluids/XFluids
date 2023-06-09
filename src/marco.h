@@ -86,13 +86,25 @@
 /**
  * get c2 #else COP
  */
+// #define MARCO_NOCOPC2()                                                                                                  \
+//     real_t yi_l[NUM_SPECIES] = {_DF(1.0)}, yi_r[NUM_SPECIES] = {_DF(1.0)}, _yi[] = {_DF(1.0)}, b3 = _DF(0.0), z[] = {0}; \
+//     real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);                                                               \
+//     real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);                                                               \
+//     real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);                                                             \
+//     real_t c2 = Gamma0 * _P / _rho; /*(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x */       \
+//     real_t b1 = (Gamma0 - _DF(1.0)) / c2;
+
 #define MARCO_NOCOPC2()                                                                                            \
-    real_t yi_l[NUM_SPECIES] = {_DF(1.0)}, yi_r[NUM_SPECIES] = {_DF(1.0)}, _yi[] = {1}, b3 = _DF(0.0), z[] = {0};  \
-    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);                                                         \
-    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);                                                         \
-    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);                                                       \
+    real_t _yi[NUM_SPECIES] = {_DF(1.0)}, b3 = _DF(0.0), z[] = {_DF(0.0)};                                         \
+    real_t Gamma0 = NCOP_Gamma;                                                                                    \
     real_t c2 = Gamma0 * _P / _rho; /*(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x */ \
     real_t b1 = (Gamma0 - _DF(1.0)) / c2;
+
+#ifdef COP
+#define MARCO_GETC2() MARCO_COPC2();
+#else
+#define MARCO_GETC2() MARCO_NOCOPC2();
+#endif // end COP
 
 /**
  * Caculate flux_wall
@@ -153,53 +165,55 @@
     }                                                                                                                                                                           \
     for (int n = 0; n < Emax; n++)                                                                                                                                              \
     { /* reconstruction the F-flux terms*/                                                                                                                                      \
-        Fwall[Emax * id_l + n] = _DF(0.0);                                                                                                                                      \
+        real_t fluxl = _DF(0.0);                                                                                                                                                \
         for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                       \
         {                                                                                                                                                                       \
-            Fwall[Emax * id_l + n] += _p[n1][n];                                                                                                                                \
+            fluxl += _p[n1][n];                                                                                                                                                 \
         }                                                                                                                                                                       \
+        Fwall[Emax * id_l + n] = fluxl;                                                                                                                                         \
     }
 
 // WENO 5 //used by: MARCO_FLUXWALL_WENO5(i + m, j, k, i + m, j, k);
-#define MARCO_FLUXWALL_WENO5(MARCO_ROE_LEFT, MARCO_ROE_RIGHT, _i_1, _j_1, _k_1, _i_2, _j_2, _k_2)                                                                                                                                                 \
-    real_t uf[10], ff[10], pp[10], mm[10], f_flux, _p[Emax][Emax], eigen_lr[Emax], eigen_value;                                                                                                                                                   \
-    for (int n = 0; n < Emax; n++)                                                                                                                                                                                                                \
-    {                                                                                                                                                                                                                                             \
-        real_t eigen_local_max = _DF(0.0);                                                                                                                                                                                                        \
-        MARCO_ROE_LEFT; /* RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_l */                                                                                                           \
-        for (int m = -stencil_P; m < stencil_size - stencil_P; m++)                                                                                                                                                                               \
-        { /*int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m*/                                                                                                                                                            \
-            int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                                                                                                                                                       \
-            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/                                                                                                       \
-        }                                                                                                                                                                                                                                         \
-        for (int m = -3; m <= 4; m++)                                                                                                                                                                                                             \
-        {                                                                                                                                                                                                                                         \
-            /* int _i_2 = i + m, _j_2 = j, _k_2 = k; Xmax * Ymax * k + Xmax * j + m + i; 3rd oder and can be modified */                                                                                                                          \
-            int id_local = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2);                                                                                                                                                                         \
-            uf[m + 3] = _DF(0.0);                                                                                                                                                                                                                 \
-            ff[m + 3] = _DF(0.0);                                                                                                                                                                                                                 \
-            for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                                                                     \
-            {                                                                                                                                                                                                                                     \
-                uf[m + 3] = uf[m + 3] + UI[Emax * id_local + n1] * eigen_lr[n1]; /* eigen_l actually */                                                                                                                                           \
-                ff[m + 3] = ff[m + 3] + Fl[Emax * id_local + n1] * eigen_lr[n1];                                                                                                                                                                  \
-            } /*  for local speed*/                                                                                                                                                                                                               \
-            pp[m + 3] = _DF(0.5) * (ff[m + 3] + eigen_local_max * uf[m + 3]);                                                                                                                                                                     \
-            mm[m + 3] = _DF(0.5) * (ff[m + 3] - eigen_local_max * uf[m + 3]);                                                                                                                                                                     \
-        }                                                                                                                                     /* calculate the scalar numerical flux at x direction*/                                             \
-        f_flux = (weno5old_P(&pp[3], dl) + weno5old_M(&mm[3], dl)); /* f_flux = (linear_5th_P(&pp[3], dx) + linear_5th_M(&mm[3], dx))/60.0;*/ /* f_flux = weno_P(&pp[3], dx) + weno_M(&mm[3], dx);*/                                              \
-        MARCO_ROE_RIGHT;                                                                                                                      /* RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_r */ \
-        for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                                                                         \
-        {                                      /* get Fp */                                                                                                                                                                                       \
-            _p[n][n1] = f_flux * eigen_lr[n1]; /* eigen_r actually */                                                                                                                                                                             \
-        }                                                                                                                                                                                                                                         \
-    }                                                                                                                                                                                                                                             \
-    for (int n = 0; n < Emax; n++)                                                                                                                                                                                                                \
-    { /* reconstruction the F-flux terms*/                                                                                                                                                                                                        \
-        Fwall[Emax * id_l + n] = _DF(0.0);                                                                                                                                                                                                        \
-        for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                                                                         \
-        {                                                                                                                                                                                                                                         \
-            Fwall[Emax * id_l + n] += _p[n1][n];                                                                                                                                                                                                  \
-        }                                                                                                                                                                                                                                         \
+#define MARCO_FLUXWALL_WENO5(MARCO_ROE_LEFT, MARCO_ROE_RIGHT, _i_1, _j_1, _k_1, _i_2, _j_2, _k_2)                                                                                                                                                            \
+    real_t uf[10], ff[10], pp[10], mm[10], f_flux, _p[Emax][Emax], eigen_lr[Emax], eigen_value;                                                                                                                                                              \
+    for (int n = 0; n < Emax; n++)                                                                                                                                                                                                                           \
+    {                                                                                                                                                                                                                                                        \
+        real_t eigen_local_max = _DF(0.0);                                                                                                                                                                                                                   \
+        MARCO_ROE_LEFT; /* RoeAverageLeft_x(n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_l */                                                                                                                      \
+        for (int m = -stencil_P; m < stencil_size - stencil_P; m++)                                                                                                                                                                                          \
+        { /*int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m*/                                                                                                                                                                       \
+            int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                                                                                                                                                                  \
+            eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/                                                                                                                  \
+        }                                                                                                                                                                                                                                                    \
+        for (int m = -3; m <= 4; m++)                                                                                                                                                                                                                        \
+        {                                                                                                                                                                                                                                                    \
+            /* int _i_2 = i + m, _j_2 = j, _k_2 = k; Xmax * Ymax * k + Xmax * j + m + i; 3rd oder and can be modified */                                                                                                                                     \
+            int id_local = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2);                                                                                                                                                                                    \
+            uf[m + 3] = _DF(0.0);                                                                                                                                                                                                                            \
+            ff[m + 3] = _DF(0.0);                                                                                                                                                                                                                            \
+            for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                                                                                \
+            {                                                                                                                                                                                                                                                \
+                uf[m + 3] = uf[m + 3] + UI[Emax * id_local + n1] * eigen_lr[n1]; /* eigen_l actually */                                                                                                                                                      \
+                ff[m + 3] = ff[m + 3] + Fl[Emax * id_local + n1] * eigen_lr[n1];                                                                                                                                                                             \
+            } /*  for local speed*/                                                                                                                                                                                                                          \
+            pp[m + 3] = _DF(0.5) * (ff[m + 3] + eigen_local_max * uf[m + 3]);                                                                                                                                                                                \
+            mm[m + 3] = _DF(0.5) * (ff[m + 3] - eigen_local_max * uf[m + 3]);                                                                                                                                                                                \
+        }                                                                                                                                                /* calculate the scalar numerical flux at x direction*/                                             \
+        f_flux = (weno5old_P(&pp[3], dl) + weno5old_M(&mm[3], dl)) / _DF(6.0); /* f_flux = (linear_5th_P(&pp[3], dx) + linear_5th_M(&mm[3], dx))/60.0;*/ /* f_flux = weno_P(&pp[3], dx) + weno_M(&mm[3], dx);*/                                              \
+        MARCO_ROE_RIGHT;                                                                                                                                 /* RoeAverageRight_x(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0); get eigen_r */ \
+        for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                                                                                    \
+        {                                      /* get Fp */                                                                                                                                                                                                  \
+            _p[n][n1] = f_flux * eigen_lr[n1]; /* eigen_r actually */                                                                                                                                                                                        \
+        }                                                                                                                                                                                                                                                    \
+    }                                                                                                                                                                                                                                                        \
+    for (int n = 0; n < Emax; n++)                                                                                                                                                                                                                           \
+    { /* reconstruction the F-flux terms*/                                                                                                                                                                                                                   \
+        real_t fluxl = _DF(0.0);                                                                                                                                                                                                                             \
+        for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                                                                                    \
+        {                                                                                                                                                                                                                                                    \
+            fluxl += _p[n1][n];                                                                                                                                                                                                                              \
+        }                                                                                                                                                                                                                                                    \
+        Fwall[Emax * id_l + n] = fluxl;                                                                                                                                                                                                                      \
     }
 #endif // end EIGEN_ALLOC
 
@@ -254,11 +268,12 @@
     }                                                                                                                                           \
     for (int n = 0; n < Emax; n++)                                                                                                              \
     { /* reconstruction the F-flux terms*/                                                                                                      \
-        Fwall[Emax * id_l + n] = _DF(0.0);                                                                                                      \
+        real_t fluxl = _DF(0.0);                                                                                                                \
         for (int n1 = 0; n1 < Emax; n1++)                                                                                                       \
         {                                                                                                                                       \
-            Fwall[Emax * id_l + n] += _p[n1][n];                                                                                                \
+            fluxl += _p[n1][n];                                                                                                                 \
         }                                                                                                                                       \
+        Fwall[Emax * id_l + n] = fluxl;                                                                                                         \
     }
 
 // WENO 5 //used by: MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_X, i + m, j, k, i + m, j, k);
@@ -294,11 +309,12 @@
     }                                                                                                                                                                                                 \
     for (int n = 0; n < Emax; n++)                                                                                                                                                                    \
     { /* reconstruction the F-flux terms*/                                                                                                                                                            \
-        Fwall[Emax * id_l + n] = _DF(0.0);                                                                                                                                                            \
+        real_t fluxl = _DF(0.0);                                                                                                                                                                      \
         for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                             \
         {                                                                                                                                                                                             \
-            Fwall[Emax * id_l + n] += _p[n1][n];                                                                                                                                                      \
+            fluxl += _p[n1][n];                                                                                                                                                                       \
         }                                                                                                                                                                                             \
+        Fwall[Emax * id_l + n] = fluxl;                                                                                                                                                               \
     }
 #endif // end EIGEN_ALLOC
 
@@ -315,72 +331,153 @@
  */
 #ifdef COP
 const bool _COP = true;
+#define MARCO_VIS_COP_IN_DIFFU1()                                                                                                       \
+    Yi_wall[l] = (_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn;                                           \
+    Yil_wall[l] = (_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr; /* temperature gradient at wall*/ \
+    CorrectTerm += Dim_wall[l] * Yil_wall[l];
+
+#define MARCO_VIS_COP_IN_DIFFU2()                                                                     \
+    CorrectTerm *= rho_wall;                                                                          \
+    for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/                            \
+    {                                                                                                 \
+        int p_temp = p - 5;                                                                           \
+        F_wall_v[p] = rho_wall * Dim_wall[p_temp] * Yil_wall[p_temp] - Yi_wall[p_temp] * CorrectTerm; \
+    }
+
 #else
 const bool _COP = false;
+#define MARCO_VIS_COP_IN_DIFFU1() Yil_wall[l] = _DF(0.0);
+#define MARCO_VIS_COP_IN_DIFFU2() ;
 #endif
+
 #ifdef Heat
 const bool _Heat = true;
+
+#define MARCO_VIS_HEAT()                                                                                                                                                                       \
+    real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) * _sxtn; /* thermal conductivity at wall*/ \
+    kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) * _dl * _twfr;                                                                            /* temperature gradient at wall*/ \
+    F_wall_v[4] += kk;
+
+#define MARCO_VIS_HEAT_IN_DIFFU() \
+    F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l];
+
+// for (int l = 0; l < NUM_SPECIES; l++)                                 \
+    // {                                                                     \
+    //     F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l]; \
+    // }
 #else
 const bool _Heat = false;
+#define MARCO_VIS_HEAT() ;
+#define MARCO_VIS_HEAT_IN_DIFFU() ;
 #endif
+
 #ifdef Diffu
 const bool _Diffu = true;
+
+#define MARCO_VIS_Diffu()                                                                                                                         \
+    real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) * _sxtn;                                                    \
+    real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES], CorrectTerm = _DF(0.0);                      \
+    for (int l = 0; l < NUM_SPECIES; l++)                                                                                                         \
+    {                                                                                                                                             \
+        int g_id_p1 = l + NUM_SPECIES * id_p1, g_id = l + NUM_SPECIES * id, g_id_p2 = l + NUM_SPECIES * id_p2, g_id_m1 = l + NUM_SPECIES * id_m1; \
+        hi_wall[l] = (_DF(9.0) * (hi[g_id_p1] + hi[g_id]) - (hi[g_id_p2] + hi[g_id_m1])) * _sxtn;                                                 \
+        Dim_wall[l] = (_DF(9.0) * (Dkm_aver[g_id_p1] + Dkm_aver[g_id]) - (Dkm_aver[g_id_p2] + Dkm_aver[g_id_m1])) * _sxtn;                        \
+        MARCO_VIS_COP_IN_DIFFU1();                                                                                                                \
+        /* visc flux for heat of diffusion */                                                                                                     \
+        MARCO_VIS_HEAT_IN_DIFFU();                                                                                                                \
+    }                                                                                                                                             \
+    /* visc flux for cop equations*/                                                                                                              \
+    MARCO_VIS_COP_IN_DIFFU2();
+
 #else
 const bool _Diffu = false;
+#define MARCO_VIS_DIFFU() ;
 #endif
-#define MARCO_VISCFLUX()                                                                                                                                                                                               \
-    F_wall_v[0] = _DF(0.0);                                                                                                                                                                                            \
-    F_wall_v[1] = f_x;                                                                                                                                                                                                 \
-    F_wall_v[2] = f_y;                                                                                                                                                                                                 \
-    F_wall_v[3] = f_z;                                                                                                                                                                                                 \
-    F_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;                                                                                                                                                             \
-    if (_Heat) /* Fourier thermal conductivity*/                                                                                                                                                                       \
-    {                                                                                                                                                                                                                  \
-        real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0); /* thermal conductivity at wall*/                 \
-        kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dl / _DF(24.0);                                                                             /* temperature gradient at wall*/                 \
-        F_wall_v[4] += kk;                                                                                                                                                                                             \
-    }                                                                                                                                                                                                                  \
-    if (_Diffu) /* energy fiffusion depends on mass diffusion*/                                                                                                                                                        \
-    {                                                                                                                                                                                                                  \
-        real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);                                                                                                                 \
-        real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];                                                                                                               \
-        for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                                          \
-        {                                                                                                                                                                                                              \
-            hi_wall[l] = (_DF(9.0) * (hi[l + NUM_SPECIES * id_p1] + hi[l + NUM_SPECIES * id]) - (hi[l + NUM_SPECIES * id_p2] + hi[l + NUM_SPECIES * id_m1])) / _DF(16.0);                                              \
-            Dim_wall[l] = (_DF(9.0) * (Dkm_aver[l + NUM_SPECIES * id_p1] + Dkm_aver[l + NUM_SPECIES * id]) - (Dkm_aver[l + NUM_SPECIES * id_p2] + Dkm_aver[l + NUM_SPECIES * id_m1])) / _DF(16.0);                     \
-            if (_COP)                                                                                                                                                                                                  \
-            {                                                                                                                                                                                                          \
-                Yi_wall[l] = (_DF(9.0) * (Yi[l + NUM_SPECIES * id_p1] + Yi[l + NUM_SPECIES * id]) - (Yi[l + NUM_SPECIES * id_p2] + Yi[l + NUM_SPECIES * id_m1])) / _DF(16.0);                                          \
-                Yil_wall[l] = (_DF(27.0) * (Yi[l + NUM_SPECIES * id_p1] - Yi[l + NUM_SPECIES * id]) - (Yi[l + NUM_SPECIES * id_p2] - Yi[l + NUM_SPECIES * id_m1])) / dl / _DF(24.0); /* temperature gradient at wall*/ \
-            }                                                                                                                                                                                                          \
-            else                                                                                                                                                                                                       \
-            {                                                                                                                                                                                                          \
-                Yil_wall[l] = _DF(0.0);                                                                                                                                                                                \
-            }                                                                                                                                                                                                          \
-        }                                                                                                                                                                                                              \
-        if (_Heat)                                                                                                                                                                                                     \
-            for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                                      \
-            {                                                                                                                                                                                                          \
-                F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l];                                                                                                                                      \
-            }                                                                                                                                                                                                          \
-        if (_COP) /* visc flux for cop equations*/                                                                                                                                                                     \
-        {                                                                                                                                                                                                              \
-            real_t CorrectTerm = _DF(0.0);                                                                                                                                                                             \
-            for (int l = 0; l < NUM_SPECIES; l++)                                                                                                                                                                      \
-            {                                                                                                                                                                                                          \
-                CorrectTerm += Dim_wall[l] * Yil_wall[l];                                                                                                                                                              \
-            }                                                                                                                                                                                                          \
-            CorrectTerm *= rho_wall;                                                                                                                                                                                   \
-            for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/                                                                                                                                     \
-            {                                                                                                                                                                                                          \
-                F_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yil_wall[p - 5] - Yi_wall[p - 5] * CorrectTerm;                                                                                                             \
-            }                                                                                                                                                                                                          \
-        }                                                                                                                                                                                                              \
-    }                                                                                                                                                                                                                  \
-    for (size_t n = 0; n < Emax; n++) /* add viscous flux to fluxwall*/                                                                                                                                                \
-    {                                                                                                                                                                                                                  \
-        Flux_wall[n + Emax * id] -= F_wall_v[n];                                                                                                                                                                       \
+
+const real_t _sxtn = _DF(1.0) / _DF(16.0);
+const real_t _twfr = _DF(1.0) / _DF(24.0);
+const real_t _twle = _DF(1.0) / _DF(12.0);
+
+#define MARCO_VISCFLUX()                                                \
+    F_wall_v[0] = _DF(0.0);                                             \
+    F_wall_v[1] = f_x;                                                  \
+    F_wall_v[2] = f_y;                                                  \
+    F_wall_v[3] = f_z;                                                  \
+    F_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;              \
+    /* Fourier thermal conductivity*/                                   \
+    MARCO_VIS_HEAT();                                                   \
+    /* energy fiffusion depends on mass diffusion*/                     \
+    MARCO_VIS_Diffu();                                                  \
+    for (size_t n = 0; n < Emax; n++) /* add viscous flux to fluxwall*/ \
+    {                                                                   \
+        Flux_wall[n + Emax * id] -= F_wall_v[n];                        \
     }
+
+// F_wall_v[0] = _DF(0.0);
+// F_wall_v[1] = f_x;
+// F_wall_v[2] = f_y;
+// F_wall_v[3] = f_z;
+// F_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
+// int g_id_p1 = l + NUM_SPECIES * id_p1, g_id = l + NUM_SPECIES * id, g_id_p2 = l + NUM_SPECIES * id_p2, g_id_m1 = l + NUM_SPECIES * id_m1;                /* Fourier thermal conductivity*/
+// real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) * _sxtn; /* thermal conductivity at wall*/
+// kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) * _dl * _twfr;                                                                            /* temperature gradient at wall*/
+// F_wall_v[4] += kk;                                                                                                                                       /* energy fiffusion depends on mass diffusion*/
+// real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) * _sxtn;
+// real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES], CorrectTerm = _DF(0.0);
+// for (int l = 0; l < NUM_SPECIES; l++)
+// {
+//     hi_wall[l] = (_DF(9.0) * (hi[g_id_p1] + hi[g_id]) - (hi[g_id_p2] + hi[g_id_m1])) * _sxtn;
+//     Dim_wall[l] = (_DF(9.0) * (Dkm_aver[g_id_p1] + Dkm_aver[g_id]) - (Dkm_aver[g_id_p2] + Dkm_aver[g_id_m1])) * _sxtn;
+//     Yi_wall[l] = (_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn;
+//     Yil_wall[l] = (_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr; /* temperature gradient at wall*/
+//     CorrectTerm += Dim_wall[l] * Yil_wall[l];
+//     F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l];
+// } /* visc flux for cop equations*/
+// CorrectTerm *= rho_wall;
+// for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/
+// {
+//     F_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yil_wall[p - 5] - Yi_wall[p - 5] * CorrectTerm;
+// }
+// for (size_t n = 0; n < Emax; n++) /* add viscous flux to fluxwall*/
+// {
+//     Flux_wall[n + Emax * id] -= F_wall_v[n];
+// }
+
+// F_wall_v[0] = _DF(0.0);
+// F_wall_v[1] = f_x;
+// F_wall_v[2] = f_y;
+// F_wall_v[3] = f_z;
+// F_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
+// int g_id_p1 = l + NUM_SPECIES * id_p1, g_id = l + NUM_SPECIES * id, g_id_p2 = l + NUM_SPECIES * id_p2, g_id_m1 = l + NUM_SPECIES * id_m1;                /* Fourier thermal conductivity*/
+// real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) * _sxtn; /* thermal conductivity at wall*/
+// kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) * _dl * _twfr;                                                                            /* temperature gradient at wall*/
+// F_wall_v[4] += kk;
+// real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) * _sxtn;
+// real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];
+// for (int l = 0; l < NUM_SPECIES; l++)
+// {
+//     hi_wall[l] = (_DF(9.0) * (hi[g_id_p1] + hi[g_id]) - (hi[g_id_p2] + hi[g_id_m1])) * _sxtn;
+//     Dim_wall[l] = (_DF(9.0) * (Dkm_aver[g_id_p1] + Dkm_aver[g_id]) - (Dkm_aver[g_id_p2] + Dkm_aver[g_id_m1])) * _sxtn;
+//     Yi_wall[l] = (_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn;
+//     Yil_wall[l] = (_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr; /* temperature gradient at wall*/
+// } /* visc flux for heat of diffusion */
+// for (int l = 0; l < NUM_SPECIES; l++)
+// {
+//     F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l];
+// }
+// real_t for (int l = 0; l < NUM_SPECIES; l++)
+// {
+//     CorrectTerm += Dim_wall[l] * Yil_wall[l];
+// }
+// CorrectTerm *= rho_wall;
+// for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/
+// {
+//     F_wall_v[p] = rho_wall * Dim_wall[p - 5] * Yil_wall[p - 5] - Yi_wall[p - 5] * CorrectTerm;
+// }
+// for (size_t n = 0; n < Emax; n++) /* add viscous flux to fluxwall*/
+// {
+//     Flux_wall[n + Emax * id] -= F_wall_v[n];
+// }
 
 /**
  * Pre get eigen_martix
