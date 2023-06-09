@@ -36,38 +36,39 @@ void get_yi(real_t xi[NUM_SPECIES], real_t const Wi[NUM_SPECIES])
 	real_t W_mix = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
 		W_mix += xi[i] * Wi[i];
+	real_t _W_mix = _DF(1.0) / W_mix;
 	for (size_t n = 0; n < NUM_SPECIES; n++) // Ri=Ru/Wi
-		xi[n] = xi[n] * Wi[n] / W_mix;
+		xi[n] = xi[n] * Wi[n] * _W_mix;
 }
 
 /**
  *@brief calculate xi : mole fraction
  */
-real_t get_xi(real_t xi[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const *Wi, const real_t rho)
+real_t get_xi(real_t xi[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const *_Wi, const real_t rho)
 {
 	real_t C[NUM_SPECIES] = {_DF(0.0)}, C_total = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		C[i] = yi[i] / Wi[i] * 1e-3 * rho; // Wi==6
+		C[i] = yi[i] * _Wi[i] * _DF(1e-3) * rho;
 		C_total = C_total + C[i];
 	}
 	// get mole fraction of each specie
+	real_t _C_total = _DF(1.0) / C_total;
 	for (int i = 0; i < NUM_SPECIES; i++)
-		xi[i] = C[i] / C_total;
+		xi[i] = C[i] * _C_total;
 	return C_total;
 }
 
 /**
  *@brief calculate R for every cell
  */
-real_t get_CopR(real_t *species_chara, const real_t yi[NUM_SPECIES])
+real_t get_CopR(const real_t *_Wi, const real_t yi[NUM_SPECIES])
 {
 	real_t R = _DF(0.0);
 	for (size_t n = 0; n < NUM_SPECIES; n++)
-	{
-		R += yi[n] * Ru / (species_chara[n * SPCH_Sz + 6]);
-	}
-	return R;
+		R += yi[n] * _Wi[n];
+
+	return R * Ru;
 }
 
 /**
@@ -112,6 +113,7 @@ real_t get_CopCp(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t T)
 	real_t _CopCp = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
 		_CopCp += yi[ii] * HeatCapacity(thermal.Hia, T, thermal.Ri[ii], ii);
+
 	return _CopCp;
 }
 
@@ -122,9 +124,7 @@ real_t get_CopW(Thermal thermal, const real_t yi[NUM_SPECIES])
 {
 	real_t _W = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-	{
-		_W += yi[ii] / (thermal.species_chara[ii * SPCH_Sz + 6]); // Wi
-	}
+		_W += yi[ii] * thermal._Wi[ii]; // Wi
 	// printf("W=%lf \n", 1.0 / _W);
 	return _DF(1.0) / _W;
 }
@@ -206,7 +206,7 @@ real_t get_Coph(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t T)
 void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T)
 {
 	real_t h = get_Coph(thermal, yi, T);			 // J/kg/K
-	real_t R = get_CopR(thermal.species_chara, yi);	 // J/kg/K
+	real_t R = get_CopR(thermal._Wi, yi);			 // J/kg/K
 	real_t Cp = get_CopCp(thermal, yi, T);			 // J/kg/K
 	func_T = h - R * T - e;							 // unit:J/kg/K
 	dfunc_T = Cp - R;								 // unit:J/kg/K
@@ -219,7 +219,7 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 {
 	real_t T = T0;
 	real_t tol = 1.0e-6, T_dBdr = 100.0, T_uBdr = 1.0e4, x_eps = 1.0e-3;
-	tol /= Tref, T_dBdr /= Tref, T_uBdr /= Tref, x_eps /= Tref;
+	// tol /= Tref, T_dBdr /= Tref, T_uBdr /= Tref, x_eps /= Tref;
 	real_t rt_bis, f, f_mid;
 	real_t func_T = 0, dfunc_T = 0;
 
@@ -298,7 +298,7 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 
 #ifdef COP
 	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
-	real_t R = get_CopR(thermal.species_chara, yi);
+	real_t R = get_CopR(thermal._Wi, yi);
 	T = get_T(thermal, yi, e, T);
 	p = rho * R * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
@@ -1360,12 +1360,12 @@ real_t get_Gibson(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real
 /**
  * @brief get_Kc
  */
-real_t get_Kc(real_t *__restrict__ species_chara, real_t *__restrict__ Hia, real_t *__restrict__ Hib, int *__restrict__ Nu_d_, const real_t T, const int m)
+real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ Hib, int *__restrict__ Nu_d_, const real_t T, const int m)
 {
 	real_t Kck = _DF(0.0), Nu_sum = _DF(0.0);
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 	{
-		real_t Ri = Ru / species_chara[n * SPCH_Sz + 6];
+		real_t Ri = Ru * _Wi[n];
 		real_t S = get_Gibson(Hia, Hib, T, Ri, n);
 		Kck += Nu_d_[m * NUM_SPECIES + n] * S;
 		Nu_sum += Nu_d_[m * NUM_SPECIES + n];
@@ -1378,7 +1378,7 @@ real_t get_Kc(real_t *__restrict__ species_chara, real_t *__restrict__ Hia, real
 /**
  * @brief get_KbKf
  */
-void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, real_t *Hia, real_t *Hib, int *Nu_d_, const real_t T)
+void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *_Wi, real_t *Hia, real_t *Hib, int *Nu_d_, const real_t T)
 {
 	for (size_t m = 0; m < NUM_REA; m++)
 	{
@@ -1388,7 +1388,7 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, rea
 		Kb[m] = _DF(0.0);
 #else
 		Kf[m] = get_Kf_ArrheniusLaw(A, B, E, T);
-		real_t Kck = get_Kc(species_chara, Hia, Hib, Nu_d_, T, m);
+		real_t Kck = get_Kc(_Wi, Hia, Hib, Nu_d_, T, m);
 		Kb[m] = Kf[m] / Kck;
 #endif
 	}
@@ -1397,13 +1397,13 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *species_chara, rea
 /**
  * @brief QSSAFun
  */
-void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_SPECIES], real_t *species_chara, real_t *React_ThirdCoef,
+void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_SPECIES], Thermal thermal, real_t *React_ThirdCoef,
 			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
 {
-	real_t C[NUM_SPECIES] = {_DF(0.0)};
+	real_t C[NUM_SPECIES] = {_DF(0.0)}, _rho = _DF(1.0) / rho;
 	for (int n = 0; n < NUM_SPECIES; n++)
-		C[n] = rho * yi[n] / species_chara[n * SPCH_Sz + 6] * 1e-6;
+		C[n] = rho * yi[n] * thermal._Wi[n] * _DF(1e-6);
 
 	for (int n = 0; n < NUM_SPECIES; n++)
 	{
@@ -1439,8 +1439,8 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_S
 			q[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPf + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPb;
 			d[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPb + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPf;
 		}
-		q[n] *= species_chara[n * SPCH_Sz + 6] / rho * _DF(1.0e6);
-		d[n] *= species_chara[n * SPCH_Sz + 6] / rho * _DF(1.0e6);
+		q[n] *= thermal.Wi[n] * _rho * _DF(1.0e6);
+		d[n] *= thermal.Wi[n] * _rho * _DF(1.0e6);
 	}
 }
 
@@ -1508,8 +1508,8 @@ void Chemeq2(Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, r
 	real_t *species_chara = thermal.species_chara, *Hia = thermal.Hia, *Hib = thermal.Hib;
 	//=========================================================
 	// to initilize the first 'dt', q, d
-	get_KbKf(Kf, Kb, Rargus, species_chara, Hia, Hib, Nu_d_, TTn);
-	QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+	get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+	QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	gcount++;
 
 	real_t ascr = _DF(0.0), scr1 = _DF(0.0), scr2 = _DF(0.0); // scratch (temporary) variable
@@ -1562,7 +1562,7 @@ flag2:
 			for (int i = 0; i < NUM_SPECIES; i++)
 				y1[i] = y[i]; // prediction results stored by y1
 		}
-		QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+		QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 		gcount++;
 		eps = 1.0e-10;
 		for (int i = 0; i < NUM_SPECIES; i++)
@@ -1624,7 +1624,7 @@ flag3:
 		rhoi[i] = y[i] * rho;
 	TTn = get_T(thermal, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // new T
 	// GetKfKb(TTn);
-	QSSAFun(q, d, Kf, Kb, y, species_chara, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+	QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	gcount++;
 	goto flag1;
 }
@@ -1636,13 +1636,21 @@ flag3:
  */
 real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const double T0)
 {
-	real_t Tref = Reference_params[3], visref = Reference_params[5];
-	real_t T = T0 * Tref; // nondimension==>dimension
+	// real_t Tref = Reference_params[3], visref = Reference_params[5];
+	real_t T = T0; //* Tref; // nondimension==>dimension
 	real_t viscosity = fitted_coefficients_visc[order_polynominal_fitted - 1];
 	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
 		viscosity = viscosity * sycl::log(T) + fitted_coefficients_visc[i];
-	real_t temp = sycl::exp(viscosity) / visref;
+	real_t temp = sycl::exp(viscosity); // / visref;
 	return temp; // dimension==>nondimension
+
+	// real_t Tref = Reference_params[3], visref = Reference_params[5];
+	// real_t T = T0 * Tref; // nondimension==>dimension
+	// real_t viscosity = fitted_coefficients_visc[order_polynominal_fitted - 1];
+	// for (int i = order_polynominal_fitted - 2; i >= 0; i--)
+	// 	viscosity = viscosity * sycl::log(T) + fitted_coefficients_visc[i];
+	// real_t temp = sycl::exp(viscosity) / visref;
+	// return temp; // dimension==>nondimension
 }
 
 /**
@@ -1664,15 +1672,25 @@ real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const r
  */
 real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polynominal_fitted], const real_t T0)
 {
-	real_t rhoref = Reference_params[1], pref = Reference_params[2];
-	real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
-	real_t kref = visref * (pref / rhoref);
-	real_t T = T0 * Tref; // nondimension==>dimension
+	// real_t rhoref = Reference_params[1], pref = Reference_params[2];
+	// real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
+	// real_t kref = visref * (pref / rhoref);
+	real_t T = T0; //* Tref; // nondimension==>dimension
 	real_t thermal_conductivity = fitted_coefficients_therm[order_polynominal_fitted - 1];
 	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
 		thermal_conductivity = thermal_conductivity * sycl::log(T) + fitted_coefficients_therm[i];
-	real_t temp = sycl::exp(thermal_conductivity) / kref;
+	real_t temp = sycl::exp(thermal_conductivity); // / kref;
 	return temp; // dimension==>nondimension
+
+	// real_t rhoref = Reference_params[1], pref = Reference_params[2];
+	// real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
+	// real_t kref = visref * (pref / rhoref);
+	// real_t T = T0 * Tref; // nondimension==>dimension
+	// real_t thermal_conductivity = fitted_coefficients_therm[order_polynominal_fitted - 1];
+	// for (int i = order_polynominal_fitted - 2; i >= 0; i--)
+	// 	thermal_conductivity = thermal_conductivity * sycl::log(T) + fitted_coefficients_therm[i];
+	// real_t temp = sycl::exp(thermal_conductivity) / kref;
+	// return temp; // dimension==>nondimension
 }
 
 /**
@@ -1682,16 +1700,27 @@ real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polynominal_f
  */
 real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, const real_t T0, const real_t P0)
 {
-	real_t rhoref = Reference_params[1], pref = Reference_params[2];
-	real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
-	real_t Dref = visref / rhoref;
-	real_t TT = T0 * Tref; // nondimension==>dimension
-	real_t PP = P0 * pref; // nondimension==>dimension
+	// real_t rhoref = Reference_params[1], pref = Reference_params[2];
+	// real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
+	// real_t Dref = visref / rhoref;
+	real_t TT = T0; // * Tref; // nondimension==>dimension
+	real_t PP = P0; // * pref; // nondimension==>dimension
 	real_t Dkj = Dkj_matrix[int(specie_k[SID]) * NUM_SPECIES + int(specie_j[SID])][order_polynominal_fitted - 1];
 	for (int i = order_polynominal_fitted - 2; i >= 0; i--)
 		Dkj = Dkj * sycl::log(TT) + Dkj_matrix[int(specie_k[SID]) * NUM_SPECIES + int(specie_j[SID])][i];
-	real_t temp = (sycl::exp(Dkj) / PP) / Dref;
+	real_t temp = (sycl::exp(Dkj) / PP); // / Dref;
 	return temp; // unit:cm*cm/s　//dimension==>nondimension
+
+	// real_t rhoref = Reference_params[1], pref = Reference_params[2];
+	// real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
+	// real_t Dref = visref / rhoref;
+	// real_t TT = T0 * Tref; // nondimension==>dimension
+	// real_t PP = P0 * pref; // nondimension==>dimension
+	// real_t Dkj = Dkj_matrix[int(specie_k[SID]) * NUM_SPECIES + int(specie_j[SID])][order_polynominal_fitted - 1];
+	// for (int i = order_polynominal_fitted - 2; i >= 0; i--)
+	// 	Dkj = Dkj * sycl::log(TT) + Dkj_matrix[int(specie_k[SID]) * NUM_SPECIES + int(specie_j[SID])][i];
+	// real_t temp = (sycl::exp(Dkj) / PP) / Dref;
+	// return temp; // unit:cm*cm/s　//dimension==>nondimension
 }
 
 /**

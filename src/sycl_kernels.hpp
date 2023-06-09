@@ -1076,7 +1076,7 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
             hi[ii + NUM_SPECIES * id] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id], thermal.Ri[ii], ii);
 #endif // end Diffu
     real_t *yi = &(y[NUM_SPECIES * id]); // get_yi(y, yi, id);
-    real_t C_total = get_xi(X, yi, thermal.Wi, rho[id]);
+    real_t C_total = get_xi(X, yi, thermal._Wi, rho[id]);
     //  real_t *temp = &(Dkm_aver[NUM_SPECIES * id]);
     //  real_t *temp = &(hi[NUM_SPECIES * id]);
     Get_transport_coeff_aver(i, j, k, thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
@@ -1418,7 +1418,7 @@ extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, 
 
     real_t Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP]; // yi[NUM_SPECIES],//get_yi(y, yi, id);
     real_t *yi = &(y[NUM_SPECIES * id]);
-    get_KbKf(Kf, Kb, react.Rargus, thermal.species_chara, thermal.Hia, thermal.Hib, react.Nu_d_, T[id]); // get_e
+    get_KbKf(Kf, Kb, react.Rargus, thermal._Wi, thermal.Hia, thermal.Hib, react.Nu_d_, T[id]); // get_e
     for (size_t n = 0; n < Emax - NUM_COP; n++)
     {
             U[n] = UI[Emax * id + n];

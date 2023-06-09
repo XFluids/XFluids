@@ -201,7 +201,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // Get R of mixture
     real_t *yi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES];
 
-    real_t R = get_CopR(thermal.species_chara, yi);
+    real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id];
 
     // real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);

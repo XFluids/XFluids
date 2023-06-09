@@ -28,9 +28,9 @@ option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" OFF)
-option(Visc "if add physic viscidity flux" OFF)
-option(Heat "if add heat transfer flux" OFF)
-option(Diffu "if add mass diffusion" OFF) # depends on COP=ON
+option(Visc "if add physic viscidity flux" ON)
+option(Heat "if add heat transfer flux" ON)
+option(Diffu "if add mass diffusion" ON) # depends on COP=ON
 
 # // =======================================================
 # #### mpi settings

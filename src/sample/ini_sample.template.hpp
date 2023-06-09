@@ -302,7 +302,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // }
 
     // Get R of mixture
-    real_t R = get_CopR(thermal.species_chara, yi);
+    real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
