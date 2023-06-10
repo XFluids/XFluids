@@ -73,6 +73,13 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 #elif SCHEME_ORDER == 5
     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTX, MARCO_ROEAVERAGE_RIGHTX, i + m, j, k, i + m, j, k);
 #endif
+
+// #if SCHEME_ORDER == 7
+//     MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_LEFTNX, MARCO_ROEAVERAGE_RIGHTNX, i + m, j, k, i + m - stencil_P, j, k);
+// #elif SCHEME_ORDER == 5
+//     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTNX, MARCO_ROEAVERAGE_RIGHTNX, i + m, j, k, i + m, j, k);
+// #endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #elif 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,6 +230,12 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 #elif SCHEME_ORDER == 5
     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTY, MARCO_ROEAVERAGE_RIGHTY, i, j + m, k, i, j + m, k);
 #endif
+
+// #if SCHEME_ORDER == 7
+//     MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_LEFTNY, MARCO_ROEAVERAGE_RIGHTNY, i, j + m, k, i, j + m - stencil_P, k);
+// #elif SCHEME_ORDER == 5
+//     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTNY, MARCO_ROEAVERAGE_RIGHTNY, i, j + m, k, i, j + m, k);
+// #endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #elif 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -284,6 +297,12 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 #elif SCHEME_ORDER == 5
     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTZ, MARCO_ROEAVERAGE_RIGHTZ, i, j, k + m, i, j, k + m);
 #endif
+
+// #if SCHEME_ORDER == 7
+//     MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_LEFTNZ, MARCO_ROEAVERAGE_RIGHTNZ, i, j, k + m, i, j, k + m - stencil_P);
+// #elif SCHEME_ORDER == 5
+//     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTNZ, MARCO_ROEAVERAGE_RIGHTNZ, i, j, k + m, i, j, k + m);
+// #endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #elif 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

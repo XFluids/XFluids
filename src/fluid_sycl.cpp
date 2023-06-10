@@ -124,14 +124,85 @@ void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
 
 void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 {
+	// // SYCL kernel cannot call through a function pointer
+	// void (*RoeAverageLeftX[Emax])(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+	// 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+	// 							  real_t const b1, real_t const b3, real_t Gamma);
+
+	// void (*RoeAverageLeftY[Emax])(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+	// 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+	// 							  real_t const b1, real_t const b3, real_t Gamma);
+
+	// void (*RoeAverageLeftZ[Emax])(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+	// 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+	// 							  real_t const b1, real_t const b3, real_t Gamma);
+
+	// void (*RoeAverageRightX[Emax])(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+	// 							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+	// 							   real_t const b1, real_t const b3, real_t Gamma);
+
+	// void (*RoeAverageRightY[Emax])(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+	// 							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+	// 							   real_t const b1, real_t const b3, real_t Gamma);
+
+	// void (*RoeAverageRightZ[Emax])(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+	// 							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+	// 							   real_t const b1, real_t const b3, real_t Gamma);
+
+	// RoeAverageLeftX[0] = RoeAverageLeft_x_0;
+	// RoeAverageLeftX[1] = RoeAverageLeft_x_1;
+	// RoeAverageLeftX[2] = RoeAverageLeft_x_2;
+	// RoeAverageLeftX[3] = RoeAverageLeft_x_3;
+	// RoeAverageLeftX[Emax - 1] = RoeAverageLeft_x_end;
+
+	// RoeAverageLeftY[0] = RoeAverageLeft_y_0;
+	// RoeAverageLeftY[1] = RoeAverageLeft_y_1;
+	// RoeAverageLeftY[2] = RoeAverageLeft_y_2;
+	// RoeAverageLeftY[3] = RoeAverageLeft_y_3;
+	// RoeAverageLeftY[Emax - 1] = RoeAverageLeft_y_end;
+
+	// RoeAverageLeftZ[0] = RoeAverageLeft_z_0;
+	// RoeAverageLeftZ[1] = RoeAverageLeft_z_1;
+	// RoeAverageLeftZ[2] = RoeAverageLeft_z_2;
+	// RoeAverageLeftZ[3] = RoeAverageLeft_z_3;
+	// RoeAverageLeftZ[Emax - 1] = RoeAverageLeft_z_end;
+
+	// RoeAverageRightX[0] = RoeAverageRight_x_0;
+	// RoeAverageRightX[1] = RoeAverageRight_x_1;
+	// RoeAverageRightX[2] = RoeAverageRight_x_2;
+	// RoeAverageRightX[3] = RoeAverageRight_x_3;
+	// RoeAverageRightX[Emax - 1] = RoeAverageRight_x_end;
+
+	// RoeAverageRightY[0] = RoeAverageRight_y_0;
+	// RoeAverageRightY[1] = RoeAverageRight_y_1;
+	// RoeAverageRightY[2] = RoeAverageRight_y_2;
+	// RoeAverageRightY[3] = RoeAverageRight_y_3;
+	// RoeAverageRightY[Emax - 1] = RoeAverageRight_y_end;
+
+	// RoeAverageRightZ[0] = RoeAverageRight_z_0;
+	// RoeAverageRightZ[1] = RoeAverageRight_z_1;
+	// RoeAverageRightZ[2] = RoeAverageRight_z_2;
+	// RoeAverageRightZ[3] = RoeAverageRight_z_3;
+	// RoeAverageRightZ[Emax - 1] = RoeAverageRight_z_end;
+
+	// #ifdef COP
+	// 	for (size_t i = 4; i < Emax - 1; i++)
+	// 	{
+	// 		RoeAverageLeftX[i] = RoeAverageLeft_x_cop;
+	// 		RoeAverageLeftY[i] = RoeAverageLeft_y_cop;
+	// 		RoeAverageLeftZ[i] = RoeAverageLeft_z_cop;
+	// 		RoeAverageRightX[i] = RoeAverageRight_x_cop;
+	// 		RoeAverageRightY[i] = RoeAverageRight_y_cop;
+	// 		RoeAverageRightZ[i] = RoeAverageRight_z_cop;
+	// 	}
+	// #endif // end COP
+
 	if (flag == 0)
 		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local, d_eigen_l, d_eigen_r);
 	else
-	{
 		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local, d_eigen_l, d_eigen_r);
-	}
 }
 
 bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)

@@ -918,6 +918,123 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	}
 }
 
+inline void RoeAverageLeft_x_0(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _u_c = _u * _c1;
+
+	eigen_l[0] = _DF(0.5) * (b2 + _u_c + b3);
+	eigen_l[1] = -_DF(0.5) * (b1 * _u + _c1);
+	eigen_l[2] = -_DF(0.5) * (b1 * _v);
+	eigen_l[3] = -_DF(0.5) * (b1 * _w);
+	eigen_l[4] = _DF(0.5) * b1;
+	eigen_value = sycl::fabs<real_t>(_u - _c);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
+}
+
+inline void RoeAverageLeft_x_1(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _u_c = _u * _c1;
+
+	eigen_l[0] = (_DF(1.0) - b2 - b3) / b1;
+	eigen_l[1] = _u;
+	eigen_l[2] = _v;
+	eigen_l[3] = _w;
+	eigen_l[4] = -_DF(1.0);
+	eigen_value = sycl::fabs<real_t>(_u);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = z[m];
+}
+
+inline void RoeAverageLeft_x_2(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _u_c = _u * _c1;
+
+	eigen_l[0] = _v;
+	eigen_l[1] = _DF(0.0);
+	eigen_l[2] = -_DF(1.0);
+	eigen_l[3] = _DF(0.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_u);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageLeft_x_3(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _u_c = _u * _c1;
+
+	eigen_l[0] = -_w;
+	eigen_l[1] = _DF(0.0);
+	eigen_l[2] = _DF(0.0);
+	eigen_l[3] = _DF(1.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_u);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageLeft_x_end(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+								 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								 real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _u_c = _u * _c1;
+
+	eigen_l[0] = _DF(0.5) * (b2 - _u_c + b3);
+	eigen_l[1] = _DF(0.5) * (-b1 * _u + _c1);
+	eigen_l[2] = _DF(0.5) * (-b1 * _v);
+	eigen_l[3] = _DF(0.5) * (-b1 * _w);
+	eigen_l[4] = _DF(0.5) * b1;
+	eigen_value = sycl::fabs<real_t>(_u + _c);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
+}
+
+#ifdef COP
+inline void RoeAverageLeft_x_cop(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+								 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								 real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _u_c = _u * _c1;
+
+	// For COP eigen
+	eigen_l[0] = -yi[n + NUM_SPECIES - Emax];
+	eigen_l[1] = _DF(0.0);
+	eigen_l[2] = _DF(0.0);
+	eigen_l[3] = _DF(0.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_u);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = (n + NUM_SPECIES - Emax == m) ? _DF(1.0) : _DF(0.0);
+}
+#endif // COP
+
 inline void RoeAverageRight_x(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							  real_t const b1, real_t const b3, real_t Gamma)
@@ -990,6 +1107,104 @@ inline void RoeAverageRight_x(int n, real_t *eigen_r, real_t *z, const real_t *y
 #endif // COP
 	}
 }
+
+inline void RoeAverageRight_x_0(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(1.0);
+	eigen_r[1] = _u - _c;
+	eigen_r[2] = _v;
+	eigen_r[3] = _w;
+	eigen_r[4] = _H - _u * _c;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = yi[m];
+}
+
+inline void RoeAverageRight_x_1(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = b1;
+	eigen_r[1] = _u * b1;
+	eigen_r[2] = _v * b1;
+	eigen_r[3] = _w * b1;
+	eigen_r[4] = _H * b1 - _DF(1.0);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = b1 * yi[m];
+}
+
+inline void RoeAverageRight_x_2(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(0.0);
+	eigen_r[2] = -_DF(1.0);
+	eigen_r[3] = _DF(0.0);
+	eigen_r[4] = -_v;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageRight_x_3(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(0.0);
+	eigen_r[2] = _DF(0.0);
+	eigen_r[3] = _DF(1.0);
+	eigen_r[4] = _w;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageRight_x_end(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								  real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(1.0);
+	eigen_r[1] = _u + _c;
+	eigen_r[2] = _v;
+	eigen_r[3] = _w;
+	eigen_r[4] = _H + _u * _c;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = yi[m];
+}
+
+#ifdef COP
+inline void RoeAverageRight_x_cop(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								  real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(0.0);
+	eigen_r[2] = _DF(0.0);
+	eigen_r[3] = _DF(0.0);
+	eigen_r[4] = z[n + NUM_SPECIES - Emax];
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = (m == n + NUM_SPECIES - Emax) ? _DF(1.0) : _DF(0.0);
+}
+#endif // COP
 
 inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
 							 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
@@ -1072,6 +1287,122 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	}
 }
 
+inline void RoeAverageLeft_y_0(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _v_c = _v * _c1;
+
+	eigen_l[0] = _DF(0.5) * (b2 + _v_c + b3);
+	eigen_l[1] = -_DF(0.5) * (b1 * _u);
+	eigen_l[2] = -_DF(0.5) * (b1 * _v + _c1);
+	eigen_l[3] = -_DF(0.5) * (b1 * _w);
+	eigen_l[4] = _DF(0.5) * b1;
+	eigen_value = sycl::fabs<real_t>(_v - _c);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
+}
+
+inline void RoeAverageLeft_y_1(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _v_c = _v * _c1;
+
+	eigen_l[0] = -_u;
+	eigen_l[1] = _DF(1.0);
+	eigen_l[2] = _DF(0.0);
+	eigen_l[3] = _DF(0.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_v);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageLeft_y_2(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _v_c = _v * _c1;
+
+	eigen_l[0] = (_DF(1.0) - b2 - b3) / b1;
+	eigen_l[1] = _u;
+	eigen_l[2] = _v;
+	eigen_l[3] = _w;
+	eigen_l[4] = -_DF(1.0);
+	eigen_value = sycl::fabs<real_t>(_v);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = z[m];
+}
+
+inline void RoeAverageLeft_y_3(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _v_c = _v * _c1;
+
+	eigen_l[0] = _w;
+	eigen_l[1] = _DF(0.0);
+	eigen_l[2] = _DF(0.0);
+	eigen_l[3] = -_DF(1.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_v);
+	for (int n = 0; n < NUM_COP; n++)
+		eigen_l[n + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageLeft_y_end(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+								 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								 real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _v_c = _v * _c1;
+
+	eigen_l[0] = _DF(0.5) * (b2 - _v_c + b3);
+	eigen_l[1] = _DF(0.5) * (-b1 * _u);
+	eigen_l[2] = _DF(0.5) * (-b1 * _v + _c1);
+	eigen_l[3] = _DF(0.5) * (-b1 * _w);
+	eigen_l[4] = _DF(0.5) * b1;
+	eigen_value = sycl::fabs<real_t>(_v + _c);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
+}
+
+#ifdef COP
+inline void RoeAverageLeft_y_cop(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+								 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								 real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _v_c = _v * _c1;
+
+	eigen_l[0] = -yi[n + NUM_SPECIES - Emax];
+	eigen_l[1] = _DF(0.0);
+	eigen_l[2] = _DF(0.0);
+	eigen_l[3] = _DF(0.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_v);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = (n + NUM_SPECIES - Emax == m) ? _DF(1.0) : _DF(0.0);
+}
+#endif // COP
+
 inline void RoeAverageRight_y(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							  real_t const b1, real_t const b3, real_t Gamma)
@@ -1144,6 +1475,105 @@ inline void RoeAverageRight_y(int n, real_t *eigen_r, real_t *z, const real_t *y
 #endif // COP
 	}
 }
+
+inline void RoeAverageRight_y_0(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(1.0);
+	eigen_r[1] = _u;
+	eigen_r[2] = _v - _c;
+	eigen_r[3] = _w;
+	eigen_r[4] = _H - _v * _c;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = yi[m];
+}
+
+inline void RoeAverageRight_y_1(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(1.0);
+	eigen_r[2] = _DF(0.0);
+	eigen_r[3] = _DF(0.0);
+	eigen_r[4] = _u;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageRight_y_2(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = b1;
+	eigen_r[1] = _u * b1;
+	eigen_r[2] = _v * b1;
+	eigen_r[3] = _w * b1;
+	eigen_r[4] = _H * b1 - _DF(1.0);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = b1 * yi[m];
+}
+
+inline void RoeAverageRight_y_3(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(0.0);
+	eigen_r[2] = _DF(0.0);
+	eigen_r[3] = -_DF(1.0);
+	eigen_r[4] = -_w;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageRight_y_end(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								  real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(1.0);
+	eigen_r[1] = _u;
+	eigen_r[2] = _v + _c;
+	eigen_r[3] = _w;
+	eigen_r[4] = _H + _v * _c;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = yi[m];
+}
+
+#ifdef COP
+inline void RoeAverageRight_y_cop(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								  real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	// For COP eigen
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(0.0);
+	eigen_r[2] = _DF(0.0);
+	eigen_r[3] = _DF(0.0);
+	eigen_r[4] = z[n + NUM_SPECIES - Emax];
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = (m == n + NUM_SPECIES - Emax) ? _DF(1.0) : _DF(0.0);
+}
+#endif // COP
 
 inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
 							 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
@@ -1226,6 +1656,122 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	}
 }
 
+inline void RoeAverageLeft_z_0(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _w_c = _w * _c1;
+
+	eigen_l[0] = _DF(0.5) * (b2 + _w_c + b3);
+	eigen_l[1] = -_DF(0.5) * (b1 * _u);
+	eigen_l[2] = -_DF(0.5) * (b1 * _v);
+	eigen_l[3] = -_DF(0.5) * (b1 * _w + _c1);
+	eigen_l[4] = _DF(0.5) * b1;
+	eigen_value = sycl::fabs<real_t>(_w - _c);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
+}
+
+inline void RoeAverageLeft_z_1(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _w_c = _w * _c1;
+
+	eigen_l[0] = _DF(0.5) * (b2 + _w_c + b3);
+	eigen_l[1] = -_DF(0.5) * (b1 * _u);
+	eigen_l[2] = -_DF(0.5) * (b1 * _v);
+	eigen_l[3] = -_DF(0.5) * (b1 * _w + _c1);
+	eigen_l[4] = _DF(0.5) * b1;
+	eigen_value = sycl::fabs<real_t>(_w - _c);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
+}
+
+inline void RoeAverageLeft_z_2(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _w_c = _w * _c1;
+
+	eigen_l[0] = -_v;
+	eigen_l[1] = _DF(0.0);
+	eigen_l[2] = _DF(1.0);
+	eigen_l[3] = _DF(0.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_w);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageLeft_z_3(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+							   real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+							   real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _w_c = _w * _c1;
+
+	eigen_l[0] = (_DF(1.0) - b2 - b3) / b1; //-q2 + _H;
+	eigen_l[1] = _u;
+	eigen_l[2] = _v;
+	eigen_l[3] = _w;
+	eigen_l[4] = -_DF(1.0);
+	eigen_value = sycl::fabs<real_t>(_w);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = z[m];
+}
+
+inline void RoeAverageLeft_z_end(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+								 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								 real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _w_c = _w * _c1;
+
+	eigen_l[0] = _DF(0.5) * (b2 - _w_c + b3);
+	eigen_l[1] = _DF(0.5) * (-b1 * _u);
+	eigen_l[2] = _DF(0.5) * (-b1 * _v);
+	eigen_l[3] = _DF(0.5) * (-b1 * _w + _c1);
+	eigen_l[4] = _DF(0.5) * b1;
+	eigen_value = sycl::fabs<real_t>(_w + _c);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
+}
+
+#ifdef COP
+inline void RoeAverageLeft_z_cop(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+								 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								 real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	real_t _w_c = _w * _c1;
+
+	eigen_l[0] = -yi[n + NUM_SPECIES - Emax];
+	eigen_l[1] = _DF(0.0);
+	eigen_l[2] = _DF(0.0);
+	eigen_l[3] = _DF(0.0);
+	eigen_l[4] = _DF(0.0);
+	eigen_value = sycl::fabs<real_t>(_w);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_l[m + Emax - NUM_COP] = (n + NUM_SPECIES - Emax == m) ? _DF(1.0) : _DF(0.0);
+}
+#endif // COP
+
 inline void RoeAverageRight_z(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							  real_t const b1, real_t const b3, real_t Gamma)
@@ -1299,11 +1845,110 @@ inline void RoeAverageRight_z(int n, real_t *eigen_r, real_t *z, const real_t *y
 	}
 }
 
+inline void RoeAverageRight_z_0(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(1.0);
+	eigen_r[1] = _u;
+	eigen_r[2] = _v;
+	eigen_r[3] = _w - _c;
+	eigen_r[4] = _H - _w * _c;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = yi[m];
+}
+
+inline void RoeAverageRight_z_1(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = -_DF(1.0);
+	eigen_r[2] = _DF(0.0);
+	eigen_r[3] = _DF(0.0);
+	eigen_r[4] = -_u;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageRight_z_2(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(0.0);
+	eigen_r[2] = _DF(1.0);
+	eigen_r[3] = _DF(0.0);
+	eigen_r[4] = _v;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = _DF(0.0);
+}
+
+inline void RoeAverageRight_z_3(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = b1;
+	eigen_r[1] = b1 * _u;
+	eigen_r[2] = b1 * _v;
+	eigen_r[3] = b1 * _w;
+	eigen_r[4] = _H * b1 - _DF(1.0);
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = b1 * yi[m];
+}
+
+inline void RoeAverageRight_z_end(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								  real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(1.0);
+	eigen_r[1] = _u;
+	eigen_r[2] = _v;
+	eigen_r[3] = _w + _c;
+	eigen_r[4] = _H + _w * _c;
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = yi[m];
+}
+
+#ifdef COP
+inline void RoeAverageRight_z_cop(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+								  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
+								  real_t const b1, real_t const b3, real_t Gamma)
+{
+
+	MARCO_PREEIGEN();
+
+	eigen_r[0] = _DF(0.0);
+	eigen_r[1] = _DF(0.0);
+	eigen_r[2] = _DF(0.0);
+	eigen_r[3] = _DF(0.0);
+	eigen_r[4] = z[n + NUM_SPECIES - Emax];
+	for (int m = 0; m < NUM_COP; m++)
+		eigen_r[m + Emax - NUM_COP] = (m == n + NUM_SPECIES - Emax) ? _DF(1.0) : _DF(0.0);
+}
+#endif // COP
+
 #ifdef COP_CHEME
 /**
  * @brief get_Kf
  */
-real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
+real_t
+get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
 {
 	return A * sycl::pow<real_t>(T, B) * sycl::exp(-E * 4.184 / Ru / T);
 }

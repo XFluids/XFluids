@@ -125,6 +125,21 @@
 #define MARCO_ROEAVERAGE_RIGHTZ \
     RoeAverageRight_z(n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
 
+// device function ptr
+#define MARCO_ROEAVERAGE_LEFTNX \
+    RoeAverageLeftX[n](n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+#define MARCO_ROEAVERAGE_LEFTNY \
+    RoeAverageLeftY[n](n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+#define MARCO_ROEAVERAGE_LEFTNZ \
+    RoeAverageLeftZ[n](n, eigen_lr, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+
+#define MARCO_ROEAVERAGE_RIGHTNX \
+    RoeAverageRightX[n](n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+#define MARCO_ROEAVERAGE_RIGHTNY \
+    RoeAverageRightY[n](n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+#define MARCO_ROEAVERAGE_RIGHTNZ \
+    RoeAverageRightZ[n](n, eigen_lr, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
+
 // WENO 7 // used by MARCO_FLUXWALL_WENO7(i + m, j, k, i + m - stencil_P, j, k); in x
 #define MARCO_FLUXWALL_WENO7(MARCO_ROE_LEFT, MARCO_ROE_RIGHT, _i_1, _j_1, _k_1, _i_2, _j_2, _k_2)                                                                               \
     real_t uf[10], ff[10], pp[10], mm[10], _p[Emax][Emax], f_flux, eigen_lr[Emax], eigen_value;                                                                                 \
