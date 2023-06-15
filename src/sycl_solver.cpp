@@ -138,7 +138,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	}
 	Ss.mpiTrans->communicator->synchronize();
 #endif
-	// Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
+	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
 
 bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q)

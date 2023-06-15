@@ -1947,8 +1947,7 @@ inline void RoeAverageRight_z_cop(int n, real_t *eigen_r, real_t *z, const real_
 /**
  * @brief get_Kf
  */
-real_t
-get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
+real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
 {
 	return A * sycl::pow<real_t>(T, B) * sycl::exp(-E * 4.184 / Ru / T);
 }
