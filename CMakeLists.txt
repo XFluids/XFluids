@@ -47,8 +47,8 @@ option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
 # #### about platform and device
 # // =======================================================
 set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_86") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "3") # first device id in sycl-ls list #1 for host, 2 for GPU
+set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
+set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 
 # // =======================================================
 # #### init sample

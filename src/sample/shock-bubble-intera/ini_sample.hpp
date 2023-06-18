@@ -35,42 +35,42 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t *xi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES] = {0.0};
     // for 2D/3D shock-bubble interactive
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
-    real_t dy_in = _DF(0.0), dy_out = _DF(0.0);
+    // real_t dy_in = _DF(0.0), dy_out = _DF(0.0);
     // real_t dy_in = -_DF(1.0), dy_out = -_DF(1.0);
 #if DIM_X
     tmp = (x - ini.cop_center_x) * (x - ini.cop_center_x);
     dy_ += tmp * ini._xa2;
-    dy_in += tmp * ini._xa2_in;
-    dy_out += tmp * ini._xa2_out;
+    // dy_in += tmp * ini._xa2_in;
+    // dy_out += tmp * ini._xa2_out;
 #endif // end DIM_X
 #if DIM_Y
     tmp = (y - ini.cop_center_y) * (y - ini.cop_center_y);
     dy_ += tmp * ini._yb2;
-    dy_in += tmp * ini._yb2_in;
-    dy_out += tmp * ini._yb2_out;
+    // dy_in += tmp * ini._yb2_in;
+    // dy_out += tmp * ini._yb2_out;
 #endif // end DIM_Y
     // for 3D shock-bubble interactive
 #if DIM_Z
     tmp = (z - ini.cop_center_z) * (z - ini.cop_center_z);
     dy_ += tmp * ini._zc2;
-    dy_in += tmp * ini._zc2_in;
-    dy_out += tmp * ini._zc2_out;
+    // dy_in += tmp * ini._zc2_in;
+    // dy_out += tmp * ini._zc2_out;
 #endif // end DIM_Z
-    // Ini bubble
-    // dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
-    // xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
-    // xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
-    // xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
-    // xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
-
-    // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
-    int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;
-
-    // // the first  method: use step
-    xi[NUM_SPECIES - 2] = real_t(outbubble) * _DF(1.0) + real_t(bcbubble) * _DF(0.5); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
+    // // Ini bubble
+    dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
     xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
     xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
     xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
+
+    // // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
+    // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;
+
+    // // the first  method: use step
+    // xi[NUM_SPECIES - 2] = real_t(outbubble) * _DF(1.0) + real_t(bcbubble) * _DF(0.5); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
+    // xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
+    // xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
+    // xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
     // //the second method: use branch
     // if (inbubble)
     // {
