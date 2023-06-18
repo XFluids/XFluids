@@ -225,7 +225,7 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 	// sleep(5);
 	q.submit([&](sycl::handler &h)
 			 { 
-				sycl::stream error_out(64 * 1024, 80, h);
+				sycl::stream error_out(64 * 128, 1, h);
 				h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
     		int i = index.get_global_id(0) + x_offset;

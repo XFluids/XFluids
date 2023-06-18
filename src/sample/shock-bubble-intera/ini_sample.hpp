@@ -13,24 +13,17 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t dx = bl.dx;
     real_t dy = bl.dy;
     real_t dz = bl.dz;
-    // real_t dy_sk, blast_center;
 #if DIM_X
     if (i >= Xmax)
         return;
-        // dy_sk = x;
-        // blast_center = ini.blast_center_x;
 #endif
 #if DIM_Y
     if (j >= Ymax)
         return;
-        // dy_sk = y;
-        // blast_center = ini.blast_center_y;
 #endif
 #if DIM_Z
     if (k >= Zmax)
         return;
-        // dy_sk = z;
-        // blast_center = ini.blast_center_z;
 #endif
     int id = Xmax * Ymax * k + Xmax * j + i;
 
@@ -39,40 +32,46 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
 #ifdef COP
+    real_t *xi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES] = {0.0};
     // for 2D/3D shock-bubble interactive
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
-    // real_t dy_in = _DF(0.0), dy_out = _DF(0.0);
+    real_t dy_in = _DF(0.0), dy_out = _DF(0.0);
     // real_t dy_in = -_DF(1.0), dy_out = -_DF(1.0);
 #if DIM_X
     tmp = (x - ini.cop_center_x) * (x - ini.cop_center_x);
     dy_ += tmp * ini._xa2;
-    // dy_in += tmp * ini._xa2_in;
-    // dy_out += tmp * ini._xa2_out;
+    dy_in += tmp * ini._xa2_in;
+    dy_out += tmp * ini._xa2_out;
 #endif // end DIM_X
 #if DIM_Y
     tmp = (y - ini.cop_center_y) * (y - ini.cop_center_y);
     dy_ += tmp * ini._yb2;
-    // dy_in += tmp * ini._yb2_in;
-    // dy_out += tmp * ini._yb2_out;
+    dy_in += tmp * ini._yb2_in;
+    dy_out += tmp * ini._yb2_out;
 #endif // end DIM_Y
     // for 3D shock-bubble interactive
 #if DIM_Z
     tmp = (z - ini.cop_center_z) * (z - ini.cop_center_z);
     dy_ += tmp * ini._zc2;
-    // dy_in += tmp * ini._zc2_in;
-    // dy_out += tmp * ini._zc2_out;
+    dy_in += tmp * ini._zc2_in;
+    dy_out += tmp * ini._zc2_out;
 #endif // end DIM_Z
-    // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
-    // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;
     // Ini bubble
-    real_t *xi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES] = {0.0};
-    dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
-    xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
+    // dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    // xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
+    // xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
+    // xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
+    // xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
+
+    // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
+    int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;
+
+    // // the first  method: use step
+    xi[NUM_SPECIES - 2] = real_t(outbubble) * _DF(1.0) + real_t(bcbubble) * _DF(0.5); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
     xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
     xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
     xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
-
-    // xi[NUM_SPECIES - 2] = real_t(outbubble) * _DF(1.0) + real_t(bcbubble) * _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
+    // //the second method: use branch
     // if (inbubble)
     // {
     //     xi[0] = _DF(0.3);                //* (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // H2
@@ -89,16 +88,14 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // else
     // {
     //     xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
-
-    //     // xi[NUM_SPECIES - 3] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //_DF(0.71) *
-    //     // xi[NUM_SPECIES - 2] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //_DF(0.71) *
-
-    //     // xi[1] = _DF(0.575) * _DF(0.29) * _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); // for 0.71 N2 + 0.29 O2 = AIR
-    //     xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]);                // H2
-    //     xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]);               // O2
-    //     xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // Xe
+    //     xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                //- xi[NUM_SPECIES - 3]);                // H2
+    //     xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // - xi[NUM_SPECIES - 3]);               // O2
+    //     xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // - xi[NUM_SPECIES - 3]); // Xe
+    //     // for 0.71 N2 + 0.29 O2 = AIR
+    //     // xi[NUM_SPECIES - 3] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //
+    //     // xi[NUM_SPECIES - 2] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //
+    //     // xi[1] = _DF(0.575) * _DF(0.29) * _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
     // }
-
     get_yi(xi, thermal.Wi);
     // for (size_t n = 0; n < NUM_SPECIES; n++)
     //     _y[n][id] = xi[n];
