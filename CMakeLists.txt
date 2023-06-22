@@ -22,7 +22,8 @@ endif()
 # // =======================================================
 option(USE_DOUBLE "if double" ON)
 option(USE_PLT "out plt or vti" OFF)
-option(ESTIM_NAN "estimate if rho is nan or <0 or inf" OFF)
+option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
+option(ERROR_PATCH "if patch while errors capured" OFF)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" OFF)
@@ -39,7 +40,7 @@ option(Diffu "if add mass diffusion" ON) # depends on COP=ON
 # # ON: allocate each device buffer and transfer
 # # OFF: allocate struct ptr in device
 # # set [mpi]:NUM: number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
-option(USE_MPI "if enable mpi" OFF)
+option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
 

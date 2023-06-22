@@ -10,7 +10,7 @@
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/build",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",

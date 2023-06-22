@@ -41,6 +41,7 @@ build/*
 /*.ini
 !sa*.ini
 /output
+/output-*
 
 
 

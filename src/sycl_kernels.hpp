@@ -4,10 +4,11 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
-extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, real_t *UI, bool *error, sycl::stream stream_ct1)
+extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error, sycl::stream stream_ct1) //
 {
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
+    int id = (Xmax * Ymax * k + Xmax * j + i) * Emax;
 #if DIM_X
     if (i >= Xmax - bl.Bwidth_X)
         return;
@@ -20,19 +21,53 @@ extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offs
     if (k >= bl.Zmax - bl.Bwidth_Z)
         return;
 #endif
-    int id = Xmax * Ymax * k + Xmax * j + i;
-    // rho[id] = -0.1;
-    if (sycl::isnan(UI[0 + id * Emax]) || UI[0 + id * Emax] < 0 || sycl::isinf(UI[0 + id * Emax]))
-    {
-        *error = true;
-        stream_ct1 << "Illegal value of rho located at id (i= " << i - x_offset << ", j= " << j - y_offset << ", k= " << k - z_offset << ")\n";
-        return;
+#ifdef ERROR_PATCH
+    real_t theta = _DF(1.0);
+#if DIM_X
+    int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 6)) * Emax;
+    int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 6)) * Emax;
+    theta *= _DF(0.5);
+#endif
+#if DIM_Y
+    int id_ym = (Xmax * Ymax * k + Xmax * (j - 6) + i) * Emax;
+    int id_yp = (Xmax * Ymax * k + Xmax * (j + 6) + i) * Emax;
+    theta *= _DF(0.5);
+#endif
+#if DIM_Z
+    int id_zm = (Xmax * Ymax * (k - 6) + Xmax * j + i) * Emax;
+    int id_zp = (Xmax * Ymax * (k + 6) + Xmax * j + i) * Emax;
+    theta *= _DF(0.5);
+#endif
+#endif // end ERROR_PATCH
+    for (size_t ii = 0; ii < Emax; ii++)
+    { //(i == 150 && j == 30 && ii == 0) ? true :
+        bool temp = sycl::isnan(UI[ii + id]) || sycl::isinf(UI[ii + id]) || UI[0 + id] < 0;
+        if (temp)
+        {
+            *error = true;
+            error_pos[ii] = 1;
+            error_pos[Emax] = i;
+            error_pos[Emax + 1] = j;
+            error_pos[Emax + 2] = k;
+#ifdef ERROR_PATCH
+            UI[ii + id] = _DF(0.0);
+#if DIM_X
+            UI[ii + id] += theta * (UI[ii + id_xm] + UI[ii + id_xp]);
+#endif
+#if DIM_Y
+            UI[ii + id] += theta * (UI[ii + id_ym] + UI[ii + id_yp]);
+#endif
+#if DIM_Z
+            UI[ii + id] += theta * (UI[ii + id_zm] + UI[ii + id_zp]);
+#endif
+#endif // end ERROR_PATCH
+        }
     }
 }
 
 #if DIM_X
 extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
-                                           real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
+                                           real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
@@ -188,7 +223,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 
 #if DIM_Y
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
-                                           real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
+                                           real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();
@@ -255,7 +290,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 
 #if DIM_Z
 extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
-                                           real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt,
+                                           real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
                                            real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
 {
     MARCO_DOMAIN_GHOST();

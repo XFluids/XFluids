@@ -39,6 +39,19 @@
     real_t _P = (p[id_l] + D * p[id_r]) * D1;             \
     real_t _rho = sycl::sqrt<real_t>(rho[id_r] * rho[id_l]);
 
+#ifdef ESTIM_NAN
+#define MARCO_ERROR_OUT()                   \
+    eb1[id_l] = b1;                         \
+    eb3[id_l] = b3;                         \
+    ec2[id_l] = c2;                         \
+    for (size_t nn = 0; nn < NUM_COP; nn++) \
+    {                                       \
+        ezi[nn + NUM_COP * id_l] = z[nn];   \
+    }
+#else
+#define MARCO_ERROR_OUT() ;
+#endif
+
 /**
  * get c2 #ifdef COP inside Reconstructflux
  */
@@ -81,10 +94,10 @@
     real_t c2 = SoundSpeedMultiSpecies(z, b1, b3, _yi, _dpdrhoi, drhoi, _dpdrho, _dpde, _dpdE, _prho, p[id_r] - p[id_l], rho[id_r] - rho[id_l], e_r - e_l, _rho);                                                                            \
     /*add support while c2<0 use c2 Refed in https://doi.org/10.1006/jcph.1996.5622 */                                                                                                                                                       \
     real_t c2w = sycl::step(c2, _DF(0.0)); /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/                                                                                                                                  \
-    c2 = Gamma0 * _P * _rho * c2w + (_DF(1.0) - c2w) * c2;
-
-/**
- * get c2 #else COP
+    c2 = Gamma0 * _P * _rho * c2w + (_DF(1.0) - c2w) * c2;                                                                                                                                                                                   \
+    MARCO_ERROR_OUT();                                                                                                                                                                                                                       \
+/**                                                                                                                                                                                                                                          \
+ * get c2 #else COP                                                                                                                                                                                                                          \
  */
 // #define MARCO_NOCOPC2()                                                                                                  \
 //     real_t yi_l[NUM_SPECIES] = {_DF(1.0)}, yi_r[NUM_SPECIES] = {_DF(1.0)}, _yi[] = {_DF(1.0)}, b3 = _DF(0.0), z[] = {0}; \

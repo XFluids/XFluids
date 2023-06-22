@@ -32,11 +32,35 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
+#ifdef ESTIM_NAN
+	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+#if DIM_X
+	h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+#endif
+#if DIM_Y
+	h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+#endif
+#if DIM_Z
+	h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+#endif
+#endif // ESTIM_NAN
 
-	// NOTE: 设备内存
+	// 设备内存
 	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q));
 	d_eigen_local = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
@@ -48,7 +72,28 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
-	long double MemMbSize = (4.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0;
+	long double MemMbSize = (5.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
+#ifdef ESTIM_NAN
+#if DIM_X
+	d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+#endif
+#if DIM_Y
+	d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+#endif
+#if DIM_Z
+	d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+#endif
+	MemMbSize += ((double(bytes * (NUM_COP + 3) * (DIM_X + DIM_Y + DIM_Z)) / 1024.0)) / 1024.0;
+#endif // ESTIM_NAN
 #if 2 == EIGEN_ALLOC
 	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
 	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
@@ -208,7 +253,22 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 {
 	Block bl = Fs.BlSz;
-	real_t *UI = d_U;
+	real_t *UI, *LU = d_LU;
+	switch (flag)
+	{
+	case 1:
+		UI = d_U1;
+		break;
+
+	case 2:
+		UI = d_U1;
+		break;
+
+	case 3:
+		UI = d_U;
+		break;
+	}
+
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_max = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
@@ -217,27 +277,45 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 	int z_offset = Fs.OutBoundary ? 0 : bl.Bwidth_Z;
 
 	bool *h_error, *d_error;
+	int *error_pos;
+	real_t *error_value;
 	h_error = middle::MallocHost<bool>(h_error, 1, q);
 	d_error = middle::MallocDevice<bool>(d_error, 1, q);
+	error_pos = sycl::malloc_shared<int>(Emax + 3, q);
+	for (size_t n = 0; n < Emax + 3; n++)
+		error_pos[n] = 0;
 	*h_error = false;
+
 	middle::MemCpy<bool>(d_error, h_error, 1, q);
-	// std::cout << "sleep(6)\n";
-	// sleep(5);
 	q.submit([&](sycl::handler &h)
 			 { 
-				sycl::stream error_out(64 * 128, 1, h);
+			 	sycl::stream error_out(64 * 1024, 10, h);
 				h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
     		int i = index.get_global_id(0) + x_offset;
 			int j = index.get_global_id(1) + y_offset;
 			int k = index.get_global_id(2) + z_offset;
-			EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, UI, d_error, error_out); }); })
+			EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, error_pos, UI, LU, d_error, error_out); }); }) //
 		.wait();
-	// std::cout << "sleep(6)\n";
-	// sleep(5);
 	middle::MemCpy<bool>(h_error, d_error, 1, q);
+
 	if (*h_error)
+	{
+		std::cout << "Errors of UI[";
+		for (size_t ii = 0; ii < Emax - 1; ii++)
+		{
+			std::cout << error_pos[ii] << ", ";
+		}
+		std::cout << error_pos[Emax - 1] << "] inside the step " << flag << " of RungeKutta located(i, j, k = "
+				  << error_pos[Emax] << ", " << error_pos[Emax + 1] << ", " << error_pos[Emax + 2] << ")";
+#ifdef ERROR_PATCH
+		error_patched_times += 1;
+		std::cout << " patched.\n";
+#else
+		std::cout << " captured.\n";
+#endif // end ERROR_PATCH
 		return true;
+	}
 	return false;
 }
 

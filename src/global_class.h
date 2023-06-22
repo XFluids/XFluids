@@ -46,6 +46,7 @@ typedef struct
     real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma;
     real_t *hi, *Vde[9], *y;
     real_t *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+    real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
 } FlowData;
 
 typedef struct
@@ -65,8 +66,9 @@ class FluidSYCL{
     Setup Fs;
 
 public:
+    int error_patched_times;
     real_t *uvw_c_max;
-    real_t *d_U, *d_U1, *d_LU;
+    real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
     real_t *d_eigen_local, *d_eigen_l, *d_eigen_r;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
     FlowData d_fstate, h_fstate;
@@ -74,7 +76,7 @@ public:
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
 
-    FluidSYCL(Setup &setup) : Fs(setup){};
+    FluidSYCL(Setup &setup) : Fs(setup) { error_patched_times = 0; };
     void initialize(int n);
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
@@ -102,15 +104,19 @@ public:
     void Evolution(sycl::queue &q);
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
-    void CopyDataFromDevice(sycl::queue &q);
-    void Output(sycl::queue &q, int rank, std::string interation, real_t Time);
-    void Output_vti(sycl::queue &q, int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
-    void Output_plt(sycl::queue &q, int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
+    void CopyToUbak(sycl::queue &q);
+    void CopyToU(sycl::queue &q);
+    bool Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time);
+    void Output_Ubak(const int rank, const int Step, const real_t Time);
+    void CopyDataFromDevice(sycl::queue &q, bool error);
+    void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
+    void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
+    void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);
-    bool SinglePhaseSolverRK3rd(sycl::queue &q);
-    void RungeKuttaSP3rd(sycl::queue &q, int flag);
+    bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
+    bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);
     void UpdateU(sycl::queue &q,int flag);
     void ComputeLU(sycl::queue &q, int flag);
     static bool isBigEndian()

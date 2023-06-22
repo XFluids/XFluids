@@ -65,6 +65,10 @@ ENDIF(USE_PLT)
 
 IF(ESTIM_NAN)
   add_compile_options(-DESTIM_NAN)
+
+  IF(ERROR_PATCH)
+    add_compile_options(-DERROR_PATCH)
+  ENDIF()
 ENDIF(ESTIM_NAN)
 
 # define Thermo 1				  // 1 for NASA and 0 for JANAF

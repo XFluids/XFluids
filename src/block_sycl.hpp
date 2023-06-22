@@ -253,8 +253,8 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
     		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H);
-			 }); })
+			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local, eigen_l, eigen_r, fdata.b1x, fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H);
+			 }); }) // real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 		.wait();
 
 #ifdef DEBUG
@@ -287,7 +287,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H); 
+			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local, eigen_l, eigen_r, fdata.b1y, fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H); 
 			}); })
 		.wait();
 #ifdef DEBUG
@@ -321,7 +321,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, eigen_l, eigen_r, p, rho, u, v, w, fdata.y, T, H); 
+			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local, eigen_l, eigen_r, fdata.b1z, fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H); 
 			}); })
 		.wait();
 #ifdef DEBUG
