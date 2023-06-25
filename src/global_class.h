@@ -57,6 +57,14 @@ typedef struct
     real_t R_0, lambda_0;     // gas constant and heat conductivity
 } MaterialProperty;
 
+typedef struct
+{
+    int nbX, nbY, nbZ;    // number of points output along each DIR
+    int minX, minY, minZ; // beginning point of output along each DIR
+    int maxX, maxY, maxZ; // ending point of output along each DIR
+
+} OutSize;
+
 //-------------------------------------------------------------------------------------------------
 //								Pre-claimer
 //-------------------------------------------------------------------------------------------------
@@ -93,7 +101,9 @@ public:
 
 class SYCLSolver{
     Setup Ss;
-    int OnbX, OnbY, OnbZ, OminX, OminY, OminZ, OmaxX, OmaxY, OmaxZ;
+    OutSize VTI, PLT, CPT;
+    real_t physicalTime;
+    int Iteration, rank, nranks;
 
 public:
     real_t dt;
@@ -109,15 +119,18 @@ public:
     bool Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time);
     void Output_Ubak(const int rank, const int Step, const real_t Time);
     void CopyDataFromDevice(sycl::queue &q, bool error);
+    void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
     void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
     void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
     void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
+    void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
+    void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void BoundaryCondition(sycl::queue &q, int flag);
     void UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);
     bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
     bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);
-    void UpdateU(sycl::queue &q,int flag);
+    void UpdateU(sycl::queue &q, int flag);
     void ComputeLU(sycl::queue &q, int flag);
     static bool isBigEndian()
     {

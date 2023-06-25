@@ -515,6 +515,37 @@ const real_t _twle = _DF(1.0) / _DF(12.0);
     real_t _c = sqrt(c2);                     \
     real_t b2 = _DF(1.0) + b1 * q2 - b1 * _H; \
     real_t _c1 = _DF(1.0) / _c;
+
+/**
+ *
+ */
+#define MARCO_OUTLOOP                                        \
+    outFile.write((char *)&nbOfWords, sizeof(unsigned int)); \
+    for (int k = VTI.minZ; k < VTI.maxZ; k++)                \
+        for (int j = VTI.minY; j < VTI.maxY; j++)            \
+            for (int i = VTI.minX; i < VTI.maxX; i++)
+
+/**
+ *
+ */
+#define MARCO_POUTLOOP(BODY)                          \
+    for (int k = VTI.minZ; k < VTI.maxZ; k++)         \
+        for (int j = VTI.minY; j < VTI.maxY; j++)     \
+        {                                             \
+            for (int i = VTI.minX; i < VTI.maxX; i++) \
+                out << BODY << " ";                   \
+            out << "\n";                              \
+        }
+
+/**
+ *  *
+ */
+#define MARCO_COUTLOOP                                       \
+    outFile.write((char *)&nbOfWords, sizeof(unsigned int)); \
+    for (int k = minZ; k < maxZ; k++)                        \
+        for (int j = minY; j < maxY; j++)                    \
+            for (int i = minX; i < maxX; i++)
+
 // =======================================================
 // end repeated code definitions
 // =======================================================

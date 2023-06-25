@@ -59,9 +59,13 @@ IF(USE_DOUBLE)
   add_compile_options(-DUSE_DOUBLE) # 将参数从cmakelist传入程序中
 ENDIF(USE_DOUBLE)
 
-IF(USE_PLT)
+IF(OUT_PLT)
   add_compile_options(-DOUT_PLT)
-ENDIF(USE_PLT)
+ENDIF(OUT_PLT)
+
+IF(OUT_VTI)
+  add_compile_options(-DOUT_VTI)
+ENDIF(OUT_VTI)
 
 IF(ESTIM_NAN)
   add_compile_options(-DESTIM_NAN)

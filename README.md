@@ -120,13 +120,16 @@
   | name of parameters |                             function                             |  type  | default value  |
   | :----------------- | :--------------------------------------------------------------: | :----: | :------------- |
   | StartTime          |                   begin time of the caculation                   | float | 0.0f           |
-  | OutputDir          |                   where to output result file                   | string | "./"           |
+  | OutputDir          |                   where to output result file                    | string | "./"           |
   | OutBoundary        |                     if output boundary piont                     |  bool  | flase          |
+  | OutDIRX            |                     if output XDIR piont                         |  bool  | bool(DIM_X)          |
+  | OutDIRY            |                     if output YDIR piont                         |  bool  | bool(DIM_Y)          |
+  | OutDIRZ            |                     if output ZDIR piont                         |  bool  | bool(DIM_Z)          |
   | nStepMax           |              max number of steps for evolution loop              |  int  | 10             |
   | nOutMax            |         max number of files outputted for evolution loop         |  int  | 0              |
   | OutInterval        |             interval number of steps for once output             |  int  | nStepMax       |
   | OutTimeBeginning   |                  the time stamp first output                     | float | 0.0            |
-  | nOutTimeStamps     |                     number of time interval                     |  int  | 1              |
+  | nOutTimeStamps     |                     number of time interval                      |  int  | 1              |
   | OutTimeInterval    |                   time interval of once ouptut                   | float | 0.0            |
   | OutTimeMethod      | 0 for reading time stamps in .ini, 1 for in ./runtime.dat/time_stamps.dat | int | 1            |
   | DtBlockSize        |             1D local_ndrange parameter used in GetDt             |  int  | 4              |
@@ -178,7 +181,7 @@
     | blast_center_y     |      position of the blast at Y direction in domain      | float | 0.0                |
     | blast_center_z     |      position of the blast at Z direction in domain      | float | 0.0                |
     | blast_radius       |     radius ratio of shortest edge of domain of blast     | float | 0.0                |
-    | blast_mach         |     ini blast by shock-bubble-interaction theroy while blast_mach is set > 1.0     | float | 0.0                |
+    | blast_mach         |     ini blast by shock-bubble-interaction theroy while blast_mach is set > 1.0 | float | 0.0 |
     | blast_density_in   |           rho of the fluid upstream the blast           | float | 0.0                |
     | blast_density_out  |          rho of the fluid downstream the blast          | float | 0.0                |
     | blast_pressure_in  |            P of the fluid upstream the blast            | float | 0.0                |
@@ -196,7 +199,9 @@
     | cop_center_y       |    position of compoent area at X direction in domain    | float | 0.0                |
     | cop_center_z       |    position of compoent area at X direction in domain    | float | 0.0                |
     | cop_radius         | radius ratio of shortest edge of domain of compoent area | float | 0.0                |
-    | bubble_shape_x         | reshape bubble to ellipse at X DIR: x*x/bubble_shape_x*bubble_shape_x | float | 0.4*min(Domain_length,Domain_heigh,Domain_width)                |
+    | bubble_boundary_cells  | number of cells of bubble boundary | float | 2                |
+    | bubble_boundary_width  | bubble boundary coffent | float | BlSz.mx * BlSz.X_inner * bubble_boundary                |
+    | bubble_shape_x     | reshape bubble to ellipse at X DIR: x*x/bubble_shape_x*bubble_shape_x | float | 0.4*min(Domain_length,Domain_heigh,Domain_width) |
     | bubble_shape_ratioy         | bubble_shape_y=bubble_shape_x/bubble_shape_ratioy | float | 1.0                |
     | bubble_shape_ratioz         | bubble_shape_z=bubble_shape_x/bubble_shape_ratioz | float | 1.0                |
     | bubble_shape_y         | reshape bubble to ellipse at Y DIR: x*x/bubble_shape_y*bubble_shape_y |  float | bubble_shape_x/bubble_shape_ratioy                |
@@ -209,7 +214,11 @@
 
 ## 7. output data format
 
+- #### set option "OUT_PLT" or "OUT_VTI" ON, mpi support added both of them, both of them can be output
+
 ### 7.1. tecplot file
+
+- import .plt files of all ranks of one Step for visualization, points overlapped between boundarys of ranks  
 
 ### 7.2. vtk file
 

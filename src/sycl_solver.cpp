@@ -1,7 +1,12 @@
 #include "global_class.h"
+#include "marco.h"
 
-SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0))
+SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), nranks(1), physicalTime(0.0)
 {
+#if USE_MPI
+	rank = Ss.mpiTrans->myRank;
+	nranks = Ss.mpiTrans->nProcs;
+#endif // end USE_MPI
 	for (int n = 0; n < NumFluid; n++)
 	{
 		fluids[n] = new FluidSYCL(setup);
@@ -9,46 +14,79 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0))
 		fluids[n]->initialize(n);
 #endif
 	}
+
 	if (Ss.OutBoundary)
 	{
-		OnbX = Ss.BlSz.Xmax;
-		OminX = 0;
-		OmaxX = Ss.BlSz.Xmax;
+		VTI.nbX = Ss.BlSz.Xmax;
+		VTI.minX = 0;
+		VTI.maxX = Ss.BlSz.Xmax;
 
-		OnbY = Ss.BlSz.Ymax;
-		OminY = 0;
-		OmaxY = Ss.BlSz.Ymax;
+		VTI.nbY = Ss.BlSz.Ymax;
+		VTI.minY = 0;
+		VTI.maxY = Ss.BlSz.Ymax;
 
-		OnbZ = Ss.BlSz.Zmax;
-		OminZ = 0;
-		OmaxZ = Ss.BlSz.Zmax;
+		VTI.nbZ = Ss.BlSz.Zmax;
+		VTI.minZ = 0;
+		VTI.maxZ = Ss.BlSz.Zmax;
 	}
 	else
 	{
-		OnbX = Ss.BlSz.X_inner;
-		OminX = Ss.BlSz.Bwidth_X;
-		OmaxX = Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X;
+		VTI.nbX = Ss.BlSz.X_inner;
+		VTI.minX = Ss.BlSz.Bwidth_X;
+		VTI.maxX = Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X;
 
-		OnbY = Ss.BlSz.Y_inner;
-		OminY = Ss.BlSz.Bwidth_Y;
-		OmaxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
+		VTI.nbY = Ss.BlSz.Y_inner;
+		VTI.minY = Ss.BlSz.Bwidth_Y;
+		VTI.maxY = Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y;
 
-		OnbZ = Ss.BlSz.Z_inner;
-		OminZ = Ss.BlSz.Bwidth_Z;
-		OmaxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
+		VTI.nbZ = Ss.BlSz.Z_inner;
+		VTI.minZ = Ss.BlSz.Bwidth_Z;
+		VTI.maxZ = Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z;
 	}
+
+	PLT = VTI;
+#if DIM_X
+	if (Ss.mpiTrans->neighborsBC[XMIN] == BC_COPY)
+		if (Ss.OutDIRX)
+			PLT.nbX += 1;
+	if (Ss.mpiTrans->neighborsBC[XMAX] == BC_COPY)
+		if (Ss.OutDIRX)
+			PLT.nbX += 1;
+#endif
+
+#if DIM_Y
+	if (Ss.mpiTrans->neighborsBC[YMIN] == BC_COPY)
+		if (Ss.OutDIRY)
+			PLT.nbY += 1;
+	if (Ss.mpiTrans->neighborsBC[YMAX] == BC_COPY)
+		if (Ss.OutDIRY)
+			PLT.nbY += 1;
+#endif
+
+#if DIM_Z
+	if (Ss.mpiTrans->neighborsBC[ZMIN] == BC_COPY)
+		if (Ss.OutDIRZ)
+			PLT.nbZ += 1;
+	if (Ss.mpiTrans->neighborsBC[ZMAX] == BC_COPY)
+		if (Ss.OutDIRZ)
+			PLT.nbZ += 1;
+#endif
+
+	CPT.minX = Ss.BlSz.Bwidth_X + Ss.outpos_x;
+	CPT.minY = Ss.BlSz.Bwidth_Y + Ss.outpos_y;
+	CPT.minZ = Ss.BlSz.Bwidth_Z + Ss.outpos_z;
+	CPT.nbX = Ss.OutDIRX ? PLT.nbX : 1;
+	CPT.nbY = Ss.OutDIRY ? PLT.nbY : 1;
+	CPT.nbZ = Ss.OutDIRZ ? PLT.nbZ : 1;
+	CPT.maxX = CPT.minX + CPT.nbX;
+	CPT.maxY = CPT.minY + CPT.nbY;
+	CPT.maxZ = CPT.minZ + CPT.nbZ;
 }
 
 void SYCLSolver::Evolution(sycl::queue &q)
 {
-	real_t physicalTime = 0.0;
-	int Iteration = 0, OutNum = 1, rank = 0, nranks = 1, TimeLoop = 0, error_out = 0;
 	bool TimeLoopOut = false, Stepstop = false;
-#if USE_MPI
-	rank = Ss.mpiTrans->myRank;
-	nranks = Ss.mpiTrans->nProcs;
-#endif // end USE_MPI
-	bool ReCal = Read_Ubak(q, rank, &(Iteration), &(physicalTime));
+	int OutNum = 1, TimeLoop = 0, error_out = 0;
 
 	float duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
@@ -146,7 +184,10 @@ flag_end:
 	Ss.mpiTrans->communicator->synchronize();
 	error_times_patched = Etemp;
 #endif
-	std::cout << "Times of error patched: " << error_times_patched << std::endl;
+	if (rank == 0)
+	{
+		std::cout << "Times of error patched: " << error_times_patched << std::endl;
+	}
 #endif // end ERROR_PATCH
 	Output_Ubak(rank, Iteration - 1, physicalTime);
 	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
@@ -302,15 +343,14 @@ void SYCLSolver::AllocateMemory(sycl::queue &q)
 		fluids[n]->AllocateFluidMemory(q);
 
 	// levelset->AllocateLSMemory();
-#ifdef DEBUG
-	std::cout << "Debug version causes increase of global memory in GetDt.\n\n";
-#endif // end DEBUG
 }
 
 void SYCLSolver::InitialCondition(sycl::queue &q)
 {
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->InitialU(q);
+
+	Read_Ubak(q, rank, &(Iteration), &(physicalTime));
 }
 
 #ifdef COP_CHEME
@@ -339,8 +379,7 @@ void SYCLSolver::CopyToU(sycl::queue &q)
 
 void SYCLSolver::Output_Ubak(const int rank, const int Step, const real_t Time)
 {
-	std::string file_name,
-		outputPrefix = INI_SAMPLE;
+	std::string file_name, outputPrefix = INI_SAMPLE;
 	file_name = Ss.OutputDir + "/" + outputPrefix + "_ReCal";
 #ifdef USE_MPI
 	file_name += "_rank_" + std::to_string(rank);
@@ -352,14 +391,14 @@ void SYCLSolver::Output_Ubak(const int rank, const int Step, const real_t Time)
 	for (size_t n = 0; n < NumFluid; n++)
 		fout.write((char *)(fluids[n]->Ubak), Ss.cellbytes);
 	fout.close();
-	{
-		std::cout << "ReCal-file of Step" << Step << ": " << file_name << " has been output." << std::endl;
-	}
+
+	if (rank == 0)
+		std::cout << "ReCal-file of Step = " << Step << " has been output." << std::endl;
 }
 
 bool SYCLSolver::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time)
 {
-	int size = Ss.cellbytes;
+	int size = Ss.cellbytes, all_read = 1;
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	file_name = Ss.OutputDir + "/" + outputPrefix + "_ReCal";
 #ifdef USE_MPI
@@ -368,10 +407,16 @@ bool SYCLSolver::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Ti
 
 	std::ifstream fin(file_name, std::ios::in | std::ios::binary);
 	if (!fin.is_open())
+		all_read = 0;
+#ifdef USE_MPI
+	int root, maybe_root = (all_read ? 0 : rank);
+	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	Ss.mpiTrans->communicator->bcast(&(all_read), 1, mpiUtils::MpiComm::INT, root);
+#endif
+	if (!all_read)
 	{
-		{
-			std::cout << "ReCal-file: " << file_name << " not exist or open failed, ReCal closed." << std::endl;
-		}
+		if (rank == 0)
+			std::cout << "ReCal-file not exist or open failed, ReCal closed." << std::endl;
 		return false;
 	}
 	fin.read((char *)Step, sizeof(int));
@@ -379,11 +424,8 @@ bool SYCLSolver::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Ti
 	for (size_t n = 0; n < NumFluid; n++)
 		fin.read((char *)(fluids[n]->h_U), size);
 	fin.close();
-
 	CopyToU(q);
-	BoundaryCondition(q, 0);
-	UpdateStates(q, 0);
-	Output(q, rank, "Recal_Ini_" + std::to_string(*Step), *Time, false);
+
 	return true; // ReIni U for additonal continued caculate
 }
 
@@ -456,17 +498,28 @@ void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t
 	rankFormat << rank;
 
 	CopyDataFromDevice(q, error); // only copy when output
-#ifdef OUT_PLT
-	Output_plt(rank, timeFormat, stepFormat, rankFormat, error);
-#else
-	Output_vti(rank, timeFormat, stepFormat, rankFormat, error);
-#endif // end OUT_PLT
 
-	if (error)
+	if ((!(Ss.OutDIRX && Ss.OutDIRY && Ss.OutDIRZ)) && !error)
 	{
+#ifdef OUT_PLT
+		Output_cplt(rank, timeFormat, stepFormat, rankFormat);
+#endif
+#ifdef OUT_VTI
+		Output_cvti(rank, timeFormat, stepFormat, rankFormat);
+#endif // end OUT_PLT
 	}
+	else
+	{
+#ifdef OUT_PLT
+		Output_plt(rank, timeFormat, stepFormat, rankFormat, error);
+#endif
+#ifdef OUT_VTI
+		Output_vti(rank, timeFormat, stepFormat, rankFormat, error);
+#endif // end OUT_PLT
+	}
+
 	if (rank == 0)
-		std::cout << "Output has been done at Step = " << interation << std::endl;
+		std::cout << "Output DIR(X, Y, Z = " << Ss.OutDIRX << ", " << Ss.OutDIRY << ", " << Ss.OutDIRZ << ") has been done at Step = " << interation << std::endl;
 }
 
 void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
@@ -475,8 +528,8 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	real_t dx, dy, dz;
 
 #if DIM_X
-	xmin = Ss.BlSz.myMpiPos_x * OnbX;
-	xmax = Ss.BlSz.myMpiPos_x * OnbX + OnbX;
+	xmin = Ss.BlSz.myMpiPos_x * VTI.nbX;
+	xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX;
 	dx = Ss.BlSz.dx;
 #else
 	xmin = 0;
@@ -484,8 +537,8 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	dx = 0.0;
 #endif // DIM_X
 #if DIM_Y
-	ymin = Ss.BlSz.myMpiPos_y * OnbY;
-	ymax = Ss.BlSz.myMpiPos_y * OnbY + OnbY;
+	ymin = Ss.BlSz.myMpiPos_y * VTI.nbY;
+	ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY;
 	dy = Ss.BlSz.dy;
 #else
 	ymin = 0;
@@ -493,8 +546,8 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	dy = 0.0;
 #endif // DIM_Y
 #if DIM_Z
-	zmin = (Ss.BlSz.myMpiPos_z * OnbZ);
-	zmax = (Ss.BlSz.myMpiPos_z * OnbZ + OnbZ);
+	zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ);
+	zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ);
 	dz = Ss.BlSz.dz;
 #else
 	zmin = 0;
@@ -604,16 +657,16 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
 #endif // COP
 
-	std::string outputPrefix = INI_SAMPLE;
-	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
+	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string temp_name = "./VTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
 #ifdef USE_MPI
-	file_name += "_rank_" + rankFormat.str();
-	std::string headerfile_name = Ss.OutputDir + "/" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
+	file_name = Ss.OutputDir + "/" + temp_name + "_rank_" + rankFormat.str();
+	std::string headerfile_name = Ss.OutputDir + "/VTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
 #endif
 	file_name += ".vti";
 
 #ifdef USE_MPI
-	// if (!error)
+	if (!error)
 	{
 		mx = Ss.BlSz.mx;
 		my = Ss.BlSz.my;
@@ -632,9 +685,9 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			else
 				outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
 			outHeader << "  <PImageData WholeExtent=\"";
-			outHeader << 0 << " " << mx * OnbX << " ";
-			outHeader << 0 << " " << my * OnbY << " ";
-			outHeader << 0 << " " << mz * OnbZ << "\" GhostLevel=\"0\" "
+			outHeader << 0 << " " << mx * VTI.nbX << " ";
+			outHeader << 0 << " " << my * VTI.nbY << " ";
+			outHeader << 0 << " " << mz * VTI.nbZ << "\" GhostLevel=\"0\" "
 					  << "Origin=\""
 					  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
 					  << "Spacing=\""
@@ -657,7 +710,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			pieceFormat.width(5);
 			pieceFormat.fill('0');
 			pieceFormat << iPiece;
-			std::string pieceFilename = "./" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_rank_" + pieceFormat.str() + ".vti";
+			std::string pieceFilename = temp_name + "_rank_" + pieceFormat.str() + ".vti";
 // get MPI coords corresponding to MPI rank iPiece
 #if 3 == DIM_X + DIM_Y + DIM_Z
 			int coords[3];
@@ -669,19 +722,19 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			// pieces in first line of column are different (due to the special
 			// pvti file format with overlapping by 1 cell)
 			if (coords[0] == 0)
-				outHeader << 0 << " " << OnbX << " ";
+				outHeader << 0 << " " << VTI.nbX << " ";
 			else
-				outHeader << coords[0] * OnbX << " " << coords[0] * OnbX + OnbX << " ";
+				outHeader << coords[0] * VTI.nbX << " " << coords[0] * VTI.nbX + VTI.nbX << " ";
 
 			if (coords[1] == 0)
-				outHeader << 0 << " " << OnbY << " ";
+				outHeader << 0 << " " << VTI.nbY << " ";
 			else
-				outHeader << coords[1] * OnbY << " " << coords[1] * OnbY + OnbY << " ";
+				outHeader << coords[1] * VTI.nbY << " " << coords[1] * VTI.nbY + VTI.nbY << " ";
 #if 3 == DIM_X + DIM_Y + DIM_Z
 			if (coords[2] == 0)
-				outHeader << 0 << " " << OnbZ << " ";
+				outHeader << 0 << " " << VTI.nbZ << " ";
 			else
-				outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
+				outHeader << coords[2] * VTI.nbZ << " " << coords[2] * VTI.nbZ + VTI.nbZ << " ";
 #else
 			outHeader << 0 << " " << 0;
 #endif
@@ -730,7 +783,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #endif // end USE_DOUBLE
 		outFile << variables_names.at(iVar)
 				<< "\" format=\"appended\" offset=\""
-				<< iVar * OnbX * OnbY * OnbZ * sizeof(real_t) + iVar * sizeof(unsigned int)
+				<< iVar * VTI.nbX * VTI.nbY * VTI.nbZ * sizeof(real_t) + iVar * sizeof(unsigned int)
 				<< "\" />" << std::endl;
 	}
 	outFile << "    </CellData>" << std::endl;
@@ -740,63 +793,37 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	// write the leading undescore
 	outFile << "_";
 	// then write heavy data (column major format)
-	unsigned int nbOfWords = OnbX * OnbY * OnbZ * sizeof(real_t);
+	unsigned int nbOfWords = VTI.nbX * VTI.nbY * VTI.nbZ * sizeof(real_t);
 	{
 		//[0]x
 #if DIM_X
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					real_t tmp = DIM_X ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.Xmax - Ss.BlSz.Bwidth_X - Ss.BlSz.Bwidth_X)) * dx + 0.5 * dx + Ss.BlSz.Domain_xmin : 0.0;
-					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		real_t tmp = (DIM_X) ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner) + _DF(0.5)) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin : 0.0;
+		outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
 		  //[1]u
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.u[id];
 #elif 2 == NumFluid
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.u[id] : fluids[1]->h_fstate.u[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		}		  // for i	  // for j		  // for k
 #endif			  // end DIM_X
 #if DIM_Y
 		//[2]y
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					real_t tmp = DIM_Y ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Ymax - Ss.BlSz.Bwidth_Y - Ss.BlSz.Bwidth_Y)) * dy + 0.5 * dy + Ss.BlSz.Domain_ymin : 0.0;
+					real_t tmp = (DIM_Y) ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner) + _DF(0.5)) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		} // for i
 		  //[3]v
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.v[id];
@@ -804,32 +831,18 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.v[id] : fluids[1]->h_fstate.v[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		}		  // for i
 #endif			  // end DIM_Y
 #if DIM_Z
 		//[4]z
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					real_t tmp = DIM_Z ? (k - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Zmax - Ss.BlSz.Bwidth_Z - Ss.BlSz.Bwidth_Z)) * dz + 0.5 * dz + Ss.BlSz.Domain_zmin : 0.0;
+					real_t tmp = (DIM_Z) ? (i - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner) + _DF(0.5)) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin : 0.0;
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		} // for i
 		  //[5]w
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.w[id];
@@ -837,219 +850,153 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.w[id] : fluids[1]->h_fstate.w[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		}		  // for i
 #endif			  // end DIM_Z
 
 #ifdef ESTIM_NAN
 		if (error)
 		{
 #if DIM_X
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
+					MARCO_OUTLOOP
 					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.b1x[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b1x[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 					}
 
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
+					MARCO_OUTLOOP
 					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.b3x[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b3x[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 					}
 
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
+					MARCO_OUTLOOP
 					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.c2x[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c2x[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 					}
 
 			for (size_t nn = 0; nn < NUM_COP; nn++)
 			{
-				outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-				for (int k = OminZ; k < OmaxZ; k++)
-					for (int j = OminY; j < OmaxY; j++)
-						for (int i = OminX; i < OmaxX; i++)
-						{
-							int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-							real_t tmp = fluids[0]->h_fstate.zix[nn + NUM_COP * id];
-							outFile.write((char *)&tmp, sizeof(real_t));
-						}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.zix[nn + NUM_COP * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			}
 #endif // end DIM_X
 
 #if DIM_Y
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
-					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.b1y[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
-					}
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
-					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.b3y[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
-					}
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
-					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.c2y[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
-					}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b1y[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b3y[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c2y[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			for (size_t nn = 0; nn < NUM_COP; nn++)
 			{
-				outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-				for (int k = OminZ; k < OmaxZ; k++)
-					for (int j = OminY; j < OmaxY; j++)
-						for (int i = OminX; i < OmaxX; i++)
-						{
-							int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-							real_t tmp = fluids[0]->h_fstate.ziy[nn + NUM_COP * id];
-							outFile.write((char *)&tmp, sizeof(real_t));
-						}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.ziy[nn + NUM_COP * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			}
 #endif // end DIM_Y
 #if DIM_Z
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
-					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.b1z[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
-					}
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
-					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.b3z[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
-					}
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-				for (int j = OminY; j < OmaxY; j++)
-					for (int i = OminX; i < OmaxX; i++)
-					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.c2z[id];
-						outFile.write((char *)&tmp, sizeof(real_t));
-					}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b1z[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b3z[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c2z[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			for (size_t nn = 0; nn < NUM_COP; nn++)
 			{
-				outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-				for (int k = OminZ; k < OmaxZ; k++)
-					for (int j = OminY; j < OmaxY; j++)
-						for (int i = OminX; i < OmaxX; i++)
-						{
-							int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-							real_t tmp = fluids[0]->h_fstate.ziz[nn + NUM_COP * id];
-							outFile.write((char *)&tmp, sizeof(real_t));
-						}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.ziz[nn + NUM_COP * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			}
 #endif // end DIM_Z
 
 			for (size_t u = 0; u < Emax; u++)
 			{
-				outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-				for (int k = OminZ; k < OmaxZ; k++)
-					for (int j = OminY; j < OmaxY; j++)
-						for (int i = OminX; i < OmaxX; i++)
-						{
-							int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-							real_t tmp = fluids[0]->h_U[u + Emax * id];
-							outFile.write((char *)&tmp, sizeof(real_t));
-						}
-				outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-				for (int k = OminZ; k < OmaxZ; k++)
-					for (int j = OminY; j < OmaxY; j++)
-						for (int i = OminX; i < OmaxX; i++)
-						{
-							int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-							real_t tmp = fluids[0]->h_U1[u + Emax * id];
-							outFile.write((char *)&tmp, sizeof(real_t));
-						}
-				outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-				for (int k = OminZ; k < OmaxZ; k++)
-					for (int j = OminY; j < OmaxY; j++)
-						for (int i = OminX; i < OmaxX; i++)
-						{
-							int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-							real_t tmp = fluids[0]->h_LU[u + Emax * id];
-							outFile.write((char *)&tmp, sizeof(real_t));
-						}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_U[u + Emax * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_U1[u + Emax * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_LU[u + Emax * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			}
 		}
 #endif
 
 		//[6]V-c
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.c[id];
+			real_t tmp = fluids[0]->h_fstate.c[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.c[id] : fluids[1]->h_fstate.c[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.c[id] : fluids[1]->h_fstate.c[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
 		//[6]rho
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.rho[id];
 #elif 2 == NumFluid
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		} // for i
 		//[7]P
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.p[id];
@@ -1057,17 +1004,10 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.p[id] : fluids[1]->h_fstate.p[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
-				  //[8]Gamma
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		} // for i
+		  //[8]Gamma
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.gamma[id];
@@ -1075,17 +1015,10 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.gamma[id] : fluids[1]->h_fstate.gamma[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		} // for i
 		//[9]T
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
 					real_t tmp = fluids[0]->h_fstate.T[id];
@@ -1093,44 +1026,28 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.T[id] : fluids[1]->h_fstate.T[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		} // for i
 
 #if 2 == NumFluid
 		  //[5]phi
-		outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-		for (int k = OminZ; k < OmaxZ; k++)
+		MARCO_OUTLOOP
 		{
-			for (int j = OminY; j < OmaxY; j++)
-			{
-				for (int i = OminX; i < OmaxX; i++)
-				{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 					real_t tmp = levelset->h_phi[id];
 					outFile.write((char *)&tmp, sizeof(real_t));
-				} // for i
-			}	  // for j
-		}		  // for k
+		} // for i
 #endif
 
 #ifdef COP
 		//[COP]yii
 		for (int ii = 0; ii < NUM_SPECIES; ii++)
 		{
-			outFile.write((char *)&nbOfWords, sizeof(unsigned int));
-			for (int k = OminZ; k < OmaxZ; k++)
-			{
-				for (int j = OminY; j < OmaxY; j++)
-				{
-					for (int i = OminX; i < OmaxX; i++)
+					MARCO_OUTLOOP
 					{
-						int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-						real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
-						outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 					} // for i
-				}	  // for j
-			}		  // for k
 		}			  // for yii
 #endif				  // end  COP
 	}				  // End Var Output
@@ -1142,130 +1059,617 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 void SYCLSolver::Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
 {
 	std::string outputPrefix = INI_SAMPLE;
-	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
+	std::string file_name = Ss.OutputDir + "/PLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
 #ifdef USE_MPI
 	file_name += "_rank_" + rankFormat.str();
 #endif
 	file_name += ".plt";
 
+	// Init var names
+	int Onbvar = 5 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
+#ifdef COP
+	Onbvar += NUM_SPECIES;
+#endif // end COP
+
+	std::map<int, std::string> variables_names;
+	int index = 0;
+#if DIM_X
+	variables_names[index] = "X";
+	index++;
+#endif // end DIM_X
+#if DIM_Y
+	variables_names[index] = "Y";
+	index++;
+#endif // end DIM_Y
+#if DIM_Z
+	variables_names[index] = "Z";
+	index++;
+#endif // end DIM_Z
+#if DIM_X
+	variables_names[index] = "u";
+	index++;
+#endif // end DIM_X
+#if DIM_Y
+	variables_names[index] = "v";
+	index++;
+#endif // end DIM_Y
+#if DIM_Z
+	variables_names[index] = "w";
+	index++;
+#endif // end DIM_Z
+	variables_names[index] = "rho";
+	index++;
+	variables_names[index] = "p";
+	index++;
+	variables_names[index] = "T";
+	index++;
+	variables_names[index] = "c";
+	index++;
+	variables_names[index] = "gamma";
+	index++;
+#ifdef COP
+	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
+		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
+#endif // COP
+
+	real_t posx = -Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner);
+	real_t posy = -Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner);
+	real_t posz = -Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner);
+
 	std::ofstream out(file_name);
 	// defining header for tecplot(plot software)
-	out << "title='View'"
-		<< "\n"
-		<< "variables="
+	out << "title='" << outputPrefix << "'\nvariables=";
+	for (int iVar = 0; iVar < Onbvar - 1; iVar++)
+		out << " " << variables_names.at(iVar) << ", ";
+	out << variables_names.at(Onbvar - 1) << "\n";
+	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "_Rank_" << std::to_string(rank) << "', i= " << VTI.nbX + DIM_X << ", j= " << VTI.nbY + DIM_Y << ", k= " << VTI.nbZ + DIM_Z << "  DATAPACKING=BLOCK, VARLOCATION=(["
+		<< DIM_X + DIM_Y + DIM_Z + 1 << "-" << Onbvar << "]=CELLCENTERED) SOLUTIONTIME= " << timeFormat.str() << "\n";
+	real_t dimx = DIM_X, dimy = DIM_Y, dimz = DIM_Z;
+
 #if DIM_X
-		<< "x, "
+	for (int k = VTI.minZ; k < VTI.maxZ + DIM_Z; k++)
+		for (int j = VTI.minY; j < VTI.maxY + DIM_Y; j++)
+		{
+					for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
+			out << dimx * ((i + posx) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin) << " ";
+					out << "\n";
+		}
 #endif
 #if DIM_Y
-		<< "y, "
+	for (int k = VTI.minZ; k < VTI.maxZ + DIM_Z; k++)
+		for (int j = VTI.minY; j < VTI.maxY + DIM_Y; j++)
+		{
+					for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
+			out << dimy * ((j + posy) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin) << " ";
+					out << "\n";
+		}
 #endif
 #if DIM_Z
-		<< "z, "
+	for (int k = VTI.minZ; k < VTI.maxZ + DIM_Z; k++)
+		for (int j = VTI.minY; j < VTI.maxY + DIM_Y; j++)
+		{
+					for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
+			out << dimz * ((k + posz) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin) << " ";
+					out << "\n";
+		}
 #endif
 #if DIM_X
-		<< "u, "
+	MARCO_POUTLOOP(fluids[0]->h_fstate.u[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
 #endif
 #if DIM_Y
-		<< "v, "
+	MARCO_POUTLOOP(fluids[0]->h_fstate.v[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
 #endif
 #if DIM_Z
-		<< "w, "
+	MARCO_POUTLOOP(fluids[0]->h_fstate.w[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
 #endif
-		// << "c, "
-		<< "p, rho, ";
+	MARCO_POUTLOOP(fluids[0]->h_fstate.rho[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
+	MARCO_POUTLOOP(fluids[0]->h_fstate.p[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
+	MARCO_POUTLOOP(fluids[0]->h_fstate.T[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
+	MARCO_POUTLOOP(fluids[0]->h_fstate.c[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
+	MARCO_POUTLOOP(fluids[0]->h_fstate.gamma[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
+
 #ifdef COP
-	out << "gamma, T"; //
 	for (size_t n = 0; n < NUM_SPECIES; n++)
-		out << ", Y(" << Ss.species_name[n] << ")";
+		MARCO_POUTLOOP(fluids[0]->h_fstate.y[n + NUM_SPECIES * (Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i)]);
 #endif
-#ifdef ESTIM_NAN
-	if (error)
+	out.close();
+}
+
+void SYCLSolver::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
+{ // compressible out: output dirs less than caculate dirs
+
+	bool Out1, Out2, Out3;
+	int if_outrank = -1;
+	real_t temx = _DF(0.5) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin;
+	real_t temy = _DF(0.5) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin;
+	real_t temz = _DF(0.5) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin;
+	real_t posx = -Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner);
+	real_t posy = -Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner);
+	real_t posz = -Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner);
+
+	////method 1/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	for (int k = VTI.minZ; k < VTI.maxZ; k++)
+		for (int j = VTI.minY; j < VTI.maxY; j++)
+					for (int i = VTI.minX; i < VTI.maxX; i++)
+					{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
+			int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
+			Out1 = ((!Ss.OutDIRX) && (pos_x == Ss.outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
+			Out2 = ((!Ss.OutDIRY) && (pos_y == Ss.outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
+			Out3 = ((!Ss.OutDIRZ) && (pos_z == Ss.outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
+			if (Out1 || Out2 || Out3)
+			{
+				if_outrank = rank;
+			}
+					}
+
+#ifdef USE_MPI
+	Ss.mpiTrans->communicator->allGather(&(if_outrank), 1, mpiUtils::MpiComm::INT, OutRanks, 1, mpiUtils::MpiComm::INT);
+	// std::cout << "OutRanks[rank], recvcounts[rank], displs[rank]= " << OutRanks[rank] << " of rank: " << rank << std::endl; //<< ", " << recvcounts[rank] << ", " << displs[rank]
+#endif
+}
+
+void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
+{												  // Init var names
+	int Onbvar = 5 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
+#ifdef COP
+	Onbvar += NUM_SPECIES;
+#endif // end COP
+	std::map<int, std::string> variables_names;
+	int index = 0;
+#if DIM_X
+	variables_names[index] = "DIR-X";
+	index++;
+	variables_names[index] = "OV-u";
+	index++;
+#endif // end DIM_X
+#if DIM_Y
+	variables_names[index] = "DIR-Y";
+	index++;
+	variables_names[index] = "OV-v";
+	index++;
+#endif // end DIM_Y
+#if DIM_Z
+	variables_names[index] = "DIR-Z";
+	index++;
+	variables_names[index] = "OV-w";
+	index++;
+#endif // end DIM_Z
+	variables_names[index] = "OV-c";
+	index++;
+	variables_names[index] = "O-rho";
+	index++;
+	variables_names[index] = "O-p";
+	index++;
+	variables_names[index] = "O-gamma";
+	index++;
+	variables_names[index] = "O-T";
+	index++;
+#ifdef COP
+	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
+		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
+#endif // COP
+	int *OutRanks = new int[nranks];
+	GetCPT_OutRanks(OutRanks, rank, nranks);
+
+	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
+	real_t dx = 0.0, dy = 0.0, dz = 0.0;
+#if DIM_X
+	if (Ss.OutDIRX)
 	{
-		for (size_t u = 0; u < Emax; u++)
-			out << "U[" << std::to_string(u) << "], ";
-		for (size_t u1 = 0; u1 < Emax; u1++)
-			out << "U1[" << std::to_string(u1) << "], ";
-		for (size_t lu = 0; lu < Emax; lu++)
-			out << "LU[" << std::to_string(lu) << "], ";
+		xmin = Ss.BlSz.myMpiPos_x * VTI.nbX;
+		xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX;
+		dx = Ss.BlSz.dx;
+	}
+#endif // DIM_X
+#if DIM_Y
+	if (Ss.OutDIRY)
+	{
+		ymin = Ss.BlSz.myMpiPos_y * VTI.nbY;
+		ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY;
+		dy = Ss.BlSz.dy;
+	}
+#endif // DIM_Y
+#if DIM_Z
+	if (Ss.OutDIRZ)
+	{
+		zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ);
+		zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ);
+		dz = Ss.BlSz.dz;
+	}
+#endif // DIM_Z
+
+	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string temp_name = "./CVTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
+#ifdef USE_MPI
+	file_name = Ss.OutputDir + "/" + temp_name + "_rank_" + rankFormat.str();
+	std::string headerfile_name = Ss.OutputDir + "/CVTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
+#endif
+	file_name += ".vti";
+
+#ifdef USE_MPI
+	mx = (Ss.OutDIRX) ? Ss.BlSz.mx : 0;
+	my = (Ss.OutDIRY) ? Ss.BlSz.my : 0;
+	mz = (Ss.OutDIRZ) ? Ss.BlSz.mz : 0;
+	if (0 == rank) // write header
+	{
+		std::fstream outHeader;
+		std::string compressor("");
+		// open pvti header file
+		outHeader.open(headerfile_name.c_str(), std::ios_base::out);
+		outHeader << "<?xml version=\"1.0\"?>" << std::endl;
+		if (isBigEndian())
+			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"BigEndian\"" << compressor << ">" << std::endl;
+		else
+			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
+		outHeader << "  <PImageData WholeExtent=\"";
+		outHeader << 0 << " " << mx * VTI.nbX << " ";
+		outHeader << 0 << " " << my * VTI.nbY << " ";
+		outHeader << 0 << " " << mz * VTI.nbZ << "\" GhostLevel=\"0\" "
+				  << "Origin=\""
+				  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
+				  << "Spacing=\""
+				  << dx << " " << dy << " " << dz << "\">"
+				  << std::endl;
+		outHeader << "    <PCellData Scalars=\"Scalars_\">" << std::endl;
+		for (int iVar = 0; iVar < Onbvar; iVar++)
+		{
+#if USE_DOUBLE
+			outHeader << "      <PDataArray type=\"Float64\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+#else
+			outHeader << "      <PDataArray type=\"Float32\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+#endif // end USE_DOUBLE
+		}
+		outHeader << "    </PCellData>" << std::endl;
+
+		// Out put for 2D && 3D;
+		for (int iPiece = 0; iPiece < Ss.mpiTrans->nProcs; ++iPiece)
+			if (OutRanks[iPiece] >= 0)
+			{
+				std::ostringstream pieceFormat;
+				pieceFormat.width(5);
+				pieceFormat.fill('0');
+				pieceFormat << iPiece;
+				std::string pieceFilename = temp_name + "_rank_" + pieceFormat.str() + ".vti";
+				// get MPI coords corresponding to MPI rank iPiece
+				// #if 3 == DIM_X + DIM_Y + DIM_Z
+				// 			int coords[3];
+				// #else
+				// 			int coords[2];
+				// #endif
+				int coords[DIM_X + DIM_Y + DIM_Z], OnbX = (Ss.OutDIRX) ? VTI.nbX : 0, OnbY = (Ss.OutDIRY) ? VTI.nbY : 0, OnbZ = (Ss.OutDIRZ) ? VTI.nbZ : 0;
+				Ss.mpiTrans->communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
+				outHeader << " <Piece Extent=\"";
+				// pieces in first line of column are different (due to the special
+				// pvti file format with overlapping by 1 cell)
+				if (coords[0] == 0)
+					outHeader << 0 << " " << OnbX << " ";
+				else
+					outHeader << coords[0] * OnbX << " " << coords[0] * OnbX + OnbX << " ";
+
+				if (coords[1] == 0)
+					outHeader << 0 << " " << OnbY << " ";
+				else
+					outHeader << coords[1] * OnbY << " " << coords[1] * OnbY + OnbY << " ";
+#if 3 == DIM_X + DIM_Y + DIM_Z
+			if (coords[2] == 0)
+					outHeader << 0 << " " << OnbZ << " ";
+			else
+					outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
+#else
+			outHeader << 0 << " " << 0;
+#endif
+			outHeader << "\" Source=\"";
+			outHeader << pieceFilename << "\"/>" << std::endl;
+		}
+		outHeader << "</PImageData>" << std::endl;
+		outHeader << "</VTKFile>" << std::endl;
+		// close header file
+		outHeader.close();
+	} // end writing pvti header
+#endif
+	int minX = CPT.minX, minY = CPT.minY, minZ = CPT.minZ;
+	int nbX = (Ss.OutDIRX) ? VTI.nbX : 1, nbY = (Ss.OutDIRY) ? VTI.nbY : 1, nbZ = (Ss.OutDIRZ) ? VTI.nbZ : 1;
+	int maxX = minX + nbX, maxY = minY + nbY, maxZ = minZ + nbZ;
+
+	if (OutRanks[rank] >= 0)
+	{
+		std::fstream outFile;
+		outFile.open(file_name.c_str(), std::ios_base::out);
+		// write xml data header
+		if (isBigEndian())
+			outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
+		else
+			outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+
+		outFile << "  <ImageData WholeExtent=\""
+				<< xmin << " " << xmax << " "
+				<< ymin << " " << ymax << " "
+				<< zmin << " " << zmax << "\" "
+				<< "Origin=\""
+				<< Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
+				<< "Spacing=\""
+				<< dx << " " << dy << " " << dz << "\">" << std::endl;
+		outFile << "  <Piece Extent=\""
+				<< xmin << " " << xmax << " "
+				<< ymin << " " << ymax << " "
+				<< zmin << " " << zmax << ""
+				<< "\">" << std::endl;
+		outFile << "    <PointData>\n";
+		outFile << "    </PointData>\n";
+		// write data in binary format
+		outFile << "    <CellData>" << std::endl;
+		for (int iVar = 0; iVar < Onbvar; iVar++)
+		{
+#if USE_DOUBLE
+		outFile << "     <DataArray type=\"Float64\" Name=\"";
+#else
+		outFile << "     <DataArray type=\"Float32\" Name=\"";
+#endif // end USE_DOUBLE
+		outFile << variables_names.at(iVar)
+				<< "\" format=\"appended\" offset=\""
+				<< iVar * nbX * nbY * nbZ * sizeof(real_t) + iVar * sizeof(unsigned int)
+				<< "\" />" << std::endl;
+		}
+	outFile << "    </CellData>" << std::endl;
+	outFile << "  </Piece>" << std::endl;
+	outFile << "  </ImageData>" << std::endl;
+	outFile << "  <AppendedData encoding=\"raw\">" << std::endl;
+	// write the leading undescore
+	outFile << "_";
+	// then write heavy data (column major format)
+	unsigned int nbOfWords = nbX * nbY * nbZ * sizeof(real_t);
+#if DIM_X
+	//[0]x
+	MARCO_COUTLOOP
+	{
+		real_t tmp = (DIM_X) ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner) + _DF(0.5)) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin : 0.0;
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	//[1]u
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.u[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
 	}
 #endif
-	out << "\n";
-	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << OnbX << ", j= " << OnbY << ", k= " << OnbZ << ", SOLUTIONTIME= " << timeFormat.str() << "\n";
-
-	real_t offset_x = DIM_X ? -Ss.BlSz.Bwidth_X + 0.5 : 0.0;
-	real_t offset_y = DIM_Y ? -Ss.BlSz.Bwidth_Y + 0.5 : 0.0;
-	real_t offset_z = DIM_Z ? -Ss.BlSz.Bwidth_Z + 0.5 : 0.0;
-
-#ifdef DEBUG
-	out.precision(20);
-#endif // end DEBUG
-	real_t xc, yc, zc, cc, pc, rhoc, uc, vc, wc, Uc[Emax], U1c[Emax], LUc[Emax];
-	for (int k = OminZ; k < OmaxZ; k++)
-		for (int j = OminY; j < OmaxY; j++)
-			for (int i = OminX; i < OmaxX; i++)
-			{
-				xc = (i + offset_x) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin;
-				yc = (j + offset_y) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin;
-				zc = (k + offset_z) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin;
-
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-
-				cc = fluids[0]->h_fstate.c[id];
-				pc = fluids[0]->h_fstate.p[id];
-				rhoc = fluids[0]->h_fstate.rho[id];
-				uc = fluids[0]->h_fstate.u[id];
-				vc = fluids[0]->h_fstate.v[id];
-				wc = fluids[0]->h_fstate.w[id];
-#ifdef ESTIM_NAN
-				if (error)
-				{
-					for (size_t u = 0; u < Emax; u++)
-						Uc[u] = fluids[0]->h_U[u + id];
-					for (size_t u1 = 0; u1 < Emax; u1++)
-						U1c[u1] = fluids[0]->h_U1[u1 + id];
-					for (size_t lu = 0; lu < Emax; lu++)
-						LUc[lu] = fluids[0]->h_LU[lu + id];
-				}
-#endif
-				out
-#if DIM_X
-					<< xc << " "
-#endif
 #if DIM_Y
-					<< yc << " "
-#endif // end DIM_Y
-#if DIM_Z
-					<< zc << " "
-#endif // end DIM_Z
-#if DIM_X
-					<< uc << " "
+	//[2]y
+	MARCO_COUTLOOP
+	{
+		real_t tmp = (DIM_Y) ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner) + _DF(0.5)) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin : 0.0;
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	//[3]v
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.v[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
 #endif
-#if DIM_Y
-					<< vc << " "
-#endif // end DIM_Y
 #if DIM_Z
-					<< wc << " "
-#endif // end DIM_Z
-	   // << cc << " "
-					<< pc << " " << rhoc << " ";
-#if COP
-				out << fluids[0]->h_fstate.gamma[id] << " " << fluids[0]->h_fstate.T[id]; //
-				for (int n = 0; n < NUM_SPECIES; n++)
-					out << " " << fluids[0]->h_fstate.y[n + NUM_SPECIES * id]; // h_fstate.y[n][id];
+	//[4]z
+	MARCO_COUTLOOP
+	{
+		real_t tmp = (DIM_Z) ? (i - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner) + _DF(0.5)) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin : 0.0;
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	//[5]w
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.w[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
 #endif
-#ifdef ESTIM_NAN
-				if (error)
-				{
+	//[6]V-c
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.c[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	//[7]rho
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.rho[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	//[8]P
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.p[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	//[9]Gamma
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.gamma[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	//[10]T
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.T[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
 
-					for (size_t u = 0; u < Emax; u++)
-						out << Uc[u] << " ";
-					for (size_t u1 = 0; u1 < Emax; u1++)
-						out << U1c[u1] << " ";
-					for (size_t lu = 0; lu < Emax; lu++)
-						out << LUc[lu] << " ";
-				}
-#endif
-				out << "\n";
+#ifdef COP
+	//[COP]yii
+	for (int ii = 0; ii < NUM_SPECIES; ii++)
+	{
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 			}
-	out.close();
+	}
+#endif // end  COP
+	outFile << "  </AppendedData>" << std::endl;
+	outFile << "</VTKFile>" << std::endl;
+	outFile.close();
+	}
+}
+
+void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
+{ // compressible out: output dirs less than caculate dirs
+	int Cnbvar = 9;
+#ifdef COP
+	Cnbvar += (2 + NUM_SPECIES);
+#endif
+
+	int *OutRanks = new int[nranks];
+	real_t temx = _DF(0.5) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin;
+	real_t temy = _DF(0.5) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin;
+	real_t temz = _DF(0.5) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin;
+	real_t posx = -Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner);
+	real_t posy = -Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner);
+	real_t posz = -Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner);
+
+	////method 1/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	GetCPT_OutRanks(OutRanks, rank, nranks);
+	if (OutRanks[rank] >= 0)
+	{
+		real_t *OutPoint = new real_t[Cnbvar]; // OutPoint: each point;
+		std::string outputPrefix = INI_SAMPLE;
+		std::string file_name = Ss.OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".plt";
+		std::ofstream out(file_name);
+		// // defining header for tecplot(plot software)
+		out << "title='" << outputPrefix << "'\n"
+			<< "variables=x, y, z, rho, p, c, u, v, w";
+#ifdef COP
+		out << ", gamma, T";
+		for (size_t n = 0; n < NUM_SPECIES; n++)
+			out << ", Y(" << Ss.species_name[n] << ")";
+#endif
+		out << "\n";
+		out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "_Rank_" << std::to_string(rank) << "', i= " << CPT.nbX << ", j= " << CPT.nbY << ", k= " << CPT.nbZ << ", SOLUTIONTIME= " << timeFormat.str() << "\n";
+
+		for (int k = CPT.minZ; k < CPT.maxZ; k++)
+			for (int j = CPT.minY; j < CPT.maxY; j++)
+				for (int i = CPT.minX; i < CPT.maxX; i++)
+				{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
+					OutPoint[0] = (DIM_X) ? (pos_x)*Ss.BlSz.dx + temx : 0.0;
+					OutPoint[1] = (DIM_Y) ? (pos_y)*Ss.BlSz.dy + temy : 0.0;
+					OutPoint[2] = (DIM_Z) ? (pos_z)*Ss.BlSz.dz + temz : 0.0;
+					OutPoint[3] = fluids[0]->h_fstate.rho[id];
+					OutPoint[4] = fluids[0]->h_fstate.p[id];
+					OutPoint[5] = fluids[0]->h_fstate.c[id];
+					OutPoint[6] = fluids[0]->h_fstate.u[id];
+					OutPoint[7] = fluids[0]->h_fstate.v[id];
+					OutPoint[8] = fluids[0]->h_fstate.w[id];
+#if COP
+					OutPoint[9] = fluids[0]->h_fstate.gamma[id];
+					OutPoint[10] = fluids[0]->h_fstate.T[id];
+					for (int n = 0; n < NUM_SPECIES; n++)
+						OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];
+#endif
+
+					out << OutPoint[0] << " " << OutPoint[1] << " " << OutPoint[2] << " "; // x, y, z
+					out << OutPoint[3] << " " << OutPoint[4] << " " << OutPoint[5] << " "; // rho, p, c
+					out << OutPoint[6] << " " << OutPoint[7] << " " << OutPoint[8] << " "; // u, v, w
+#if COP
+					out << OutPoint[9] << " " << OutPoint[10] << " "; // gamma,T
+					for (int n = 0; n < NUM_SPECIES; n++)
+						out << OutPoint[Cnbvar - NUM_SPECIES] << " "; // Yi
+#endif
+					out << "\n";
+				}
+		out.close();
+		free(OutPoint);
+	}
+
+	////method 2/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// CPT.minX = 0;
+	// CPT.minY = 0;
+	// CPT.minZ = 0;
+	// CPT.nbX = Ss.OutDIRX ? VTI.nbX : 1;
+	// CPT.nbY = Ss.OutDIRY ? VTI.nbY : 1;
+	// CPT.nbZ = Ss.OutDIRZ ? VTI.nbZ : 1;
+	// CPT.maxX = CPT.minX + CPT.nbX;
+	// CPT.maxY = CPT.minY + CPT.nbY;
+	// CPT.maxZ = CPT.minZ + CPT.nbZ;
+	//////////////////////////////////////////////////
+	// real_t *OutData = new real_t[CPT.nbX * CPT.nbY * CPT.nbZ * Cnbvar];// OutData: all points to be output of one rank
+	// 	for (int k = VTI.minZ; k < VTI.maxZ; k++)
+	// 		for (int j = VTI.minY; j < VTI.maxY; j++)
+	// 			for (int i = VTI.minX; i < VTI.maxX; i++)
+	// 			{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
+	// 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+	// 				int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
+	// 				OutPoint[0] = (DIM_X) ? (pos_x)*Ss.BlSz.dx + temx : 0.0;
+	// 				OutPoint[1] = (DIM_Y) ? (pos_y)*Ss.BlSz.dy + temy : 0.0;
+	// 				OutPoint[2] = (DIM_Z) ? (pos_z)*Ss.BlSz.dz + temz : 0.0;
+	// 				OutPoint[3] = fluids[0]->h_fstate.rho[id];
+	// 				OutPoint[4] = fluids[0]->h_fstate.p[id];
+	// 				OutPoint[5] = fluids[0]->h_fstate.c[id];
+	// 				OutPoint[6] = fluids[0]->h_fstate.u[id];
+	// 				OutPoint[7] = fluids[0]->h_fstate.v[id];
+	// 				OutPoint[8] = fluids[0]->h_fstate.w[id];
+	// #if COP
+	// 				OutPoint[9] = fluids[0]->h_fstate.gamma[id];
+	// 				OutPoint[10] = fluids[0]->h_fstate.T[id];
+	// 				for (int n = 0; n < NUM_SPECIES; n++)
+	// 					OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];
+	// #endif
+	// 				Out1 = ((!Ss.OutDIRX) && (pos_x == Ss.outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
+	// 				Out2 = ((!Ss.OutDIRY) && (pos_y == Ss.outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
+	// 				Out3 = ((!Ss.OutDIRZ) && (pos_z == Ss.outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
+	// 				int ii = Out1 ? 0 : i - Ss.BlSz.Bwidth_X, jj = Out2 ? 0 : j - Ss.BlSz.Bwidth_Y, kk = Out3 ? 0 : k - Ss.BlSz.Bwidth_Z;
+	// 				int id_out = (CPT.nbX * CPT.nbY * kk + CPT.nbX * jj + ii) * Cnbvar;
+	// 				if (Out1 || Out2 || Out3)
+	// 				{
+	// 					if_outrank = rank;
+	// 					memcpy(&(OutData[id_out]), OutPoint, Cnbvar * sizeof(real_t)); // rank==0
+	// 				}
+	// 			}
+	// 	free(OutPoint);
+
+	// #ifdef USE_MPI
+	// 	Ss.mpiTrans->communicator->allGather(&(if_outrank), 1, mpiUtils::MpiComm::INT, OutRanks, 1, mpiUtils::MpiComm::INT);
+	// 	// std::cout << "OutRanks[rank], recvcounts[rank], displs[rank]= " << OutRanks[rank] << " of rank: " << rank << std::endl; //<< ", " << recvcounts[rank] << ", " << displs[rank]
+	// #endif
+	// 	if (OutRanks[rank] >= 0)
+	// 	{
+	// 		std::string outputPrefix = INI_SAMPLE;
+	// 		std::string file_name = Ss.OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".plt";
+	// 		std::ofstream out(file_name);
+	// 		// // defining header for tecplot(plot software)
+	// 		out << "title='" << outputPrefix << "'\n"
+	// 			<< "variables=x, y, z, rho, p, c, u, v, w";
+	// #ifdef COP
+	// 		out << ", gamma, T";
+	// 		for (size_t n = 0; n < NUM_SPECIES; n++)
+	// 			out << ", Y(" << Ss.species_name[n] << ")";
+	// #endif
+	// 		out << "\n";
+	// 		out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << CPT.nbX << ", j= " << CPT.nbY << ", k= " << CPT.nbZ << ", SOLUTIONTIME= " << timeFormat.str() << "\n";
+
+	// 		for (int k = CPT.minZ; k < CPT.nbZ; k++)
+	// 			for (int j = CPT.minY; j < CPT.nbY; j++)
+	// 				for (int i = CPT.minX; i < CPT.nbX; i++)
+	// 				{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
+	// 					int id_out = (CPT.nbX * CPT.nbY * k + CPT.nbX * j + i) * Cnbvar;
+
+	// 					out << OutData[id_out + 0] << " " << OutData[id_out + 1] << " " << OutData[id_out + 2] << " "; // x, y, z
+	// 					out << OutData[id_out + 3] << " " << OutData[id_out + 4] << " " << OutData[id_out + 5] << " "; // rho, p, c
+	// 					out << OutData[id_out + 6] << " " << OutData[id_out + 7] << " " << OutData[id_out + 8] << " "; // u, v, w
+	// #if COP
+	// 					out << OutData[id_out + 9] << " " << OutData[id_out + 10] << " "; // gamma,T
+	// 					for (int n = 0; n < NUM_SPECIES; n++)
+	// 						out << OutData[id_out + Cnbvar - NUM_SPECIES] << " "; // Yi
+	// #endif
+	// 					out << "\n";
+	// 				}
+	// 		out.close();
+	// 	}
+	// 	free(OutData);
 }
