@@ -1,17 +1,21 @@
 #pragma once
 
 #include "global_class.h"
+#include "marco.h"
+
+const real_t _six = _DF(1.0) / _DF(6.0);
 // TODO: NO std::cmath functions used if schemes function referenced, use sycl::math_function<real_t>
 
+// // low order
 inline real_t minmod(real_t r);
 inline real_t van_Leer(real_t r);
 inline real_t van_Albada(real_t r);
 inline void MUSCL(real_t p[4], real_t &LL, real_t &RR, int flag);
 inline real_t KroneckerDelta(const int i, const int j);
-// schemes
+// // upwind schemes
 inline real_t upwind_P(real_t *f, real_t delta);
 inline real_t upwind_M(real_t *f, real_t delta);
-// 5th-upwind
+// // 5th-upwind
 inline real_t linear_5th_P(real_t *f, real_t delta);
 inline real_t linear_5th_M(real_t *f, real_t delta);
 inline real_t linear_2th(real_t *f, real_t delta);
@@ -21,16 +25,18 @@ inline real_t linear_3rd_P(real_t *f, real_t delta);
 inline real_t linear_3rd_M(real_t *f, real_t delta);
 inline real_t du_upwind5(real_t *f, real_t delta);
 inline real_t f2_upwind5(real_t *f, real_t delta);
-// original weno
+// // original weno
 inline real_t weno5_P(real_t *f, real_t delta);
 inline real_t weno5_M(real_t *f, real_t delta);
-inline real_t weno5old_P(real_t *f, real_t delta);
-inline real_t weno5old_M(real_t *f, real_t delta);
+inline real_t weno5old_GPU(real_t *f, real_t *m);
+// inline real_t weno5old_P(real_t *f, real_t delta);
+// inline real_t weno5old_M(real_t *f, real_t delta);
 inline real_t weno7_P(real_t *f, real_t delta);
 inline real_t weno7_M(real_t *f, real_t delta);
-// 6th-order weno
-inline real_t WENOCU6_P(real_t *f, real_t delta);
-inline real_t WENOCU6_M(real_t *f, real_t delta);
+// // 6th-order weno
+inline real_t WENOCU6_GPU(real_t *f, real_t *m, real_t delta);
+// inline real_t WENOCU6_P(real_t *f, real_t delta);
+// inline real_t WENOCU6_M(real_t *f, real_t delta);
 inline real_t WENOCU6M1_P(real_t *f, real_t delta);
 inline real_t WENOCU6M1_M(real_t *f, real_t delta);
 inline real_t WENOCU6M2_P(real_t *f, real_t delta);
@@ -39,19 +45,18 @@ inline real_t TENO5_P(real_t *f, real_t delta);
 inline real_t TENO5_M(real_t *f, real_t delta);
 inline real_t TENO6_OPT_P(real_t *f, real_t delta);
 inline real_t TENO6_OPT_M(real_t *f, real_t delta);
-// wenoZ
+// // wenoZ
 inline real_t weno5Z_P(real_t *f, real_t delta);
 inline real_t weno5Z_M(real_t *f, real_t delta);
 inline real_t weno7Z_P(real_t *f, real_t delta);
 inline real_t weno7Z_M(real_t *f, real_t delta);
-// WENO-AO
+// // WENO-AO
 inline real_t WENOAO53_P(real_t *f, real_t delta);
 inline real_t WENOAO53_M(real_t *f, real_t delta);
 inline real_t WENOAO73_P(real_t *f, real_t delta);
 inline real_t WENOAO73_M(real_t *f, real_t delta);
 inline real_t WENOAO753_P(real_t *f, real_t delta);
 inline real_t WENOAO753_M(real_t *f, real_t delta);
-
 inline real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda);
 inline real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda);
 
@@ -336,101 +341,167 @@ inline real_t weno5_M(real_t *f, real_t delta)
  * @param delta
  * @return real_t
  */
-inline real_t weno5old_P(real_t *f, real_t delta)
+inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, const real_t v4, const real_t v5)
+{
+    real_t a1, a2, a3;
+    real_t dtwo = _DF(2.0), dtre = _DF(3.0);
+    a1 = v1 - dtwo * v2 + v3;
+    real_t s1 = _DF(13.0) * a1 * a1;
+    a1 = v1 - _DF(4.0) * v2 + dtre * v3;
+    s1 += dtre * a1 * a1;
+    a1 = v2 - dtwo * v3 + v4;
+    real_t s2 = _DF(13.0) * a1 * a1;
+    a1 = v2 - v4;
+    s2 += dtre * a1 * a1;
+    a1 = v3 - dtwo * v4 + v5;
+    real_t s3 = _DF(13.0) * a1 * a1;
+    a1 = dtre * v3 - _DF(4.0) * v4 + v5;
+    s3 += dtre * a1 * a1;
+
+    real_t tol = _DF(1.0e-6);
+    a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+    a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+    a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+
+    real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
+
+    a1 = a1 * tw1;
+    a2 = a2 * tw1;
+    a3 = a3 * tw1;
+
+    s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
+    s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
+    s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
+
+    return (s1 + s2 + s3); /// _DF(6.0)
+}
+
+inline real_t weno5old_GPU(real_t *f, real_t *m)
 {
     int k;
-    real_t v1, v2, v3, v4, v5, a1, a2, a3;
-    real_t dtwo = _DF(2.0), dtre = _DF(3.0);
-    // assign value to v1, v2,...
+    real_t v1, v2, v3, v4, v5, temf, temm;
+    // ff
     k = 0;
     v1 = *(f + k - 2);
     v2 = *(f + k - 1);
     v3 = *(f + k);
     v4 = *(f + k + 1);
     v5 = *(f + k + 2);
-
-    a1 = v1 - dtwo * v2 + v3;
-    real_t s1 = _DF(13.0) * a1 * a1;
-    a1 = v1 - _DF(4.0) * v2 + dtre * v3;
-    s1 += dtre * a1 * a1;
-    a1 = v2 - dtwo * v3 + v4;
-    real_t s2 = _DF(13.0) * a1 * a1;
-    a1 = v2 - v4;
-    s2 += dtre * a1 * a1;
-    a1 = v3 - dtwo * v4 + v5;
-    real_t s3 = _DF(13.0) * a1 * a1;
-    a1 = dtre * v3 - _DF(4.0) * v4 + v5;
-    s3 += dtre * a1 * a1;
-
-    real_t tol = _DF(1.0e-6);
-    a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
-    a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
-    a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
-
-    real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
-
-    a1 = a1 * tw1;
-    a2 = a2 * tw1;
-    a3 = a3 * tw1;
-
-    s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
-    s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
-    s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
-
-    return (s1 + s2 + s3); /// _DF(6.0)
-}
-
-/**
- * @brief the 5th WENO Scheme
- *
- * @param f
- * @param delta
- * @return real_t
- */
-
-inline real_t weno5old_M(real_t *f, real_t delta)
-{
-    int k;
-    real_t v1, v2, v3, v4, v5, a1, a2, a3;
-    real_t dtwo = _DF(2.0), dtre = _DF(3.0);
-    // assign value to v1, v2,...
+    temf = weno5old_BODY(v1, v2, v3, v4, v5);
+    // mm
     k = 1;
-    v1 = *(f + k + 2);
-    v2 = *(f + k + 1);
-    v3 = *(f + k);
-    v4 = *(f + k - 1);
-    v5 = *(f + k - 2);
+    v1 = *(m + k + 2);
+    v2 = *(m + k + 1);
+    v3 = *(m + k);
+    v4 = *(m + k - 1);
+    v5 = *(m + k - 2);
+    temm = weno5old_BODY(v1, v2, v3, v4, v5);
 
-    a1 = v1 - dtwo * v2 + v3;
-    real_t s1 = _DF(13.0) * a1 * a1;
-    a1 = v1 - _DF(4.0) * v2 + dtre * v3;
-    s1 += dtre * a1 * a1;
-    a1 = v2 - dtwo * v3 + v4;
-    real_t s2 = _DF(13.0) * a1 * a1;
-    a1 = v2 - v4;
-    s2 += dtre * a1 * a1;
-    a1 = v3 - dtwo * v4 + v5;
-    real_t s3 = _DF(13.0) * a1 * a1;
-    a1 = dtre * v3 - _DF(4.0) * v4 + v5;
-    s3 += dtre * a1 * a1;
-
-    real_t tol = _DF(1.0e-6);
-    a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
-    a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
-    a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
-
-    real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
-
-    a1 = a1 * tw1;
-    a2 = a2 * tw1;
-    a3 = a3 * tw1;
-
-    s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
-    s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
-    s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
-
-    return (s1 + s2 + s3); /// _DF(6.0)
+    return (temf + temm) * _six;
 }
+
+// /**
+//  * @brief the 5th WENO Scheme
+//  *
+//  * @param f
+//  * @param delta
+//  * @return real_t
+//  */
+// inline real_t weno5old_P(real_t *f, real_t delta)
+// {
+//     int k;
+//     real_t v1, v2, v3, v4, v5, a1, a2, a3;
+//     real_t dtwo = _DF(2.0), dtre = _DF(3.0);
+//     // assign value to v1, v2,...
+//     k = 0;
+//     v1 = *(f + k - 2);
+//     v2 = *(f + k - 1);
+//     v3 = *(f + k);
+//     v4 = *(f + k + 1);
+//     v5 = *(f + k + 2);
+
+//     a1 = v1 - dtwo * v2 + v3;
+//     real_t s1 = _DF(13.0) * a1 * a1;
+//     a1 = v1 - _DF(4.0) * v2 + dtre * v3;
+//     s1 += dtre * a1 * a1;
+//     a1 = v2 - dtwo * v3 + v4;
+//     real_t s2 = _DF(13.0) * a1 * a1;
+//     a1 = v2 - v4;
+//     s2 += dtre * a1 * a1;
+//     a1 = v3 - dtwo * v4 + v5;
+//     real_t s3 = _DF(13.0) * a1 * a1;
+//     a1 = dtre * v3 - _DF(4.0) * v4 + v5;
+//     s3 += dtre * a1 * a1;
+
+//     real_t tol = _DF(1.0e-6);
+//     a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+//     a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+//     a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+
+//     real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
+
+//     a1 = a1 * tw1;
+//     a2 = a2 * tw1;
+//     a3 = a3 * tw1;
+
+//     s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
+//     s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
+//     s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
+
+//     return (s1 + s2 + s3); /// _DF(6.0)
+// }
+
+// /**
+//  * @brief the 5th WENO Scheme
+//  *
+//  * @param f
+//  * @param delta
+//  * @return real_t
+//  */
+
+// inline real_t weno5old_M(real_t *f, real_t delta)
+// {
+//     int k;
+//     real_t v1, v2, v3, v4, v5, a1, a2, a3;
+//     real_t dtwo = _DF(2.0), dtre = _DF(3.0);
+//     // assign value to v1, v2,...
+//     k = 1;
+//     v1 = *(f + k + 2);
+//     v2 = *(f + k + 1);
+//     v3 = *(f + k);
+//     v4 = *(f + k - 1);
+//     v5 = *(f + k - 2);
+
+//     a1 = v1 - dtwo * v2 + v3;
+//     real_t s1 = _DF(13.0) * a1 * a1;
+//     a1 = v1 - _DF(4.0) * v2 + dtre * v3;
+//     s1 += dtre * a1 * a1;
+//     a1 = v2 - dtwo * v3 + v4;
+//     real_t s2 = _DF(13.0) * a1 * a1;
+//     a1 = v2 - v4;
+//     s2 += dtre * a1 * a1;
+//     a1 = v3 - dtwo * v4 + v5;
+//     real_t s3 = _DF(13.0) * a1 * a1;
+//     a1 = dtre * v3 - _DF(4.0) * v4 + v5;
+//     s3 += dtre * a1 * a1;
+
+//     real_t tol = _DF(1.0e-6);
+//     a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
+//     a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
+//     a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+
+//     real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
+
+//     a1 = a1 * tw1;
+//     a2 = a2 * tw1;
+//     a3 = a3 * tw1;
+
+//     s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
+//     s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
+//     s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
+
+//     return (s1 + s2 + s3); /// _DF(6.0)
+// }
 
 // /**
 //  * @brief the 5th WENO Scheme
@@ -1093,111 +1164,194 @@ inline real_t WENOAO753_M(real_t *f, real_t delta)
     return (w_ao_7 / 2.0e-16) * (polynomial_7 - (1 - 2.0e-16) * polynomial_5) + w_ao_5 * polynomial_5;
 }
 
-inline real_t WENOCU6_P(real_t *f, real_t delta)
-{
-    // assign value to v1, v2,...
-    int k = 0;
-    real_t v1 = *(f + k - 2);
-    real_t v2 = *(f + k - 1);
-    real_t v3 = *(f + k);
-    real_t v4 = *(f + k + 1);
-    real_t v5 = *(f + k + 2);
-    real_t v6 = *(f + k + 3);
+const real_t _ohtz = _DF(1.0) / _DF(120.0);
+const real_t _ohff = _DF(1.0) / _DF(144.0);
+const real_t _ftss = _DF(1.0) / _DF(5760.0);
+// const real_t _twfr = _DF(1.0) / _DF(24.0); // defined in marco.h
+// const real_t _sxtn = _DF(1.0) / _DF(16.0); // defined in marco.h
+const real_t wu6a2a2 = _DF(13.0) / _DF(3.0), wu6a3a3 = _DF(3129.0) / _DF(80.0);
+const real_t wu6a4a4 = _DF(87617.0) / _DF(140.0), wu6a3a5 = _DF(14127.0) / _DF(224.0), wu6a5a5 = _DF(252337135.0) / _DF(16128.0);
 
-    // smoothness indicator
-    real_t epsilon = 1.e-8 * delta * delta;
-    real_t s11 = v1 - 2.0 * v2 + v3;
-    real_t s12 = v1 - 4.0 * v2 + 3.0 * v3;
-    real_t s1 = 13.0 * s11 * s11 + 3.0 * s12 * s12;
-    real_t s21 = v2 - 2.0 * v3 + v4;
+inline real_t WENOCU6_BODYGPU(const real_t v1, const real_t v2, const real_t v3, const real_t v4, const real_t v5, const real_t v6, const real_t epsilon)
+{ // smoothness indicator // real_t epsilon = 1.e-8 * delta * delta;
+    real_t s11 = v1 - _DF(2.0) * v2 + v3;
+    real_t s12 = v1 - _DF(4.0) * v2 + _DF(3.0) * v3;
+    real_t s1 = _DF(13.0) * s11 * s11 + _DF(3.0) * s12 * s12;
+    real_t s21 = v2 - _DF(2.0) * v3 + v4;
     real_t s22 = v2 - v4;
-    real_t s2 = 13.0 * s21 * s21 + 3.0 * s22 * s22;
-    real_t s31 = v3 - 2.0 * v4 + v5;
-    real_t s32 = 3.0 * v3 - 4.0 * v4 + v5;
-    real_t s3 = 13.0 * s31 * s31 + 3.0 * s32 * s32;
-    real_t tau61 = (259.0 * v6 - 1895.0 * v5 + 6670.0 * v4 - 2590.0 * v3 - 2785.0 * v2 + 341.0 * v1) / 5760.0;
-    real_t tau62 = -(v5 - 12.0 * v4 + 22.0 * v3 - 12.0 * v2 + v1) / 16.0;
-    real_t tau63 = -(7.0 * v6 - 47.0 * v5 + 94.0 * v4 - 70.0 * v3 + 11.0 * v2 + 5.0 * v1) / 144.0;
-    real_t tau64 = (v5 - 4.0 * v4 + 6.0 * v3 - 4.0 * v2 + v1) / 24.0;
-    real_t tau65 = -(-v6 + 5.0 * v5 - 10.0 * v4 + 10.0 * v3 - 5.0 * v2 + v1) / 120.0;
-    real_t a1a1 = 1.0, a2a2 = 13.0 / 3.0, a1a3 = 0.5, a3a3 = 3129.0 / 80.0, a2a4 = 21.0 / 5.0;
-    real_t a1a5 = 1.0 / 8.0, a4a4 = 87617.0 / 140.0, a3a5 = 14127.0 / 224.0, a5a5 = 252337135.0 / 16128.0;
-    real_t s6 = (tau61 * tau61 * a1a1 + tau62 * tau62 * a2a2 + tau61 * tau63 * a1a3 + tau63 * tau63 * a3a3 + tau62 * tau64 * a2a4 + tau61 * tau65 * a1a5 + tau64 * tau64 * a4a4 + tau63 * tau65 * a3a5 + tau65 * tau65 * a5a5) * 12.0;
+    real_t s2 = _DF(13.0) * s21 * s21 + _DF(3.0) * s22 * s22;
+    real_t s31 = v3 - _DF(2.0) * v4 + v5;
+    real_t s32 = _DF(3.0) * v3 - _DF(4.0) * v4 + v5;
+    real_t s3 = _DF(13.0) * s31 * s31 + _DF(3.0) * s32 * s32;
+    real_t tau61 = (_DF(259.0) * v6 - _DF(1895.0) * v5 + _DF(6670.0) * v4 - _DF(2590.0) * v3 - _DF(2785.0) * v2 + _DF(341.0) * v1) * _ftss;
+    real_t tau62 = -(v5 - _DF(12.0) * v4 + _DF(22.0) * v3 - _DF(12.0) * v2 + v1) * _sxtn;
+    real_t tau63 = -(_DF(7.0) * v6 - _DF(47.0) * v5 + _DF(94.0) * v4 - _DF(70.0) * v3 + _DF(11.0) * v2 + _DF(5.0) * v1) * _ohff;
+    real_t tau64 = (v5 - _DF(4.0) * v4 + _DF(6.0) * v3 - _DF(4.0) * v2 + v1) * _twfr;
+    real_t tau65 = -(-v6 + _DF(5.0) * v5 - _DF(10.0) * v4 + _DF(10.0) * v3 - _DF(5.0) * v2 + v1) * _ohtz;
+    real_t a1a1 = _DF(1.0), a2a2 = wu6a2a2, a1a3 = _DF(0.5), a3a3 = wu6a3a3, a2a4 = _DF(4.2); // real_t a1a1 = 1.0, a2a2 = 13.0 / 3.0, a1a3 = 0.5, a3a3 = 3129.0 / 80.0, a2a4 = 21.0 / 5.0;
+    real_t a1a5 = _DF(0.125), a4a4 = wu6a4a4, a3a5 = wu6a3a5, a5a5 = wu6a5a5;                 // a1a5 = 1.0 / 8.0, a4a4 = 87617.0 / 140.0, a3a5 = 14127.0 / 224.0, a5a5 = 252337135.0 / 16128.0;
+    real_t s6 = (tau61 * tau61 * a1a1 + tau62 * tau62 * a2a2 + tau61 * tau63 * a1a3 + tau63 * tau63 * a3a3 + tau62 * tau64 * a2a4 + tau61 * tau65 * a1a5 + tau64 * tau64 * a4a4 + tau63 * tau65 * a3a5 + tau65 * tau65 * a5a5) * _DF(12.0);
 
     // weights
-    real_t s55 = (s1 + s3 + 4.0 * s2) / 6.0;
-    real_t s5 = fabs(s6 - s55);
-    real_t r0 = 20.0;
+    real_t s55 = (s1 + s3 + _DF(4.0) * s2) * _six;
+    real_t s5 = sycl::fabs<real_t>(s6 - s55);
+    real_t r0 = _DF(20.0);
     real_t r1 = r0 + s5 / (s1 + epsilon);
     real_t r2 = r0 + s5 / (s2 + epsilon);
     real_t r3 = r0 + s5 / (s3 + epsilon);
     real_t r4 = r0 + s5 / (s6 + epsilon);
-    real_t a1 = 0.05 * r1;
-    real_t a2 = 0.45 * r2;
-    real_t a3 = 0.45 * r3;
-    real_t a4 = 0.05 * r4;
-    real_t tw1 = 1.0 / (a1 + a2 + a3 + a4);
+    real_t a1 = _DF(0.05) * r1;
+    real_t a2 = _DF(0.45) * r2;
+    real_t a3 = _DF(0.45) * r3;
+    real_t a4 = _DF(0.05) * r4;
+    real_t tw1 = _DF(1.0) / (a1 + a2 + a3 + a4);
     real_t w1 = a1 * tw1;
     real_t w2 = a2 * tw1;
     real_t w3 = a3 * tw1;
     real_t w4 = a4 * tw1;
 
     // return weighted average
-    return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
+    real_t temp = _DF(0.0);
+    temp += w1 * (_DF(2.0) * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
+    temp += w2 * (-v2 + _DF(5.0) * v3 + _DF(2.0) * v4);
+    temp += w3 * (_DF(2.0) * v3 + _DF(5.0) * v4 - v5);
+    temp += w4 * (_DF(11.0) * v4 - _DF(7.0) * v5 + _DF(2.0) * v6);
+    return temp;
 }
 
 // this is WENOCU6
-inline real_t WENOCU6_M(real_t *f, real_t delta)
+inline real_t WENOCU6_GPU(real_t *f, real_t *m, real_t delta)
 {
     // assign value to v1, v2,...
-    int k = 1;
-    real_t v1 = *(f + k + 2);
-    real_t v2 = *(f + k + 1);
-    real_t v3 = *(f + k);
-    real_t v4 = *(f + k - 1);
-    real_t v5 = *(f + k - 2);
-    real_t v6 = *(f + k - 3);
+    int k = 0;
+    real_t v1, v2, v3, v4, v5, v6, temf, temm, epsilon = _DF(1.e-8) * delta * delta;
+    // f
+    v1 = *(f + k - 2);
+    v2 = *(f + k - 1);
+    v3 = *(f + k);
+    v4 = *(f + k + 1);
+    v5 = *(f + k + 2);
+    v6 = *(f + k + 3);
+    temf = WENOCU6_BODYGPU(v1, v2, v3, v4, v5, v6, epsilon);
 
-    real_t epsilon = 1.e-8 * delta * delta;
-    real_t s11 = v1 - 2.0 * v2 + v3;
-    real_t s12 = v1 - 4.0 * v2 + 3.0 * v3;
-    real_t s1 = 13.0 * s11 * s11 + 3.0 * s12 * s12;
-    real_t s21 = v2 - 2.0 * v3 + v4;
-    real_t s22 = v2 - v4;
-    real_t s2 = 13.0 * s21 * s21 + 3.0 * s22 * s22;
-    real_t s31 = v3 - 2.0 * v4 + v5;
-    real_t s32 = 3.0 * v3 - 4.0 * v4 + v5;
-    real_t s3 = 13.0 * s31 * s31 + 3.0 * s32 * s32;
-    real_t tau61 = (259.0 * v6 - 1895.0 * v5 + 6670.0 * v4 - 2590.0 * v3 - 2785.0 * v2 + 341.0 * v1) / 5760.0;
-    real_t tau62 = -(v5 - 12.0 * v4 + 22.0 * v3 - 12.0 * v2 + v1) / 16.0;
-    real_t tau63 = -(7.0 * v6 - 47.0 * v5 + 94.0 * v4 - 70.0 * v3 + 11.0 * v2 + 5.0 * v1) / 144.0;
-    real_t tau64 = (v5 - 4.0 * v4 + 6.0 * v3 - 4.0 * v2 + v1) / 24.0;
-    real_t tau65 = -(-v6 + 5.0 * v5 - 10.0 * v4 + 10.0 * v3 - 5.0 * v2 + v1) / 120.0;
-    real_t a1a1 = 1.0, a2a2 = 13.0 / 3.0, a1a3 = 0.5, a3a3 = 3129.0 / 80.0, a2a4 = 21.0 / 5.0;
-    real_t a1a5 = 1.0 / 8.0, a4a4 = 87617.0 / 140.0, a3a5 = 14127.0 / 224.0, a5a5 = 252337135.0 / 16128.0;
-    real_t s6 = (tau61 * tau61 * a1a1 + tau62 * tau62 * a2a2 + tau61 * tau63 * a1a3 + tau63 * tau63 * a3a3 + tau62 * tau64 * a2a4 + tau61 * tau65 * a1a5 + tau64 * tau64 * a4a4 + tau63 * tau65 * a3a5 + tau65 * tau65 * a5a5) * 12.0;
+    // m
+    k = 1;
+    v1 = *(m + k + 2);
+    v2 = *(m + k + 1);
+    v3 = *(m + k);
+    v4 = *(m + k - 1);
+    v5 = *(m + k - 2);
+    v6 = *(m + k - 3);
+    temm = WENOCU6_BODYGPU(v1, v2, v3, v4, v5, v6, epsilon);
 
-    // weights
-    real_t s55 = (s1 + s3 + 4.0 * s2) / 6.0;
-    real_t s5 = fabs(s6 - s55);
-    real_t r0 = 20.0;
-    real_t r1 = r0 + s5 / (s1 + epsilon);
-    real_t r2 = r0 + s5 / (s2 + epsilon);
-    real_t r3 = r0 + s5 / (s3 + epsilon);
-    real_t r4 = r0 + s5 / (s6 + epsilon);
-    real_t a1 = 0.05 * r1;
-    real_t a2 = 0.45 * r2;
-    real_t a3 = 0.45 * r3;
-    real_t a4 = 0.05 * r4;
-    real_t tw1 = 1.0 / (a1 + a2 + a3 + a4);
-    real_t w1 = a1 * tw1;
-    real_t w2 = a2 * tw1;
-    real_t w3 = a3 * tw1;
-    real_t w4 = a4 * tw1;
-
-    // return weighted average
-    return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
+    return (temf + temm) * _six;
 }
+
+// inline real_t WENOCU6_P(real_t *f, real_t delta)
+// {
+//     // assign value to v1, v2,...
+//     int k = 0;
+//     real_t v1 = *(f + k - 2);
+//     real_t v2 = *(f + k - 1);
+//     real_t v3 = *(f + k);
+//     real_t v4 = *(f + k + 1);
+//     real_t v5 = *(f + k + 2);
+//     real_t v6 = *(f + k + 3);
+
+//     // smoothness indicator
+//     real_t epsilon = 1.e-8 * delta * delta;
+//     real_t s11 = v1 - 2.0 * v2 + v3;
+//     real_t s12 = v1 - 4.0 * v2 + 3.0 * v3;
+//     real_t s1 = 13.0 * s11 * s11 + 3.0 * s12 * s12;
+//     real_t s21 = v2 - 2.0 * v3 + v4;
+//     real_t s22 = v2 - v4;
+//     real_t s2 = 13.0 * s21 * s21 + 3.0 * s22 * s22;
+//     real_t s31 = v3 - 2.0 * v4 + v5;
+//     real_t s32 = 3.0 * v3 - 4.0 * v4 + v5;
+//     real_t s3 = 13.0 * s31 * s31 + 3.0 * s32 * s32;
+//     real_t tau61 = (259.0 * v6 - 1895.0 * v5 + 6670.0 * v4 - 2590.0 * v3 - 2785.0 * v2 + 341.0 * v1) / 5760.0;
+//     real_t tau62 = -(v5 - 12.0 * v4 + 22.0 * v3 - 12.0 * v2 + v1) / 16.0;
+//     real_t tau63 = -(7.0 * v6 - 47.0 * v5 + 94.0 * v4 - 70.0 * v3 + 11.0 * v2 + 5.0 * v1) / 144.0;
+//     real_t tau64 = (v5 - 4.0 * v4 + 6.0 * v3 - 4.0 * v2 + v1) / 24.0;
+//     real_t tau65 = -(-v6 + 5.0 * v5 - 10.0 * v4 + 10.0 * v3 - 5.0 * v2 + v1) / 120.0;
+//     real_t a1a1 = 1.0, a2a2 = 13.0 / 3.0, a1a3 = 0.5, a3a3 = 3129.0 / 80.0, a2a4 = 21.0 / 5.0;
+//     real_t a1a5 = 1.0 / 8.0, a4a4 = 87617.0 / 140.0, a3a5 = 14127.0 / 224.0, a5a5 = 252337135.0 / 16128.0;
+//     real_t s6 = (tau61 * tau61 * a1a1 + tau62 * tau62 * a2a2 + tau61 * tau63 * a1a3 + tau63 * tau63 * a3a3 + tau62 * tau64 * a2a4 + tau61 * tau65 * a1a5 + tau64 * tau64 * a4a4 + tau63 * tau65 * a3a5 + tau65 * tau65 * a5a5) * 12.0;
+
+//     // weights
+//     real_t s55 = (s1 + s3 + 4.0 * s2) / 6.0;
+//     real_t s5 = fabs(s6 - s55);
+//     real_t r0 = 20.0;
+//     real_t r1 = r0 + s5 / (s1 + epsilon);
+//     real_t r2 = r0 + s5 / (s2 + epsilon);
+//     real_t r3 = r0 + s5 / (s3 + epsilon);
+//     real_t r4 = r0 + s5 / (s6 + epsilon);
+//     real_t a1 = 0.05 * r1;
+//     real_t a2 = 0.45 * r2;
+//     real_t a3 = 0.45 * r3;
+//     real_t a4 = 0.05 * r4;
+//     real_t tw1 = 1.0 / (a1 + a2 + a3 + a4);
+//     real_t w1 = a1 * tw1;
+//     real_t w2 = a2 * tw1;
+//     real_t w3 = a3 * tw1;
+//     real_t w4 = a4 * tw1;
+
+//     // return weighted average
+//     return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
+// }
+
+// // this is WENOCU6
+// inline real_t WENOCU6_M(real_t *f, real_t delta)
+// {
+//     // assign value to v1, v2,...
+//     int k = 1;
+//     real_t v1 = *(f + k + 2);
+//     real_t v2 = *(f + k + 1);
+//     real_t v3 = *(f + k);
+//     real_t v4 = *(f + k - 1);
+//     real_t v5 = *(f + k - 2);
+//     real_t v6 = *(f + k - 3);
+
+//     real_t epsilon = 1.e-8 * delta * delta;
+//     real_t s11 = v1 - 2.0 * v2 + v3;
+//     real_t s12 = v1 - 4.0 * v2 + 3.0 * v3;
+//     real_t s1 = 13.0 * s11 * s11 + 3.0 * s12 * s12;
+//     real_t s21 = v2 - 2.0 * v3 + v4;
+//     real_t s22 = v2 - v4;
+//     real_t s2 = 13.0 * s21 * s21 + 3.0 * s22 * s22;
+//     real_t s31 = v3 - 2.0 * v4 + v5;
+//     real_t s32 = 3.0 * v3 - 4.0 * v4 + v5;
+//     real_t s3 = 13.0 * s31 * s31 + 3.0 * s32 * s32;
+//     real_t tau61 = (259.0 * v6 - 1895.0 * v5 + 6670.0 * v4 - 2590.0 * v3 - 2785.0 * v2 + 341.0 * v1) / 5760.0;
+//     real_t tau62 = -(v5 - 12.0 * v4 + 22.0 * v3 - 12.0 * v2 + v1) / 16.0;
+//     real_t tau63 = -(7.0 * v6 - 47.0 * v5 + 94.0 * v4 - 70.0 * v3 + 11.0 * v2 + 5.0 * v1) / 144.0;
+//     real_t tau64 = (v5 - 4.0 * v4 + 6.0 * v3 - 4.0 * v2 + v1) / 24.0;
+//     real_t tau65 = -(-v6 + 5.0 * v5 - 10.0 * v4 + 10.0 * v3 - 5.0 * v2 + v1) / 120.0;
+//     real_t a1a1 = 1.0, a2a2 = 13.0 / 3.0, a1a3 = 0.5, a3a3 = 3129.0 / 80.0, a2a4 = 21.0 / 5.0;
+//     real_t a1a5 = 1.0 / 8.0, a4a4 = 87617.0 / 140.0, a3a5 = 14127.0 / 224.0, a5a5 = 252337135.0 / 16128.0;
+//     real_t s6 = (tau61 * tau61 * a1a1 + tau62 * tau62 * a2a2 + tau61 * tau63 * a1a3 + tau63 * tau63 * a3a3 + tau62 * tau64 * a2a4 + tau61 * tau65 * a1a5 + tau64 * tau64 * a4a4 + tau63 * tau65 * a3a5 + tau65 * tau65 * a5a5) * 12.0;
+
+//     // weights
+//     real_t s55 = (s1 + s3 + 4.0 * s2) / 6.0;
+//     real_t s5 = fabs(s6 - s55);
+//     real_t r0 = 20.0;
+//     real_t r1 = r0 + s5 / (s1 + epsilon);
+//     real_t r2 = r0 + s5 / (s2 + epsilon);
+//     real_t r3 = r0 + s5 / (s3 + epsilon);
+//     real_t r4 = r0 + s5 / (s6 + epsilon);
+//     real_t a1 = 0.05 * r1;
+//     real_t a2 = 0.45 * r2;
+//     real_t a3 = 0.45 * r3;
+//     real_t a4 = 0.05 * r4;
+//     real_t tw1 = 1.0 / (a1 + a2 + a3 + a4);
+//     real_t w1 = a1 * tw1;
+//     real_t w2 = a2 * tw1;
+//     real_t w3 = a3 * tw1;
+//     real_t w4 = a4 * tw1;
+
+//     // return weighted average
+//     return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
+// }
 
 inline real_t WENOCU6M1_P(real_t *f, real_t delta)
 {
