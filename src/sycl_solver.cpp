@@ -224,7 +224,7 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 	Ss.mpiTrans->communicator->synchronize();
 	error_times_patched = Etemp;
 #endif
-	if (error_times_patched > 100)
+	if (error_times_patched > 10)
 	{
 		std::cout << "Too many NAN error times captured to patch, return error.\n";
 		return true;
@@ -499,7 +499,11 @@ void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t
 
 	CopyDataFromDevice(q, error); // only copy when output
 
-	if ((!(Ss.OutDIRX && Ss.OutDIRY && Ss.OutDIRZ)) && !error)
+	if (error)
+	{ // only out pvti and vti error files
+		Output_vti(rank, timeFormat, stepFormat, rankFormat, true);
+	}
+	else if (!(Ss.OutDIRX && Ss.OutDIRY && Ss.OutDIRZ))
 	{
 #ifdef OUT_PLT
 		Output_cplt(rank, timeFormat, stepFormat, rankFormat);
@@ -524,35 +528,22 @@ void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t
 
 void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
 {
-	int xmin, ymin, xmax, ymax, zmin, zmax, mx, my, mz;
-	real_t dx, dy, dz;
-
+	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
+	real_t dx = 0.0, dy = 0.0, dz = 0.0;
 #if DIM_X
 	xmin = Ss.BlSz.myMpiPos_x * VTI.nbX;
 	xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX;
 	dx = Ss.BlSz.dx;
-#else
-	xmin = 0;
-	xmax = 0;
-	dx = 0.0;
 #endif // DIM_X
 #if DIM_Y
 	ymin = Ss.BlSz.myMpiPos_y * VTI.nbY;
 	ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY;
 	dy = Ss.BlSz.dy;
-#else
-	ymin = 0;
-	ymax = 0;
-	dy = 0.0;
 #endif // DIM_Y
 #if DIM_Z
 	zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ);
 	zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ);
 	dz = Ss.BlSz.dz;
-#else
-	zmin = 0;
-	zmax = 0;
-	dz = 0.0;
 #endif // DIM_Z
 
 	// Init var names

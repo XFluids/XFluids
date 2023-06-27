@@ -58,10 +58,10 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 #endif // end DIM_Z
     // // Ini bubble
     dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
-    xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
-    xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
-    xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
-    xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
+    xi[NUM_SPECIES - 1] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
+    xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 1]);                // H2
+    xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 1]);               // O2
+    xi[NUM_SPECIES - 2] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 1]); // Xe
 
     // // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
     // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;

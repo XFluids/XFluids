@@ -61,7 +61,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q));
-	d_eigen_local = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_eigen_local_x = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_eigen_local_y = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_eigen_local_z = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));
@@ -72,7 +74,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
-	long double MemMbSize = (5.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
+	long double MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
 #ifdef ESTIM_NAN
 #if DIM_X
 	d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
@@ -244,10 +246,10 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 
 	if (flag == 0)
 		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local, d_eigen_l, d_eigen_r);
+			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z, d_eigen_l, d_eigen_r);
 	else
 		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local, d_eigen_l, d_eigen_r);
+			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z, d_eigen_l, d_eigen_r);
 }
 
 bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)

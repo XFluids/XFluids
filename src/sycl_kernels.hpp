@@ -23,11 +23,11 @@ extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offs
 #endif
 #ifdef ERROR_PATCH
     real_t theta = _DF(1.0);
-#if DIM_X
-    int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 6)) * Emax;
-    int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 6)) * Emax;
-    theta *= _DF(0.5);
-#endif
+// #if DIM_X
+//     int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 6)) * Emax;
+//     int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 6)) * Emax;
+//     theta *= _DF(0.5);
+// #endif
 #if DIM_Y
     int id_ym = (Xmax * Ymax * k + Xmax * (j - 6) + i) * Emax;
     int id_yp = (Xmax * Ymax * k + Xmax * (j + 6) + i) * Emax;
@@ -51,9 +51,9 @@ extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offs
             error_pos[Emax + 2] = k;
 #ifdef ERROR_PATCH
             UI[ii + id] = _DF(0.0);
-#if DIM_X
-            UI[ii + id] += theta * (UI[ii + id_xm] + UI[ii + id_xp]);
-#endif
+// #if DIM_X
+//             UI[ii + id] += theta * (UI[ii + id_xm] + UI[ii + id_xp]);
+// #endif
 #if DIM_Y
             UI[ii + id] += theta * (UI[ii + id_ym] + UI[ii + id_yp]);
 #endif

@@ -77,7 +77,7 @@ public:
     int error_patched_times;
     real_t *uvw_c_max;
     real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
-    real_t *d_eigen_local, *d_eigen_l, *d_eigen_r;
+    real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
     FlowData d_fstate, h_fstate;
 

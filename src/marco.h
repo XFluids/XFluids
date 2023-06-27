@@ -95,7 +95,38 @@
     /*add support while c2<0 use c2 Refed in https://doi.org/10.1006/jcph.1996.5622 */                                                                                                                                                       \
     real_t c2w = sycl::step(c2, _DF(0.0)); /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/                                                                                                                                  \
     c2 = Gamma0 * _P * _rho * c2w + (_DF(1.0) - c2w) * c2;                                                                                                                                                                                   \
-    MARCO_ERROR_OUT();                                                                                                                                                                                                                       \
+    MARCO_ERROR_OUT();
+
+/**
+ * get c2 #ifdef COP inside Reconstructflux
+ */
+#define MARCO_COPC2_ROB()                                                                                                                       \
+    real_t _yi[NUM_SPECIES], Ri[NUM_SPECIES], _hi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP], b1 = _DF(0.0), b3 = _DF(0.0); \
+    for (size_t n = 0; n < NUM_SPECIES; n++)                                                                                                    \
+    {                                                                                                                                           \
+        hi_l[n] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id_l], thermal.Ri[n], n);                                                            \
+        hi_r[n] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id_r], thermal.Ri[n], n);                                                            \
+        Ri[n] = Ru * thermal._Wi[n];                                                                                                            \
+    }                                                                                                                                           \
+    real_t *yi_l = &(y[NUM_SPECIES * id_l]), *yi_r = &(y[NUM_SPECIES * id_r]);                                                                  \
+    for (size_t ii = 0; ii < NUM_SPECIES; ii++)                                                                                                 \
+    {                                                                                                                                           \
+        _yi[ii] = (yi_l[ii] + D * yi_r[ii]) * D1;                                                                                               \
+        _hi[ii] = (hi_l[ii] + D * hi_r[ii]) * D1;                                                                                               \
+    }                                                                                                                                           \
+    real_t gamma_l = get_CopGamma(thermal, yi_l, T[id_l]);                                                                                      \
+    real_t gamma_r = get_CopGamma(thermal, yi_r, T[id_r]);                                                                                      \
+    real_t Cp_l = get_CopCp(thermal, yi_l, T[id_l]);                                                                                            \
+    real_t Cp_r = get_CopCp(thermal, yi_r, T[id_r]);                                                                                            \
+    real_t R_l = get_CopR(thermal._Wi, yi_l);                                                                                                   \
+    real_t R_r = get_CopR(thermal._Wi, yi_r);                                                                                                   \
+    real_t Gamma0 = get_RoeAverage(gamma_l, gamma_r, D, D1);                                                                                    \
+    real_t _R = get_RoeAverage(R_l, R_r, D, D1);                                                                                                \
+    real_t _Cp = get_RoeAverage(Cp_l, Cp_r, D, D1);                                                                                             \
+    real_t _T = get_RoeAverage(T[id_l], T[id_r], D, D1);                                                                                        \
+    real_t c2 = get_CopC2(z, b1, b3, Ri, _yi, _hi, Gamma0, _R, _Cp, _T);                                                                        \
+    MARCO_ERROR_OUT();
+
 /**                                                                                                                                                                                                                                          \
  * get c2 #else COP                                                                                                                                                                                                                          \
  */
@@ -114,7 +145,8 @@
     real_t b1 = (Gamma0 - _DF(1.0)) / c2;
 
 #ifdef COP
-#define MARCO_GETC2() MARCO_COPC2();
+#define MARCO_GETC2() MARCO_COPC2_ROB();
+// MARCO_COPC2();
 #else
 #define MARCO_GETC2() MARCO_NOCOPC2();
 #endif // end COP

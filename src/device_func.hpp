@@ -441,23 +441,40 @@ real_t SoundSpeedMultiSpecies(real_t *zi, real_t &b1, real_t &b3, real_t *_Yi, r
 }
 
 /**
- * @brief calculate c^2 of the mixture at given point
+ * @brief calculate c^2, b1, b3 of the mixture at given point
+ * ref.High Accuracy Numerical Methods for Thermally Perfect Gas Flows with Chemistry.https://doi.org/10.1006/jcph.1996.5622
  * // NOTE: realted with yn=yi[0] or yi[N] : hi[] Ri[]
  */
-real_t get_CopC2(real_t z[NUM_SPECIES], real_t const Ri[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const hi[NUM_SPECIES], const real_t gamma, const real_t h, const real_t T)
+real_t get_CopC2(real_t z[NUM_COP], real_t &b1, real_t &b3, real_t const Ri[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const hi[NUM_SPECIES], const real_t gamma, const real_t R, const real_t Cp, const real_t T)
 {
-	real_t Sum_dpdrhoi = _DF(0.0);				   // Sum_dpdrhoi:first of c2,存在累加项
-	real_t _dpdrhoi[NUM_SPECIES];
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-	{
-		_dpdrhoi[n] = (gamma - _DF(1.0)) * (hi[NUM_COP] - hi[n]) + gamma * (Ri[n] - Ri[NUM_COP]) * T; // related with yi
-		z[n] = -_DF(1.0) * _dpdrhoi[n] / (gamma - _DF(1.0));
-		if (NUM_COP != n) // related with yi
-			Sum_dpdrhoi += yi[n] * _dpdrhoi[n];
-	}
-	real_t _CopC2 = Sum_dpdrhoi + (gamma - _DF(1.0)) * (h - hi[NUM_COP]) + gamma * Ri[NUM_COP] * T; // related with yi
+	real_t _R = _DF(1.0) / R, _dpdrhoi[NUM_SPECIES], _CopC2 = gamma * R * T, temp = _DF(0.0);
+	b1 = (gamma - _DF(1.0)) / _CopC2;
+	for (size_t n = 0; n < NUM_COP; n++)
+		z[n] = (hi[n] - hi[NUM_COP] + Cp * T * (Ri[NUM_COP] - Ri[n]) * _R); // related with yi
+	for (size_t nn = 0; nn < NUM_COP; nn++)
+		temp += yi[nn] * z[nn];
+	b3 = b1 * temp;
 	return _CopC2;
 }
+
+// /**
+//  * form LYX, not right for zi
+//  * @brief calculate c^2 of the mixture at given point
+//  * // NOTE: realted with yn=yi[0] or yi[N] : hi[] Ri[]
+//  */
+// real_t get_CopC2(real_t z[NUM_COP], real_t &b1, real_t &b3, real_t const Ri[NUM_SPECIES], real_t const yi[NUM_SPECIES], real_t const hi[NUM_SPECIES], const real_t gamma, const real_t h, const real_t T)
+// {
+// 	real_t Sum_dpdrhoi = _DF(0.0);				   // Sum_dpdrhoi:first of c2,存在累加项
+// 	real_t _dpdrhoi[NUM_SPECIES];
+// 	for (size_t n = 0; n < NUM_COP; n++)
+// 	{
+// 		_dpdrhoi[n] = (gamma - _DF(1.0)) * (hi[NUM_COP] - hi[n]) + gamma * (Ri[n] - Ri[NUM_COP]) * T; // related with yi
+// 		z[n] = -_DF(1.0) * _dpdrhoi[n] / (gamma - _DF(1.0));
+// 		Sum_dpdrhoi += yi[n] * _dpdrhoi[n];
+// 	}
+// 	real_t _CopC2 = Sum_dpdrhoi + (gamma - _DF(1.0)) * (h - hi[NUM_COP]) + gamma * Ri[NUM_COP] * T; // related with yi
+// 	return _CopC2;
+// }
 
 #if 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
 
