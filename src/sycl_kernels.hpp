@@ -1108,7 +1108,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
 }
 
 extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
-                                                  real_t *Dkm_aver, real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T)
+                                                  real_t *Dkm_aver, real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T, real_t *Ertemp1, real_t *Ertemp2)
 {
 #ifdef DIM_X
     if (i >= bl.Xmax)
@@ -1133,7 +1133,8 @@ extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl,
     real_t C_total = get_xi(X, yi, thermal._Wi, rho[id]);
     //  real_t *temp = &(Dkm_aver[NUM_SPECIES * id]);
     //  real_t *temp = &(hi[NUM_SPECIES * id]);
-    Get_transport_coeff_aver(i, j, k, thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id], X, rho[id], p[id], T[id], C_total);
+    Get_transport_coeff_aver(i, j, k, thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id],
+                             X, rho[id], p[id], T[id], C_total, &(Ertemp1[NUM_SPECIES * id]), &(Ertemp2[NUM_SPECIES * id]));
 }
 
 #if DIM_X

@@ -327,6 +327,10 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 
 #endif
 	q.wait();
+	// int cellsize = bl.Xmax * bl.Ymax * bl.Zmax * sizeof(real_t) * NUM_SPECIES;
+	// q.memcpy(fdata.preFwx, FluxF, cellsize).wait();
+	// q.memcpy(fdata.preFwy, FluxG, cellsize).wait();
+	// q.memcpy(fdata.preFwz, FluxH, cellsize).wait();
 // NOTE: add visc flux to Fluxw
 #ifdef Visc
 	/* Viscous LU including physical visc(切应力),Heat transfer(传热), mass Diffusion(质量扩散)
@@ -344,7 +348,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
     		int i = index.get_global_id(0);
 			int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
-			Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T); }); })
+			Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2); }); })
 		.wait();
 // NOTE: get wall flux
 #if DIM_X

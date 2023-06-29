@@ -36,23 +36,36 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+#ifdef Visc
+#ifdef Diffu
+	h_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+#endif
+#endif
 #if DIM_X
 	h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 #endif
 #if DIM_Y
 	h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 #endif
 #if DIM_Z
 	h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 #endif
 #endif // ESTIM_NAN
 
@@ -81,20 +94,23 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
 #if DIM_Y
 	d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
 #if DIM_Z
 	d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	d_fstate.preFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
-	MemMbSize += ((double(bytes * (NUM_COP + 3) * (DIM_X + DIM_Y + DIM_Z)) / 1024.0)) / 1024.0;
+	MemMbSize += ((double(bytes * (NUM_COP + 3 + NUM_SPECIES) * (DIM_X + DIM_Y + DIM_Z)) / 1024.0)) / 1024.0;
 #endif // ESTIM_NAN
 #if 2 == EIGEN_ALLOC
 	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
@@ -111,7 +127,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 #ifdef Diffu
 	d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	MemMbSize += bytes / 1024.0 / 1024.0 * 2.0;
+	d_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	MemMbSize += NUM_SPECIES * bytes / 1024.0 / 1024.0 * 4.0;
 #endif // end Diffu
 	for (size_t i = 0; i < 9; i++)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));

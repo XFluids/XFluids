@@ -45,8 +45,9 @@ typedef struct
 {
     real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma;
     real_t *hi, *Vde[9], *y;
-    real_t *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+    real_t *viscosity_aver, *thermal_conduct_aver, *Dkm_aver, *Ertemp1, *Ertemp2; // Ertemp1, Ertemp2: temp1,2 for Dim caculate
     real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
+    real_t *preFwx, *preFwy, *preFwz, *pstFwx, *pstFwy, *pstFwz;
 } FlowData;
 
 typedef struct

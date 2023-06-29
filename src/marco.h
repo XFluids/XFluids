@@ -145,8 +145,8 @@
     real_t b1 = (Gamma0 - _DF(1.0)) / c2;
 
 #ifdef COP
-#define MARCO_GETC2() MARCO_COPC2_ROB();
-// MARCO_COPC2();
+#define MARCO_GETC2() MARCO_COPC2();
+// MARCO_COPC2();//MARCO_COPC2_ROB();
 #else
 #define MARCO_GETC2() MARCO_NOCOPC2();
 #endif // end COP
