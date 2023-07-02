@@ -51,7 +51,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
-	long double MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
+	MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
 #if 2 == EIGEN_ALLOC
 	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
 	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
@@ -88,51 +88,49 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 #if DIM_X
-	h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	// h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	// d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+
 	h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-#endif
-#if DIM_Y
-	h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-#endif
-#if DIM_Z
-	h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-#endif
-#if DIM_X
-	d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
 	d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
 #if DIM_Y
-	d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	// h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	// d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+
+	h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
 #if DIM_Z
-	d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	// h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	// h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	// d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+
+	h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	d_fstate.preFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
-	MemMbSize += ((double(bytes * (NUM_COP + 3 + Emax)) / 1024.0)) / 1024.0 * double(DIM_X + DIM_Y + DIM_Z);
+	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z));
+	// MemMbSize += ((double(bytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z) * (NUM_COP + 3));
 #ifdef Visc
 #if DIM_X
 	h_fstate.visFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
@@ -190,6 +188,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 #endif // ESTIM_NAN
 
 #if USE_MPI
+	MPIMbSize = Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
+	MemMbSize += MPIMbSize;
 	long double MPIMbSize = Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
 	MemMbSize += MPIMbSize;
 	if (0 == Fs.mpiTrans->myRank)
@@ -200,6 +200,165 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 		std::cout << "MPI trans Memory Size: " << MPIMbSize / 1024.0 << " GB\n";
 #endif
 	}
+}
+
+FluidSYCL::~FluidSYCL()
+{
+	// 释放主机内存
+	sycl::free(h_fstate.rho, q);
+	sycl::free(h_fstate.p, q);
+	sycl::free(h_fstate.c, q);
+	sycl::free(h_fstate.H, q);
+	sycl::free(h_fstate.u, q);
+	sycl::free(h_fstate.v, q);
+	sycl::free(h_fstate.w, q);
+	sycl::free(h_fstate.T, q);
+	sycl::free(h_fstate.gamma, q);
+	sycl::free(h_fstate.y, q);
+
+	// 设备内存
+	sycl::free(d_U, q);
+	sycl::free(d_U1, q);
+	sycl::free(d_LU, q);
+	sycl::free(Ubak, q);
+	sycl::free(d_eigen_local_x, q);
+	sycl::free(d_eigen_local_y, q);
+	sycl::free(d_eigen_local_z, q);
+	sycl::free(d_fstate.rho, q);
+	sycl::free(d_fstate.p, q);
+	sycl::free(d_fstate.c, q);
+	sycl::free(d_fstate.H, q);
+	sycl::free(d_fstate.u, q);
+	sycl::free(d_fstate.v, q);
+	sycl::free(d_fstate.w, q);
+	sycl::free(d_fstate.T, q);
+	sycl::free(d_fstate.gamma, q);
+	sycl::free(d_fstate.y, q);
+
+#if 2 == EIGEN_ALLOC
+	sycl::free(d_eigen_l, q);
+	sycl::free(d_eigen_r, q);
+#endif // end EIGEN_ALLOC
+#ifdef Visc
+	sycl::free(d_fstate.viscosity_aver, q);
+#ifdef Heat
+	sycl::free(d_fstate.thermal_conduct_aver, q);
+#endif // end Heat
+#ifdef Diffu
+	sycl::free(d_fstate.hi, q);
+	sycl::free(d_fstate.Dkm_aver, q);
+#endif // end Diffu
+	for (size_t i = 0; i < 9; i++)
+		sycl::free(d_fstate.Vde[i], q);
+#endif // end Visc
+	sycl::free(d_FluxF, q);
+	sycl::free(d_FluxG, q);
+	sycl::free(d_FluxH, q);
+	sycl::free(d_wallFluxF, q);
+	sycl::free(d_wallFluxG, q);
+	sycl::free(d_wallFluxH, q);
+	sycl::free(uvw_c_max, q);
+
+#ifdef ESTIM_NAN
+	sycl::free(h_U, q);
+	sycl::free(h_U1, q);
+	sycl::free(h_LU, q);
+#if DIM_X
+	sycl::free(h_fstate.b1x, q);
+	sycl::free(h_fstate.b3x, q);
+	sycl::free(h_fstate.c2x, q);
+	sycl::free(h_fstate.zix, q);
+	sycl::free(d_fstate.b1x, q);
+	sycl::free(d_fstate.b3x, q);
+	sycl::free(d_fstate.c2x, q);
+	sycl::free(d_fstate.zix, q);
+
+	sycl::free(h_fstate.preFwx, q);
+	sycl::free(h_fstate.pstFwx, q);
+	sycl::free(d_fstate.preFwx, q);
+#endif
+#if DIM_Y
+	sycl::free(h_fstate.b1y, q);
+	sycl::free(h_fstate.b3y, q);
+	sycl::free(h_fstate.c2y, q);
+	sycl::free(h_fstate.ziy, q);
+	sycl::free(d_fstate.b1y, q);
+	sycl::free(d_fstate.b3y, q);
+	sycl::free(d_fstate.c2y, q);
+	sycl::free(d_fstate.ziy, q);
+
+	sycl::free(h_fstate.preFwy, q);
+	sycl::free(h_fstate.pstFwy, q);
+	sycl::free(d_fstate.preFwy, q);
+#endif
+#if DIM_Z
+	sycl::free(h_fstate.b1z, q);
+	sycl::free(h_fstate.b3z, q);
+	sycl::free(h_fstate.c2z, q);
+	sycl::free(h_fstate.ziz, q);
+	sycl::free(d_fstate.b1z, q);
+	sycl::free(d_fstate.b3z, q);
+	sycl::free(d_fstate.c2z, q);
+	sycl::free(d_fstate.ziz, q);
+
+	sycl::free(h_fstate.preFwz, q);
+	sycl::free(h_fstate.pstFwz, q);
+	sycl::free(d_fstate.preFwz, q);
+#endif
+#ifdef Visc
+#if DIM_X
+	sycl::free(h_fstate.visFwx, q);
+	sycl::free(d_fstate.visFwx, q);
+#endif // end DIM_X
+#if DIM_Y
+	sycl::free(h_fstate.visFwy, q);
+	sycl::free(d_fstate.visFwy, q);
+#endif // end DIM_Y
+#if DIM_Z
+	sycl::free(h_fstate.visFwz, q);
+	sycl::free(d_fstate.visFwz, q);
+#endif // end DIM_Z
+#ifdef Diffu
+	sycl::free(h_fstate.Ertemp1, q);
+	sycl::free(h_fstate.Ertemp2, q);
+	sycl::free(h_fstate.Dkm_aver, q);
+	sycl::free(d_fstate.Ertemp1, q);
+	sycl::free(d_fstate.Ertemp2, q);
+
+#if DIM_X
+	sycl::free(h_fstate.Dim_wallx, q);
+	sycl::free(h_fstate.hi_wallx, q);
+	sycl::free(h_fstate.Yi_wallx, q);
+	sycl::free(h_fstate.Yil_wallx, q);
+	sycl::free(d_fstate.Dim_wallx, q);
+	sycl::free(d_fstate.hi_wallx, q);
+	sycl::free(d_fstate.Yi_wallx, q);
+	sycl::free(d_fstate.Yil_wallx, q);
+#endif
+#if DIM_Y
+	sycl::free(h_fstate.Dim_wally, q);
+	sycl::free(h_fstate.hi_wally, q);
+	sycl::free(h_fstate.Yi_wally, q);
+	sycl::free(h_fstate.Yil_wally, q);
+	sycl::free(d_fstate.Dim_wally, q);
+	sycl::free(d_fstate.hi_wally, q);
+	sycl::free(d_fstate.Yi_wally, q);
+	sycl::free(d_fstate.Yil_wally, q);
+#endif
+#if DIM_Z
+	sycl::free(h_fstate.Dim_wallz, q);
+	sycl::free(h_fstate.hi_wallz, q);
+	sycl::free(h_fstate.Yi_wallz, q);
+	sycl::free(h_fstate.Yil_wallz, q);
+	sycl::free(d_fstate.Dim_wallz, q);
+	sycl::free(d_fstate.hi_wallz, q);
+	sycl::free(d_fstate.Yi_wallz, q);
+	sycl::free(d_fstate.Yil_wallz, q);
+#endif
+
+#endif // end Diffu
+#endif // end Vis
+#endif // ESTIM_NAN
 }
 
 void FluidSYCL::InitialU(sycl::queue &q)
@@ -233,10 +392,15 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q)
 
 void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 {
+	std::chrono::high_resolution_clock::time_point start_time_x = std::chrono::high_resolution_clock::now();
+
 	if (flag == 0)
-		FluidBoundaryCondition(q, Fs, BCs, d_U);
+		MPI_trans_time += FluidBoundaryCondition(q, Fs, BCs, d_U);
 	else
-		FluidBoundaryCondition(q, Fs, BCs, d_U1);
+		MPI_trans_time += FluidBoundaryCondition(q, Fs, BCs, d_U1);
+
+	std::chrono::high_resolution_clock::time_point end_time_x = std::chrono::high_resolution_clock::now();
+	MPI_BCs_time += std::chrono::duration<float, std::milli>(end_time_x - start_time_x).count() * 1.0e-3f;
 }
 
 void FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)

@@ -79,9 +79,12 @@ class FluidSYCL; class SYCLSolver;
 
 class FluidSYCL{
     Setup Fs;
+    sycl::queue q;
 
 public:
     int error_patched_times;
+    float MPI_trans_time, MPI_BCs_time;
+    long double MemMbSize, MPIMbSize;
     real_t *uvw_c_max;
     real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
     real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
@@ -91,7 +94,8 @@ public:
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
 
-    FluidSYCL(Setup &setup) : Fs(setup) { error_patched_times = 0; };
+    FluidSYCL(Setup &setup) : Fs(setup), q(setup.q) { error_patched_times = 0, MPI_trans_time = 0.0, MPI_BCs_time = 0.0; };
+    ~FluidSYCL();
     void initialize(int n);
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
@@ -114,11 +118,14 @@ class SYCLSolver{
 
 public:
     real_t dt;
+    float duration, MPI_trans_time, MPI_BCs_time;
     BConditions *d_BCs; // boundary condition indicators
     FluidSYCL *fluids[NumFluid];
 
     SYCLSolver(Setup &setup);
+    virtual ~SYCLSolver();
     void Evolution(sycl::queue &q);
+    void EndProcess();
     void AllocateMemory(sycl::queue &q);
     void InitialCondition(sycl::queue &q);
     void CopyToUbak(sycl::queue &q);

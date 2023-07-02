@@ -7,6 +7,7 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), ra
 	rank = Ss.mpiTrans->myRank;
 	nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
+	MPI_trans_time = 0.0, MPI_BCs_time = 0.0;
 	for (int n = 0; n < NumFluid; n++)
 	{
 		fluids[n] = new FluidSYCL(setup);
@@ -83,12 +84,18 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), ra
 	CPT.maxZ = CPT.minZ + CPT.nbZ;
 }
 
+SYCLSolver::~SYCLSolver()
+{
+	for (size_t n = 0; n < NumFluid; n++)
+		fluids[n]->~FluidSYCL();
+}
+
 void SYCLSolver::Evolution(sycl::queue &q)
 {
 	bool TimeLoopOut = false, Stepstop = false;
 	int OutNum = 1, TimeLoop = 0, error_out = 0;
 
-	float duration = 0.0f;
+	duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 	while (TimeLoop < Ss.nOutTimeStamps)
 	{
@@ -151,10 +158,24 @@ flag_end:
 #endif
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
+	EndProcess();
+	Output_Ubak(rank, Iteration - 1, physicalTime);
+	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
+}
+
+void SYCLSolver::EndProcess()
+{
 #ifdef USE_MPI
-	float Ttemp;
+	for (size_t n = 0; n < NumFluid; n++)
+	{
+		MPI_trans_time += fluids[n]->MPI_trans_time;
+		MPI_BCs_time += fluids[n]->MPI_BCs_time;
+	}
+	float Ttemp, BCsTtemp, TransTtemp;
 	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->allReduce(&duration, &Ttemp, 1, mpiUtils::MpiComm::FLOAT, mpiUtils::MpiComm::SUM);
+	Ss.mpiTrans->communicator->allReduce(&MPI_BCs_time, &BCsTtemp, 1, mpiUtils::MpiComm::FLOAT, mpiUtils::MpiComm::SUM);
+	Ss.mpiTrans->communicator->allReduce(&MPI_trans_time, &TransTtemp, 1, mpiUtils::MpiComm::FLOAT, mpiUtils::MpiComm::SUM);
 	duration = Ttemp;
 	Ss.mpiTrans->communicator->synchronize();
 	if (rank == 0)
@@ -168,8 +189,12 @@ flag_end:
 #endif // end AWARE_MPI
 ///////////////////////////
 #endif // end USE_MPI
-		std::cout << SelectDv << " runtime: " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
+		std::cout << SelectDv << " runtime(s):  " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
+		std::cout << "Device Memory Usage(GB)   :  " << fluids[0]->MemMbSize / 1024.0 << std::endl;
 #ifdef USE_MPI
+		std::cout << "MPI trans Memory Size(GB) :  " << fluids[0]->MPIMbSize / 1024.0 << std::endl;
+		std::cout << "Fluids do BCs time(s)     :  " << std::setw(8) << std::setprecision(6) << BCsTtemp / float(nranks) << std::endl;
+		std::cout << "MPI buffers Trans time(s) :  " << std::setw(8) << std::setprecision(6) << TransTtemp / float(nranks) << std::endl;
 	}
 	Ss.mpiTrans->communicator->synchronize();
 #endif
@@ -189,8 +214,6 @@ flag_end:
 		std::cout << "Times of error patched: " << error_times_patched << std::endl;
 	}
 #endif // end ERROR_PATCH
-	Output_Ubak(rank, Iteration - 1, physicalTime);
-	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
 
 bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t Time)

@@ -455,7 +455,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 #endif
 }
 
-void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], real_t *d_UI)
+float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], real_t *d_UI)
 {
 	Block bl = setup.BlSz;
 #if USE_MPI
@@ -506,11 +506,16 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 #endif // end EXPLICIT_ALLOC
 // =======================================================
 #endif // end USE_MPI
+
+	float duration_x = 0.0f, duration_y = 0.0f, duration_z = 0.0f;
 #if DIM_X
 	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);
 
 #if USE_MPI
+
+	std::chrono::high_resolution_clock::time_point start_time_x = std::chrono::high_resolution_clock::now();
+
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
 							  {
@@ -525,6 +530,10 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 		.wait();
 
 	Trans.MpiTransBuf(q, XDIR);
+
+	std::chrono::high_resolution_clock::time_point end_time_x = std::chrono::high_resolution_clock::now();
+	duration_x = std::chrono::duration<float, std::milli>(end_time_x - start_time_x).count();
+
 #endif // USE_MPI
 	BConditions BC0 = BCs[0], BC1 = BCs[1];
 	q.submit([&](sycl::handler &h)
@@ -555,6 +564,9 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 	auto global_ndrange_y = range<3>(bl.Xmax, bl.Bwidth_Y, bl.Zmax);
 
 #if USE_MPI
+
+	std::chrono::high_resolution_clock::time_point start_time_y = std::chrono::high_resolution_clock::now();
+
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
 							  {
@@ -569,6 +581,10 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 		.wait();
 
 	Trans.MpiTransBuf(q, YDIR);
+
+	std::chrono::high_resolution_clock::time_point end_time_y = std::chrono::high_resolution_clock::now();
+	duration_y = std::chrono::duration<float, std::milli>(end_time_y - start_time_y).count();
+
 #endif // USE_MPI
 	BConditions BC2 = BCs[2], BC3 = BCs[3];
 	q.submit([&](sycl::handler &h)
@@ -599,6 +615,9 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 	auto global_ndrange_z = range<3>(bl.Xmax, bl.Ymax, bl.Bwidth_Z);
 
 #if USE_MPI
+
+	std::chrono::high_resolution_clock::time_point start_time_z = std::chrono::high_resolution_clock::now();
+
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
 							  {
@@ -613,6 +632,10 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 		.wait();
 
 	Trans.MpiTransBuf(q, ZDIR);
+
+	std::chrono::high_resolution_clock::time_point end_time_z = std::chrono::high_resolution_clock::now();
+	duration_z = std::chrono::duration<float, std::milli>(end_time_z - start_time_z).count();
+
 #endif // USE_MPI
 	BConditions BC4 = BCs[4], BC5 = BCs[5];
 	q.submit([&](sycl::handler &h)
@@ -638,6 +661,8 @@ void FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], rea
 		.wait();
 #endif // end DIM_Z
 	q.wait();
+
+	return (duration_x + duration_y + duration_z) * 1.0e-3f;
 }
 
 #ifdef COP_CHEME
