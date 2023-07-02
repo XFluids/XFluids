@@ -15,6 +15,7 @@
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
 // for flux Reconstruction order
+#define PositivityPreserving // #ifdef used, use Lax-Friedrichs(one-order) instead high-order schemes avoiding NAN.
 #define FLUX_method 2 //  0: local LF; 1: global LF, 2: Roe
 #if SCHEME_ORDER > 6
 const int stencil_P = 3;    // "2" for <=6 order, "3"" for >6 order
@@ -43,11 +44,16 @@ enum VdeType
 
 typedef struct
 {
+    // primitive variables
     real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma;
-    real_t *hi, *Vde[9], *y;
-    real_t *viscosity_aver, *thermal_conduct_aver, *Dkm_aver, *Ertemp1, *Ertemp2; // Ertemp1, Ertemp2: temp1,2 for Dim caculate
+    // cop(y) and vis variables
+    real_t *y, *Vde[9], *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+    // Error out: varibles of eigen system
     real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
+    // Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving
     real_t *preFwx, *preFwy, *preFwz, *pstFwx, *pstFwy, *pstFwz;
+    // Error out: Ertemp1, Ertemp2: temp1,2 for Dim caculate; others for vis Flux and calculating variables of visFlux;
+    real_t *Ertemp1, *Ertemp2, *visFwx, *visFwy, *visFwz, *Dim_wallx, *hi_wallx, *Yi_wallx, *Yil_wallx, *Dim_wally, *hi_wally, *Yi_wally, *Yil_wally, *Dim_wallz, *hi_wallz, *Yi_wallz, *Yil_wallz;
 } FlowData;
 
 typedef struct

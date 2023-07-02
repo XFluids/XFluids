@@ -205,11 +205,11 @@ real_t get_Coph(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t T)
  */
 void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T)
 {
-	real_t h = get_Coph(thermal, yi, T);			 // J/kg/K
-	real_t R = get_CopR(thermal._Wi, yi);			 // J/kg/K
-	real_t Cp = get_CopCp(thermal, yi, T);			 // J/kg/K
-	func_T = h - R * T - e;							 // unit:J/kg/K
-	dfunc_T = Cp - R;								 // unit:J/kg/K
+	real_t h = get_Coph(thermal, yi, T);   // J/kg/K
+	real_t R = get_CopR(thermal._Wi, yi);  // J/kg/K
+	real_t Cp = get_CopCp(thermal, yi, T); // J/kg/K
+	func_T = h - R * T - e;				   // unit:J/kg/K
+	dfunc_T = Cp - R;					   // unit:J/kg/K
 }
 
 /**
@@ -223,51 +223,51 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 	real_t rt_bis, f, f_mid;
 	real_t func_T = 0, dfunc_T = 0;
 
-	for (int i = 1; i <= 150; i++)
+	for (int i = 1; i <= 100; i++)
 	{
 		sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
-		real_t df = func_T / dfunc_T;
+		real_t df = (func_T / dfunc_T);
 		T = T - df;
 		if (sycl::abs<real_t>(df) <= tol)
 			break;
-		if (i == 100)
-		{
-			// TODO printf("Temperature: Newton_Ramphson iteration failured, try Bisection Metho...d\n");
-			sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
-			f_mid = func_T;
-			sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
-			f = func_T;
-			if (f * f_mid > 0.0)
-			{
-				// printf("root must be bracketed in rtbis \n");
-			}
-			if (f < 0.0)
-			{
-				rt_bis = T_dBdr;
-				df = T_uBdr - T_dBdr;
-			}
-			else
-			{
-				rt_bis = T_uBdr;
-				df = T_dBdr - T_uBdr;
-			}
-			for (int j = 1; j <= 150; j++)
-			{
-				df = 0.5 * df;
-				T = rt_bis + df;
-				sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
-				f_mid = func_T;
-				if (f_mid <= 0.0)
-					rt_bis = T;
-				if (sycl::abs<real_t>(df) <= x_eps || f_mid == 0.0)
-					break;
-				if (j == 100)
-				{
-					// printf("Temperature: Bisect also failured \n");
-				}
-			}
-			break;
-		}
+		// if (i == 100)
+		// {
+		// 	// TODO printf("Temperature: Newton_Ramphson iteration failured, try Bisection Metho...d\n");
+		// 	sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
+		// 	f_mid = func_T;
+		// 	sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
+		// 	f = func_T;
+		// 	if (f * f_mid > 0.0)
+		// 	{
+		// 		// printf("root must be bracketed in rtbis \n");
+		// 	}
+		// 	if (f < 0.0)
+		// 	{
+		// 		rt_bis = T_dBdr;
+		// 		df = T_uBdr - T_dBdr;
+		// 	}
+		// 	else
+		// 	{
+		// 		rt_bis = T_uBdr;
+		// 		df = T_dBdr - T_uBdr;
+		// 	}
+		// 	for (int j = 1; j <= 150; j++)
+		// 	{
+		// 		df = 0.5 * df;
+		// 		T = rt_bis + df;
+		// 		sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
+		// 		f_mid = func_T;
+		// 		if (f_mid <= 0.0)
+		// 			rt_bis = T;
+		// 		if (sycl::abs<real_t>(df) <= x_eps || f_mid == 0.0)
+		// 			break;
+		// 		if (j == 100)
+		// 		{
+		// 			// printf("Temperature: Bisect also failured \n");
+		// 		}
+		// 	}
+		// 	break;
+		//}
 	}
 	return T;
 }
@@ -285,23 +285,32 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	w = UI[3] * rho1;
 
 	yi[NUM_COP] = _DF(1.0);
-
 #ifdef COP
 	for (size_t ii = 5; ii < Emax; ii++)
-	{ // calculate yi
-		yi[ii - 5] = UI[ii] * rho1;
-		// yi[ii - 5] = sycl::max(_DF(0.0), UI[ii] * rho1);
+	{								// calculate yi
+		yi[ii - 5] = UI[ii] * rho1; //_DF(1.0e-5));
+		// yi[ii - 5] = sycl::max<real_t>(UI[ii] * rho1, UI[ii] * rho1 * _DF(0.5));
+		// yi[ii - 5] = sycl::min<real_t>(yi[ii - 5] * rho1, 1);
+		// yi[ii - 5] = sycl::max<real_t>(UI[ii] * rho1,_DF(1.0e-5));
+		// yi[ii - 5] = sycl::min<real_t>(yi[ii - 5],_DF(1.0));
 		yi[NUM_COP] += -yi[ii - 5];
-		// UI[ii] = yi[ii - 5] * rho;
+		// yi[NUM_COP] = sycl::max<real_t>(yi[NUM_COP],_DF(1.0e-5));
+		// yi[NUM_COP] = sycl::min<real_t>(yi[NUM_COP],_DF(1.0));
 	}
-#endif // end COP
-
-#ifdef COP
+	// // method of LYX and Pan
 	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 	real_t R = get_CopR(thermal._Wi, yi);
 	T = get_T(thermal, yi, e, T);
 	p = rho * R * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
+
+	// // method of Ref.https://doi.org/10.1016/j.combustflame.2015.10.016
+	// real_t rhoe = UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w);
+	// real_t R = get_CopR(thermal._Wi, yi);
+	// gamma = get_CopGamma(thermal, yi, T);
+	// p = (gamma - _DF(1.0)) * rhoe;
+	// T = p * rho1 / R; // 对所有气体都适用
+
 #else
 	gamma = NCOP_Gamma;
 	p = (NCOP_Gamma - _DF(1.0)) * (UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
@@ -317,22 +326,22 @@ void GetPhysFlux(real_t UI[Emax], real_t const yi[NUM_COP], real_t *FluxF, real_
 				 real_t const rho, real_t const u, real_t const v, real_t const w, real_t const p, real_t const H, real_t const c)
 {
 	FluxF[0] = UI[1];
-	FluxF[1] = UI[1]*u + p;
-	FluxF[2] = UI[1]*v;
-	FluxF[3] = UI[1]*w;
-	FluxF[4] = (UI[4] + p)*u;
+	FluxF[1] = UI[1] * u + p;
+	FluxF[2] = UI[1] * v;
+	FluxF[3] = UI[1] * w;
+	FluxF[4] = (UI[4] + p) * u;
 
 	FluxG[0] = UI[2];
-	FluxG[1] = UI[2]*u;
-	FluxG[2] = UI[2]*v + p;
-	FluxG[3] = UI[2]*w;
-	FluxG[4] = (UI[4] + p)*v;
+	FluxG[1] = UI[2] * u;
+	FluxG[2] = UI[2] * v + p;
+	FluxG[3] = UI[2] * w;
+	FluxG[4] = (UI[4] + p) * v;
 
 	FluxH[0] = UI[3];
-	FluxH[1] = UI[3]*u;
-	FluxH[2] = UI[3]*v;
-	FluxH[3] = UI[3]*w + p;
-	FluxH[4] = (UI[4] + p)*w;
+	FluxH[1] = UI[3] * u;
+	FluxH[2] = UI[3] * v;
+	FluxH[3] = UI[3] * w + p;
+	FluxH[4] = (UI[4] + p) * w;
 
 #ifdef COP
 	for (size_t ii = 5; ii < Emax; ii++)
@@ -2154,8 +2163,8 @@ void Chemeq2(Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, r
 	int gcount = 0, rcount = 0;
 	int iter;
 	real_t dt = _DF(0.0);
-	real_t tn = _DF(0.0);	// t-t^0, current value of the independent variable relative to the start of the global timestep
-	real_t ts;				// independent variable at the start of the global timestep
+	real_t tn = _DF(0.0); // t-t^0, current value of the independent variable relative to the start of the global timestep
+	real_t ts;			  // independent variable at the start of the global timestep
 	real_t TTn = TT;
 	real_t TTs, TT0;
 	// save the initial inputs
@@ -2290,7 +2299,7 @@ flag3:
 	goto flag1;
 }
 #endif // end COP_CHEME
-#ifdef Visc
+
 /**
  * @brief get viscosity at temperature T(unit:K)(fit)
  * @return double,unit: Pa.s=kg/(m.s)
@@ -2439,7 +2448,9 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 			else
 				Dkm_aver_id[k] = temp1 / temp2 / rho * C_total; // rho/C_total:the mole mass of mixture;
 			Dkm_aver_id[k] *= _DF(1.0e-1);						// cm2/s==>m2/s
+#ifdef ESTIM_NAN
 			Ertemp1[k] = temp1, Ertemp2[k] = temp2;
+#endif // end ESTIM_NAN
 		}
 	}
 #else
@@ -2448,6 +2459,11 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 		Dkm_aver_id[0] *= _DF(1.0e-1);							  // cm2/s==>m2/s
 	}
 #endif // end NUM_SPECIES>1
+	   // NOTE: add limiter:
+	for (int k = 0; k < NUM_SPECIES; k++)
+	{
+		Dkm_aver_id[k] = sycl::max<real_t>(Dkm_aver_id[k], _DF(1.0e-10));
+		Dkm_aver_id[k] = sycl::min<real_t>(Dkm_aver_id[k], _DF(1.0e-4));
+	}
 #endif // end Diffu
 }
-#endif // end Visc
