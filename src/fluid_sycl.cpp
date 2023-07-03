@@ -30,8 +30,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.v = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.w = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
+	h_fstate.e = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 
 	// 设备内存
 	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -49,9 +50,11 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
-	MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (9.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
+	d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (10.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
+
 #if 2 == EIGEN_ALLOC
 	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
 	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
@@ -213,8 +216,9 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(h_fstate.v, q);
 	sycl::free(h_fstate.w, q);
 	sycl::free(h_fstate.T, q);
-	sycl::free(h_fstate.gamma, q);
 	sycl::free(h_fstate.y, q);
+	sycl::free(h_fstate.e, q);
+	sycl::free(h_fstate.gamma, q);
 
 	// 设备内存
 	sycl::free(d_U, q);
@@ -232,8 +236,9 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(d_fstate.v, q);
 	sycl::free(d_fstate.w, q);
 	sycl::free(d_fstate.T, q);
-	sycl::free(d_fstate.gamma, q);
 	sycl::free(d_fstate.y, q);
+	sycl::free(d_fstate.e, q);
+	sycl::free(d_fstate.gamma, q);
 
 #if 2 == EIGEN_ALLOC
 	sycl::free(d_eigen_l, q);
@@ -616,12 +621,12 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 	return false;
 }
 
-#ifdef COP_CHEME
 void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
 {
+#ifdef COP_CHEME
 #if 0 == CHEME_SOLVER
 	ChemeODEQ2Solver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
 //#else 1 == CHEME_SOLVER // CVODE from LLNL to SYCL only support Intel GPUs
 #endif // end CHEME_SOLVER
-}
 #endif // end COP_CHEME
+}

@@ -659,7 +659,7 @@ extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *L
 
 extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
                                                  real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y,
-                                                 real_t *gamma, real_t *T, real_t const Gamma) //, const sycl::stream &stream_ct1
+                                                 real_t *gamma, real_t *T, real_t *e, real_t const Gamma) //, const sycl::stream &stream_ct1
 {
     MARCO_DOMAIN_GHOST();
     int id = Xmax * Ymax * k + Xmax * j + i;
@@ -679,7 +679,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 
     real_t *U = &(UI[Emax * id]), *yi = &(_y[NUM_SPECIES * id]); //, yi[NUM_SPECIES];
 
-    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], thermal, yi);
+    GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], e[id], thermal, yi);
 
     // // real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * X_inner + _DF(0.5)) * bl.dx + bl.Domain_xmin : _DF(0.0);
     // // real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * Y_inner + _DF(0.5)) * bl.dy + bl.Domain_ymin : _DF(0.0);
@@ -1641,28 +1641,44 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
 #endif // end DIM_Z
 
 #ifdef COP_CHEME
-extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, const real_t dt)
+extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
 {
     MARCO_DOMAIN();
+#ifdef DIM_X
+    if (i >= Xmax - bl.Bwidth_X)
+            return;
+#endif // DIM_X
+#ifdef DIM_Y
+    if (j >= Ymax - bl.Bwidth_Y)
+            return;
+#endif // DIM_Y
+#ifdef DIM_Z
+    if (k >= Zmax - bl.Bwidth_Z)
+            return;
+#endif // DIM_Z
+
     int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP]; // yi[NUM_SPECIES],//get_yi(y, yi, id);
-    real_t *yi = &(y[NUM_SPECIES * id]);
+    real_t Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP], *yi = &(y[NUM_SPECIES * id]);          // yi[NUM_SPECIES],//get_yi(y, yi, id);
     get_KbKf(Kf, Kb, react.Rargus, thermal._Wi, thermal.Hia, thermal.Hib, react.Nu_d_, T[id]); // get_e
-    for (size_t n = 0; n < Emax - NUM_COP; n++)
-    {
-            U[n] = UI[Emax * id + n];
-    }
-    real_t rho1 = _DF(1.0) / U[0];
-    real_t u = U[1] * rho1;
-    real_t v = U[2] * rho1;
-    real_t w = U[3] * rho1;
-    real_t e = U[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
-    Chemeq2(thermal, Kf, Kb, react.React_ThirdCoef, react.Rargus, react.Nu_b_, react.Nu_f_, react.Nu_d_, react.third_ind,
-            react.reaction_list, react.reactant_list, react.product_list, react.rns, react.rts, react.pls, yi, dt, T[id], rho[id], e);
+    // for (size_t n = 0; n < Emax - NUM_COP; n++)
+    // {
+    //         U[n] = UI[Emax * id + n];
+    // }
+    // real_t rho1 = _DF(1.0) / U[0];
+    // real_t u = U[1] * rho1;
+    // real_t v = U[2] * rho1;
+    // real_t w = U[3] * rho1;
+    // real_t e = U[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
+    Chemeq2(id, thermal, Kf, Kb, react.React_ThirdCoef, react.Rargus, react.Nu_b_, react.Nu_f_, react.Nu_d_, react.third_ind,
+            react.reaction_list, react.reactant_list, react.product_list, react.rns, react.rts, react.pls, yi, dt, T[id], rho[id], e[id]);
     // update partial density according to C0
     for (int n = 0; n < NUM_COP; n++)
-    { // NOTE: related with yi[n]
+    {
+            // if (bool(sycl::isnan(yi[n])))
+            // {
+            // yi[n] = _DF(1.0e-20);
+            // }
             UI[Emax * id + n + 5] = yi[n] * rho[id];
     }
 }

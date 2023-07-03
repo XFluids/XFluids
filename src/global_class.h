@@ -45,7 +45,7 @@ enum VdeType
 typedef struct
 {
     // primitive variables
-    real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma;
+    real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma, *e;
     // cop(y) and vis variables
     real_t *y, *Vde[9], *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
     // Error out: varibles of eigen system
@@ -105,9 +105,7 @@ public:
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
     bool EstimateFluidNAN(sycl::queue &q, int flag);
-#ifdef COP_CHEME
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
-#endif                                           // end COP_CHEME
 };
 
 class SYCLSolver{
@@ -151,7 +149,5 @@ public:
         const int i = 1;
         return ((*(char *)&i) == 0);
     }
-#ifdef COP_CHEME
     void Reaction(sycl::queue &q, real_t Time);
-#endif // end COP_CHEME
 };

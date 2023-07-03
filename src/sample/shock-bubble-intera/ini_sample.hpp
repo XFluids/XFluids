@@ -60,12 +60,14 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // // Ini bubble
     dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
     real_t xre = _DF(0.0);
+
 #ifdef COP_CHEME
     // xre = _DF(1.0e-5);
     for (size_t nn = 2; nn < NUM_COP - 1; nn++)
         xi[nn] = xre; //_DF(0.0); //
     xre *= real_t(NUM_COP - 3);
 #endif // end COP_CHEME
+
     real_t xrest = _DF(1.0) - xre, ff = _DF(1.0e-2), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
     xi[NUM_SPECIES - 1] = sycl::max<real_t>(dd * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)), ff);
     xi[0] = _DF(0.3) * (xrest - xi[NUM_SPECIES - 1]);                // H2

@@ -144,8 +144,8 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 #ifdef COP_CHEME
 			Reaction(q, dt);
-#endif															// end COP_CHEME
-			Stepstop = Ss.nStepmax <= Iteration ? true : false; /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/
+#endif // end COP_CHEME
+			Stepstop = Ss.nStepmax <= Iteration ? true : false;
 			if (Stepstop)
 				goto flag_end;
 		}
@@ -435,15 +435,12 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 	Read_Ubak(q, rank, &(Iteration), &(physicalTime));
 }
 
-#ifdef COP_CHEME
 void SYCLSolver::Reaction(sycl::queue &q, real_t Time)
 {
+	BoundaryCondition(q, 0);
 	UpdateStates(q, 0);
 	fluids[0]->ODESolver(q, Time);
-	// BoundaryCondition(q, 0);
-	// UpdateStates(q, 0);
 }
-#endif // end COP_CHEME
 
 void SYCLSolver::CopyToUbak(sycl::queue &q)
 {
@@ -525,6 +522,7 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.v, fluids[n]->d_fstate.v, bytes);
 		q.memcpy(fluids[n]->h_fstate.w, fluids[n]->d_fstate.w, bytes);
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
+		q.memcpy(fluids[n]->h_fstate.e, fluids[n]->d_fstate.e, bytes);
 		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
 #ifdef ESTIM_NAN
 		if (error)
@@ -669,7 +667,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #endif // DIM_Z
 
 	// Init var names
-	int Onbvar = 5 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
+	int Onbvar = 6 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
 	Onbvar += NUM_SPECIES;
 #endif // end COP
@@ -847,6 +845,8 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	variables_names[index] = "O-gamma";
 	index++;
 	variables_names[index] = "O-T";
+	index++;
+	variables_names[index] = "O-e";
 	index++;
 #if 1 != NumFluid
 	Onbvar += NumFluid - 1;
@@ -1405,6 +1405,17 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = fluids[0]->h_fstate.T[id];
 #elif 2 == NumFluid
 					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.T[id] : fluids[1]->h_fstate.T[id];
+#endif
+					outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
+		//[10]e
+		MARCO_OUTLOOP
+		{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+#if 1 == NumFluid
+					real_t tmp = fluids[0]->h_fstate.e[id];
+#elif 2 == NumFluid
+					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.e[id] : fluids[1]->h_fstate.e[id];
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i

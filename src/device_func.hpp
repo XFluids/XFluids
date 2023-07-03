@@ -223,10 +223,15 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 	real_t rt_bis, f, f_mid;
 	real_t func_T = 0, dfunc_T = 0;
 
-	for (int i = 1; i <= 100; i++)
+	for (int i = 1; i < 101; i++)
 	{
 		sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
-		real_t df = (func_T / dfunc_T);
+		// NOTE: T<0 makes a majority of NAN erors, three methods:
+		// 1. add df limiter
+		// 2. add visFlux limiter
+		// 2. return origin T while update T<0
+		real_t df = sycl::min(func_T / (dfunc_T + _DF(1.0e-30)), _DF(1e-3) * T);
+		// df = sycl::max(df, -_DF(1e-2) * T);
 		T = T - df;
 		if (sycl::abs<real_t>(df) <= tol)
 			break;
@@ -276,7 +281,7 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
  * @brief Obtain state at a grid point
  */
 void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
-			   real_t &gamma, real_t &T, Thermal thermal, real_t yi[NUM_SPECIES])
+			   real_t &gamma, real_t &T, real_t &e, Thermal thermal, real_t yi[NUM_SPECIES])
 {
 	rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
@@ -285,6 +290,7 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	w = UI[3] * rho1;
 
 	yi[NUM_COP] = _DF(1.0);
+	real_t tme = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 #ifdef COP
 	for (size_t ii = 5; ii < Emax; ii++)
 	{								// calculate yi
@@ -298,25 +304,23 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 		// yi[NUM_COP] = sycl::min<real_t>(yi[NUM_COP],_DF(1.0));
 	}
 	// // method of LYX and Pan
-	real_t e = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 	real_t R = get_CopR(thermal._Wi, yi);
-	T = get_T(thermal, yi, e, T);
+	T = get_T(thermal, yi, tme, T);
 	p = rho * R * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
-
 	// // method of Ref.https://doi.org/10.1016/j.combustflame.2015.10.016
 	// real_t rhoe = UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w);
 	// real_t R = get_CopR(thermal._Wi, yi);
 	// gamma = get_CopGamma(thermal, yi, T);
 	// p = (gamma - _DF(1.0)) * rhoe;
-	// T = p * rho1 / R; // 对所有气体都适用
-
+	// T = p * rho1 / R;
 #else
 	gamma = NCOP_Gamma;
-	p = (NCOP_Gamma - _DF(1.0)) * (UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
+	p = (NCOP_Gamma - _DF(1.0)) * rho * tme; //(UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
 #endif // end COP
 	H = (UI[4] + p) * rho1;
 	c = sycl::sqrt(gamma * p * rho1);
+	e = tme;
 }
 
 /**
@@ -1969,7 +1973,6 @@ inline void RoeAverageRight_z_cop(int n, real_t *eigen_r, real_t *z, const real_
 }
 #endif // COP
 
-#ifdef COP_CHEME
 /**
  * @brief get_Kf
  */
@@ -2045,6 +2048,7 @@ real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ 
 	return Kck;
 }
 
+#ifdef COP_CHEME
 /**
  * @brief get_KbKf
  */
@@ -2138,7 +2142,7 @@ real_t sign(real_t a, real_t b)
 /**
  * @brief Chemeq2
  */
-void Chemeq2(Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
+void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
 			 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 real_t y[NUM_SPECIES], const real_t dtg, real_t &TT, const real_t rho, const real_t e)
 {
@@ -2193,10 +2197,9 @@ void Chemeq2(Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, r
 	}
 	dt = sycl::min(sqreps / scrtch, dtg);
 
-//==========================================================
-flag1:
+	//==========================================================
 	int num_iter = 0;
-
+flag1:
 	ts = tn;
 	TTs = TTn;
 	for (int i = 0; i < NUM_SPECIES; i++)
@@ -2260,9 +2263,9 @@ flag2:
 		}
 	}
 	eps = eps * epscl;
-	if (eps < epsmax)
+	if (eps < epsmax || num_iter > 100)
 	{
-		if (dtg < (tn * tfd))
+		if (dtg < (tn * tfd) || num_iter > 100)
 		{
 			for (int i = 0; i < NUM_SPECIES; i++)
 				rhoi[i] = y[i] * rho;
