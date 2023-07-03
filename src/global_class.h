@@ -100,7 +100,7 @@ public:
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
     void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
-    void UpdateFluidStates(sycl::queue &q, int flag);
+    bool UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
@@ -140,7 +140,7 @@ public:
     void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void BoundaryCondition(sycl::queue &q, int flag);
-    void UpdateStates(sycl::queue &q, int flag);
+    bool UpdateStates(sycl::queue &q, int flag);
     real_t ComputeTimeStep(sycl::queue &q);
     bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
     bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);

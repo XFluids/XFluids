@@ -180,8 +180,8 @@ void SYCLSolver::EndProcess()
 	Ss.mpiTrans->communicator->allReduce(&duration, &Ttemp, 1, mpiUtils::MpiComm::FLOAT, mpiUtils::MpiComm::SUM);
 	Ss.mpiTrans->communicator->allReduce(&MPI_BCs_time, &BCsTtemp, 1, mpiUtils::MpiComm::FLOAT, mpiUtils::MpiComm::SUM);
 	Ss.mpiTrans->communicator->allReduce(&MPI_trans_time, &TransTtemp, 1, mpiUtils::MpiComm::FLOAT, mpiUtils::MpiComm::SUM);
-	duration = Ttemp;
 	Ss.mpiTrans->communicator->synchronize();
+	duration = Ttemp;
 	if (rank == 0)
 	{
 		std::cout << "MPI averaged of " << nranks << " ranks ";
@@ -200,7 +200,6 @@ void SYCLSolver::EndProcess()
 		std::cout << "Fluids do BCs time(s)     :  " << std::setw(8) << std::setprecision(6) << BCsTtemp / float(nranks) << std::endl;
 		std::cout << "MPI buffers Trans time(s) :  " << std::setw(8) << std::setprecision(6) << TransTtemp / float(nranks) << std::endl;
 	}
-	Ss.mpiTrans->communicator->synchronize();
 #endif
 #ifdef ERROR_PATCH
 	int error_times_patched = 0;
@@ -228,8 +227,11 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 #ifndef ERROR_PATCH
 #ifdef USE_MPI
 	maybe_root = (error1 ? rank : 0);
+	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->bcast(&(error1), 1, mpiUtils::MpiComm::INT, root);
+	Ss.mpiTrans->communicator->synchronize();
 #endif // USE_MPI
 	if (error1)
 		return true;
@@ -239,8 +241,11 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 #ifndef ERROR_PATCH
 #ifdef USE_MPI
 	maybe_root = (error2 ? rank : 0);
+	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->bcast(&(error2), 1, mpiUtils::MpiComm::INT, root);
+	Ss.mpiTrans->communicator->synchronize();
 #endif // USE_MPI
 	if (error2)
 		return true;
@@ -273,28 +278,51 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag)
 {
 	// estimate if rho is_nan or <0 or is_inf
-	bool error = false;
+	bool error = false, errorp1 = false, errorp2 = false, errorp3 = false;
 
 	switch (flag)
 	{
 	case 1:
 		// the fisrt step
 		BoundaryCondition(q, 0);
-		UpdateStates(q, 0);
+		errorp1 = UpdateStates(q, 0);
+		// #ifdef ESTIM_NAN
+		// 		if (errorp1)
+		// 		{
+		// 			error = errorp1;
+		// 			break;
+		// 		}
+		// #endif // end ESTIM_NAN
 		ComputeLU(q, 0);
 		UpdateU(q, 1);
 		break;
+
 	case 2:
 		// the second step
 		BoundaryCondition(q, 1);
-		UpdateStates(q, 1);
+		errorp2 = UpdateStates(q, 1);
+		// #ifdef ESTIM_NAN
+		// 		if (errorp2)
+		// 		{
+		// 			error = errorp2;
+		// 			break;
+		// 		}
+		// #endif // end ESTIM_NAN
 		ComputeLU(q, 1);
 		UpdateU(q, 2);
 		break;
+
 	case 3:
 		// the third step
 		BoundaryCondition(q, 1);
-		UpdateStates(q, 1);
+		errorp3 = UpdateStates(q, 1);
+		// #ifdef ESTIM_NAN
+		// 		if (errorp3)
+		// 		{
+		// 			error = errorp3;
+		// 			break;
+		// 		}
+		// #endif // end ESTIM_NAN
 		ComputeLU(q, 1);
 		UpdateU(q, 3);
 		break;
@@ -318,8 +346,11 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 		Output(q, rank, itr, Time, true);
 	}
 	int root, maybe_root = (error ? rank : 0);
+	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
+	Ss.mpiTrans->communicator->synchronize();
 	if (error_out)
 	{
 		std::string itr = "Err_" + std::to_string(Step) + "_RK" + std::to_string(flag);
@@ -363,10 +394,24 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 		fluids[n]->BoundaryCondition(q, Ss.Boundarys, flag);
 }
 
-void SYCLSolver::UpdateStates(sycl::queue &q, int flag)
+bool SYCLSolver::UpdateStates(sycl::queue &q, int flag)
 {
+
+	int root, maybe_root, error = 0;
 	for (int n = 0; n < NumFluid; n++)
-		fluids[n]->UpdateFluidStates(q, flag);
+		error = fluids[n]->UpdateFluidStates(q, flag);
+	// #ifdef USE_MPI
+	// 	maybe_root = (error ? rank : 0);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	//  Ss.mpiTrans->communicator->synchronize();
+	// 	Ss.mpiTrans->communicator->bcast(&(error), 1, mpiUtils::MpiComm::INT, root);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// #endif // USE_MPI
+	// 	if (error)
+	// 		return true;
+
+	return error;
 }
 
 void SYCLSolver::AllocateMemory(sycl::queue &q)

@@ -4,24 +4,44 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
-// extern SYCL_EXTERNAL void EstimateNegativeValue(int i, int j, int k, Block bl, real_t *T, real_t *P, real_t *yi)
-// {
-//     int Xmax = bl.Xmax;
-//     int Ymax = bl.Ymax;
-//     int id = (Xmax * Ymax * k + Xmax * j + i);
-// #if DIM_X
-//     if (i >= Xmax - bl.Bwidth_X)
-//         return;
-// #endif
-// #if DIM_Y
-//     if (j >= Ymax - bl.Bwidth_Y)
-//         return;
-// #endif
-// #if DIM_Z
-//     if (k >= bl.Zmax - bl.Bwidth_Z)
-//         return;
-// #endif
-// }
+extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, real_t *Vars, int *error_pos, bool *error, const int numPte, const int numVars)
+{ // numPte: number of Vars need be posoitive; numVars: length of *Vars(numbers of all Vars need to be estimed).
+    int Xmax = bl.Xmax;
+    int Ymax = bl.Ymax;
+#if DIM_X
+    if (i >= Xmax - bl.Bwidth_X)
+        return;
+#endif
+#if DIM_Y
+    if (j >= Ymax - bl.Bwidth_Y)
+        return;
+#endif
+#if DIM_Z
+    if (k >= bl.Zmax - bl.Bwidth_Z)
+        return;
+#endif
+
+    bool ngatve = false;
+    for (size_t n1 = 0; n1 < numPte; n1++)
+    {
+        ngatve = Vars[n1] < 0;
+        if (ngatve)
+        {
+            *error = true;
+            error_pos[n1] = 1;
+        }
+    }
+    bool nan = false;
+    for (size_t n2 = 0; n2 < numVars; n2++)
+    {
+        ngatve = sycl::isnan(Vars[n2]) || sycl::isinf(Vars[n2]);
+        if (ngatve)
+        {
+            *error = true;
+            error_pos[n2] = 1;
+        }
+    }
+}
 
 extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error) //, sycl::stream stream_ct1
 {
