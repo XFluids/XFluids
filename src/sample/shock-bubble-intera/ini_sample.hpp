@@ -56,13 +56,21 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     // dy_in += tmp * ini._zc2_in;
     // dy_out += tmp * ini._zc2_out;
 #endif // end DIM_Z
+
     // // Ini bubble
     dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
-    real_t ff = _DF(1.0e-2), dd = _DF(0.5) * (_DF(1.0) - _DF(2.0) * ff);
+    real_t xre = _DF(0.0);
+#ifdef COP_CHEME
+    // xre = _DF(1.0e-5);
+    for (size_t nn = 2; nn < NUM_COP - 1; nn++)
+        xi[nn] = xre; //_DF(0.0); //
+    xre *= real_t(NUM_COP - 3);
+#endif // end COP_CHEME
+    real_t xrest = _DF(1.0) - xre, ff = _DF(1.0e-2), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
     xi[NUM_SPECIES - 1] = sycl::max<real_t>(dd * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)), ff);
-    xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 1]);                // H2
-    xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 1]);               // O2
-    xi[NUM_SPECIES - 2] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 1]); // Xe
+    xi[0] = _DF(0.3) * (xrest - xi[NUM_SPECIES - 1]);                // H2
+    xi[1] = _DF(0.15) * (xrest - xi[NUM_SPECIES - 1]);               // O2
+    xi[NUM_SPECIES - 2] = _DF(0.55) * (xrest - xi[NUM_SPECIES - 1]); // Xe
 
     // // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
     // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;

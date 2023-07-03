@@ -153,6 +153,10 @@ void SYCLSolver::Evolution(sycl::queue &q)
 	}
 
 flag_end:
+#ifdef COP_CHEME
+	BoundaryCondition(q, 0);
+	UpdateStates(q, 0);
+#endif // end COP_CHEME
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 #endif
@@ -391,8 +395,8 @@ void SYCLSolver::Reaction(sycl::queue &q, real_t Time)
 {
 	UpdateStates(q, 0);
 	fluids[0]->ODESolver(q, Time);
-	BoundaryCondition(q, 0);
-	UpdateStates(q, 0);
+	// BoundaryCondition(q, 0);
+	// UpdateStates(q, 0);
 }
 #endif // end COP_CHEME
 
