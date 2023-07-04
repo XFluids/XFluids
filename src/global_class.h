@@ -111,11 +111,10 @@ public:
 class SYCLSolver{
     Setup Ss;
     OutSize VTI, PLT, CPT;
-    real_t physicalTime;
-    int Iteration, rank, nranks;
 
 public:
-    real_t dt;
+    real_t dt, physicalTime;
+    int Iteration, rank, nranks;
     float duration, MPI_trans_time, MPI_BCs_time;
     BConditions *d_BCs; // boundary condition indicators
     FluidSYCL *fluids[NumFluid];
@@ -138,16 +137,16 @@ public:
     void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void BoundaryCondition(sycl::queue &q, int flag);
-    bool UpdateStates(sycl::queue &q, int flag);
+    bool UpdateStates(sycl::queue &q, int flag, const real_t Time, std::string Step, std::string RkStep);
     real_t ComputeTimeStep(sycl::queue &q);
     bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
     bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);
     void UpdateU(sycl::queue &q, int flag);
     void ComputeLU(sycl::queue &q, int flag);
+    bool Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step);
     static bool isBigEndian()
     {
         const int i = 1;
         return ((*(char *)&i) == 0);
     }
-    void Reaction(sycl::queue &q, real_t Time);
 };

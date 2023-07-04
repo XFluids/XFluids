@@ -59,20 +59,19 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 
     // // Ini bubble
     dy_ = sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
-    real_t xre = _DF(0.0);
+    real_t xrest = _DF(1.0), ff = _DF(1.0e-2), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
+    xi[NUM_SPECIES - 1] = dd * (sycl::tanh<real_t>(dy_ * ini.C)) + _DF(0.5); //[-1,1]--0.5(1-ff)*[-1,1]+0.5-->[ff,1-ff]
+    xi[0] = _DF(0.3) * (xrest - xi[NUM_SPECIES - 1]);                        // H2
+    xi[1] = _DF(0.15) * (xrest - xi[NUM_SPECIES - 1]);                       // O2
+    xi[NUM_SPECIES - 2] = _DF(0.55) * (xrest - xi[NUM_SPECIES - 1]);         // Xe
 
 #ifdef COP_CHEME
-    // xre = _DF(1.0e-5);
+    real_t xre = _DF(1.0e-10), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
+    for (size_t n1 = 0; n1 < NUM_SPECIES; n1++)
+        xi[n1] -= ratios; //_DF(0.0); //
     for (size_t nn = 2; nn < NUM_COP - 1; nn++)
         xi[nn] = xre; //_DF(0.0); //
-    xre *= real_t(NUM_COP - 3);
 #endif // end COP_CHEME
-
-    real_t xrest = _DF(1.0) - xre, ff = _DF(1.0e-2), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
-    xi[NUM_SPECIES - 1] = sycl::max<real_t>(dd * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)), ff);
-    xi[0] = _DF(0.3) * (xrest - xi[NUM_SPECIES - 1]);                // H2
-    xi[1] = _DF(0.15) * (xrest - xi[NUM_SPECIES - 1]);               // O2
-    xi[NUM_SPECIES - 2] = _DF(0.55) * (xrest - xi[NUM_SPECIES - 1]); // Xe
 
     // // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
     // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;

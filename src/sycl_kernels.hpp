@@ -157,14 +157,14 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         int tid = n + 5;
         yi_q[n] = (UU[tid] - FF[tid]) * _rhoq, yi_q[NUM_COP] -= yi_q[n];
         yi_u[n] = (UU[tid] - FF_LF[tid]) * _rhou, yi_u[NUM_COP] -= yi_u[n];
+        yi_qp[n] = (UP[tid] + FF[tid]) * _rhoqp, yi_qp[NUM_COP] -= yi_qp[n];
+        yi_up[n] = (UP[tid] + FF_LF[tid]) * _rhoup, yi_up[NUM_COP] -= yi_up[n];
         // real_t temp = epsilon[n + 2];
         // if (yi_q[n] < temp)
         // {
         //     real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
         //     theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n]);
         // }
-        yi_qp[n] = (UP[tid] + FF[tid]) * _rhoqp, yi_qp[NUM_COP] -= yi_qp[n];
-        yi_up[n] = (UP[tid] + FF_LF[tid]) * _rhoup, yi_up[NUM_COP] -= yi_up[n];
         // if (yi_qp[n] < temp)
         // {
         //     real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
@@ -189,6 +189,25 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
     // theta = sycl::min<real_t>(theta_u, theta_p);
     // for (int nn = 0; nn < Emax; nn++)
     //     Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+
+    for (size_t n = NUM_SPECIES - 2; n < NUM_SPECIES; n++)
+    {
+        theta_u = _DF(1.0), theta_p = _DF(1.0);
+        real_t temp = epsilon[n + 2];
+        if (yi_q[n] < temp)
+        {
+            real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n]);
+        }
+        if (yi_qp[n] < temp)
+        {
+            real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n]);
+        }
+        theta = sycl::min<real_t>(theta_u, theta_p);
+        for (int nn = 0; nn < Emax; nn++)
+            Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+    }
 
     // // correct for positive p, method to get p for multicomponent theory:
     // // e = UI[4]*_rho-_DF(0.5)*_rho*_rho*(UI[1]*UI[1]+UI[2]*UI[2]+UI[3]*UI[3]);

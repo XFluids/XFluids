@@ -415,53 +415,47 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 	else
 		UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, d_U1, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 
-	// #ifdef ESTIM_NAN
-	// 	Block bl = Fs.BlSz;
-	// 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	// 	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+#ifdef ESTIM_NAN
+	Block bl = Fs.BlSz;
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
-	// 	int x_offset = Fs.OutBoundary ? 0 : bl.Bwidth_X;
-	// 	int y_offset = Fs.OutBoundary ? 0 : bl.Bwidth_Y;
-	// 	int z_offset = Fs.OutBoundary ? 0 : bl.Bwidth_Z;
+	bool *h_error, *d_error;
+	int *error_pos, numpte = 3, numvars = 3;
+	real_t *d_vars, *rho = d_fstate.rho, *T = d_fstate.T, *P = d_fstate.p, *yi = d_fstate.y;
+	h_error = middle::MallocHost<bool>(h_error, 1, q), d_error = middle::MallocDevice<bool>(d_error, 1, q);
+	d_vars = middle::MallocHost<real_t>(d_vars, numvars, q), error_pos = sycl::malloc_shared<int>(numvars, q);
+	for (size_t n = 0; n < numvars; n++)
+		error_pos[n] = 0;
+	*h_error = false;
 
-	// 	bool *h_error, *d_error;
-	// 	int *error_pos, numpte = 3, numvars = 3;
-	// 	real_t *h_vars, *d_vars, *rho = d_fstate.rho, *T = d_fstate.T, *P = d_fstate.p, *yi = d_fstate.y;
-	// 	h_error = middle::MallocHost<bool>(h_error, 1, q), d_error = middle::MallocDevice<bool>(d_error, 1, q);
-	// 	h_vars = middle::MallocHost<real_t>(h_vars, numvars, q), d_vars = middle::MallocHost<real_t>(d_vars, numvars, q);
-	// 	error_pos = sycl::malloc_shared<int>(numvars, q);
-	// 	for (size_t n = 0; n < numvars; n++)
-	// 		error_pos[n] = 0, h_vars[n] = 0.0;
-	// 	*h_error = false;
+	middle::MemCpy<bool>(d_error, h_error, 1, q);
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+						int i = index.get_global_id(0) + bl.Bwidth_X;
+						int j = index.get_global_id(1) + bl.Bwidth_Y;
+						int k = index.get_global_id(2) + bl.Bwidth_Z;
+						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+						d_vars[0] = rho[id], d_vars[1] =T[id] ,d_vars[2] = P[id];
+						EstimatePrimitiveVarKernel(i, j, k, bl, d_vars, error_pos, d_error, numpte, numvars); }); })
+		.wait();
+	middle::MemCpy<bool>(h_error, d_error, 1, q);
 
-	// 	middle::MemCpy<bool>(d_error, h_error, 1, q), middle::MemCpy<real_t>(d_vars, h_vars, numvars, q);
-	// 	q.submit([&](sycl::handler &h)
-	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-	// 							  {
-	// 					int i = index.get_global_id(0) + x_offset;
-	// 					int j = index.get_global_id(1) + y_offset;
-	// 					int k = index.get_global_id(2) + z_offset;
-	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-	// 					d_vars[0] = rho[id], d_vars[1] =T[id] ,d_vars[2] = P[id];
-	// 					EstimatePrimitiveVarKernel(i, j, k, bl, d_vars, error_pos, d_error, numpte, numvars); }); })
-	// 		.wait();
-	// 	middle::MemCpy<bool>(h_error, d_error, 1, q), middle::MemCpy<real_t>(h_vars, d_vars, numvars, q);
-
-	// 	if (*h_error)
-	// 	{
-	// 		std::cout << "Errors of Primitive variables[rho, T, P][";
-	// 		for (size_t ii = 0; ii < numvars; ii++)
-	// 		{
-	// 			std::cout << h_vars[ii] << ", ";
-	// 		}
-	// #ifdef ERROR_PATCH
-	// 		std::cout << " patched.\n";
-	// #else
-	// 		std::cout << " captured.\n";
-	// #endif // end ERROR_PATCH
-	// 		return true;
-	// 	}
-	// #endif // end ESTIM_NAN
+	if (*h_error)
+	{
+		std::cout << "Errors of Primitive variables[rho, T, P][";
+		for (size_t ii = 0; ii < numvars - 1; ii++)
+			std::cout << error_pos[ii] << ", ";
+		std::cout << error_pos[numvars - 1] << "]";
+#ifdef ERROR_PATCH
+		std::cout << " patched.\n";
+#else
+		std::cout << " captured.\n";
+#endif // end ERROR_PATCH
+		return true;
+	}
+#endif // end ESTIM_NAN
 
 	return false;
 }

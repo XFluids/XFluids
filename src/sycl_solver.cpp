@@ -46,6 +46,8 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), ra
 	}
 
 	PLT = VTI;
+
+#ifdef USE_MPI
 #if DIM_X
 	if (Ss.mpiTrans->neighborsBC[XMIN] == BC_COPY)
 		if (Ss.OutDIRX)
@@ -72,6 +74,7 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), ra
 		if (Ss.OutDIRZ)
 			PLT.nbZ += 1;
 #endif
+#endif // use MPI
 
 	CPT.minX = Ss.BlSz.Bwidth_X + Ss.outpos_x;
 	CPT.minY = Ss.BlSz.Bwidth_Y + Ss.outpos_y;
@@ -132,6 +135,9 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			physicalTime += dt;
 			// solved the fluid with 3rd order Runge-Kutta method
 			error_out = SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
+#ifdef COP_CHEME
+			error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
+#endif // end COP_CHEME
 #ifdef ESTIM_NAN
 #ifdef USE_MPI
 			int root, maybe_root = (error_out ? rank : 0);
@@ -139,12 +145,8 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
 #endif
 			if (error_out)
-				goto flag_end;
+				goto flag_ernd;
 #endif
-
-#ifdef COP_CHEME
-			Reaction(q, dt);
-#endif // end COP_CHEME
 			Stepstop = Ss.nStepmax <= Iteration ? true : false;
 			if (Stepstop)
 				goto flag_end;
@@ -155,8 +157,9 @@ void SYCLSolver::Evolution(sycl::queue &q)
 flag_end:
 #ifdef COP_CHEME
 	BoundaryCondition(q, 0);
-	UpdateStates(q, 0);
+	UpdateStates(q, 0, physicalTime, std::to_string(Iteration), "_End");
 #endif // end COP_CHEME
+flag_ernd:
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 #endif
@@ -225,28 +228,28 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 	int root, maybe_root, error1 = 0, error2 = 0, error3 = 0;
 	error1 = RungeKuttaSP3rd(q, rank, Step, Time, 1);
 #ifndef ERROR_PATCH
-#ifdef USE_MPI
-	maybe_root = (error1 ? rank : 0);
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->bcast(&(error1), 1, mpiUtils::MpiComm::INT, root);
-	Ss.mpiTrans->communicator->synchronize();
-#endif // USE_MPI
+	// #ifdef USE_MPI
+	// 	maybe_root = (error1 ? rank : 0);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// 	Ss.mpiTrans->communicator->bcast(&(error1), 1, mpiUtils::MpiComm::INT, root);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// #endif // USE_MPI
 	if (error1)
 		return true;
 #endif
 
 	error2 = RungeKuttaSP3rd(q, rank, Step, Time, 2);
 #ifndef ERROR_PATCH
-#ifdef USE_MPI
-	maybe_root = (error2 ? rank : 0);
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->bcast(&(error2), 1, mpiUtils::MpiComm::INT, root);
-	Ss.mpiTrans->communicator->synchronize();
-#endif // USE_MPI
+	// #ifdef USE_MPI
+	// 	maybe_root = (error2 ? rank : 0);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// 	Ss.mpiTrans->communicator->bcast(&(error2), 1, mpiUtils::MpiComm::INT, root);
+	// 	Ss.mpiTrans->communicator->synchronize();
+	// #endif // USE_MPI
 	if (error2)
 		return true;
 #endif
@@ -272,27 +275,23 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 	}
 #endif
 
-	return bool(error1 || error2 || error3);
+	return error3;
 }
 
 bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag)
 {
 	// estimate if rho is_nan or <0 or is_inf
-	bool error = false, errorp1 = false, errorp2 = false, errorp3 = false;
-
+	bool error = false; //, errorp1 = false, errorp2 = false, errorp3 = false;
 	switch (flag)
 	{
 	case 1:
 		// the fisrt step
 		BoundaryCondition(q, 0);
-		errorp1 = UpdateStates(q, 0);
-		// #ifdef ESTIM_NAN
-		// 		if (errorp1)
-		// 		{
-		// 			error = errorp1;
-		// 			break;
-		// 		}
-		// #endif // end ESTIM_NAN
+		error = UpdateStates(q, 0, Time, std::to_string(Step), "_RK1");
+#ifdef ESTIM_NAN
+		if (error)
+			return true;
+#endif // end ESTIM_NAN
 		ComputeLU(q, 0);
 		UpdateU(q, 1);
 		break;
@@ -300,14 +299,11 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	case 2:
 		// the second step
 		BoundaryCondition(q, 1);
-		errorp2 = UpdateStates(q, 1);
-		// #ifdef ESTIM_NAN
-		// 		if (errorp2)
-		// 		{
-		// 			error = errorp2;
-		// 			break;
-		// 		}
-		// #endif // end ESTIM_NAN
+		error = UpdateStates(q, 1, Time, std::to_string(Step), "_RK2");
+#ifdef ESTIM_NAN
+		if (error)
+			return true;
+#endif // end ESTIM_NAN
 		ComputeLU(q, 1);
 		UpdateU(q, 2);
 		break;
@@ -315,53 +311,39 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	case 3:
 		// the third step
 		BoundaryCondition(q, 1);
-		errorp3 = UpdateStates(q, 1);
-		// #ifdef ESTIM_NAN
-		// 		if (errorp3)
-		// 		{
-		// 			error = errorp3;
-		// 			break;
-		// 		}
-		// #endif // end ESTIM_NAN
+		error = UpdateStates(q, 1, Time, std::to_string(Step), "_RK3");
+#ifdef ESTIM_NAN
+		if (error)
+			return true;
+#endif // end ESTIM_NAN
 		ComputeLU(q, 1);
 		UpdateU(q, 3);
 		break;
 	}
 
-	int error_out = 0;
 #ifdef ESTIM_NAN
+	bool errors[NumFluid] = {false};
+	int root, maybe_root, error_out = 0;
 	for (int n = 0; n < NumFluid; n++)
 	{
-		if (fluids[n]->EstimateFluidNAN(q, flag))
-		{
-			error = true;
-			error_out = 1;
-			goto flag_out;
-		}
+		errors[n] = fluids[n]->EstimateFluidNAN(q, flag);
+		error = error || errors[n];
 	}
-	if (error)
-	{
-	flag_out:
-		std::string itr = "Ers_" + std::to_string(Step) + "_RK" + std::to_string(flag);
-		Output(q, rank, itr, Time, true);
-	}
-	int root, maybe_root = (error ? rank : 0);
+	maybe_root = (error ? rank : 0), error_out = error;
+#ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
 	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
 	Ss.mpiTrans->communicator->synchronize();
+#endif // end USE_MPI
+	if (error)
+		Output(q, rank, "UErs_" + std::to_string(Step) + "_RK" + std::to_string(flag), Time, true);
 	if (error_out)
-	{
-		std::string itr = "Err_" + std::to_string(Step) + "_RK" + std::to_string(flag);
-		Output(q, rank, itr, Time, false);
-	}
-#ifdef ERROR_PATCH
-	error = false;
-#endif
+		Output(q, rank, "UErr_" + std::to_string(Step) + "_RK" + std::to_string(flag), Time, false);
 #endif // end
 
-	return error;
+	return error; // all rank == 1 or 0
 }
 
 real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
@@ -394,24 +376,37 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 		fluids[n]->BoundaryCondition(q, Ss.Boundarys, flag);
 }
 
-bool SYCLSolver::UpdateStates(sycl::queue &q, int flag)
+bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, std::string Step, std::string RkStep)
 {
 
-	int root, maybe_root, error = 0;
+	int root, maybe_root, error_out = 0;
+	bool error[NumFluid] = {false}, error_t = false;
 	for (int n = 0; n < NumFluid; n++)
-		error = fluids[n]->UpdateFluidStates(q, flag);
-	// #ifdef USE_MPI
-	// 	maybe_root = (error ? rank : 0);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	//  Ss.mpiTrans->communicator->synchronize();
-	// 	Ss.mpiTrans->communicator->bcast(&(error), 1, mpiUtils::MpiComm::INT, root);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// #endif // USE_MPI
-	// 	if (error)
-	// 		return true;
+	{
+		error[n] = fluids[n]->UpdateFluidStates(q, flag);
+		error_t = error_t || error[n]; // rank error
+									   // if (Time > 0.0000003)
+									   // 	error_t = true;
+	}
+#ifdef ESTIM_NAN
+	maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
+#ifdef USE_MPI
+	Ss.mpiTrans->communicator->synchronize();
+	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	Ss.mpiTrans->communicator->synchronize();
+	Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
+	Ss.mpiTrans->communicator->synchronize();
+#endif // end USE_MPI
+	if (error_t)
+		Output(q, rank, "Ers_" + Step + RkStep, Time, true);
+	if (error_out)
+		Output(q, rank, "Err_" + Step + RkStep, Time, false);
+#ifdef ERROR_PATCH
+	return false;
+#endif // ERROR_PATCH
+#endif // end ESTIM_NAN
 
-	return error;
+	return error_out; // all rank == 1 or 0
 }
 
 void SYCLSolver::AllocateMemory(sycl::queue &q)
@@ -435,11 +430,15 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 	Read_Ubak(q, rank, &(Iteration), &(physicalTime));
 }
 
-void SYCLSolver::Reaction(sycl::queue &q, real_t Time)
+bool SYCLSolver::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step)
 {
 	BoundaryCondition(q, 0);
-	UpdateStates(q, 0);
-	fluids[0]->ODESolver(q, Time);
+	bool error = UpdateStates(q, 0, Time, std::to_string(Step), "_React");
+	if (error)
+		return true;
+	fluids[0]->ODESolver(q, dt);
+
+	return false;
 }
 
 void SYCLSolver::CopyToUbak(sycl::queue &q)
@@ -524,6 +523,9 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 		q.memcpy(fluids[n]->h_fstate.e, fluids[n]->d_fstate.e, bytes);
 		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
+#ifdef COP
+		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
+#endif // COP
 #ifdef ESTIM_NAN
 		if (error)
 		{
@@ -565,36 +567,31 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 			q.memcpy(fluids[n]->h_U1, fluids[n]->d_U1, cellbytes);
 			q.memcpy(fluids[n]->h_LU, fluids[n]->d_LU, cellbytes);
 #if DIM_X
-			q.memcpy(fluids[n]->h_fstate.b1x, fluids[n]->d_fstate.b1x, bytes);
-			q.memcpy(fluids[n]->h_fstate.b3x, fluids[n]->d_fstate.b3x, bytes);
-			q.memcpy(fluids[n]->h_fstate.c2x, fluids[n]->d_fstate.c2x, bytes);
-			q.memcpy(fluids[n]->h_fstate.zix, fluids[n]->d_fstate.zix, bytes * NUM_COP);
+			// q.memcpy(fluids[n]->h_fstate.b1x, fluids[n]->d_fstate.b1x, bytes);
+			// q.memcpy(fluids[n]->h_fstate.b3x, fluids[n]->d_fstate.b3x, bytes);
+			// q.memcpy(fluids[n]->h_fstate.c2x, fluids[n]->d_fstate.c2x, bytes);
+			// q.memcpy(fluids[n]->h_fstate.zix, fluids[n]->d_fstate.zix, bytes * NUM_COP);
 			q.memcpy(fluids[n]->h_fstate.preFwx, fluids[n]->d_fstate.preFwx, cellbytes);
 			q.memcpy(fluids[n]->h_fstate.pstFwx, fluids[n]->d_wallFluxF, cellbytes);
 #endif
 #if DIM_Y
-			q.memcpy(fluids[n]->h_fstate.b1y, fluids[n]->d_fstate.b1y, bytes);
-			q.memcpy(fluids[n]->h_fstate.b3y, fluids[n]->d_fstate.b3y, bytes);
-			q.memcpy(fluids[n]->h_fstate.c2y, fluids[n]->d_fstate.c2y, bytes);
-			q.memcpy(fluids[n]->h_fstate.ziy, fluids[n]->d_fstate.ziy, bytes * NUM_COP);
+			// q.memcpy(fluids[n]->h_fstate.b1y, fluids[n]->d_fstate.b1y, bytes);
+			// q.memcpy(fluids[n]->h_fstate.b3y, fluids[n]->d_fstate.b3y, bytes);
+			// q.memcpy(fluids[n]->h_fstate.c2y, fluids[n]->d_fstate.c2y, bytes);
+			// q.memcpy(fluids[n]->h_fstate.ziy, fluids[n]->d_fstate.ziy, bytes * NUM_COP);
 			q.memcpy(fluids[n]->h_fstate.preFwy, fluids[n]->d_fstate.preFwy, cellbytes);
 			q.memcpy(fluids[n]->h_fstate.pstFwy, fluids[n]->d_wallFluxG, cellbytes);
 #endif
 #if DIM_Z
-			q.memcpy(fluids[n]->h_fstate.b1z, fluids[n]->d_fstate.b1z, bytes);
-			q.memcpy(fluids[n]->h_fstate.b3z, fluids[n]->d_fstate.b3z, bytes);
-			q.memcpy(fluids[n]->h_fstate.c2z, fluids[n]->d_fstate.c2z, bytes);
-			q.memcpy(fluids[n]->h_fstate.ziz, fluids[n]->d_fstate.ziz, bytes * NUM_COP);
+			// q.memcpy(fluids[n]->h_fstate.b1z, fluids[n]->d_fstate.b1z, bytes);
+			// q.memcpy(fluids[n]->h_fstate.b3z, fluids[n]->d_fstate.b3z, bytes);
+			// q.memcpy(fluids[n]->h_fstate.c2z, fluids[n]->d_fstate.c2z, bytes);
+			// q.memcpy(fluids[n]->h_fstate.ziz, fluids[n]->d_fstate.ziz, bytes * NUM_COP);
 			q.memcpy(fluids[n]->h_fstate.preFwz, fluids[n]->d_fstate.preFwz, cellbytes);
 			q.memcpy(fluids[n]->h_fstate.pstFwz, fluids[n]->d_wallFluxH, cellbytes);
 #endif
 		}
-#endif
-#ifdef COP
-		// for (size_t i = 0; i < NUM_SPECIES; i++)
-		// 	q.memcpy(fluids[n]->h_fstate.y[i], fluids[n]->d_fstate.y[i], bytes);
-		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
-#endif // COP
+#endif // end ESTIM_NAN
 	}
 	q.wait();
 }
@@ -713,6 +710,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		}
 #ifdef Diffu
 		Onbvar += (NUM_SPECIES * 3);
+		Onbvar += (NUM_SPECIES * 3) * (DIM_X + DIM_Y + DIM_Z);
 		Onbvar += (NUM_SPECIES) * (DIM_X + DIM_Y + DIM_Z);
 		// Onbvar += (NUM_SPECIES * 3) * (DIM_X + DIM_Y + DIM_Z);
 
@@ -771,11 +769,11 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		// 	variables_names[index] = "E-xzi[" + std::to_string(nn) + "]";
 		// 	index++;
 		// }
-		Onbvar += Emax * 2;
+		Onbvar += Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
-			variables_names[index] = "E-prevFwx[" + std::to_string(mm) + "]";
-			index++;
+			// variables_names[index] = "E-prevFwx[" + std::to_string(mm) + "]";
+			// index++;
 			variables_names[index] = "E-pstvFwx[" + std::to_string(mm) + "]";
 			index++;
 		}
@@ -793,11 +791,11 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		// 	variables_names[index] = "E-yzi[" + std::to_string(nn) + "]";
 		// 	index++;
 		// }
-		Onbvar += Emax * 2;
+		Onbvar += Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
-			variables_names[index] = "E-prevFwy[" + std::to_string(mm) + "]";
-			index++;
+			// variables_names[index] = "E-prevFwy[" + std::to_string(mm) + "]";
+			// index++;
 			variables_names[index] = "E-pstvFwy[" + std::to_string(mm) + "]";
 			index++;
 		}
@@ -815,11 +813,11 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		// 	variables_names[index] = "E-zzi[" + std::to_string(nn) + "]";
 		// 	index++;
 		// }
-		Onbvar += Emax * 2;
+		Onbvar += Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
-			variables_names[index] = "E-prevFwz[" + std::to_string(mm) + "]";
-			index++;
+			// variables_names[index] = "E-prevFwz[" + std::to_string(mm) + "]";
+			// index++;
 			variables_names[index] = "E-pstvFwz[" + std::to_string(mm) + "]";
 			index++;
 		}
@@ -1223,12 +1221,12 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 
 					for (size_t nn = 0; nn < Emax; nn++)
 					{
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.preFwx[nn + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+			// MARCO_OUTLOOP
+			// {
+			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			// 	real_t tmp = fluids[0]->h_fstate.preFwx[nn + Emax * id];
+			// 	outFile.write((char *)&tmp, sizeof(real_t));
+			// }
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
@@ -1269,12 +1267,12 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.preFwy[nn + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+			// MARCO_OUTLOOP
+			// {
+			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			// 	real_t tmp = fluids[0]->h_fstate.preFwy[nn + Emax * id];
+			// 	outFile.write((char *)&tmp, sizeof(real_t));
+			// }
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
@@ -1314,12 +1312,12 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.preFwz[nn + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+			// MARCO_OUTLOOP
+			// {
+			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			// 	real_t tmp = fluids[0]->h_fstate.preFwz[nn + Emax * id];
+			// 	outFile.write((char *)&tmp, sizeof(real_t));
+			// }
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
