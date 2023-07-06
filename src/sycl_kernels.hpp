@@ -4,43 +4,105 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
-extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, real_t *Vars, int *error_pos, bool *error, const int numPte, const int numVars)
+extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2,
+                                                     real_t *UI, real_t *rho, real_t *p, real_t *T, real_t *y, real_t *H, real_t *e, real_t *gamma, real_t *c)
 { // numPte: number of Vars need be posoitive; numVars: length of *Vars(numbers of all Vars need to be estimed).
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
 #if DIM_X
-    if (i >= Xmax - bl.Bwidth_X)
+    if (i >= Xmax)
         return;
 #endif
 #if DIM_Y
-    if (j >= Ymax - bl.Bwidth_Y)
+    if (j >= Ymax)
         return;
 #endif
 #if DIM_Z
-    if (k >= bl.Zmax - bl.Bwidth_Z)
+    if (k >= bl.Zmax)
         return;
 #endif
 
-    bool ngatve = false;
-    for (size_t n1 = 0; n1 < numPte; n1++)
+    int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+    // #ifdef ERROR_PATCH
+    real_t theta = _DF(1.0);
+#if DIM_X
+    int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 1));
+    int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 1));
+    theta *= _DF(0.5);
+#endif
+#if DIM_Y
+    int id_ym = (Xmax * Ymax * k + Xmax * (j - 1) + i);
+    int id_yp = (Xmax * Ymax * k + Xmax * (j + 1) + i);
+    theta *= _DF(0.5);
+#endif
+#if DIM_Z
+    int id_zm = (Xmax * Ymax * (k - 1) + Xmax * j + i);
+    int id_zp = (Xmax * Ymax * (k + 1) + Xmax * j + i);
+    theta *= _DF(0.5);
+#endif
+    // #endif // end ERROR_PATCH
+
+    bool ngatve = false, spc = false, ngatves[3], spcs[NUM_SPECIES];
+    real_t ngaVs[3] = {rho[id], p[id], T[id]}, *yi = &(y[NUM_SPECIES * id]), *ngaPatch[3] = {rho, p, T};
+    for (size_t n1 = 0; n1 < 3; n1++)
     {
-        ngatve = Vars[n1] < 0;
-        if (ngatve)
+        ngatves[n1] = (ngaVs[n1] < 0);
+        ngatve = ngatve || ngatves[n1];
+        if (ngatves[n1])
         {
-            *error = true;
             error_pos[n1] = 1;
+#ifdef ERROR_PATCH // may cause physical unconservative
+            ngaVs[n1] = _DF(0.0);
+#if DIM_X
+            ngaVs[n1] += theta * (ngaPatch[n1][id_xm] + ngaPatch[n1][id_xp]);
+#endif
+#if DIM_Y
+            ngaVs[n1] += theta * (ngaPatch[n1][id_ym] + ngaPatch[n1][id_yp]);
+#endif
+#if DIM_Z
+            ngaVs[n1] += theta * (ngaPatch[n1][id_zm] + ngaPatch[n1][id_zp]);
+#endif
+#endif // end ERROR_PATCH
         }
     }
-    bool nan = false;
-    for (size_t n2 = 0; n2 < numVars; n2++)
+    for (size_t n2 = 0; n2 < NUM_SPECIES; n2++)
     {
-        ngatve = sycl::isnan(Vars[n2]) || sycl::isinf(Vars[n2]);
-        if (ngatve)
+        spcs[n2] = (yi[n2] < _DF(1e-20) || yi[n2] > _DF(1.0));
+        spc = spc || spcs[n2];
+        if (spcs[n2])
         {
-            *error = true;
-            error_pos[n2] = 1;
+            error_pos[n2 + 3] = 1;
+            // #ifdef ERROR_PATCH
+            yi[n2] = _DF(0.0);
+#if DIM_X
+            yi[n2] += theta * (y[n2 + id_xm * NUM_SPECIES] + y[n2 + id_xp * NUM_SPECIES]);
+#endif
+#if DIM_Y
+            yi[n2] += theta * (y[n2 + id_ym * NUM_SPECIES] + y[n2 + id_yp * NUM_SPECIES]);
+#endif
+#if DIM_Z
+            yi[n2] += theta * (y[n2 + id_zm * NUM_SPECIES] + y[n2 + id_zp * NUM_SPECIES]);
+#endif
+            // #endif // end ERROR_PATCH
         }
     }
+    if (ngatve || spc)
+    {
+        error_pos[3 + NUM_SPECIES] = i, error_pos[4 + NUM_SPECIES] = j, error_pos[5 + NUM_SPECIES] = k;
+        if (ngatve)
+            *error2 = false; // add condition to avoid rewrite by other threads
+        if (spc)
+        {
+            *error2 = true; // add condition to avoid rewrite by other threads
+            real_t sum = _DF(0.0);
+            for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+                sum += yi[nn];
+            sum = _DF(1.0) / sum;
+            for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+                yi[nn] *= sum;
+            ReGetStates(thermal, yi, UI[4], rho[id], p[id], T[id], H[id], c[id], e[id], gamma[id]);
+        }
+    } // *error = true;
 }
 
 extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error) //, sycl::stream stream_ct1
@@ -60,24 +122,24 @@ extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offs
     if (k >= bl.Zmax - bl.Bwidth_Z)
         return;
 #endif
-#ifdef ERROR_PATCH
-    real_t theta = _DF(1.0);
-#if DIM_X
-    int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 6)) * Emax;
-    int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 6)) * Emax;
-    theta *= _DF(0.5);
-#endif
-#if DIM_Y
-    int id_ym = (Xmax * Ymax * k + Xmax * (j - 6) + i) * Emax;
-    int id_yp = (Xmax * Ymax * k + Xmax * (j + 6) + i) * Emax;
-    theta *= _DF(0.5);
-#endif
-#if DIM_Z
-    int id_zm = (Xmax * Ymax * (k - 6) + Xmax * j + i) * Emax;
-    int id_zp = (Xmax * Ymax * (k + 6) + Xmax * j + i) * Emax;
-    theta *= _DF(0.5);
-#endif
-#endif // end ERROR_PATCH
+    // #ifdef ERROR_PATCH
+    //     real_t theta = _DF(1.0);
+    // #if DIM_X
+    //     int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 6)) * Emax;
+    //     int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 6)) * Emax;
+    //     theta *= _DF(0.5);
+    // #endif
+    // #if DIM_Y
+    //     int id_ym = (Xmax * Ymax * k + Xmax * (j - 6) + i) * Emax;
+    //     int id_yp = (Xmax * Ymax * k + Xmax * (j + 6) + i) * Emax;
+    //     theta *= _DF(0.5);
+    // #endif
+    // #if DIM_Z
+    //     int id_zm = (Xmax * Ymax * (k - 6) + Xmax * j + i) * Emax;
+    //     int id_zp = (Xmax * Ymax * (k + 6) + Xmax * j + i) * Emax;
+    //     theta *= _DF(0.5);
+    // #endif
+    // #endif // end ERROR_PATCH
     bool tempnegv = UI[0 + id] < 0; //|| UI[4 + id] < 0;
     for (size_t ii = 0; ii < Emax; ii++)
     { //(i == 150 && j == 30 && ii == 0) ? true :
@@ -89,18 +151,18 @@ extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offs
             // error_pos[Emax] = i;
             // error_pos[Emax + 1] = j;
             // error_pos[Emax + 2] = k;
-#ifdef ERROR_PATCH
-            UI[ii + id] = _DF(0.0);
-#if DIM_X
-            UI[ii + id] += theta * (UI[ii + id_xm] + UI[ii + id_xp]);
-#endif
-#if DIM_Y
-            UI[ii + id] += theta * (UI[ii + id_ym] + UI[ii + id_yp]);
-#endif
-#if DIM_Z
-            UI[ii + id] += theta * (UI[ii + id_zm] + UI[ii + id_zp]);
-#endif
-#endif // end ERROR_PATCH
+            // #ifdef ERROR_PATCH
+            //             UI[ii + id] = _DF(0.0);
+            // #if DIM_X
+            //             UI[ii + id] += theta * (UI[ii + id_xm] + UI[ii + id_xp]);
+            // #endif
+            // #if DIM_Y
+            //             UI[ii + id] += theta * (UI[ii + id_ym] + UI[ii + id_yp]);
+            // #endif
+            // #if DIM_Z
+            //             UI[ii + id] += theta * (UI[ii + id_zm] + UI[ii + id_zp]);
+            // #endif
+            // #endif // end ERROR_PATCH
         }
     }
 }
@@ -189,8 +251,25 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
     // theta = sycl::min<real_t>(theta_u, theta_p);
     // for (int nn = 0; nn < Emax; nn++)
     //     Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
-
-    for (size_t n = NUM_SPECIES - 2; n < NUM_SPECIES; n++)
+    for (size_t n = 0; n < 2; n++) // NUM_SPECIES - 2
+    {
+        theta_u = _DF(1.0), theta_p = _DF(1.0);
+        real_t temp = epsilon[n + 2];
+        if (yi_q[n] < temp)
+        {
+            real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n]);
+        }
+        if (yi_qp[n] < temp)
+        {
+            real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n]);
+        }
+        theta = sycl::min<real_t>(theta_u, theta_p);
+        for (int nn = 0; nn < Emax; nn++)
+            Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+    }
+    for (size_t n = NUM_SPECIES - 2; n < NUM_SPECIES; n++) // NUM_SPECIES - 2
     {
         theta_u = _DF(1.0), theta_p = _DF(1.0);
         real_t temp = epsilon[n + 2];
@@ -699,6 +778,15 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
     real_t *U = &(UI[Emax * id]), *yi = &(_y[NUM_SPECIES * id]); //, yi[NUM_SPECIES];
 
     GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], e[id], thermal, yi);
+
+    // if (i == 80 && j == 25)
+    // {
+    // yi[0] += 20.0;
+    // yi[NUM_COP] += -20.0;
+    // // p[id] = -10000.0;
+    // // c[id] = sycl::sqrt<real_t>(-1.0);
+    // ReGetStates(thermal, yi, U[4], rho[id], p[id], T[id], H[id], c[id], e[id], gamma[id]);
+    // }
 
     // // real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * X_inner + _DF(0.5)) * bl.dx + bl.Domain_xmin : _DF(0.0);
     // // real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * Y_inner + _DF(0.5)) * bl.dy + bl.Domain_ymin : _DF(0.0);

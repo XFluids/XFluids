@@ -96,7 +96,7 @@ SYCLSolver::~SYCLSolver()
 void SYCLSolver::Evolution(sycl::queue &q)
 {
 	bool TimeLoopOut = false, Stepstop = false;
-	int OutNum = 1, TimeLoop = 0, error_out = 0;
+	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
 
 	duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
@@ -113,7 +113,9 @@ void SYCLSolver::Evolution(sycl::queue &q)
 				OutNum++;
 				TimeLoopOut = false;
 			}
-
+			if (RcalOut % 100 == 0)
+				Output_Ubak(rank, Iteration, physicalTime);
+			RcalOut++;
 			// get minmum dt, if MPI used, get the minimum of all ranks
 			dt = ComputeTimeStep(q); // 2.0e-6; //
 
@@ -166,7 +168,7 @@ flag_ernd:
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
 	EndProcess();
-	Output_Ubak(rank, Iteration - 1, physicalTime);
+	// Output_Ubak(rank, Iteration - 1, physicalTime);
 	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
 
@@ -227,32 +229,12 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 	// estimate if rho is_nan or <0 or is_inf
 	int root, maybe_root, error1 = 0, error2 = 0, error3 = 0;
 	error1 = RungeKuttaSP3rd(q, rank, Step, Time, 1);
-#ifndef ERROR_PATCH
-	// #ifdef USE_MPI
-	// 	maybe_root = (error1 ? rank : 0);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// 	Ss.mpiTrans->communicator->bcast(&(error1), 1, mpiUtils::MpiComm::INT, root);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// #endif // USE_MPI
 	if (error1)
 		return true;
-#endif
 
 	error2 = RungeKuttaSP3rd(q, rank, Step, Time, 2);
-#ifndef ERROR_PATCH
-	// #ifdef USE_MPI
-	// 	maybe_root = (error2 ? rank : 0);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// 	Ss.mpiTrans->communicator->bcast(&(error2), 1, mpiUtils::MpiComm::INT, root);
-	// 	Ss.mpiTrans->communicator->synchronize();
-	// #endif // USE_MPI
 	if (error2)
 		return true;
-#endif
 
 	error3 = RungeKuttaSP3rd(q, rank, Step, Time, 3);
 
@@ -328,6 +310,8 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	{
 		errors[n] = fluids[n]->EstimateFluidNAN(q, flag);
 		error = error || errors[n];
+		// if (rank == 1 && Step == 10)
+		// 	error = true;
 	}
 	maybe_root = (error ? rank : 0), error_out = error;
 #ifdef USE_MPI
@@ -341,6 +325,7 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 		Output(q, rank, "UErs_" + std::to_string(Step) + "_RK" + std::to_string(flag), Time, true);
 	if (error_out)
 		Output(q, rank, "UErr_" + std::to_string(Step) + "_RK" + std::to_string(flag), Time, false);
+	error = bool(error_out);
 #endif // end
 
 	return error; // all rank == 1 or 0
@@ -379,34 +364,38 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, std::string Step, std::string RkStep)
 {
 
-	int root, maybe_root, error_out = 0;
 	bool error[NumFluid] = {false}, error_t = false;
 	for (int n = 0; n < NumFluid; n++)
 	{
 		error[n] = fluids[n]->UpdateFluidStates(q, flag);
+		// if (Time > 0.0000003 && rank == 1)
+		// 	error[n] = true;
 		error_t = error_t || error[n]; // rank error
-									   // if (Time > 0.0000003)
-									   // 	error_t = true;
 	}
 #ifdef ESTIM_NAN
-	maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
+	if (error_t)
+	{
+		Output(q, rank, "PErs_" + Step + RkStep, Time, true);
+		std::cout << "Output DIR(X, Y, Z = " << Ss.OutDIRX << ", " << Ss.OutDIRY << ", " << Ss.OutDIRZ << ") has been done at Step = PErs_" << Step << RkStep << std::endl;
+	}
+#ifdef ERROR_PATCH
+	error_t = false;
+#else
 #ifdef USE_MPI
+	int root, maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
 	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
 	Ss.mpiTrans->communicator->synchronize();
 	Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
 	Ss.mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
+	error_t = bool(error_out);
+#endif
 	if (error_t)
-		Output(q, rank, "Ers_" + Step + RkStep, Time, true);
-	if (error_out)
-		Output(q, rank, "Err_" + Step + RkStep, Time, false);
-#ifdef ERROR_PATCH
-	return false;
-#endif // ERROR_PATCH
+		Output(q, rank, "PErr_" + Step + RkStep, Time, false);
 #endif // end ESTIM_NAN
 
-	return error_out; // all rank == 1 or 0
+	return error_t; // all rank == 1 or 0
 }
 
 void SYCLSolver::AllocateMemory(sycl::queue &q)

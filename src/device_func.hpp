@@ -143,7 +143,7 @@ real_t get_CopGamma(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t 
 	}
 	else
 	{
-		return 0;
+		return -1;
 	}
 }
 
@@ -231,7 +231,7 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 		// 2. add visFlux limiter
 		// 2. return origin T while update T<0
 		real_t df = sycl::min(func_T / (dfunc_T + _DF(1.0e-30)), _DF(1e-3) * T);
-		// df = sycl::max(df, -_DF(1e-2) * T);
+		df = sycl::max(df, -_DF(1e-2) * T);
 		T = T - df;
 		if (sycl::abs<real_t>(df) <= tol)
 			break;
@@ -321,6 +321,17 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	H = (UI[4] + p) * rho1;
 	c = sycl::sqrt(gamma * p * rho1);
 	e = tme;
+}
+
+void ReGetStates(Thermal thermal, real_t *yi, real_t &U4, real_t &rho, real_t &p, real_t &T, real_t &H, real_t &c, real_t &e, real_t &gamma)
+{
+	// real_t tme = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
+	real_t R = get_CopR(thermal._Wi, yi), rho1 = _DF(1.0) / rho;
+	T = get_T(thermal, yi, e, T);
+	p = rho * R * T; // 对所有气体都适用
+	gamma = get_CopGamma(thermal, yi, T);
+	H = (U4 + p) * rho1;
+	c = sycl::sqrt(gamma * p * rho1);
 }
 
 /**
