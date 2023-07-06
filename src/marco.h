@@ -95,7 +95,7 @@
     /*add support while c2<0 use c2 Refed in https://doi.org/10.1006/jcph.1996.5622 */                                                                                                                                                       \
     real_t c2w = sycl::step(c2, _DF(0.0)); /*sycl::step(a, b)： return 0 while a>b，return 1 while a<=b*/                                                                                                                                  \
     c2 = Gamma0 * _P * _rho * c2w + (_DF(1.0) - c2w) * c2;                                                                                                                                                                                   \
-    /*MARCO_ERROR_OUT(); */
+    MARCO_ERROR_OUT();
 
 /**
  * get c2 #ifdef COP inside Reconstructflux
@@ -125,7 +125,7 @@
     real_t _Cp = get_RoeAverage(Cp_l, Cp_r, D, D1);                                                                                             \
     real_t _T = get_RoeAverage(T[id_l], T[id_r], D, D1);                                                                                        \
     real_t c2 = get_CopC2(z, b1, b3, Ri, _yi, _hi, Gamma0, _R, _Cp, _T);                                                                        \
-    /*MARCO_ERROR_OUT(); */
+    MARCO_ERROR_OUT();
 
 /**                                                                                                                                                                                                                                          \
  * get c2 #else COP                                                                                                                                                                                                                          \

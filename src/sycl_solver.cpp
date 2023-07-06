@@ -556,26 +556,26 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 			q.memcpy(fluids[n]->h_U1, fluids[n]->d_U1, cellbytes);
 			q.memcpy(fluids[n]->h_LU, fluids[n]->d_LU, cellbytes);
 #if DIM_X
-			// q.memcpy(fluids[n]->h_fstate.b1x, fluids[n]->d_fstate.b1x, bytes);
-			// q.memcpy(fluids[n]->h_fstate.b3x, fluids[n]->d_fstate.b3x, bytes);
-			// q.memcpy(fluids[n]->h_fstate.c2x, fluids[n]->d_fstate.c2x, bytes);
-			// q.memcpy(fluids[n]->h_fstate.zix, fluids[n]->d_fstate.zix, bytes * NUM_COP);
+			q.memcpy(fluids[n]->h_fstate.b1x, fluids[n]->d_fstate.b1x, bytes);
+			q.memcpy(fluids[n]->h_fstate.b3x, fluids[n]->d_fstate.b3x, bytes);
+			q.memcpy(fluids[n]->h_fstate.c2x, fluids[n]->d_fstate.c2x, bytes);
+			q.memcpy(fluids[n]->h_fstate.zix, fluids[n]->d_fstate.zix, bytes * NUM_COP);
 			q.memcpy(fluids[n]->h_fstate.preFwx, fluids[n]->d_fstate.preFwx, cellbytes);
 			q.memcpy(fluids[n]->h_fstate.pstFwx, fluids[n]->d_wallFluxF, cellbytes);
 #endif
 #if DIM_Y
-			// q.memcpy(fluids[n]->h_fstate.b1y, fluids[n]->d_fstate.b1y, bytes);
-			// q.memcpy(fluids[n]->h_fstate.b3y, fluids[n]->d_fstate.b3y, bytes);
-			// q.memcpy(fluids[n]->h_fstate.c2y, fluids[n]->d_fstate.c2y, bytes);
-			// q.memcpy(fluids[n]->h_fstate.ziy, fluids[n]->d_fstate.ziy, bytes * NUM_COP);
+			q.memcpy(fluids[n]->h_fstate.b1y, fluids[n]->d_fstate.b1y, bytes);
+			q.memcpy(fluids[n]->h_fstate.b3y, fluids[n]->d_fstate.b3y, bytes);
+			q.memcpy(fluids[n]->h_fstate.c2y, fluids[n]->d_fstate.c2y, bytes);
+			q.memcpy(fluids[n]->h_fstate.ziy, fluids[n]->d_fstate.ziy, bytes * NUM_COP);
 			q.memcpy(fluids[n]->h_fstate.preFwy, fluids[n]->d_fstate.preFwy, cellbytes);
 			q.memcpy(fluids[n]->h_fstate.pstFwy, fluids[n]->d_wallFluxG, cellbytes);
 #endif
 #if DIM_Z
-			// q.memcpy(fluids[n]->h_fstate.b1z, fluids[n]->d_fstate.b1z, bytes);
-			// q.memcpy(fluids[n]->h_fstate.b3z, fluids[n]->d_fstate.b3z, bytes);
-			// q.memcpy(fluids[n]->h_fstate.c2z, fluids[n]->d_fstate.c2z, bytes);
-			// q.memcpy(fluids[n]->h_fstate.ziz, fluids[n]->d_fstate.ziz, bytes * NUM_COP);
+			q.memcpy(fluids[n]->h_fstate.b1z, fluids[n]->d_fstate.b1z, bytes);
+			q.memcpy(fluids[n]->h_fstate.b3z, fluids[n]->d_fstate.b3z, bytes);
+			q.memcpy(fluids[n]->h_fstate.c2z, fluids[n]->d_fstate.c2z, bytes);
+			q.memcpy(fluids[n]->h_fstate.ziz, fluids[n]->d_fstate.ziz, bytes * NUM_COP);
 			q.memcpy(fluids[n]->h_fstate.preFwz, fluids[n]->d_fstate.preFwz, cellbytes);
 			q.memcpy(fluids[n]->h_fstate.pstFwz, fluids[n]->d_wallFluxH, cellbytes);
 #endif
@@ -746,18 +746,18 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #endif
 #endif
 #if DIM_X
-		// Onbvar += (3 + NUM_COP);
-		// variables_names[index] = "E-xb1";
-		// index++;
-		// variables_names[index] = "E-xb3";
-		// index++;
-		// variables_names[index] = "E-xc2";
-		// index++;
-		// for (size_t nn = 0; nn < NUM_COP; nn++)
-		// {
-		// 	variables_names[index] = "E-xzi[" + std::to_string(nn) + "]";
-		// 	index++;
-		// }
+		Onbvar += (3 + NUM_COP);
+		variables_names[index] = "E-xb1";
+		index++;
+		variables_names[index] = "E-xb3";
+		index++;
+		variables_names[index] = "E-xc2";
+		index++;
+		for (size_t nn = 0; nn < NUM_COP; nn++)
+		{
+			variables_names[index] = "E-xzi[" + std::to_string(nn) + "]";
+			index++;
+		}
 		Onbvar += Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
@@ -768,18 +768,18 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		}
 #endif // end DIM_X
 #if DIM_Y
-		// Onbvar += (3 + NUM_COP);
-		// variables_names[index] = "E-yb1";
-		// index++;
-		// variables_names[index] = "E-yb3";
-		// index++;
-		// variables_names[index] = "E-yc2";
-		// index++;
-		// for (size_t nn = 0; nn < NUM_COP; nn++)
-		// {
-		// 	variables_names[index] = "E-yzi[" + std::to_string(nn) + "]";
-		// 	index++;
-		// }
+		Onbvar += (3 + NUM_COP);
+		variables_names[index] = "E-yb1";
+		index++;
+		variables_names[index] = "E-yb3";
+		index++;
+		variables_names[index] = "E-yc2";
+		index++;
+		for (size_t nn = 0; nn < NUM_COP; nn++)
+		{
+			variables_names[index] = "E-yzi[" + std::to_string(nn) + "]";
+			index++;
+		}
 		Onbvar += Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
@@ -790,18 +790,18 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		}
 #endif // end DIM_Y
 #if DIM_Z
-		// Onbvar += (3 + NUM_COP);
-		// variables_names[index] = "E-zb1";
-		// index++;
-		// variables_names[index] = "E-zb3";
-		// index++;
-		// variables_names[index] = "E-zc2";
-		// index++;
-		// for (size_t nn = 0; nn < NUM_COP; nn++)
-		// {
-		// 	variables_names[index] = "E-zzi[" + std::to_string(nn) + "]";
-		// 	index++;
-		// }
+		Onbvar += (3 + NUM_COP);
+		variables_names[index] = "E-zb1";
+		index++;
+		variables_names[index] = "E-zb3";
+		index++;
+		variables_names[index] = "E-zc2";
+		index++;
+		for (size_t nn = 0; nn < NUM_COP; nn++)
+		{
+			variables_names[index] = "E-zzi[" + std::to_string(nn) + "]";
+			index++;
+		}
 		Onbvar += Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
@@ -1177,36 +1177,36 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #endif
 #endif
 #if DIM_X
-					// 		MARCO_OUTLOOP
-					// 		{
-					// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					// real_t tmp = fluids[0]->h_fstate.b1x[id];
-					// outFile.write((char *)&tmp, sizeof(real_t));
-					// 		}
+					MARCO_OUTLOOP
+					{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b1x[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+					}
 
-					// 		MARCO_OUTLOOP
-					// 		{
-					// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					// real_t tmp = fluids[0]->h_fstate.b3x[id];
-					// outFile.write((char *)&tmp, sizeof(real_t));
-					// 		}
+					MARCO_OUTLOOP
+					{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b3x[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+					}
 
-					// 		MARCO_OUTLOOP
-					// 		{
-					// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					// real_t tmp = fluids[0]->h_fstate.c2x[id];
-					// outFile.write((char *)&tmp, sizeof(real_t));
-					// 		}
+							MARCO_OUTLOOP
+							{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.c2x[id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+							}
 
-					// for (size_t nn = 0; nn < NUM_COP; nn++)
-					// {
-					// MARCO_OUTLOOP
-					// {
-					// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					// 	real_t tmp = fluids[0]->h_fstate.zix[nn + NUM_COP * id];
-					// 	outFile.write((char *)&tmp, sizeof(real_t));
-					// }
-					// }
+							for (size_t nn = 0; nn < NUM_COP; nn++)
+							{
+					MARCO_OUTLOOP
+					{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.zix[nn + NUM_COP * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+					}
+							}
 
 					for (size_t nn = 0; nn < Emax; nn++)
 					{
@@ -1226,33 +1226,33 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #endif // end DIM_X
 
 #if DIM_Y
-			// MARCO_OUTLOOP
-			// {
-			// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// real_t tmp = fluids[0]->h_fstate.b1y[id];
-			// outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// MARCO_OUTLOOP
-			// {
-			// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// real_t tmp = fluids[0]->h_fstate.b3y[id];
-			// outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// MARCO_OUTLOOP
-			// {
-			// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// real_t tmp = fluids[0]->h_fstate.c2y[id];
-			// outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// for (size_t nn = 0; nn < NUM_COP; nn++)
-			// {
-			// MARCO_OUTLOOP
-			// {
-			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// 	real_t tmp = fluids[0]->h_fstate.ziy[nn + NUM_COP * id];
-			// 	outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// }
+					MARCO_OUTLOOP
+					{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b1y[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+					}
+					MARCO_OUTLOOP
+					{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b3y[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+					}
+					MARCO_OUTLOOP
+					{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c2y[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+					}
+					for (size_t nn = 0; nn < NUM_COP; nn++)
+					{
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.ziy[nn + NUM_COP * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+					}
 
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
@@ -1271,33 +1271,33 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			}
 #endif // end DIM_Y
 #if DIM_Z
-			// MARCO_OUTLOOP
-			// {
-			// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// real_t tmp = fluids[0]->h_fstate.b1z[id];
-			// outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// MARCO_OUTLOOP
-			// {
-			// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// real_t tmp = fluids[0]->h_fstate.b3z[id];
-			// outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// MARCO_OUTLOOP
-			// {
-			// int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// real_t tmp = fluids[0]->h_fstate.c2z[id];
-			// outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// for (size_t nn = 0; nn < NUM_COP; nn++)
-			// {
-			// MARCO_OUTLOOP
-			// {
-			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// 	real_t tmp = fluids[0]->h_fstate.ziz[nn + NUM_COP * id];
-			// 	outFile.write((char *)&tmp, sizeof(real_t));
-			// }
-			// }
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b1z[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.b3z[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c2z[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			for (size_t nn = 0; nn < NUM_COP; nn++)
+			{
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.ziz[nn + NUM_COP * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			}
 
 			for (size_t nn = 0; nn < Emax; nn++)
 			{

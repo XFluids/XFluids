@@ -91,42 +91,42 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 #if DIM_X
-	// h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	// d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
 
 	h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
 #if DIM_Y
-	// h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	// d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
 
 	h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif
 #if DIM_Z
-	// h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	// h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	// d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	// d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
 
 	h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
@@ -423,11 +423,12 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 #ifdef ESTIM_NAN
 	Block bl = Fs.BlSz;
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 	int *error_pos;
 	bool *h_errornga, *d_errornga, *h_erroryi, *d_erroryi;
 	real_t *Rho = d_fstate.rho, *T = d_fstate.T, *P = d_fstate.p, *Yi = d_fstate.y;
+	real_t *Vx = d_fstate.u, *Vy = d_fstate.v, *Vz = d_fstate.w;
 	real_t *FH = d_fstate.H, *Fe = d_fstate.e, *Fc = d_fstate.c, *Gamma = d_fstate.gamma;
 	error_pos = sycl::malloc_shared<int>(3 + NUM_SPECIES, q);
 	h_erroryi = middle::MallocHost<bool>(h_erroryi, 1, q), d_erroryi = middle::MallocDevice<bool>(d_erroryi, 1, q);
@@ -441,11 +442,11 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
-						int i = index.get_global_id(0);
-						int j = index.get_global_id(1);
-						int k = index.get_global_id(2);
+						int i = index.get_global_id(0) + bl.Bwidth_X;
+						int j = index.get_global_id(1) + bl.Bwidth_Y;
+						int k = index.get_global_id(2) + bl.Bwidth_Z;
 						EstimatePrimitiveVarKernel(i, j, k, bl, thermal, error_pos, d_errornga, d_erroryi,
-												   UI, Rho, P, T, Yi, FH, Fe, Gamma, Fc); }); })
+												   UI, Rho, Vx, Vy, Vz, P, T, Yi, FH, Fe, Gamma, Fc); }); })
 		.wait();
 	middle::MemCpy<bool>(h_erroryi, d_erroryi, 1, q);
 	middle::MemCpy<bool>(h_errornga, d_errornga, 1, q);

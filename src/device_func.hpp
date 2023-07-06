@@ -323,15 +323,23 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	e = tme;
 }
 
-void ReGetStates(Thermal thermal, real_t *yi, real_t &U4, real_t &rho, real_t &p, real_t &T, real_t &H, real_t &c, real_t &e, real_t &gamma)
+void ReGetStates(Thermal thermal, real_t *yi, real_t *U, real_t &rho, real_t &u, real_t &v, real_t &w,
+				 real_t &p, real_t &T, real_t &H, real_t &c, real_t &e, real_t &gamma)
 {
-	// real_t tme = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
+	// real_t h = get_Coph(thermal, yi, T);
 	real_t R = get_CopR(thermal._Wi, yi), rho1 = _DF(1.0) / rho;
+	// U[4] = rho * (h + _DF(0.5) * (u * u + v * v + w * w)) - p;
+	e = U[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 	T = get_T(thermal, yi, e, T);
 	p = rho * R * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
-	H = (U4 + p) * rho1;
+	H = (U[4] + p) * rho1;
 	c = sycl::sqrt(gamma * p * rho1);
+	U[1] = rho * u;
+	U[2] = rho * v;
+	U[3] = rho * w;
+	for (size_t nn = 0; nn < NUM_COP; nn++)
+		U[nn + 5] = U[0] * yi[nn];
 }
 
 /**

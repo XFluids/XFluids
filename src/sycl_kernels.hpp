@@ -4,21 +4,21 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
-extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2,
-                                                     real_t *UI, real_t *rho, real_t *p, real_t *T, real_t *y, real_t *H, real_t *e, real_t *gamma, real_t *c)
+extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2, real_t *UI, real_t *rho,
+                                                     real_t *u, real_t *v, real_t *w, real_t *p, real_t *T, real_t *y, real_t *H, real_t *e, real_t *gamma, real_t *c)
 { // numPte: number of Vars need be posoitive; numVars: length of *Vars(numbers of all Vars need to be estimed).
     int Xmax = bl.Xmax;
     int Ymax = bl.Ymax;
 #if DIM_X
-    if (i >= Xmax)
+    if (i >= Xmax - bl.Bwidth_X)
         return;
 #endif
 #if DIM_Y
-    if (j >= Ymax)
+    if (j >= Ymax - bl.Bwidth_Y)
         return;
 #endif
 #if DIM_Z
-    if (k >= bl.Zmax)
+    if (k >= bl.Zmax - bl.Bwidth_Z)
         return;
 #endif
 
@@ -42,11 +42,63 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
 #endif
     // #endif // end ERROR_PATCH
 
-    bool ngatve = false, spc = false, ngatves[3], spcs[NUM_SPECIES];
-    real_t ngaVs[3] = {rho[id], p[id], T[id]}, *yi = &(y[NUM_SPECIES * id]), *ngaPatch[3] = {rho, p, T};
+    bool spc = false, spcnan = false, spcs[NUM_SPECIES], spcnans[NUM_SPECIES];
+    real_t *yi = &(y[NUM_SPECIES * id]), *U = &(UI[Emax * id]);
+    for (size_t n2 = 0; n2 < NUM_SPECIES; n2++)
+    {
+        spcs[n2] = (yi[n2] < _DF(1e-20) || yi[n2] > _DF(1.0));
+        spcnans[n2] = (sycl::isnan(yi[n2]) || sycl::isinf(yi[n2]));
+        spc = spc || spcs[n2], spcnan = spcnan || spcnans[n2];
+        if (spc || spcnan)
+            error_pos[n2 + 3] = 1;
+        if (spcs[n2])
+        {
+            // #ifdef ERROR_PATCH
+            yi[n2] = _DF(0.0);
+#if DIM_X
+            yi[n2] += theta * (y[n2 + id_xm * NUM_SPECIES] + y[n2 + id_xp * NUM_SPECIES]);
+#endif
+#if DIM_Y
+            yi[n2] += theta * (y[n2 + id_ym * NUM_SPECIES] + y[n2 + id_yp * NUM_SPECIES]);
+#endif
+#if DIM_Z
+            yi[n2] += theta * (y[n2 + id_zm * NUM_SPECIES] + y[n2 + id_zp * NUM_SPECIES]);
+#endif
+            // #endif // end ERROR_PATCH
+        }
+    }
+    // spcnan = true;
+    // spc = true;
+    if (spc || spcnan)
+    {
+        if (spcnan)
+        {
+#if DIM_X
+            u[id] = _DF(0.5) * (u[id_xm] + u[id_xp]);
+#endif
+#if DIM_Y
+            v[id] = _DF(0.5) * (v[id_ym] + v[id_yp]);
+#endif
+#if DIM_Z
+            w[id] = _DF(0.5) * (w[id_zm] + w[id_zp]);
+#endif
+            // #endif // end ERROR_PATCH
+        }
+        *error2 = true; // add condition to avoid rewrite by other threads
+        real_t sum = _DF(0.0);
+        for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+            sum += yi[nn];
+        sum = _DF(1.0) / sum;
+        for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+            yi[nn] *= sum;
+        ReGetStates(thermal, yi, U, rho[id], u[id], v[id], w[id], p[id], T[id], H[id], c[id], e[id], gamma[id]);
+    }
+
+    bool ngatve = false, ngatves[3];
+    real_t ngaVs[3] = {rho[id], p[id], T[id]}, *ngaPatch[3] = {rho, p, T};
     for (size_t n1 = 0; n1 < 3; n1++)
     {
-        ngatves[n1] = (ngaVs[n1] < 0);
+        ngatves[n1] = (ngaVs[n1] < 0) || sycl::isnan(ngaVs[n1]) || sycl::isinf(ngaVs[n1]);
         ngatve = ngatve || ngatves[n1];
         if (ngatves[n1])
         {
@@ -65,44 +117,13 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
 #endif // end ERROR_PATCH
         }
     }
-    for (size_t n2 = 0; n2 < NUM_SPECIES; n2++)
-    {
-        spcs[n2] = (yi[n2] < _DF(1e-20) || yi[n2] > _DF(1.0));
-        spc = spc || spcs[n2];
-        if (spcs[n2])
-        {
-            error_pos[n2 + 3] = 1;
-            // #ifdef ERROR_PATCH
-            yi[n2] = _DF(0.0);
-#if DIM_X
-            yi[n2] += theta * (y[n2 + id_xm * NUM_SPECIES] + y[n2 + id_xp * NUM_SPECIES]);
-#endif
-#if DIM_Y
-            yi[n2] += theta * (y[n2 + id_ym * NUM_SPECIES] + y[n2 + id_yp * NUM_SPECIES]);
-#endif
-#if DIM_Z
-            yi[n2] += theta * (y[n2 + id_zm * NUM_SPECIES] + y[n2 + id_zp * NUM_SPECIES]);
-#endif
-            // #endif // end ERROR_PATCH
-        }
-    }
-    if (ngatve || spc)
+    // ngatve = true;
+    if (ngatve || spcnan)
     {
         error_pos[3 + NUM_SPECIES] = i, error_pos[4 + NUM_SPECIES] = j, error_pos[5 + NUM_SPECIES] = k;
         if (ngatve)
-            *error2 = false; // add condition to avoid rewrite by other threads
-        if (spc)
-        {
-            *error2 = true; // add condition to avoid rewrite by other threads
-            real_t sum = _DF(0.0);
-            for (size_t nn = 0; nn < NUM_SPECIES; nn++)
-                sum += yi[nn];
-            sum = _DF(1.0) / sum;
-            for (size_t nn = 0; nn < NUM_SPECIES; nn++)
-                yi[nn] *= sum;
-            ReGetStates(thermal, yi, UI[4], rho[id], p[id], T[id], H[id], c[id], e[id], gamma[id]);
-        }
-    } // *error = true;
+            *error1 = true;  // add condition to avoid rewrite by other threads
+    }                        // *error = true;
 }
 
 extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error) //, sycl::stream stream_ct1
@@ -251,6 +272,13 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
     // theta = sycl::min<real_t>(theta_u, theta_p);
     // for (int nn = 0; nn < Emax; nn++)
     //     Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+
+#ifdef COP_CHEME
+    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1;
+#else
+    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1;
+#endif // end COP_CHEME
+
     for (size_t n = 0; n < 2; n++) // NUM_SPECIES - 2
     {
         theta_u = _DF(1.0), theta_p = _DF(1.0);
@@ -269,7 +297,7 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         for (int nn = 0; nn < Emax; nn++)
             Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
     }
-    for (size_t n = NUM_SPECIES - 2; n < NUM_SPECIES; n++) // NUM_SPECIES - 2
+    for (size_t n = begin; n < end; n++) // NUM_SPECIES - 2
     {
         theta_u = _DF(1.0), theta_p = _DF(1.0);
         real_t temp = epsilon[n + 2];
