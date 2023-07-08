@@ -327,17 +327,20 @@ void ReGetStates(Thermal thermal, real_t *yi, real_t *U, real_t &rho, real_t &u,
 				 real_t &p, real_t &T, real_t &H, real_t &c, real_t &e, real_t &gamma)
 {
 	// real_t h = get_Coph(thermal, yi, T);
-	real_t R = get_CopR(thermal._Wi, yi), rho1 = _DF(1.0) / rho;
 	// U[4] = rho * (h + _DF(0.5) * (u * u + v * v + w * w)) - p;
+
+	real_t R = get_CopR(thermal._Wi, yi), rho1 = _DF(1.0) / rho;
 	e = U[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 	T = get_T(thermal, yi, e, T);
 	p = rho * R * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
 	H = (U[4] + p) * rho1;
 	c = sycl::sqrt(gamma * p * rho1);
-	U[1] = rho * u;
-	U[2] = rho * v;
-	U[3] = rho * w;
+
+	// U[1] = rho * u;
+	// U[2] = rho * v;
+	// U[3] = rho * w;
+
 	for (size_t nn = 0; nn < NUM_COP; nn++)
 		U[nn + 5] = U[0] * yi[nn];
 }
@@ -2282,9 +2285,9 @@ flag2:
 		}
 	}
 	eps = eps * epscl;
-	if (eps < epsmax || num_iter > 100)
+	if (eps < epsmax || num_iter > 1000)
 	{
-		if (dtg < (tn * tfd) || num_iter > 100)
+		if (dtg < (tn * tfd) || num_iter > 1000)
 		{
 			for (int i = 0; i < NUM_SPECIES; i++)
 				rhoi[i] = y[i] * rho;

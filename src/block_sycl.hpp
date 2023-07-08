@@ -151,7 +151,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int i = index.get_global_id(0) + offset_x;
 			int j = index.get_global_id(1) + offset_y;
 			int k = index.get_global_id(2) + offset_z;
-			GetInnerCellCenterDerivativeKernel(i, j, k, bl, fdata.u, fdata.v, fdata.w, fdata.Vde); }); })
+			GetInnerCellCenterDerivativeKernel(i, j, k, bl, fdata.u, fdata.v, fdata.w, fdata.Vde, fdata.vx); }); })
 		.wait();
 
 #if DIM_X

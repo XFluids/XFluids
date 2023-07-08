@@ -4,6 +4,35 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
+extern SYCL_EXTERNAL void UpdateFluidYiKernel(int i, int j, int k, Block bl, real_t *UI, real_t *rho, real_t *y)
+{
+    MARCO_DOMAIN_GHOST();
+#if DIM_X
+    if (i >= Xmax)
+        return;
+#endif
+#if DIM_Y
+    if (j >= Ymax)
+        return;
+#endif
+#if DIM_Z
+    if (k >= Zmax)
+        return;
+#endif
+    int id = Xmax * Ymax * k + Xmax * j + i;
+
+    real_t *U = &(UI[Emax * id]), *yi = &(y[NUM_SPECIES * id]), rho1 = _DF(1.0) / U[0];
+    // NOTE: mv get yi into Primitive yi estimate
+    yi[NUM_COP] = _DF(1.0);
+#ifdef COP
+    for (size_t ii = 5; ii < Emax; ii++)
+    {                               // calculate yi
+        yi[ii - 5] = UI[ii] * rho1; //_DF(1.0e-5));
+        yi[NUM_COP] += -yi[ii - 5];
+    }
+#endif // end COP
+}
+
 extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2, real_t *UI, real_t *rho,
                                                      real_t *u, real_t *v, real_t *w, real_t *p, real_t *T, real_t *y, real_t *H, real_t *e, real_t *gamma, real_t *c)
 { // numPte: number of Vars need be posoitive; numVars: length of *Vars(numbers of all Vars need to be estimed).
@@ -23,7 +52,6 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
 #endif
 
     int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-    // #ifdef ERROR_PATCH
     real_t theta = _DF(1.0);
 #if DIM_X
     int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 1));
@@ -40,6 +68,7 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
     int id_zp = (Xmax * Ymax * (k + 1) + Xmax * j + i);
     theta *= _DF(0.5);
 #endif
+    // #ifdef ERROR_PATCH
     // #endif // end ERROR_PATCH
 
     bool spc = false, spcnan = false, spcs[NUM_SPECIES], spcnans[NUM_SPECIES];
@@ -51,7 +80,7 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
         spc = spc || spcs[n2], spcnan = spcnan || spcnans[n2];
         if (spc || spcnan)
             error_pos[n2 + 3] = 1;
-        if (spcs[n2])
+        if (spcs[n2] || spcnans[n2])
         {
             // #ifdef ERROR_PATCH
             yi[n2] = _DF(0.0);
@@ -73,15 +102,23 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
     {
         if (spcnan)
         {
+            // #ifdef ERROR_PATCH
+            T[id] = 0.0;
 #if DIM_X
             u[id] = _DF(0.5) * (u[id_xm] + u[id_xp]);
+            T[id] += theta * (T[id_xm] + T[id_xp]);
 #endif
 #if DIM_Y
             v[id] = _DF(0.5) * (v[id_ym] + v[id_yp]);
+            T[id] += theta * (T[id_ym] + T[id_yp]);
 #endif
 #if DIM_Z
             w[id] = _DF(0.5) * (w[id_zm] + w[id_zp]);
+            T[id] += theta * (T[id_zm] + T[id_zp]);
 #endif
+            U[1] = U[0] * u[id];
+            U[2] = U[0] * v[id];
+            U[3] = U[0] * w[id];
             // #endif // end ERROR_PATCH
         }
         *error2 = true; // add condition to avoid rewrite by other threads
@@ -91,6 +128,8 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
         sum = _DF(1.0) / sum;
         for (size_t nn = 0; nn < NUM_SPECIES; nn++)
             yi[nn] *= sum;
+        // for (size_t nn = 0; nn < NUM_COP; nn++)
+        //     U[nn + 5] = U[0] * yi[nn];
         ReGetStates(thermal, yi, U, rho[id], u[id], v[id], w[id], p[id], T[id], H[id], c[id], e[id], gamma[id]);
     }
 
@@ -274,11 +313,9 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
     //     Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
 
 #ifdef COP_CHEME
-    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1;
+    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1; //-1;
 #else
-    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1;
-#endif // end COP_CHEME
-
+    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1; //-1;
     for (size_t n = 0; n < 2; n++) // NUM_SPECIES - 2
     {
         theta_u = _DF(1.0), theta_p = _DF(1.0);
@@ -297,6 +334,8 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         for (int nn = 0; nn < Emax; nn++)
             Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
     }
+#endif // end COP_CHEME
+
     for (size_t n = begin; n < end; n++) // NUM_SPECIES - 2
     {
         theta_u = _DF(1.0), theta_p = _DF(1.0);
@@ -324,7 +363,6 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
     theta_u = _DF(1.0), theta_p = _DF(1.0);
     e_q = (UU[4] - FF[4] - _DF(0.5) * ((UU[1] - FF[1]) * (UU[1] - FF[1]) + (UU[2] - FF[2]) * (UU[2] - FF[2]) + (UU[3] - FF[3]) * (UU[3] - FF[3])) * _rhoq) * _rhoq;
     T_q = get_T(thermal, yi_q, e_q, T_l);
-    P_q = T_q * get_CopR(thermal._Wi, yi_q);
     if (T_q < epsilon[1])
     {
         real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
@@ -332,17 +370,17 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         real_t T_min = sycl::min<real_t>(T_u, epsilon[1]);
         theta_u = (T_u - T_min) / (T_u - T_q);
     }
-    if (P_q < epsilon[1])
-    {
-        real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
-        real_t P_u = get_T(thermal, yi_u, e_u, T_l) * get_CopR(thermal._Wi, yi_u);
-        real_t P_min = sycl::min<real_t>(P_u, epsilon[1]);
-        theta_pu = (P_u - P_min) / (P_u - P_q);
-    }
+    // P_q = T_q * get_CopR(thermal._Wi, yi_q);
+    // if (P_q < epsilon[1])
+    // {
+    //     real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
+    //     real_t P_u = get_T(thermal, yi_u, e_u, T_l) * get_CopR(thermal._Wi, yi_u);
+    //     real_t P_min = sycl::min<real_t>(P_u, epsilon[1]);
+    //     theta_pu = (P_u - P_min) / (P_u - P_q);
+    // }
 
     e_q = (UP[4] + FF[4] - _DF(0.5) * ((UP[1] + FF[1]) * (UP[1] + FF[1]) + (UP[2] + FF[2]) * (UP[2] + FF[2]) + (UP[3] + FF[3]) * (UP[3] + FF[3])) * _rhoqp) * _rhoqp;
     T_q = get_T(thermal, yi_qp, e_q, T_r);
-    P_q = T_q * get_CopR(thermal._Wi, yi_qp);
     if (T_q < epsilon[1])
     {
         real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
@@ -350,19 +388,20 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         real_t T_min = sycl::min<real_t>(T_p, epsilon[1]);
         theta_p = (T_p - T_min) / (T_p - T_q);
     }
-    if (P_q < epsilon[1])
-    {
-        real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
-        real_t P_p = get_T(thermal, yi_up, e_p, T_r) * get_CopR(thermal._Wi, yi_qp);
-        real_t P_min = sycl::min<real_t>(P_p, epsilon[1]);
-        theta_pp = (P_p - P_min) / (P_p - P_q);
-    }
+    // P_q = T_q * get_CopR(thermal._Wi, yi_qp);
+    // if (P_q < epsilon[1])
+    // {
+    //     real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
+    //     real_t P_p = get_T(thermal, yi_up, e_p, T_r) * get_CopR(thermal._Wi, yi_qp);
+    //     real_t P_min = sycl::min<real_t>(P_p, epsilon[1]);
+    //     theta_pp = (P_p - P_min) / (P_p - P_q);
+    // }
     theta = sycl::min<real_t>(theta_u, theta_p);
     for (int n = 0; n < Emax; n++)
         Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
-    theta = sycl::min<real_t>(theta_pu, theta_pp);
-    for (int n = 0; n < Emax; n++)
-        Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
+    // theta = sycl::min<real_t>(theta_pu, theta_pp);
+    // for (int n = 0; n < Emax; n++)
+    //     Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
 }
 
 #if DIM_X
@@ -1149,7 +1188,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelZ(int i, int j, int k, Block bl, rea
 }
 #endif // end USE_MPI
 
-extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde)
+extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde, real_t *Vox)
 {
 #if DIM_X
     if (i > bl.Xmax - bl.Bwidth_X + 1)
@@ -1164,17 +1203,7 @@ extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k
         return;
 #endif // DIM_Z
     int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-
-    Vde[ducx][id] = _DF(0.0);
-    Vde[dvcx][id] = _DF(0.0);
-    Vde[dwcx][id] = _DF(0.0);
-    Vde[ducy][id] = _DF(0.0);
-    Vde[dvcy][id] = _DF(0.0);
-    Vde[dwcy][id] = _DF(0.0);
-    Vde[ducz][id] = _DF(0.0);
-    Vde[dvcz][id] = _DF(0.0);
-    Vde[dwcz][id] = _DF(0.0);
-
+    real_t Dmp[9] = {_DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0)};
 #if DIM_X
     real_t _dx = bl._dx;
     int id_m1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
@@ -1182,12 +1211,12 @@ extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k
     int id_p1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
     int id_p2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 2;
 
-    Vde[ducx][id] = (_DF(8.0) * (u[id_p1_x] - u[id_m1_x]) - (u[id_p2_x] - u[id_m2_x])) * _dx * _twle;
+    Dmp[ducx] = (_DF(8.0) * (u[id_p1_x] - u[id_m1_x]) - (u[id_p2_x] - u[id_m2_x])) * _dx * _twle;
 #if DIM_Y
-    Vde[dvcx][id] = (_DF(8.0) * (v[id_p1_x] - v[id_m1_x]) - (v[id_p2_x] - v[id_m2_x])) * _dx * _twle;
+    Dmp[dvcx] = (_DF(8.0) * (v[id_p1_x] - v[id_m1_x]) - (v[id_p2_x] - v[id_m2_x])) * _dx * _twle;
 #endif // DIM_Y
 #if DIM_Z
-    Vde[dwcx][id] = (_DF(8.0) * (w[id_p1_x] - w[id_m1_x]) - (w[id_p2_x] - w[id_m2_x])) * _dx * _twle;
+    Dmp[dwcx] = (_DF(8.0) * (w[id_p1_x] - w[id_m1_x]) - (w[id_p2_x] - w[id_m2_x])) * _dx * _twle;
 #endif // DIM_Z
 #endif // end DIM_X
 
@@ -1199,11 +1228,11 @@ extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k
     int id_p2_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 2) + i;
 
 #if DIM_X
-    Vde[ducy][id] = (_DF(8.0) * (u[id_p1_y] - u[id_m1_y]) - (u[id_p2_y] - u[id_m2_y])) * _dy * _twle;
+    Dmp[ducy] = (_DF(8.0) * (u[id_p1_y] - u[id_m1_y]) - (u[id_p2_y] - u[id_m2_y])) * _dy * _twle;
 #endif // DIM_X
-    Vde[dvcy][id] = (_DF(8.0) * (v[id_p1_y] - v[id_m1_y]) - (v[id_p2_y] - v[id_m2_y])) * _dy * _twle;
+    Dmp[dvcy] = (_DF(8.0) * (v[id_p1_y] - v[id_m1_y]) - (v[id_p2_y] - v[id_m2_y])) * _dy * _twle;
 #if DIM_Z
-    Vde[dwcy][id] = (_DF(8.0) * (w[id_p1_y] - w[id_m1_y]) - (w[id_p2_y] - w[id_m2_y])) * _dy * _twle;
+    Dmp[dwcy] = (_DF(8.0) * (w[id_p1_y] - w[id_m1_y]) - (w[id_p2_y] - w[id_m2_y])) * _dy * _twle;
 #endif // DIM_Z
 
 #endif // end DIM_Y
@@ -1216,14 +1245,27 @@ extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k
     int id_p2_z = bl.Xmax * bl.Ymax * (k + 2) + bl.Xmax * j + i;
 
 #if DIM_X
-    Vde[ducz][id] = (_DF(8.0) * (u[id_p1_z] - u[id_m1_z]) - (u[id_p2_z] - u[id_m2_z])) * _dz * _twle;
+    Dmp[ducz] = (_DF(8.0) * (u[id_p1_z] - u[id_m1_z]) - (u[id_p2_z] - u[id_m2_z])) * _dz * _twle;
 #endif // DIM_X
 #if DIM_Y
-    Vde[dvcz][id] = (_DF(8.0) * (v[id_p1_z] - v[id_m1_z]) - (v[id_p2_z] - v[id_m2_z])) * _dz * _twle;
+    Dmp[dvcz] = (_DF(8.0) * (v[id_p1_z] - v[id_m1_z]) - (v[id_p2_z] - v[id_m2_z])) * _dz * _twle;
 #endif // DIM_Y
-    Vde[dwcz][id] = (_DF(8.0) * (w[id_p1_z] - w[id_m1_z]) - (w[id_p2_z] - w[id_m2_z])) * _dz * _twle;
+    Dmp[dwcz] = (_DF(8.0) * (w[id_p1_z] - w[id_m1_z]) - (w[id_p2_z] - w[id_m2_z])) * _dz * _twle;
 
 #endif // end DIM_Z
+
+    Vde[ducx][id] = Dmp[ducx];
+    Vde[dvcx][id] = Dmp[dvcx];
+    Vde[dwcx][id] = Dmp[dwcx];
+    Vde[ducy][id] = Dmp[ducy];
+    Vde[dvcy][id] = Dmp[dvcy];
+    Vde[dwcy][id] = Dmp[dwcy];
+    Vde[ducz][id] = Dmp[ducz];
+    Vde[dvcz][id] = Dmp[dvcz];
+    Vde[dwcz][id] = Dmp[dwcz];
+
+    real_t wx = Dmp[dwcy] - Dmp[dvcz], wy = Dmp[ducz] - Dmp[dwcx], wz = Dmp[dvcx] - Dmp[ducy]; // vorticity w=wx*i+wy*j+wz*k;
+    Vox[id] = wx * wx + wy * wy + wz * wz;                                                     // |w|, magnitude or the vorticity, w^2 used later, sqrt while output
 }
 
 extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)

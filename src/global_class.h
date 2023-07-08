@@ -47,7 +47,7 @@ typedef struct
     // primitive variables
     real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma, *e;
     // cop(y) and vis variables
-    real_t *y, *Vde[9], *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+    real_t *y, *Vde[9], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
     // Error out: varibles of eigen system
     real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
     // Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving

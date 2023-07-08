@@ -66,6 +66,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	for (size_t i = 0; i < 9; i++)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0 * 10.0;
+	h_fstate.vx = static_cast<real_t *>(sycl::malloc_host(bytes, q)); // vorticity.
+	d_fstate.vx = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0;
 #ifdef Heat
 	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0;
@@ -245,7 +248,11 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(d_eigen_r, q);
 #endif // end EIGEN_ALLOC
 #ifdef Visc
+	sycl::free(h_fstate.vx, q);
+	sycl::free(d_fstate.vx, q);
 	sycl::free(d_fstate.viscosity_aver, q);
+	for (size_t i = 0; i < 9; i++)
+		sycl::free(d_fstate.Vde[i], q);
 #ifdef Heat
 	sycl::free(d_fstate.thermal_conduct_aver, q);
 #endif // end Heat
@@ -253,8 +260,6 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(d_fstate.hi, q);
 	sycl::free(d_fstate.Dkm_aver, q);
 #endif // end Diffu
-	for (size_t i = 0; i < 9; i++)
-		sycl::free(d_fstate.Vde[i], q);
 #endif // end Visc
 	sycl::free(d_FluxF, q);
 	sycl::free(d_FluxG, q);
@@ -418,17 +423,24 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 
 	Thermal thermal = Fs.d_thermal;
 
+	Block bl = Fs.BlSz;
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+	real_t *Rho = d_fstate.rho, *Yi = d_fstate.y;
+	// q.submit([&](sycl::handler &h)
+	// 		 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+	// 						  {
+	// 				int i = index.get_global_id(0);
+	// 				int j = index.get_global_id(1);
+	// 				int k = index.get_global_id(2);
+	// 				UpdateFluidYiKernel(i, j, k, bl, UI, Rho, Yi); }); });
 	UpdateFluidStateFlux(q, Fs.BlSz, thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 
 #ifdef ESTIM_NAN
-	Block bl = Fs.BlSz;
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 	int *error_pos;
 	bool *h_errornga, *d_errornga, *h_erroryi, *d_erroryi;
-	real_t *Rho = d_fstate.rho, *T = d_fstate.T, *P = d_fstate.p, *Yi = d_fstate.y;
-	real_t *Vx = d_fstate.u, *Vy = d_fstate.v, *Vz = d_fstate.w;
+	real_t *T = d_fstate.T, *P = d_fstate.p, *Vx = d_fstate.u, *Vy = d_fstate.v, *Vz = d_fstate.w;
 	real_t *FH = d_fstate.H, *Fe = d_fstate.e, *Fc = d_fstate.c, *Gamma = d_fstate.gamma;
 	error_pos = sycl::malloc_shared<int>(3 + NUM_SPECIES, q);
 	h_erroryi = middle::MallocHost<bool>(h_erroryi, 1, q), d_erroryi = middle::MallocDevice<bool>(d_erroryi, 1, q);
@@ -439,8 +451,9 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 	middle::MemCpy<bool>(d_erroryi, h_erroryi, 1, q);
 	middle::MemCpy<bool>(d_errornga, h_errornga, 1, q);
 
+	auto global_in_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+			 { h.parallel_for(sycl::nd_range<3>(global_in_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
 						int i = index.get_global_id(0) + bl.Bwidth_X;
 						int j = index.get_global_id(1) + bl.Bwidth_Y;

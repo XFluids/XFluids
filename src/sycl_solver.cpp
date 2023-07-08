@@ -512,9 +512,13 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 		q.memcpy(fluids[n]->h_fstate.e, fluids[n]->d_fstate.e, bytes);
 		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
+#ifdef Visc
+		q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
+#endif // Visc
 #ifdef COP
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
+
 #ifdef ESTIM_NAN
 		if (error)
 		{
@@ -835,9 +839,9 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	index++;
 	variables_names[index] = "O-e";
 	index++;
-#if 1 != NumFluid
-	Onbvar += NumFluid - 1;
-	variables_names[index] = "O-phi";
+#ifdef Visc
+	Onbvar += 1;
+	variables_names[index] = "O-vorticity";
 	index++;
 #endif
 #ifdef COP
@@ -1406,17 +1410,15 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
-
-#if 2 == NumFluid
-		  //[5]phi
+#ifdef Visc
+		  //[11]vorticity
 		MARCO_OUTLOOP
 		{
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					real_t tmp = levelset->h_phi[id];
+					real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
 					outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
-#endif
-
+#endif	  // end Visc
 #ifdef COP
 		//[COP]yii
 		for (int ii = 0; ii < NUM_SPECIES; ii++)
