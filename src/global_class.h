@@ -4,6 +4,7 @@
 //  C++ headers
 #include <ctime>
 #include <cstdio>
+#include <vector>
 #include <iomanip>
 #include <cstdlib>
 #include <float.h>
@@ -47,7 +48,7 @@ typedef struct
     // primitive variables
     real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma, *e;
     // cop(y) and vis variables
-    real_t *y, *Vde[9], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+    real_t *y, *thetaXe, *thetaN2, *thetaXN, *Vde[9], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
     // Error out: varibles of eigen system
     real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
     // Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving
@@ -77,6 +78,8 @@ typedef struct
 //-------------------------------------------------------------------------------------------------
 class FluidSYCL; class SYCLSolver;
 
+#define Interface_line 0.1
+
 class FluidSYCL{
     Setup Fs;
     sycl::queue q;
@@ -85,7 +88,8 @@ public:
     int error_patched_times;
     float MPI_trans_time, MPI_BCs_time;
     long double MemMbSize, MPIMbSize;
-    real_t *uvw_c_max;
+    real_t *uvw_c_max, *pVar_max, *interface_point, *theta;
+    std::vector<real_t> pTime, Theta, thetas[3], Var_max[3], Interface_points[6]; // Var_max[3]= {Tmax, YiHO2max, YiH2O2max}
     real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
     real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
@@ -94,14 +98,14 @@ public:
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
 
-    FluidSYCL(Setup &setup) : Fs(setup), q(setup.q) { error_patched_times = 0, MPI_trans_time = 0.0, MPI_BCs_time = 0.0; };
+    FluidSYCL(Setup &setup);
     ~FluidSYCL();
     void initialize(int n);
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
     void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
     bool UpdateFluidStates(sycl::queue &q, int flag);
-    real_t GetFluidDt(sycl::queue &q);
+    real_t GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
     bool EstimateFluidNAN(sycl::queue &q, int flag);
@@ -131,6 +135,7 @@ public:
     void Output_Ubak(const int rank, const int Step, const real_t Time);
     void CopyDataFromDevice(sycl::queue &q, bool error);
     void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
+    void Output_Counts();
     void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
     void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
     void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);

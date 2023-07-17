@@ -38,12 +38,14 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 		.wait();
 }
 
-real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
+real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_t *pVar_max, real_t *interface_points, real_t *theta)
 {
 	real_t *c = fdata.c;
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
+	real_t *T = fdata.T;
+	real_t *yi = fdata.y;
 
 	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
 	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
@@ -52,7 +54,7 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 	// add uvw and c individually if need more resources
 
 	for (int n = 0; n < 3; n++)
-		uvw_c_max[n] = 0;
+		uvw_c_max[n] = _DF(0.0), pVar_max[n] = _DF(0.0), theta[n] = _DF(0.0);
 	real_t dtref = _DF(0.0);
 	// define reduction objects for sum, min, max reduction
 	// auto reduction_sum = reduction(sum, sycl::plus<>());
@@ -84,11 +86,110 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max)
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z)
 					   {
 						   auto id = index.get_global_id();
-						   temp_max_z.combine(sycl::fabs<real_t>(w[id]) + c[id]);
-					   }); })
+						   temp_max_z.combine(sycl::fabs<real_t>(w[id]) + c[id]); }); })
 		.wait();
 	dtref += uvw_c_max[2] / bl.dz;
 #endif // end DIM_Z
+	   // Tmax
+	q.submit([&](sycl::handler &h)
+			 {	auto reduction_max_T = reduction(&(pVar_max[0]), sycl::maximum<>());
+		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
+						   auto id = index.get_global_id();
+						   temp_max_T.combine(T[id]);}); });
+#ifdef COP_CHEME
+	// Yi(HO2)max
+	q.submit([&](sycl::handler &h)
+			 {	auto reduction_max_YHO2 = reduction(&(pVar_max[1]), sycl::maximum<>());
+		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YHO2, [=](nd_item<1> index, auto &temp_max_YHO2){	
+						   auto id = index.get_global_id();
+						   temp_max_YHO2.combine(yi[5 + NUM_SPECIES * id]); }); });
+	// Yi(H2O2)max
+	q.submit([&](sycl::handler &h)
+			 {	auto reduction_max_YH2O2 = reduction(&(pVar_max[2]), sycl::maximum<>());
+		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YH2O2, [=](nd_item<1> index, auto &temp_max_YH2O2){
+						   auto id = index.get_global_id();
+						   temp_max_YH2O2.combine(yi[6 + NUM_SPECIES * id]); }); });
+#endif // end COP_CHEME
+
+	auto local_ndrange3d = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	auto global_ndrange3d = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+// XDIR
+#if DIM_X
+	auto Rdif_Xmin = reduction(&(interface_points[0]), sycl::minimum<>());
+	auto Rdif_Xmax = reduction(&(interface_points[1]), sycl::maximum<>());
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Xmin, Rdif_Xmax, [=](nd_item<3> index, auto &temp_Xmin, auto &temp_Xmax)
+							  {	
+					int i = index.get_global_id(0) + bl.Bwidth_X;
+					int j = index.get_global_id(1) + bl.Bwidth_Y;
+					int k = index.get_global_id(2) + bl.Bwidth_Z;
+					real_t x = i * bl.dx + bl.offx;
+					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+					if (yi[id * NUM_SPECIES - 2] > Interface_line)
+					{
+						temp_Xmin.combine(x);
+						temp_Xmax.combine(x);
+					} }); });
+#else
+	interface_points[0] = 0.0, interface_points[1] = 0.0;
+#endif // end DIM_X
+// YDIR
+#if DIM_Y
+	auto Rdif_Ymin = reduction(&(interface_points[2]), sycl::minimum<>());
+	auto Rdif_Ymax = reduction(&(interface_points[3]), sycl::maximum<>());
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax)
+							  {	
+					int i = index.get_global_id(0) + bl.Bwidth_X;
+					int j = index.get_global_id(1) + bl.Bwidth_Y;
+					int k = index.get_global_id(2) + bl.Bwidth_Z;
+					real_t y = j * bl.dy + bl.offy;
+					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+					if (yi[id * NUM_SPECIES - 2] > Interface_line)
+					{
+						temp_Ymin.combine(y);
+						temp_Ymax.combine(y);
+					} }); });
+#else
+	interface_points[2] = 0.0, interface_points[3] = 0.0;
+#endif // end DIM_Y
+// ZDIR
+#if DIM_Z
+	auto Rdif_Zmin = reduction(&(interface_points[4]), sycl::minimum<>());
+	auto Rdif_Zmax = reduction(&(interface_points[5]), sycl::maximum<>());
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Zmin, Rdif_Zmax, [=](nd_item<3> index, auto &temp_Zmin, auto &temp_Zmax)
+							  {	
+					int i = index.get_global_id(0) + bl.Bwidth_X;
+					int j = index.get_global_id(1) + bl.Bwidth_Y;
+					int k = index.get_global_id(2) + bl.Bwidth_Z;
+					real_t z = k * bl.dz + bl.offz;
+					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+					if (yi[id * NUM_SPECIES - 2] > Interface_line)
+					{
+						temp_Zmin.combine(z);
+						temp_Zmax.combine(z);
+					} }); });
+#else
+	interface_points[4] = 0.0, interface_points[5] = 0.0;
+#endif // end DIM_Z
+
+	auto Sum_YXe = sycl::reduction(&(theta[0]), sycl::plus<>());
+	auto Sum_YN2 = sycl::reduction(&(theta[1]), sycl::plus<>());
+	auto Sum_YXN = sycl::reduction(&(theta[2]), sycl::plus<>());
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_YXe, Sum_YN2, Sum_YXN, [=](nd_item<3> index, auto &temp_Sum_YXe, auto &temp_Sum_YN2, auto &temp_Sum_YXN)
+							  {	
+				int i = index.get_global_id(0) + bl.Bwidth_X;
+				int j = index.get_global_id(1) + bl.Bwidth_Y;
+				int k = index.get_global_id(2) + bl.Bwidth_Z;
+				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+				real_t *Yi = &(yi[NUM_SPECIES * id]);
+				temp_Sum_YXe += Yi[NUM_COP - 1];
+				temp_Sum_YN2 += Yi[NUM_COP];
+				temp_Sum_YXN += Yi[NUM_COP - 1] * Yi[NUM_COP]; }); });
+
+	q.wait();
 
 	return bl.CFLnumber / dtref;
 }

@@ -168,6 +168,7 @@ flag_ernd:
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
 	EndProcess();
+	Output_Counts();
 	// Output_Ubak(rank, Iteration - 1, physicalTime);
 	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
@@ -335,10 +336,11 @@ real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
 {
 	real_t dt_ref = _DF(1.0e-10);
 #if NumFluid == 1
-	dt_ref = fluids[0]->GetFluidDt(q);
+	dt_ref = fluids[0]->GetFluidDt(q, Iteration, physicalTime);
 #elif NumFluid == 2
-	dt_ref = fluids[0]->GetFluidDt(levelset);
-	dt_ref = min(dt_ref, fluids[1]->GetFluidDt(levelset));
+	dt_ref = fluids[0]->GetFluidDt(levelset, Iteration, physicalTime);
+	for (size_t n = 1; n < NumFluid; n++)
+		dt_ref = min(dt_ref, fluids[1]->GetFluidDt(levelset, Iteration, physicalTime));
 #endif
 
 	return dt_ref;
@@ -587,6 +589,78 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 #endif // end ESTIM_NAN
 	}
 	q.wait();
+}
+
+void SYCLSolver::Output_Counts()
+{
+	if (rank == 0)
+	{
+		std::string outputPrefix = INI_SAMPLE;
+		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + ".plt";
+		std::ofstream out(file_name);
+		// // defining header for tecplot(plot software)
+		out.setf(std::ios::right);
+		out << "title='" << outputPrefix << "'\n"
+			<< "variables=Time, Theta(XN/(Xe*N2)), Tmax, ";
+#ifdef COP_CHEME
+		out << "Yi(HO2)_max, Yi(H2O2)_max, ";
+#endif // end COP_CHEME
+#if DIM_Y
+		out << "Gamy, ";
+#endif
+#if DIM_Z
+		out << "Gamz, ";
+#endif
+		out << "Theta(Xe), Theta(N2), Theta(XN), ";
+#if DIM_Y
+		out << "Ymin, Ymax, ";
+#endif
+#if DIM_Z
+		out << "Zmin, Zmax, ";
+#endif
+#if DIM_X
+		out << "Xmin, Xmax, Gamx";
+#endif
+		out << "\nzone t='AllCounts', i= " << fluids[0]->pTime.size() << ", j= 1, k= 1 \n";
+
+		for (int i = 0; i < fluids[0]->pTime.size(); i++)
+		{
+			out << std::setw(11) << fluids[0]->pTime[i] << " ";		// physical time
+			out << std::setw(11) << fluids[0]->Theta[i] << " ";		// Theta(XN/(Xe*N2))
+			out << std::setw(7) << fluids[0]->Var_max[0][i] << " "; // Tmax
+#ifdef COP_CHEME
+			out << std::setw(11) << fluids[0]->Var_max[1][i] << " ";				  // Yi(HO2)_max
+			out << std::setw(11) << fluids[0]->Var_max[2][i] << " ";				  // Yi(H2O2)_max
+#endif																				  // end COP_CHEME
+#if DIM_Y
+			real_t offsety = (Ss.Boundarys[2] == 2 && Ss.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+			out << std::setw(7) << (fluids[0]->Interface_points[3][i] - fluids[0]->Interface_points[2][i]) * offsety / Ss.ini.yb << " "; // Gamy
+#endif
+#if DIM_Z
+			real_t offsetz = (Ss.Boundarys[4] == 2 && Ss.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+			out << std::setw(7) << (fluids[0]->Interface_points[5][i] - fluids[0]->Interface_points[4][i]) * offsetz / Ss.ini.zc << " "; // Gamz
+#endif
+			// out << std::setw(7) << i + 1 << " ";				   // Step
+			out << std::setw(7) << fluids[0]->thetas[0][i] << " "; // Theta(Xe)
+			out << std::setw(7) << fluids[0]->thetas[1][i] << " "; // Theta(N2)
+			out << std::setw(7) << fluids[0]->thetas[2][i] << " "; // Theta(XN)
+#if DIM_Y
+			out << std::setw(8) << fluids[0]->Interface_points[2][i] << " "; // Ymin
+			out << std::setw(8) << fluids[0]->Interface_points[3][i] << " "; // Ymax
+#endif
+#if DIM_Z
+			out << std::setw(8) << fluids[0]->Interface_points[4][i] << " "; // Zmin
+			out << std::setw(8) << fluids[0]->Interface_points[5][i] << " "; // Zmax
+#endif
+#if DIM_X
+			out << std::setw(8) << fluids[0]->Interface_points[0][i] << " ";															  // Xmin
+			out << std::setw(8) << fluids[0]->Interface_points[1][i] << " ";															  // Xmax
+			out << std::setw(6) << (fluids[0]->Interface_points[1][i] - fluids[0]->Interface_points[0][i]) * _DF(0.5) / Ss.ini.xa << " "; // Gamx
+#endif
+			out << "\n";
+		}
+		out.close();
+	}
 }
 
 void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error)

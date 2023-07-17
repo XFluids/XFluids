@@ -1,211 +1,17 @@
 #include "global_class.h"
 #include "block_sycl.hpp"
 
-void FluidSYCL::initialize(int n)
+FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
 {
-	Fluid_name = Fs.fname[n]; // give a name to the fluid
-	// type of material, 0: gamma gas, 1: water, 2: stiff gas
-	material_property.Mtrl_ind = Fs.material_kind[n];
-	// fluid indicator and EOS Parameters
-	material_property.Rgn_ind = Fs.material_props[n][0];
-	// gamma, A, B, rho0, mu_0, R_0, lambda_0
-	material_property.Gamma = Fs.material_props[n][1];
-	material_property.A = Fs.material_props[n][2];
-	material_property.B = Fs.material_props[n][3];
-	material_property.rho0 = Fs.material_props[n][4];
-	material_property.R_0 = Fs.material_props[n][5];
-	material_property.lambda_0 = Fs.material_props[n][6];
-}
-
-void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
-{
-	int bytes = Fs.bytes;
-	int cellbytes = Fs.cellbytes;
-	// 主机内存
-	h_fstate.rho = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.p = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.H = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.u = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.v = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.w = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
-	h_fstate.e = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-
-	// 设备内存
-	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q));
-	d_eigen_local_x = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_eigen_local_y = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_eigen_local_z = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.u = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
-	d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (10.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
-
-#if 2 == EIGEN_ALLOC
-	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
-	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
-	MemMbSize += ((double(cellbytes) / 1024.0) * 2 * Emax) / 1024.0;
-#endif // end EIGEN_ALLOC
-
-#ifdef Visc
-	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	for (size_t i = 0; i < 9; i++)
-		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	MemMbSize += bytes / 1024.0 / 1024.0 * 10.0;
-	h_fstate.vx = static_cast<real_t *>(sycl::malloc_host(bytes, q)); // vorticity.
-	d_fstate.vx = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	MemMbSize += bytes / 1024.0 / 1024.0;
-#ifdef Heat
-	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	MemMbSize += bytes / 1024.0 / 1024.0;
-#endif // end Heat
-#ifdef Diffu
-	d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	MemMbSize += NUM_SPECIES * bytes / 1024.0 / 1024.0 * 2.0;
-#endif // end Diffu
-#endif // end Visc
-	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_FluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_wallFluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_wallFluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	d_wallFluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	MemMbSize += cellbytes / 1024.0 / 1024.0 * 6.0;
-	// shared memory
-	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
-
-#ifdef ESTIM_NAN
-	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-#if DIM_X
-	h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
-
-	h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif
-#if DIM_Y
-	h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
-
-	h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif
-#if DIM_Z
-	h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
-
-	h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.preFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif
-	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z));
-	// MemMbSize += ((double(bytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z) * (NUM_COP + 3));
-#ifdef Visc
-#if DIM_X
-	h_fstate.visFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.visFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif // end DIM_X
-#if DIM_Y
-	h_fstate.visFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.visFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif // end DIM_Y
-#if DIM_Z
-	h_fstate.visFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.visFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif // end DIM_Z
-	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double(DIM_X + DIM_Y + DIM_Z);
-#ifdef Diffu
-	h_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	d_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#if DIM_X
-	h_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	d_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#endif
-#if DIM_Y
-	h_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	d_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#endif
-#if DIM_Z
-	h_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	d_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yil_walz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#endif
-	MemMbSize += ((double(bytes) / 1024.0) * (3.0 + 4.0 * double(DIM_X + DIM_Y + DIM_Z))) / 1024.0 * double(NUM_SPECIES);
-#endif // end Diffu
-#endif // end Visc
-#endif // ESTIM_NAN
-
-#if USE_MPI
-	MPIMbSize = Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
-	MemMbSize += MPIMbSize;
-	long double MPIMbSize = Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
-	MemMbSize += MPIMbSize;
-	if (0 == Fs.mpiTrans->myRank)
-#endif // end USE_MPI
-	{
-		std::cout << "Device Memory Usage: " << MemMbSize / 1024.0 << " GB\n";
-#ifdef USE_MPI
-		std::cout << "MPI trans Memory Size: " << MPIMbSize / 1024.0 << " GB\n";
-#endif
-	}
+	MPI_BCs_time = 0.0;
+	MPI_trans_time = 0.0;
+	error_patched_times = 0;
+	for (size_t i = 0; i < 3; i++)
+		Var_max[i].clear(), thetas[i].clear();
+	for (size_t j = 0; j < 6; j++)
+		Interface_points[j].clear();
+	Theta.clear();
+	pTime.clear();
 }
 
 FluidSYCL::~FluidSYCL()
@@ -222,6 +28,9 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(h_fstate.y, q);
 	sycl::free(h_fstate.e, q);
 	sycl::free(h_fstate.gamma, q);
+	sycl::free(h_fstate.thetaXe, q);
+	sycl::free(h_fstate.thetaN2, q);
+	sycl::free(h_fstate.thetaXN, q);
 
 	// 设备内存
 	sycl::free(d_U, q);
@@ -242,6 +51,9 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(d_fstate.y, q);
 	sycl::free(d_fstate.e, q);
 	sycl::free(d_fstate.gamma, q);
+	sycl::free(d_fstate.thetaXe, q);
+	sycl::free(d_fstate.thetaN2, q);
+	sycl::free(d_fstate.thetaXN, q);
 
 #if 2 == EIGEN_ALLOC
 	sycl::free(d_eigen_l, q);
@@ -369,6 +181,239 @@ FluidSYCL::~FluidSYCL()
 #endif // end Diffu
 #endif // end Vis
 #endif // ESTIM_NAN
+	for (size_t i = 0; i < 3; i++)
+	{
+		Var_max[i].clear();
+		std::vector<real_t>().swap(Var_max[i]);
+		thetas[i].clear();
+		std::vector<real_t>().swap(thetas[i]);
+	}
+	for (size_t j = 0; j < 6; j++)
+	{
+		Interface_points[j].clear();
+		std::vector<real_t>().swap(Interface_points[j]);
+	}
+	pTime.clear();
+	std::vector<real_t>().swap(pTime);
+	Theta.clear();
+	std::vector<real_t>().swap(Theta);
+}
+
+void FluidSYCL::initialize(int n)
+{
+	Fluid_name = Fs.fname[n]; // give a name to the fluid
+	// type of material, 0: gamma gas, 1: water, 2: stiff gas
+	material_property.Mtrl_ind = Fs.material_kind[n];
+	// fluid indicator and EOS Parameters
+	material_property.Rgn_ind = Fs.material_props[n][0];
+	// gamma, A, B, rho0, mu_0, R_0, lambda_0
+	material_property.Gamma = Fs.material_props[n][1];
+	material_property.A = Fs.material_props[n][2];
+	material_property.B = Fs.material_props[n][3];
+	material_property.rho0 = Fs.material_props[n][4];
+	material_property.R_0 = Fs.material_props[n][5];
+	material_property.lambda_0 = Fs.material_props[n][6];
+}
+
+void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
+{
+	int bytes = Fs.bytes;
+	int cellbytes = Fs.cellbytes;
+	// 主机内存
+	h_fstate.rho = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.p = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.H = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.u = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.v = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.w = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.T = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
+	h_fstate.e = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.thetaXe = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	h_fstate.thetaN2 = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	h_fstate.thetaXN = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+
+	// 设备内存
+	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q));
+	d_eigen_local_x = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_eigen_local_y = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_eigen_local_z = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.u = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+	d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (10.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
+	d_fstate.thetaXe = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	d_fstate.thetaN2 = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	d_fstate.thetaXN = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	MemMbSize += 3.0 * real_t(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t) / 1024.0) / 1024.0;
+
+#if 2 == EIGEN_ALLOC
+	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
+	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
+	MemMbSize += ((double(cellbytes) / 1024.0) * 2 * Emax) / 1024.0;
+#endif // end EIGEN_ALLOC
+
+#ifdef Visc
+	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	for (size_t i = 0; i < 9; i++)
+		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0 * 10.0;
+	h_fstate.vx = static_cast<real_t *>(sycl::malloc_host(bytes, q)); // vorticity.
+	d_fstate.vx = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0;
+#ifdef Heat
+	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	MemMbSize += bytes / 1024.0 / 1024.0;
+#endif // end Heat
+#ifdef Diffu
+	d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	MemMbSize += NUM_SPECIES * bytes / 1024.0 / 1024.0 * 2.0;
+#endif // end Diffu
+#endif // end Visc
+	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_FluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_wallFluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_wallFluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	d_wallFluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	MemMbSize += cellbytes / 1024.0 / 1024.0 * 6.0;
+	// shared memory
+	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
+	pVar_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q)); // calculate Tmax, YiH2O2max, YiHO2max
+	theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));	  // Yi(Xe),Yi(N2),Yi(Xe*N2)
+	interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
+
+#ifdef ESTIM_NAN
+	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+#if DIM_X
+	h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+
+	h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+#endif
+#if DIM_Y
+	h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+
+	h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+#endif
+#if DIM_Z
+	h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+	h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+	d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+
+	h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	d_fstate.preFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+#endif
+	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z));
+	// MemMbSize += ((double(bytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z) * (NUM_COP + 3));
+#ifdef Visc
+#if DIM_X
+	h_fstate.visFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	d_fstate.visFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+#endif // end DIM_X
+#if DIM_Y
+	h_fstate.visFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	d_fstate.visFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+#endif // end DIM_Y
+#if DIM_Z
+	h_fstate.visFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+	d_fstate.visFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+#endif // end DIM_Z
+	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double(DIM_X + DIM_Y + DIM_Z);
+#ifdef Diffu
+	h_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	d_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+#if DIM_X
+	h_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	d_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+#endif
+#if DIM_Y
+	h_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	d_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+#endif
+#if DIM_Z
+	h_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	h_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+	d_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Yil_walz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+#endif
+	MemMbSize += ((double(bytes) / 1024.0) * (3.0 + 4.0 * double(DIM_X + DIM_Y + DIM_Z))) / 1024.0 * double(NUM_SPECIES);
+#endif // end Diffu
+#endif // end Visc
+#endif // ESTIM_NAN
+
+#if USE_MPI
+	MPIMbSize = Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
+	MemMbSize += MPIMbSize;
+	long double MPIMbSize = Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);
+	MemMbSize += MPIMbSize;
+	if (0 == Fs.mpiTrans->myRank)
+#endif // end USE_MPI
+	{
+		std::cout << "Device Memory Usage: " << MemMbSize / 1024.0 << " GB\n";
+#ifdef USE_MPI
+		std::cout << "MPI trans Memory Size: " << MPIMbSize / 1024.0 << " GB\n";
+#endif
+	}
 }
 
 void FluidSYCL::InitialU(sycl::queue &q)
@@ -376,26 +421,53 @@ void FluidSYCL::InitialU(sycl::queue &q)
 	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
 }
 
-real_t FluidSYCL::GetFluidDt(sycl::queue &q)
+real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime)
 {
-	real_t dt_ref = GetDt(q, Fs.BlSz, d_fstate, uvw_c_max);
+	real_t dt_ref = GetDt(q, Fs.BlSz, d_fstate, uvw_c_max, pVar_max, interface_point, theta);
 #ifdef USE_MPI
-	real_t temp;
+	real_t dt_temp;
+	Fs.mpiTrans->communicator->allReduce(&dt_ref, &dt_temp, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 	Fs.mpiTrans->communicator->synchronize();
-	Fs.mpiTrans->communicator->allReduce(&dt_ref, &temp, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-	dt_ref = temp;
-#endif
-#ifdef PositivityPreserving
-	// NOTE: only single fluid is considered.
-#ifdef USE_MPI
+	dt_ref = dt_temp;
+#ifdef PositivityPreserving // NOTE: only single fluid is considered
 	real_t lambda_x0, lambda_y0, lambda_z0;
 	Fs.mpiTrans->communicator->synchronize();
 	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[0]), &lambda_x0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[1]), &lambda_y0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[2]), &lambda_z0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->synchronize();
 	uvw_c_max[0] = lambda_x0, uvw_c_max[1] = lambda_y0, uvw_c_max[2] = lambda_z0;
-#endif // end USE_MPI
 #endif
+	real_t Tx, YiHO2x, YiH2O2x;
+	Fs.mpiTrans->communicator->allReduce(&(pVar_max[0]), &Tx, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(pVar_max[1]), &YiHO2x, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(pVar_max[2]), &YiH2O2x, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->synchronize();
+	pVar_max[0] = Tx, pVar_max[1] = YiHO2x, pVar_max[2] = YiH2O2x;
+	real_t Xmin, Xmax, Ymin, Ymax, Zmin, Zmax;
+	Fs.mpiTrans->communicator->allReduce(&(interface_point[0]), &Xmin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+	Fs.mpiTrans->communicator->allReduce(&(interface_point[2]), &Ymin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+	Fs.mpiTrans->communicator->allReduce(&(interface_point[4]), &Zmin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+	Fs.mpiTrans->communicator->allReduce(&(interface_point[1]), &Xmax, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(interface_point[3]), &Ymax, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(interface_point[5]), &Zmax, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->synchronize();
+	interface_point[0] = Xmin, interface_point[2] = Ymin, interface_point[4] = Zmin;
+	interface_point[1] = Xmax, interface_point[3] = Ymax, interface_point[5] = Zmax;
+	real_t thetaYXe, thetaYN2, thetaYXN;
+	Fs.mpiTrans->communicator->allReduce(&(theta[0]), &thetaYXe, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
+	Fs.mpiTrans->communicator->allReduce(&(theta[1]), &thetaYN2, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
+	Fs.mpiTrans->communicator->allReduce(&(theta[2]), &thetaYXN, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
+	Fs.mpiTrans->communicator->synchronize();
+	theta[0] = thetaYXe, theta[1] = thetaYN2, theta[2] = thetaYXN;
+#endif // end USE_MPI
+
+	pTime.push_back(physicalTime);
+	for (size_t i = 0; i < 3; i++)
+		Var_max[i].push_back(pVar_max[i]), thetas[i].push_back(theta[i]);
+	for (size_t j = 0; j < 6; j++)
+		Interface_points[j].push_back(interface_point[j]);
+	Theta.push_back(theta[2] / theta[0] / theta[1]); // Ref14.https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648: eq.(35)
 
 	return dt_ref;
 }
@@ -427,13 +499,38 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 	real_t *Rho = d_fstate.rho, *Yi = d_fstate.y;
-	// q.submit([&](sycl::handler &h)
-	// 		 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-	// 						  {
-	// 				int i = index.get_global_id(0);
-	// 				int j = index.get_global_id(1);
-	// 				int k = index.get_global_id(2);
-	// 				UpdateFluidYiKernel(i, j, k, bl, UI, Rho, Yi); }); });
+
+#ifdef ESTIM_NAN
+	int *yierror_pos;
+	bool *h_erroryi0, *d_erroryi0;
+	yierror_pos = sycl::malloc_shared<int>(3 + NUM_SPECIES, q);
+	h_erroryi0 = middle::MallocHost<bool>(h_erroryi0, 1, q), d_erroryi0 = middle::MallocDevice<bool>(d_erroryi0, 1, q);
+	middle::MemCpy<bool>(d_erroryi0, h_erroryi0, 1, q);
+	auto global_in_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_in_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+						int i = index.get_global_id(0) + bl.Bwidth_X;
+						int j = index.get_global_id(1) + bl.Bwidth_Y;
+						int k = index.get_global_id(2) + bl.Bwidth_Z;
+						EstimateYiKernel(i, j, k, bl, yierror_pos, d_erroryi0, UI, Rho, Yi); }); })
+		.wait();
+	middle::MemCpy<bool>(h_erroryi0, d_erroryi0, 1, q);
+#ifdef ERROR_PATCH
+#else
+	if (*h_erroryi0) // bool yiErrOut = false;
+	{
+		std::cout << "Errors of Yi[";
+		for (size_t ii = 0; ii < NUM_COP; ii++)
+			std::cout << yierror_pos[ii] << ", ";
+		std::cout << yierror_pos[NUM_COP] << "]";
+		std::cout << " located at (i, j, k)= (" << yierror_pos[NUM_SPECIES] << ", " << yierror_pos[NUM_SPECIES + 1] << ", " << yierror_pos[NUM_SPECIES + 2];
+		std::cout << ") captured.\n";
+		return true;
+	}
+#endif // end ERROR_PATCH
+#endif // end ESTIM_NAN
+
 	UpdateFluidStateFlux(q, Fs.BlSz, thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma);
 
 #ifdef ESTIM_NAN
@@ -451,7 +548,6 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 	middle::MemCpy<bool>(d_erroryi, h_erroryi, 1, q);
 	middle::MemCpy<bool>(d_errornga, h_errornga, 1, q);
 
-	auto global_in_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_in_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
@@ -490,6 +586,12 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 	}
 #endif // end ERROR_PATCH
 #endif // end ESTIM_NAN
+
+	// // NOTE: Caculate ThetaXe, ThetaN2, ThetaXN;
+	// real_t tmpXe = 0.0, tmpN2 = 0.0, tmpXN = 0.0;
+	// real_t y = DIM_Y ? (j - bl.Bwidth_Y + bl.myMpiPos_y * bl.Y_inner + _DF(0.5)) * bl.dy + bl.Domain_ymin : _DF(0.0);
+	// tmpXe += y *;
+	// tmpXe /= (bl.Domain_ymax - bl.Domain_ymin);
 
 	return false;
 }
