@@ -105,40 +105,18 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
     }
     if (spc || spcnan)
     {
+        real_t sum = _DF(0.0);
+        for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+            sum += yi[nn];
+        sum = _DF(1.0) / sum;
+        for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+            yi[nn] *= sum;
         for (size_t n = 0; n < NUM_SPECIES; n++)
             U[n + 5] = rho[id] * yi[n];
+        if (spcnan)
+            *d_error = true; // add condition to avoid rewrite by other threads
         error_pos[NUM_SPECIES] = i, error_pos[1 + NUM_SPECIES] = j, error_pos[2 + NUM_SPECIES] = k;
-        *d_error = true; // add condition to avoid rewrite by other threads
     }
-}
-
-extern SYCL_EXTERNAL void UpdateFluidYiKernel(int i, int j, int k, Block bl, real_t *UI, real_t *rho, real_t *y)
-{
-    MARCO_DOMAIN_GHOST();
-#if DIM_X
-    if (i >= Xmax)
-        return;
-#endif
-#if DIM_Y
-    if (j >= Ymax)
-        return;
-#endif
-#if DIM_Z
-    if (k >= Zmax)
-        return;
-#endif
-    int id = Xmax * Ymax * k + Xmax * j + i;
-
-    real_t *U = &(UI[Emax * id]), *yi = &(y[NUM_SPECIES * id]), rho1 = _DF(1.0) / U[0];
-    // NOTE: mv get yi into Primitive yi estimate
-    yi[NUM_COP] = _DF(1.0);
-#ifdef COP
-    for (size_t ii = 5; ii < Emax; ii++)
-    {                               // calculate yi
-        yi[ii - 5] = UI[ii] * rho1; //_DF(1.0e-5));
-        yi[NUM_COP] += -yi[ii - 5];
-    }
-#endif // end COP
 }
 
 extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2, real_t *UI, real_t *rho,
@@ -1312,7 +1290,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelZ(int i, int j, int k, Block bl, rea
 }
 #endif // end USE_MPI
 
-extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde, real_t *Vox)
+extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde, real_t *const *Voxs, real_t *Vox)
 {
 #if DIM_X
     if (i > bl.Xmax - bl.Bwidth_X + 1)
@@ -1389,6 +1367,7 @@ extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k
     Vde[dwcz][id] = Dmp[dwcz];
 
     real_t wx = Dmp[dwcy] - Dmp[dvcz], wy = Dmp[ducz] - Dmp[dwcx], wz = Dmp[dvcx] - Dmp[ducy]; // vorticity w=wx*i+wy*j+wz*k;
+    Voxs[0][id] = wx, Voxs[1][id] = wy, Voxs[2][id] = wz;
     Vox[id] = wx * wx + wy * wy + wz * wz;                                                     // |w|, magnitude or the vorticity, w^2 used later, sqrt while output
 }
 

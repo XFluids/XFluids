@@ -48,7 +48,7 @@ typedef struct
     // primitive variables
     real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma, *e;
     // cop(y) and vis variables
-    real_t *y, *thetaXe, *thetaN2, *thetaXN, *Vde[9], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+    real_t *y, *thetaXe, *thetaN2, *thetaXN, *Vde[9], *vxs[3], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
     // Error out: varibles of eigen system
     real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
     // Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving
@@ -88,8 +88,8 @@ public:
     int error_patched_times;
     float MPI_trans_time, MPI_BCs_time;
     long double MemMbSize, MPIMbSize;
-    real_t *uvw_c_max, *pVar_max, *interface_point, *theta;
-    std::vector<real_t> pTime, Theta, thetas[3], Var_max[3], Interface_points[6]; // Var_max[3]= {Tmax, YiHO2max, YiH2O2max}
+    real_t *uvw_c_max, *pVar_max, *interface_point, *theta, *sigma;
+    std::vector<real_t> pTime, Theta, Sigma, thetas[3], Var_max[NUM_SPECIES - 3], Interface_points[6]; // Var_max[3]= {Tmax, YiHO2max, YiH2O2max}
     real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
     real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;

@@ -516,6 +516,8 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
 #ifdef Visc
 		q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
+		for (size_t i = 0; i < 3; i++)
+			q.memcpy(fluids[n]->h_fstate.vxs[i], fluids[n]->d_fstate.vxs[i], bytes).wait();
 #endif // Visc
 #ifdef COP
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
@@ -595,21 +597,34 @@ void SYCLSolver::Output_Counts()
 {
 	if (rank == 0)
 	{
+		real_t rho0 = Ss.ini.blast_density_in;
 		std::string outputPrefix = INI_SAMPLE;
-		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + ".plt";
+		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + "_rho0_" + std::to_string(Ss.ini.blast_density_in) + "_" + std::to_string(Ss.ini.cop_density_in) + "_" + std::to_string(Ss.ini.blast_density_out) + ".plt";
 		std::ofstream out(file_name);
 		// // defining header for tecplot(plot software)
 		out.setf(std::ios::right);
 		out << "title='" << outputPrefix << "'\n"
-			<< "variables=Time, Theta(XN/(Xe*N2)), Tmax, ";
+			<< "variables=Time[s], <b><greek>Q</greek></b>[-], <greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], <i>T</i><sub>max</sub>[K], ";
+		// Time[s]: Time in tecplot x-Axis variable
+		//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
+		//<greek>e</greek><sub><greek>r</greek></sub>: sigma in tecplot
+		//<sub>max</sub>: T_max in tecplot sub{max} added
+		//<i>Y(HO2)</i><sub>max</sub>[-]: Yi(HO2)_max
+		//<i>Y(H2O2)</i><sub>max</sub>[-]: Yi(H2O2)_max
+		//<greek>L</greek><sub>x</sub>[-]: Gamx in tecplot
+		//<greek>L</greek><sub>y</sub>[-]: Gamy in tecplot
+		//<greek>L</greek><sub>z</sub>[-]: Gamz in tecplot
+
 #ifdef COP_CHEME
-		out << "Yi(HO2)_max, Yi(H2O2)_max, ";
+		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+			out << "<i>Y(" << Ss.species_name[n + 1] << ")</i><sub>max</sub>[-], ";
+			// out << "<i>Y(HO2)</i><sub>max</sub>[-], <i>Y(H2O2)</i><sub>max</sub>[-], ";
 #endif // end COP_CHEME
 #if DIM_Y
-		out << "Gamy, ";
+		out << "<greek>L</greek><sub>y</sub>[-], ";
 #endif
 #if DIM_Z
-		out << "Gamz, ";
+		out << "<greek>L</greek><sub>z</sub>[-], ";
 #endif
 		out << "Theta(Xe), Theta(N2), Theta(XN), ";
 #if DIM_Y
@@ -619,18 +634,21 @@ void SYCLSolver::Output_Counts()
 		out << "Zmin, Zmax, ";
 #endif
 #if DIM_X
-		out << "Xmin, Xmax, Gamx";
+		out << "Xmin, Xmax, <greek>L</greek><sub>x</sub>[-]";
 #endif
-		out << "\nzone t='AllCounts', i= " << fluids[0]->pTime.size() << ", j= 1, k= 1 \n";
+		out << "\nzone t='Counts_Time_Theta_Sigma_T_YHO2_YH2O2_Gamy', i= " << fluids[0]->pTime.size() << ", j= 1, k= 1 \n";
 
 		for (int i = 0; i < fluids[0]->pTime.size(); i++)
 		{
 			out << std::setw(11) << fluids[0]->pTime[i] << " ";		// physical time
 			out << std::setw(11) << fluids[0]->Theta[i] << " ";		// Theta(XN/(Xe*N2))
+			out << std::setw(11) << fluids[0]->Sigma[i] / rho0 << " "; // sigma: sigma_rho*rho_0(with no rho0 definition found)
 			out << std::setw(7) << fluids[0]->Var_max[0][i] << " "; // Tmax
 #ifdef COP_CHEME
-			out << std::setw(11) << fluids[0]->Var_max[1][i] << " ";				  // Yi(HO2)_max
-			out << std::setw(11) << fluids[0]->Var_max[2][i] << " ";				  // Yi(H2O2)_max
+			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+				out << std::setw(11) << fluids[0]->Var_max[n][i] << " ";
+				// out << std::setw(11) << fluids[0]->Var_max[1][i] << " ";				  // Yi(HO2)_max
+				// out << std::setw(11) << fluids[0]->Var_max[2][i] << " ";				  // Yi(H2O2)_max
 #endif																				  // end COP_CHEME
 #if DIM_Y
 			real_t offsety = (Ss.Boundarys[2] == 2 && Ss.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
@@ -712,24 +730,6 @@ void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t
 
 void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
 {
-	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
-	real_t dx = 0.0, dy = 0.0, dz = 0.0;
-#if DIM_X
-	xmin = Ss.BlSz.myMpiPos_x * VTI.nbX;
-	xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX;
-	dx = Ss.BlSz.dx;
-#endif // DIM_X
-#if DIM_Y
-	ymin = Ss.BlSz.myMpiPos_y * VTI.nbY;
-	ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY;
-	dy = Ss.BlSz.dy;
-#endif // DIM_Y
-#if DIM_Z
-	zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ);
-	zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ);
-	dz = Ss.BlSz.dz;
-#endif // DIM_Z
-
 	// Init var names
 	int Onbvar = 6 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
@@ -900,7 +900,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			index++;
 		}
 	}
-#endif
+#endif // ESTIM_NAN
 	variables_names[index] = "OV-c";
 	index++;
 	variables_names[index] = "O-rho";
@@ -914,14 +914,38 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	variables_names[index] = "O-e";
 	index++;
 #ifdef Visc
-	Onbvar += 1;
+	Onbvar += 4;
 	variables_names[index] = "O-vorticity";
+	index++;
+	variables_names[index] = "O-vorticity_x";
+	index++;
+	variables_names[index] = "O-vorticity_y";
+	index++;
+	variables_names[index] = "O-vorticity_z";
 	index++;
 #endif
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
 		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
 #endif // COP
+
+	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
+	real_t dx = 0.0, dy = 0.0, dz = 0.0;
+#if DIM_X
+	xmin = Ss.BlSz.myMpiPos_x * VTI.nbX;
+	xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX;
+	dx = Ss.BlSz.dx;
+#endif // DIM_X
+#if DIM_Y
+	ymin = Ss.BlSz.myMpiPos_y * VTI.nbY;
+	ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY;
+	dy = Ss.BlSz.dy;
+#endif // DIM_Y
+#if DIM_Z
+	zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ);
+	zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ);
+	dz = Ss.BlSz.dz;
+#endif // DIM_Z
 
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	std::string temp_name = "./VTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
@@ -1416,7 +1440,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			}
 			}
 		}
-#endif
+#endif // end ESTIM_NAN
 
 		//[6]V-c
 		MARCO_OUTLOOP
@@ -1492,6 +1516,24 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
 					outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
+		MARCO_OUTLOOP
+		{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.vxs[0][id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
+		MARCO_OUTLOOP
+		{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.vxs[1][id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+		} // for j
+		MARCO_OUTLOOP
+		{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.vxs[2][id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+		} // for k
 #endif	  // end Visc
 #ifdef COP
 		//[COP]yii
@@ -1665,7 +1707,7 @@ void SYCLSolver::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 
 void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
 {												  // Init var names
-	int Onbvar = 5 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
+	int Onbvar = 6 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
 	Onbvar += NUM_SPECIES;
 #endif // end COP
@@ -1699,6 +1741,19 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 	index++;
 	variables_names[index] = "O-T";
 	index++;
+	variables_names[index] = "O-e";
+	index++;
+#ifdef Visc
+	Onbvar += 4;
+	variables_names[index] = "O-vorticity";
+	index++;
+	variables_names[index] = "O-vorticity_x";
+	index++;
+	variables_names[index] = "O-vorticity_y";
+	index++;
+	variables_names[index] = "O-vorticity_z";
+	index++;
+#endif
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
 		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
@@ -1953,7 +2008,40 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 		real_t tmp = fluids[0]->h_fstate.T[id];
 		outFile.write((char *)&tmp, sizeof(real_t));
 	}
-
+	//[11]e
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.e[id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+#ifdef Visc
+	//[12]vorticity
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.vxs[0][id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	} // for i
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.vxs[1][id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	} // for j
+	MARCO_COUTLOOP
+	{
+		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+		real_t tmp = fluids[0]->h_fstate.vxs[2][id];
+		outFile.write((char *)&tmp, sizeof(real_t));
+	}  // for k
+#endif // end Visc
 #ifdef COP
 	//[COP]yii
 	for (int ii = 0; ii < NUM_SPECIES; ii++)
@@ -1974,9 +2062,12 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 
 void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
 { // compressible out: output dirs less than caculate dirs
-	int Cnbvar = 9;
+	int Cnbvar = 12;
+#ifdef Visc
+	Cnbvar += 4;
+#endif
 #ifdef COP
-	Cnbvar += (2 + NUM_SPECIES);
+	Cnbvar += NUM_SPECIES;
 #endif
 
 	int *OutRanks = new int[nranks];
@@ -2021,9 +2112,16 @@ void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostr
 					OutPoint[6] = fluids[0]->h_fstate.u[id];
 					OutPoint[7] = fluids[0]->h_fstate.v[id];
 					OutPoint[8] = fluids[0]->h_fstate.w[id];
-#if COP
 					OutPoint[9] = fluids[0]->h_fstate.gamma[id];
 					OutPoint[10] = fluids[0]->h_fstate.T[id];
+					OutPoint[11] = fluids[0]->h_fstate.e[id];
+#ifdef Visc
+					OutPoint[12] = sqrt(fluids[0]->h_fstate.vx[id]);
+					OutPoint[13] = fluids[0]->h_fstate.vxs[0][id];
+					OutPoint[14] = fluids[0]->h_fstate.vxs[1][id];
+					OutPoint[15] = fluids[0]->h_fstate.vxs[2][id];
+#endif // end Visc
+#if COP
 					for (int n = 0; n < NUM_SPECIES; n++)
 						OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];
 #endif
@@ -2031,8 +2129,11 @@ void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostr
 					out << OutPoint[0] << " " << OutPoint[1] << " " << OutPoint[2] << " "; // x, y, z
 					out << OutPoint[3] << " " << OutPoint[4] << " " << OutPoint[5] << " "; // rho, p, c
 					out << OutPoint[6] << " " << OutPoint[7] << " " << OutPoint[8] << " "; // u, v, w
+					out << OutPoint[9] << " " << OutPoint[10] << " " << OutPoint[11] << " "; // gamma, T, e
+#ifdef Visc
+					out << OutPoint[12] << " " << OutPoint[13] << " " << OutPoint[14] << " " << OutPoint[15] << " "; // Vorticity
+#endif																												 // end Visc
 #if COP
-					out << OutPoint[9] << " " << OutPoint[10] << " "; // gamma,T
 					for (int n = 0; n < NUM_SPECIES; n++)
 						out << OutPoint[Cnbvar - NUM_SPECIES] << " "; // Yi
 #endif

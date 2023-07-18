@@ -7,11 +7,12 @@ FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
 	MPI_trans_time = 0.0;
 	error_patched_times = 0;
 	for (size_t i = 0; i < 3; i++)
-		Var_max[i].clear(), thetas[i].clear();
+		thetas[i].clear();
+	for (size_t i = 0; i < NUM_SPECIES - 3; i++)
+		Var_max[i].clear();
 	for (size_t j = 0; j < 6; j++)
 		Interface_points[j].clear();
-	Theta.clear();
-	pTime.clear();
+	pTime.clear(), Theta.clear(), Sigma.clear();
 }
 
 FluidSYCL::~FluidSYCL()
@@ -183,10 +184,14 @@ FluidSYCL::~FluidSYCL()
 #endif // ESTIM_NAN
 	for (size_t i = 0; i < 3; i++)
 	{
-		Var_max[i].clear();
-		std::vector<real_t>().swap(Var_max[i]);
+
 		thetas[i].clear();
 		std::vector<real_t>().swap(thetas[i]);
+	}
+	for (size_t i = 0; i < NUM_SPECIES - 3; i++)
+	{
+		Var_max[i].clear();
+		std::vector<real_t>().swap(Var_max[i]);
 	}
 	for (size_t j = 0; j < 6; j++)
 	{
@@ -197,6 +202,8 @@ FluidSYCL::~FluidSYCL()
 	std::vector<real_t>().swap(pTime);
 	Theta.clear();
 	std::vector<real_t>().swap(Theta);
+	Sigma.clear();
+	std::vector<real_t>().swap(Sigma);
 }
 
 void FluidSYCL::initialize(int n)
@@ -231,15 +238,15 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
 	h_fstate.e = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 	h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.thetaXe = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
-	h_fstate.thetaN2 = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
-	h_fstate.thetaXN = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	// h_fstate.thetaXe = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	// h_fstate.thetaN2 = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	// h_fstate.thetaXN = static_cast<real_t *>(sycl::malloc_host(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
 
 	// 设备内存
 	d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-	Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q));
+	Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q)); // shared memory may inside device
 	d_eigen_local_x = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_eigen_local_y = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_eigen_local_z = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -254,11 +261,11 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
 	d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (10.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0; // shared memory may inside device
-	d_fstate.thetaXe = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
-	d_fstate.thetaN2 = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
-	d_fstate.thetaXN = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
-	MemMbSize += 3.0 * real_t(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t) / 1024.0) / 1024.0;
+	MemMbSize = (7.0 * (double(cellbytes) / 1024.0) + (10.0 + NUM_SPECIES) * (double(bytes) / 1024.0)) / 1024.0;
+	// d_fstate.thetaXe = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	// d_fstate.thetaN2 = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	// d_fstate.thetaXN = static_cast<real_t *>(sycl::malloc_device(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t), q));
+	// MemMbSize += 3.0 * real_t(Fs.BlSz.Xmax * Fs.BlSz.Zmax * sizeof(real_t) / 1024.0) / 1024.0;
 
 #if 2 == EIGEN_ALLOC
 	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
@@ -271,9 +278,11 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	for (size_t i = 0; i < 9; i++)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0 * 10.0;
+	for (size_t i = 0; i < 3; i++)
+		h_fstate.vxs[i] = static_cast<real_t *>(sycl::malloc_host(bytes, q)), d_fstate.vxs[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	h_fstate.vx = static_cast<real_t *>(sycl::malloc_host(bytes, q)); // vorticity.
 	d_fstate.vx = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	MemMbSize += bytes / 1024.0 / 1024.0;
+	MemMbSize += 4.0 * bytes / 1024.0 / 1024.0;
 #ifdef Heat
 	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0;
@@ -293,8 +302,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	MemMbSize += cellbytes / 1024.0 / 1024.0 * 6.0;
 	// shared memory
 	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
-	pVar_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q)); // calculate Tmax, YiH2O2max, YiHO2max
-	theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));	  // Yi(Xe),Yi(N2),Yi(Xe*N2)
+	pVar_max = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 1 - 4) * sizeof(real_t), q)); // calculate Tmax, YiH2O2max, YiHO2max
+	sigma = static_cast<real_t *>(sycl::malloc_shared(sizeof(real_t), q));		  // Ref:https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq(34)
+	theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));	  // Yi(Xe),Yi(N2),Yi(Xe*N2)// Ref.eq(35)
 	interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
 
 #ifdef ESTIM_NAN
@@ -423,7 +433,7 @@ void FluidSYCL::InitialU(sycl::queue &q)
 
 real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime)
 {
-	real_t dt_ref = GetDt(q, Fs.BlSz, d_fstate, uvw_c_max, pVar_max, interface_point, theta);
+	real_t dt_ref = GetDt(q, Fs.BlSz, d_fstate, uvw_c_max, pVar_max, interface_point, theta, sigma);
 #ifdef USE_MPI
 	real_t dt_temp;
 	Fs.mpiTrans->communicator->allReduce(&dt_ref, &dt_temp, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
@@ -438,12 +448,16 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physic
 	Fs.mpiTrans->communicator->synchronize();
 	uvw_c_max[0] = lambda_x0, uvw_c_max[1] = lambda_y0, uvw_c_max[2] = lambda_z0;
 #endif
-	real_t Tx, YiHO2x, YiH2O2x;
+	real_t Tx, YiOut[NUM_SPECIES - 4];
 	Fs.mpiTrans->communicator->allReduce(&(pVar_max[0]), &Tx, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-	Fs.mpiTrans->communicator->allReduce(&(pVar_max[1]), &YiHO2x, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-	Fs.mpiTrans->communicator->allReduce(&(pVar_max[2]), &YiH2O2x, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+		Fs.mpiTrans->communicator->allReduce(&(pVar_max[1]), &YiOut[n - 1], 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	// Fs.mpiTrans->communicator->allReduce(&(pVar_max[1]), &YiHO2x, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	// Fs.mpiTrans->communicator->allReduce(&(pVar_max[2]), &YiH2O2x, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	Fs.mpiTrans->communicator->synchronize();
-	pVar_max[0] = Tx, pVar_max[1] = YiHO2x, pVar_max[2] = YiH2O2x;
+	pVar_max[0] = Tx; //, pVar_max[1] = YiHO2x, pVar_max[2] = YiH2O2x;
+	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+		pVar_max[n] = YiOut[n - 1];
 	real_t Xmin, Xmax, Ymin, Ymax, Zmin, Zmax;
 	Fs.mpiTrans->communicator->allReduce(&(interface_point[0]), &Xmin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 	Fs.mpiTrans->communicator->allReduce(&(interface_point[2]), &Ymin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
@@ -454,21 +468,28 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physic
 	Fs.mpiTrans->communicator->synchronize();
 	interface_point[0] = Xmin, interface_point[2] = Ymin, interface_point[4] = Zmin;
 	interface_point[1] = Xmax, interface_point[3] = Ymax, interface_point[5] = Zmax;
-	real_t thetaYXe, thetaYN2, thetaYXN;
+	real_t thetaYXe, thetaYN2, thetaYXN, Sumsigma;
 	Fs.mpiTrans->communicator->allReduce(&(theta[0]), &thetaYXe, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 	Fs.mpiTrans->communicator->allReduce(&(theta[1]), &thetaYN2, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 	Fs.mpiTrans->communicator->allReduce(&(theta[2]), &thetaYXN, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
+	Fs.mpiTrans->communicator->allReduce(&(sigma[0]), &Sumsigma, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 	Fs.mpiTrans->communicator->synchronize();
-	theta[0] = thetaYXe, theta[1] = thetaYN2, theta[2] = thetaYXN;
+	theta[0] = thetaYXe, theta[1] = thetaYN2, theta[2] = thetaYXN, sigma[0] = Sumsigma;
+	if (Fs.myRank == 0)
 #endif // end USE_MPI
-
-	pTime.push_back(physicalTime);
-	for (size_t i = 0; i < 3; i++)
-		Var_max[i].push_back(pVar_max[i]), thetas[i].push_back(theta[i]);
-	for (size_t j = 0; j < 6; j++)
-		Interface_points[j].push_back(interface_point[j]);
-	Theta.push_back(theta[2] / theta[0] / theta[1]); // Ref14.https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648: eq.(35)
-
+	{
+		pTime.push_back(physicalTime);
+		for (size_t i = 0; i < 3; i++)
+			thetas[i].push_back(theta[i]);
+		for (size_t i = 0; i < NUM_SPECIES - 3; i++)
+			Var_max[i].push_back(pVar_max[i]);
+		for (size_t j = 0; j < 6; j++)
+			Interface_points[j]
+				.push_back(interface_point[j]);
+		Theta.push_back(theta[2] / theta[0] / theta[1]);						 // Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(35)
+		real_t rho0 = _DF(1.0);													 // withou rho0 definition found
+		Sigma.push_back(sigma[0] / rho0 * Fs.BlSz.dx * Fs.BlSz.dy * Fs.BlSz.dz); // Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(34)
+	}
 	return dt_ref;
 }
 

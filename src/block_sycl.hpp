@@ -38,7 +38,7 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 		.wait();
 }
 
-real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_t *pVar_max, real_t *interface_points, real_t *theta)
+real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_t *pVar_max, real_t *interface_points, real_t *theta, real_t *sigma)
 {
 	real_t *c = fdata.c;
 	real_t *u = fdata.u;
@@ -46,6 +46,8 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 	real_t *yi = fdata.y;
+	real_t *rho = fdata.rho;
+	real_t *vox_2 = fdata.vx;
 
 	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
 	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
@@ -97,18 +99,26 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 						   auto id = index.get_global_id();
 						   temp_max_T.combine(T[id]);}); });
 #ifdef COP_CHEME
-	// Yi(HO2)max
-	q.submit([&](sycl::handler &h)
-			 {	auto reduction_max_YHO2 = reduction(&(pVar_max[1]), sycl::maximum<>());
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YHO2, [=](nd_item<1> index, auto &temp_max_YHO2){	
-						   auto id = index.get_global_id();
-						   temp_max_YHO2.combine(yi[5 + NUM_SPECIES * id]); }); });
-	// Yi(H2O2)max
-	q.submit([&](sycl::handler &h)
-			 {	auto reduction_max_YH2O2 = reduction(&(pVar_max[2]), sycl::maximum<>());
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YH2O2, [=](nd_item<1> index, auto &temp_max_YH2O2){
-						   auto id = index.get_global_id();
-						   temp_max_YH2O2.combine(yi[6 + NUM_SPECIES * id]); }); });
+	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+	{
+		q.submit([&](sycl::handler &h)
+				 {	auto reduction_max_Yi = reduction(&(pVar_max[n]), sycl::maximum<>());
+			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
+							   auto id = index.get_global_id();
+							   temp_max_Yi.combine(yi[n + 2 + NUM_SPECIES * id]); }); });
+	}
+// // Yi(HO2)max
+// q.submit([&](sycl::handler &h)
+// 		 {	auto reduction_max_YHO2 = reduction(&(pVar_max[1]), sycl::maximum<>());
+// 	h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YHO2, [=](nd_item<1> index, auto &temp_max_YHO2){
+// 					   auto id = index.get_global_id();
+// 					   temp_max_YHO2.combine(yi[5 + NUM_SPECIES * id]); }); });
+// // Yi(H2O2)max
+// q.submit([&](sycl::handler &h)
+// 		 {	auto reduction_max_YH2O2 = reduction(&(pVar_max[2]), sycl::maximum<>());
+// 	h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YH2O2, [=](nd_item<1> index, auto &temp_max_YH2O2){
+// 					   auto id = index.get_global_id();
+// 					   temp_max_YH2O2.combine(yi[6 + NUM_SPECIES * id]); }); });
 #endif // end COP_CHEME
 
 	auto local_ndrange3d = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
@@ -177,9 +187,11 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 	auto Sum_YXe = sycl::reduction(&(theta[0]), sycl::plus<>());
 	auto Sum_YN2 = sycl::reduction(&(theta[1]), sycl::plus<>());
 	auto Sum_YXN = sycl::reduction(&(theta[2]), sycl::plus<>());
+	auto Sum_Sigma = sycl::reduction(&(sigma[0]), sycl::plus<>());
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_YXe, Sum_YN2, Sum_YXN, [=](nd_item<3> index, auto &temp_Sum_YXe, auto &temp_Sum_YN2, auto &temp_Sum_YXN)
-							  {	
+			 { h.parallel_for(
+				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_YXe, Sum_YN2, Sum_YXN, Sum_Sigma, [=](nd_item<3> index, auto &temp_Sum_YXe, auto &temp_Sum_YN2, auto &temp_Sum_YXN, auto &temp_Sum_Sigma)
+				   {	
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -187,7 +199,8 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 				real_t *Yi = &(yi[NUM_SPECIES * id]);
 				temp_Sum_YXe += Yi[NUM_COP - 1];
 				temp_Sum_YN2 += Yi[NUM_COP];
-				temp_Sum_YXN += Yi[NUM_COP - 1] * Yi[NUM_COP]; }); });
+				temp_Sum_YXN += Yi[NUM_COP - 1] * Yi[NUM_COP];
+				temp_Sum_Sigma += rho[id] * vox_2[id]; }); }); //
 
 	q.wait();
 
@@ -252,7 +265,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 			int i = index.get_global_id(0) + offset_x;
 			int j = index.get_global_id(1) + offset_y;
 			int k = index.get_global_id(2) + offset_z;
-			GetInnerCellCenterDerivativeKernel(i, j, k, bl, fdata.u, fdata.v, fdata.w, fdata.Vde, fdata.vx); }); })
+			GetInnerCellCenterDerivativeKernel(i, j, k, bl, fdata.u, fdata.v, fdata.w, fdata.Vde, fdata.vxs, fdata.vx); }); })
 		.wait();
 
 #if DIM_X
