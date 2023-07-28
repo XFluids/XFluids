@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 	// boundary conditions
 	syclsolver.BoundaryCondition(q, 0);
 	// update states by U
-	syclsolver.UpdateStates(q, 0, syclsolver.physicalTime, std::to_string(syclsolver.Iteration), "_Ini");
+	syclsolver.UpdateStates(q, 0, syclsolver.physicalTime, syclsolver.Iteration, "_Ini");
 	// time marching by SYCL device
 	syclsolver.Evolution(q);
 

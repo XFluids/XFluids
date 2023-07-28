@@ -38,7 +38,7 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 		.wait();
 }
 
-real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_t *pVar_max, real_t *interface_points, real_t *theta, real_t *sigma)
+real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_t *pVar_max)
 {
 	real_t *c = fdata.c;
 	real_t *u = fdata.u;
@@ -46,17 +46,17 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 	real_t *yi = fdata.y;
-	real_t *rho = fdata.rho;
-	real_t *vox_2 = fdata.vx;
 
 	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
 	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
 	auto global_ndrange = range<1>(meshSize);
 
 	// add uvw and c individually if need more resources
-
 	for (int n = 0; n < 3; n++)
-		uvw_c_max[n] = _DF(0.0), pVar_max[n] = _DF(0.0), theta[n] = _DF(0.0);
+		uvw_c_max[n] = _DF(0.0);
+	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
+		pVar_max[n] = _DF(0.0);
+
 	real_t dtref = _DF(0.0);
 	// define reduction objects for sum, min, max reduction
 	// auto reduction_sum = reduction(sum, sycl::plus<>());
@@ -121,93 +121,12 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 // 					   temp_max_YH2O2.combine(yi[6 + NUM_SPECIES * id]); }); });
 #endif // end COP_CHEME
 
-	auto local_ndrange3d = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange3d = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
-// XDIR
-#if DIM_X
-	auto Rdif_Xmin = reduction(&(interface_points[0]), sycl::minimum<>());
-	auto Rdif_Xmax = reduction(&(interface_points[1]), sycl::maximum<>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Xmin, Rdif_Xmax, [=](nd_item<3> index, auto &temp_Xmin, auto &temp_Xmax)
-							  {	
-					int i = index.get_global_id(0) + bl.Bwidth_X;
-					int j = index.get_global_id(1) + bl.Bwidth_Y;
-					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					real_t x = i * bl.dx + bl.offx;
-					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-					if (yi[id * NUM_SPECIES - 2] > Interface_line)
-					{
-						temp_Xmin.combine(x);
-						temp_Xmax.combine(x);
-					} }); });
-#else
-	interface_points[0] = 0.0, interface_points[1] = 0.0;
-#endif // end DIM_X
-// YDIR
-#if DIM_Y
-	auto Rdif_Ymin = reduction(&(interface_points[2]), sycl::minimum<>());
-	auto Rdif_Ymax = reduction(&(interface_points[3]), sycl::maximum<>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax)
-							  {	
-					int i = index.get_global_id(0) + bl.Bwidth_X;
-					int j = index.get_global_id(1) + bl.Bwidth_Y;
-					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					real_t y = j * bl.dy + bl.offy;
-					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-					if (yi[id * NUM_SPECIES - 2] > Interface_line)
-					{
-						temp_Ymin.combine(y);
-						temp_Ymax.combine(y);
-					} }); });
-#else
-	interface_points[2] = 0.0, interface_points[3] = 0.0;
-#endif // end DIM_Y
-// ZDIR
-#if DIM_Z
-	auto Rdif_Zmin = reduction(&(interface_points[4]), sycl::minimum<>());
-	auto Rdif_Zmax = reduction(&(interface_points[5]), sycl::maximum<>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Zmin, Rdif_Zmax, [=](nd_item<3> index, auto &temp_Zmin, auto &temp_Zmax)
-							  {	
-					int i = index.get_global_id(0) + bl.Bwidth_X;
-					int j = index.get_global_id(1) + bl.Bwidth_Y;
-					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					real_t z = k * bl.dz + bl.offz;
-					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-					if (yi[id * NUM_SPECIES - 2] > Interface_line)
-					{
-						temp_Zmin.combine(z);
-						temp_Zmax.combine(z);
-					} }); });
-#else
-	interface_points[4] = 0.0, interface_points[5] = 0.0;
-#endif // end DIM_Z
-
-	auto Sum_YXe = sycl::reduction(&(theta[0]), sycl::plus<>());
-	auto Sum_YN2 = sycl::reduction(&(theta[1]), sycl::plus<>());
-	auto Sum_YXN = sycl::reduction(&(theta[2]), sycl::plus<>());
-	auto Sum_Sigma = sycl::reduction(&(sigma[0]), sycl::plus<>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_YXe, Sum_YN2, Sum_YXN, Sum_Sigma, [=](nd_item<3> index, auto &temp_Sum_YXe, auto &temp_Sum_YN2, auto &temp_Sum_YXN, auto &temp_Sum_Sigma)
-				   {	
-				int i = index.get_global_id(0) + bl.Bwidth_X;
-				int j = index.get_global_id(1) + bl.Bwidth_Y;
-				int k = index.get_global_id(2) + bl.Bwidth_Z;
-				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-				real_t *Yi = &(yi[NUM_SPECIES * id]);
-				temp_Sum_YXe += Yi[NUM_COP - 1];
-				temp_Sum_YN2 += Yi[NUM_COP];
-				temp_Sum_YXN += Yi[NUM_COP - 1] * Yi[NUM_COP];
-				temp_Sum_Sigma += rho[id] * vox_2[id]; }); }); //
-
 	q.wait();
 
 	return bl.CFLnumber / dtref;
 }
 
-void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma)
+bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma, int &error_patched_times)
 {
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
@@ -221,6 +140,52 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 
+	// // update rho and yi
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+					int i = index.get_global_id(0);
+					int j = index.get_global_id(1);
+					int k = index.get_global_id(2);
+					Updaterhoyi(i, j, k, bl, UI, rho, fdata.y); }); })
+		.wait();
+
+#ifdef ESTIM_NAN
+	int *error_posyi;
+	bool *error_org, *error_nan;
+	error_posyi = middle::MallocShared<int>(error_posyi, 3 + NUM_SPECIES, q);
+	error_org = middle::MallocShared<bool>(error_org, 1, q), error_nan = middle::MallocShared<bool>(error_nan, 1, q);
+	*error_nan = false, *error_org = false;
+	for (size_t i = 0; i < NUM_SPECIES + 3; i++)
+		error_posyi[i] = _DF(0.0);
+
+	// // update estimate negative or nan yi and patch
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+									int i = index.get_global_id(0) + bl.Bwidth_X;
+									int j = index.get_global_id(1) + bl.Bwidth_Y;
+									int k = index.get_global_id(2) + bl.Bwidth_Z;
+									EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y); }); })
+		.wait();
+
+#ifdef ERROR_PATCH
+#else
+	if (*error_org)
+		error_patched_times++;
+	if (*error_nan)
+	{
+		std::cout << "Errors of Yi[";
+		for (size_t ii = 0; ii < NUM_COP; ii++)
+			std::cout << error_posyi[ii] << ", ";
+		std::cout << error_posyi[NUM_COP] << "]";
+		std::cout << " located at (i, j, k)= (" << error_posyi[NUM_SPECIES] << ", " << error_posyi[NUM_SPECIES + 1] << ", " << error_posyi[NUM_SPECIES + 2];
+		std::cout << ") captured.\n";
+		return true;
+	}
+#endif // end ERROR_PATCH
+#endif // end ESTIM_NAN
+
 	q.submit([&](sycl::handler &h)
 			 {         
 				// sycl::stream stream_ct1(64 * 1024, 80, h);// for output error: sycl::stream decline running efficiency
@@ -231,6 +196,55 @@ void UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 					int k = index.get_global_id(2);
 					UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma, T, fdata.e, Gamma); }); }) //, stream_ct1
 		.wait();
+
+#ifdef ESTIM_NAN
+	int *error_pos;
+	bool *error_yi, *error_nga;
+	error_pos = middle::MallocShared<int>(error_pos, 6 + NUM_SPECIES, q);
+	error_yi = middle::MallocShared<bool>(error_yi, 1, q), error_nga = middle::MallocShared<bool>(error_nga, 1, q);
+	*error_nga = false, *error_yi = false;
+	for (size_t n = 0; n < 6 + NUM_SPECIES; n++)
+		error_pos[n] = 0;
+
+	auto global_in_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_in_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
+								int i = index.get_global_id(0) + bl.Bwidth_X;
+								int j = index.get_global_id(1) + bl.Bwidth_Y;
+								int k = index.get_global_id(2) + bl.Bwidth_Z;
+								EstimatePrimitiveVarKernel(i, j, k, bl, thermal, error_pos, error_nga, error_yi,
+														   UI, rho, u, v, w, p, T, fdata.y, H, fdata.e, fdata.gamma, c); }); })
+		.wait();
+
+#ifdef ERROR_PATCH
+	if (*error_nga)
+	{
+		std::cout << "Errors of Primitive variables[rho, T, P][";
+		for (size_t ii = 0; ii < 2 + NUM_SPECIES; ii++)
+			std::cout << error_pos[ii] << ", ";
+		std::cout << error_pos[2 + NUM_SPECIES] << "]";
+		std::cout << " located at (i, j, k)= (" << error_pos[3 + NUM_SPECIES] << ", " << error_pos[4 + NUM_SPECIES] << ", " << error_pos[5 + NUM_SPECIES];
+		std::cout << ") patched.\n";
+		error_patched_times++;
+		return true;
+	}
+#else
+	bool yiErrOut = false;
+	if ((*error_yi && yiErrOut) || *error_nga)
+	{
+		std::cout << "Errors of Primitive variables[rho, T, P][";
+		for (size_t ii = 0; ii < 2 + NUM_SPECIES; ii++)
+			std::cout << error_pos[ii] << ", ";
+		std::cout << error_pos[2 + NUM_SPECIES] << "]";
+		std::cout << " located at (i, j, k)= (" << error_pos[3 + NUM_SPECIES] << ", " << error_pos[4 + NUM_SPECIES] << ", " << error_pos[5 + NUM_SPECIES];
+		std::cout << ") captured.\n";
+		return true;
+	}
+#endif // end ERROR_PATCH
+#endif // end ESTIM_NAN
+
+	return false;
 }
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)

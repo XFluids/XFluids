@@ -277,43 +277,37 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 	return T;
 }
 
+void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
+{
+	rho = UI[0];
+	real_t rho1 = _DF(1.0) / rho;
+	yi[NUM_COP] = _DF(1.0);
+#ifdef COP
+	for (size_t ii = 5; ii < Emax; ii++) // calculate yi
+		yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
+#endif // end COP
+}
 /**
  * @brief Obtain state at a grid point
  */
 void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
 			   real_t &gamma, real_t &T, real_t &e, Thermal thermal, real_t yi[NUM_SPECIES])
 {
-	rho = UI[0];
+	// rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
 	u = UI[1] * rho1;
 	v = UI[2] * rho1;
 	w = UI[3] * rho1;
-
-	yi[NUM_COP] = _DF(1.0);
 	real_t tme = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
+
+	// yi[NUM_COP] = _DF(1.0);
 #ifdef COP
-	for (size_t ii = 5; ii < Emax; ii++)
-	{								// calculate yi
-		yi[ii - 5] = UI[ii] * rho1; //_DF(1.0e-5));
-		// yi[ii - 5] = sycl::max<real_t>(UI[ii] * rho1, UI[ii] * rho1 * _DF(0.5));
-		// yi[ii - 5] = sycl::min<real_t>(yi[ii - 5] * rho1, 1);
-		// yi[ii - 5] = sycl::max<real_t>(UI[ii] * rho1,_DF(1.0e-5));
-		// yi[ii - 5] = sycl::min<real_t>(yi[ii - 5],_DF(1.0));
-		yi[NUM_COP] += -yi[ii - 5];
-		// yi[NUM_COP] = sycl::max<real_t>(yi[NUM_COP],_DF(1.0e-5));
-		// yi[NUM_COP] = sycl::min<real_t>(yi[NUM_COP],_DF(1.0));
-	}
-	// // method of LYX and Pan
+	// for (size_t ii = 5; ii < Emax; ii++) // calculate yi
+	// 	yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
 	real_t R = get_CopR(thermal._Wi, yi);
 	T = get_T(thermal, yi, tme, T);
 	p = rho * R * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
-	// // method of Ref.https://doi.org/10.1016/j.combustflame.2015.10.016
-	// real_t rhoe = UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w);
-	// real_t R = get_CopR(thermal._Wi, yi);
-	// gamma = get_CopGamma(thermal, yi, T);
-	// p = (gamma - _DF(1.0)) * rhoe;
-	// T = p * rho1 / R;
 #else
 	gamma = NCOP_Gamma;
 	p = (NCOP_Gamma - _DF(1.0)) * rho * tme; //(UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));

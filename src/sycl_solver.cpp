@@ -159,7 +159,7 @@ void SYCLSolver::Evolution(sycl::queue &q)
 flag_end:
 #ifdef COP_CHEME
 	BoundaryCondition(q, 0);
-	UpdateStates(q, 0, physicalTime, std::to_string(Iteration), "_End");
+	UpdateStates(q, 0, physicalTime, Iteration, "_End");
 #endif // end COP_CHEME
 flag_ernd:
 #ifdef USE_MPI
@@ -270,7 +270,7 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	case 1:
 		// the fisrt step
 		BoundaryCondition(q, 0);
-		error = UpdateStates(q, 0, Time, std::to_string(Step), "_RK1");
+		error = UpdateStates(q, 0, Time, Step, "_RK1");
 #ifdef ESTIM_NAN
 		if (error)
 			return true;
@@ -282,7 +282,7 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	case 2:
 		// the second step
 		BoundaryCondition(q, 1);
-		error = UpdateStates(q, 1, Time, std::to_string(Step), "_RK2");
+		error = UpdateStates(q, 1, Time, Step, "_RK2");
 #ifdef ESTIM_NAN
 		if (error)
 			return true;
@@ -294,7 +294,7 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	case 3:
 		// the third step
 		BoundaryCondition(q, 1);
-		error = UpdateStates(q, 1, Time, std::to_string(Step), "_RK3");
+		error = UpdateStates(q, 1, Time, Step, "_RK3");
 #ifdef ESTIM_NAN
 		if (error)
 			return true;
@@ -328,6 +328,8 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 		Output(q, rank, "UErr_" + std::to_string(Step) + "_RK" + std::to_string(flag), Time, false);
 	error = bool(error_out);
 #endif // end
+
+	q.wait();
 
 	return error; // all rank == 1 or 0
 }
@@ -363,7 +365,7 @@ void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
 		fluids[n]->BoundaryCondition(q, Ss.Boundarys, flag);
 }
 
-bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, std::string Step, std::string RkStep)
+bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep)
 {
 
 	bool error[NumFluid] = {false}, error_t = false;
@@ -374,28 +376,32 @@ bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, std::
 		// 	error[n] = true;
 		error_t = error_t || error[n]; // rank error
 	}
-#ifdef ESTIM_NAN
-	if (error_t)
+	// if (Step)
 	{
-		Output(q, rank, "PErs_" + Step + RkStep, Time, true);
-		std::cout << "Output DIR(X, Y, Z = " << Ss.OutDIRX << ", " << Ss.OutDIRY << ", " << Ss.OutDIRZ << ") has been done at Step = PErs_" << Step << RkStep << std::endl;
-	}
+#ifdef ESTIM_NAN
+		std::string Stepstr = std::to_string(Step);
+		if (error_t)
+		{
+			Output(q, rank, "PErs_" + Stepstr + RkStep, Time, true);
+			std::cout << "Output DIR(X, Y, Z = " << Ss.OutDIRX << ", " << Ss.OutDIRY << ", " << Ss.OutDIRZ << ") has been done at Step = PErs_" << Stepstr << RkStep << std::endl;
+		}
 #ifdef ERROR_PATCH
-	error_t = false;
+		error_t = false;
 #else
 #ifdef USE_MPI
-	int root, maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
-	Ss.mpiTrans->communicator->synchronize();
+		int root, maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
+		Ss.mpiTrans->communicator->synchronize();
+		Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+		Ss.mpiTrans->communicator->synchronize();
+		Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
+		Ss.mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
-	error_t = bool(error_out);
+		error_t = bool(error_out);
 #endif
-	if (error_t)
-		Output(q, rank, "PErr_" + Step + RkStep, Time, false);
+		if (error_t)
+			Output(q, rank, "PErr_" + Stepstr + RkStep, Time, false);
 #endif // end ESTIM_NAN
+	}
 
 	return error_t; // all rank == 1 or 0
 }
@@ -424,7 +430,7 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 bool SYCLSolver::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step)
 {
 	BoundaryCondition(q, 0);
-	bool error = UpdateStates(q, 0, Time, std::to_string(Step), "_React");
+	bool error = UpdateStates(q, 0, Time, Step, "_React");
 	if (error)
 		return true;
 	fluids[0]->ODESolver(q, dt);
@@ -623,20 +629,29 @@ void SYCLSolver::Output_Counts()
 #if DIM_Y
 		out << "<greek>L</greek><sub>y</sub>[-], ";
 #endif
-#if DIM_Z
-		out << "<greek>L</greek><sub>z</sub>[-], ";
-#endif
 		out << "Theta(Xe), Theta(N2), Theta(XN), ";
 #if DIM_Y
 		out << "Ymin, Ymax, ";
 #endif
-#if DIM_Z
-		out << "Zmin, Zmax, ";
-#endif
 #if DIM_X
 		out << "Xmin, Xmax, <greek>L</greek><sub>x</sub>[-]";
 #endif
-		out << "\nzone t='Counts_Time_Theta_Sigma_T_YHO2_YH2O2_Gamy', i= " << fluids[0]->pTime.size() << ", j= 1, k= 1 \n";
+#if DIM_Z
+		out << "Zmin, Zmax, <greek>L</greek><sub>z</sub>[-], ";
+#endif
+		out << "\nzone t='Time_Theta_Sigma_T";
+#ifdef COP_CHEME
+		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+			out << "_Y(" << Ss.species_name[n + 1] << "), ";
+#endif // end COP_CHEME
+		out << "_Gamy_teXN_teXeN2_TeXN_Ymin_Ymax";
+#if DIM_X
+		out << "_Xmin_Xmax_Gamx";
+#endif // end DIM_X
+#if DIM_Z
+		out << "_Zmin_Zmax_Gamz";
+#endif // end DIM_Z
+		out << "', i= " << fluids[0]->pTime.size() << ", j= 1, k= 1 \n";
 
 		for (int i = 0; i < fluids[0]->pTime.size(); i++)
 		{
@@ -654,26 +669,24 @@ void SYCLSolver::Output_Counts()
 			real_t offsety = (Ss.Boundarys[2] == 2 && Ss.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
 			out << std::setw(7) << (fluids[0]->Interface_points[3][i] - fluids[0]->Interface_points[2][i]) * offsety / Ss.ini.yb << " "; // Gamy
 #endif
-#if DIM_Z
-			real_t offsetz = (Ss.Boundarys[4] == 2 && Ss.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-			out << std::setw(7) << (fluids[0]->Interface_points[5][i] - fluids[0]->Interface_points[4][i]) * offsetz / Ss.ini.zc << " "; // Gamz
-#endif
 			// out << std::setw(7) << i + 1 << " ";				   // Step
-			out << std::setw(7) << fluids[0]->thetas[0][i] << " "; // Theta(Xe)
-			out << std::setw(7) << fluids[0]->thetas[1][i] << " "; // Theta(N2)
-			out << std::setw(7) << fluids[0]->thetas[2][i] << " "; // Theta(XN)
+			out << std::setw(11) << fluids[0]->thetas[0][i] << " "; // [0]XN
+			out << std::setw(11) << fluids[0]->thetas[1][i] << " "; // [1]Xe*N2
+			out << std::setw(3) << fluids[0]->thetas[2][i] << " "; // Theta(XN)
 #if DIM_Y
 			out << std::setw(8) << fluids[0]->Interface_points[2][i] << " "; // Ymin
 			out << std::setw(8) << fluids[0]->Interface_points[3][i] << " "; // Ymax
-#endif
-#if DIM_Z
-			out << std::setw(8) << fluids[0]->Interface_points[4][i] << " "; // Zmin
-			out << std::setw(8) << fluids[0]->Interface_points[5][i] << " "; // Zmax
 #endif
 #if DIM_X
 			out << std::setw(8) << fluids[0]->Interface_points[0][i] << " ";															  // Xmin
 			out << std::setw(8) << fluids[0]->Interface_points[1][i] << " ";															  // Xmax
 			out << std::setw(6) << (fluids[0]->Interface_points[1][i] - fluids[0]->Interface_points[0][i]) * _DF(0.5) / Ss.ini.xa << " "; // Gamx
+#endif
+#if DIM_Z
+			out << std::setw(8) << fluids[0]->Interface_points[4][i] << " "; // Zmin
+			out << std::setw(8) << fluids[0]->Interface_points[5][i] << " "; // Zmax
+			real_t offsetz = (Ss.Boundarys[4] == 2 && Ss.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+			out << std::setw(7) << (fluids[0]->Interface_points[5][i] - fluids[0]->Interface_points[4][i]) * offsetz / Ss.ini.zc << " "; // Gamz
 #endif
 			out << "\n";
 		}

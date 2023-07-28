@@ -78,7 +78,7 @@ typedef struct
 //-------------------------------------------------------------------------------------------------
 class FluidSYCL; class SYCLSolver;
 
-#define Interface_line 0.1
+#define Interface_line 0.01
 
 class FluidSYCL{
     Setup Fs;
@@ -88,7 +88,7 @@ public:
     int error_patched_times;
     float MPI_trans_time, MPI_BCs_time;
     long double MemMbSize, MPIMbSize;
-    real_t *uvw_c_max, *pVar_max, *interface_point, *theta, *sigma;
+    real_t *theta, *sigma, *pVar_max, *uvw_c_max, *interface_point;
     std::vector<real_t> pTime, Theta, Sigma, thetas[3], Var_max[NUM_SPECIES - 3], Interface_points[6]; // Var_max[3]= {Tmax, YiHO2max, YiH2O2max}
     real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
     real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
@@ -106,6 +106,7 @@ public:
     void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
     bool UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime);
+    void GetTheta(sycl::queue &q, real_t *interface_point);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
     bool EstimateFluidNAN(sycl::queue &q, int flag);
@@ -142,7 +143,7 @@ public:
     void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void BoundaryCondition(sycl::queue &q, int flag);
-    bool UpdateStates(sycl::queue &q, int flag, const real_t Time, std::string Step, std::string RkStep);
+    bool UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep);
     real_t ComputeTimeStep(sycl::queue &q);
     bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
     bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);
