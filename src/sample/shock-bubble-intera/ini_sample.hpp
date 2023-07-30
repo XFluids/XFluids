@@ -66,7 +66,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     xi[NUM_SPECIES - 2] = _DF(0.55) * (xrest - xi[NUM_SPECIES - 1]);         // Xe
 
 #ifdef COP_CHEME
-    real_t xre = _DF(1.0e-10), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
+    real_t xre = _DF(1.0e-15), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
     for (size_t n1 = 0; n1 < NUM_SPECIES; n1++)
         xi[n1] -= ratios; //_DF(0.0); //
     for (size_t nn = 2; nn < NUM_COP - 1; nn++)

@@ -78,18 +78,19 @@ typedef struct
 //-------------------------------------------------------------------------------------------------
 class FluidSYCL; class SYCLSolver;
 
-#define Interface_line 0.01
+#define Interface_line 0.1
 
 class FluidSYCL{
     Setup Fs;
     sycl::queue q;
+    std::string outputPrefix, file_name;
 
 public:
     int error_patched_times;
     float MPI_trans_time, MPI_BCs_time;
     long double MemMbSize, MPIMbSize;
-    real_t *theta, *sigma, *pVar_max, *uvw_c_max, *interface_point;
-    std::vector<real_t> pTime, Theta, Sigma, thetas[3], Var_max[NUM_SPECIES - 3], Interface_points[6]; // Var_max[3]= {Tmax, YiHO2max, YiH2O2max}
+    real_t *uvw_c_max, *theta, *sigma, *pVar_max, *interface_point;
+    // std::vector<real_t> pTime, Theta, Sigma, thetas[3], Var_max[NUM_SPECIES - 3], Interface_points[6]; // Var_max[3]= {Tmax, YiHO2max, YiH2O2max}
     real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
     real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
@@ -106,7 +107,7 @@ public:
     void BoundaryCondition(sycl::queue &q, BConditions  BCs[6], int flag);
     bool UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime);
-    void GetTheta(sycl::queue &q, real_t *interface_point);
+    void GetTheta(sycl::queue &q);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
     bool EstimateFluidNAN(sycl::queue &q, int flag);

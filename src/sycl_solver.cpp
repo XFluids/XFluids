@@ -168,7 +168,7 @@ flag_ernd:
 	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
 	EndProcess();
-	Output_Counts();
+	// Output_Counts();
 	// Output_Ubak(rank, Iteration - 1, physicalTime);
 	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
@@ -599,100 +599,100 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 	q.wait();
 }
 
-void SYCLSolver::Output_Counts()
-{
-	if (rank == 0)
-	{
-		real_t rho0 = Ss.ini.blast_density_in;
-		std::string outputPrefix = INI_SAMPLE;
-		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + "_rho0_" + std::to_string(Ss.ini.blast_density_in) + "_" + std::to_string(Ss.ini.cop_density_in) + "_" + std::to_string(Ss.ini.blast_density_out) + ".plt";
-		std::ofstream out(file_name);
-		// // defining header for tecplot(plot software)
-		out.setf(std::ios::right);
-		out << "title='" << outputPrefix << "'\n"
-			<< "variables=Time[s], <b><greek>Q</greek></b>[-], <greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], <i>T</i><sub>max</sub>[K], ";
-		// Time[s]: Time in tecplot x-Axis variable
-		//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
-		//<greek>e</greek><sub><greek>r</greek></sub>: sigma in tecplot
-		//<sub>max</sub>: T_max in tecplot sub{max} added
-		//<i>Y(HO2)</i><sub>max</sub>[-]: Yi(HO2)_max
-		//<i>Y(H2O2)</i><sub>max</sub>[-]: Yi(H2O2)_max
-		//<greek>L</greek><sub>x</sub>[-]: Gamx in tecplot
-		//<greek>L</greek><sub>y</sub>[-]: Gamy in tecplot
-		//<greek>L</greek><sub>z</sub>[-]: Gamz in tecplot
+// void SYCLSolver::Output_Counts()
+// {
+// 	if (rank == 0)
+// 	{
+// 		real_t rho0 = Ss.ini.blast_density_in;
+// 		std::string outputPrefix = INI_SAMPLE;
+// 		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + "_rho0_" + std::to_string(Ss.ini.blast_density_in) + "_" + std::to_string(Ss.ini.cop_density_in) + "_" + std::to_string(Ss.ini.blast_density_out) + ".plt";
+// 		std::ofstream out(file_name);
+// 		// // defining header for tecplot(plot software)
+// 		out.setf(std::ios::right);
+// 		out << "title='" << outputPrefix << "'\n"
+// 			<< "variables=Time[s], <b><greek>Q</greek></b>[-], <greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], <i>T</i><sub>max</sub>[K], ";
+// 		// Time[s]: Time in tecplot x-Axis variable
+// 		//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
+// 		//<greek>e</greek><sub><greek>r</greek></sub>: sigma in tecplot
+// 		//<sub>max</sub>: T_max in tecplot sub{max} added
+// 		//<i>Y(HO2)</i><sub>max</sub>[-]: Yi(HO2)_max
+// 		//<i>Y(H2O2)</i><sub>max</sub>[-]: Yi(H2O2)_max
+// 		//<greek>L</greek><sub>x</sub>[-]: Gamx in tecplot
+// 		//<greek>L</greek><sub>y</sub>[-]: Gamy in tecplot
+// 		//<greek>L</greek><sub>z</sub>[-]: Gamz in tecplot
 
-#ifdef COP_CHEME
-		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-			out << "<i>Y(" << Ss.species_name[n + 1] << ")</i><sub>max</sub>[-], ";
-			// out << "<i>Y(HO2)</i><sub>max</sub>[-], <i>Y(H2O2)</i><sub>max</sub>[-], ";
-#endif // end COP_CHEME
-#if DIM_Y
-		out << "<greek>L</greek><sub>y</sub>[-], ";
-#endif
-		out << "Theta(Xe), Theta(N2), Theta(XN), ";
-#if DIM_Y
-		out << "Ymin, Ymax, ";
-#endif
-#if DIM_X
-		out << "Xmin, Xmax, <greek>L</greek><sub>x</sub>[-]";
-#endif
-#if DIM_Z
-		out << "Zmin, Zmax, <greek>L</greek><sub>z</sub>[-], ";
-#endif
-		out << "\nzone t='Time_Theta_Sigma_T";
-#ifdef COP_CHEME
-		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-			out << "_Y(" << Ss.species_name[n + 1] << "), ";
-#endif // end COP_CHEME
-		out << "_Gamy_teXN_teXeN2_TeXN_Ymin_Ymax";
-#if DIM_X
-		out << "_Xmin_Xmax_Gamx";
-#endif // end DIM_X
-#if DIM_Z
-		out << "_Zmin_Zmax_Gamz";
-#endif // end DIM_Z
-		out << "', i= " << fluids[0]->pTime.size() << ", j= 1, k= 1 \n";
+// #ifdef COP_CHEME
+// 		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+// 			out << "<i>Y(" << Ss.species_name[n + 1] << ")</i><sub>max</sub>[-], ";
+// 			// out << "<i>Y(HO2)</i><sub>max</sub>[-], <i>Y(H2O2)</i><sub>max</sub>[-], ";
+// #endif // end COP_CHEME
+// #if DIM_Y
+// 		out << "<greek>L</greek><sub>y</sub>[-], ";
+// #endif
+// 		out << "Theta(Xe), Theta(N2), Theta(XN), ";
+// #if DIM_Y
+// 		out << "Ymin, Ymax, ";
+// #endif
+// #if DIM_X
+// 		out << "Xmin, Xmax, <greek>L</greek><sub>x</sub>[-]";
+// #endif
+// #if DIM_Z
+// 		out << "Zmin, Zmax, <greek>L</greek><sub>z</sub>[-], ";
+// #endif
+// 		out << "\nzone t='Time_Theta_Sigma_T";
+// #ifdef COP_CHEME
+// 		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+// 			out << "_Y(" << Ss.species_name[n + 1] << "), ";
+// #endif // end COP_CHEME
+// 		out << "_Gamy_teXN_teXeN2_TeXN_Ymin_Ymax";
+// #if DIM_X
+// 		out << "_Xmin_Xmax_Gamx";
+// #endif // end DIM_X
+// #if DIM_Z
+// 		out << "_Zmin_Zmax_Gamz";
+// #endif // end DIM_Z
+// 		out << "', i= " << fluids[0]->pTime.size() << ", j= 1, k= 1 \n";
 
-		for (int i = 0; i < fluids[0]->pTime.size(); i++)
-		{
-			out << std::setw(11) << fluids[0]->pTime[i] << " ";		// physical time
-			out << std::setw(11) << fluids[0]->Theta[i] << " ";		// Theta(XN/(Xe*N2))
-			out << std::setw(11) << fluids[0]->Sigma[i] / rho0 << " "; // sigma: sigma_rho*rho_0(with no rho0 definition found)
-			out << std::setw(7) << fluids[0]->Var_max[0][i] << " "; // Tmax
-#ifdef COP_CHEME
-			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-				out << std::setw(11) << fluids[0]->Var_max[n][i] << " ";
-				// out << std::setw(11) << fluids[0]->Var_max[1][i] << " ";				  // Yi(HO2)_max
-				// out << std::setw(11) << fluids[0]->Var_max[2][i] << " ";				  // Yi(H2O2)_max
-#endif																				  // end COP_CHEME
-#if DIM_Y
-			real_t offsety = (Ss.Boundarys[2] == 2 && Ss.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-			out << std::setw(7) << (fluids[0]->Interface_points[3][i] - fluids[0]->Interface_points[2][i]) * offsety / Ss.ini.yb << " "; // Gamy
-#endif
-			// out << std::setw(7) << i + 1 << " ";				   // Step
-			out << std::setw(11) << fluids[0]->thetas[0][i] << " "; // [0]XN
-			out << std::setw(11) << fluids[0]->thetas[1][i] << " "; // [1]Xe*N2
-			out << std::setw(3) << fluids[0]->thetas[2][i] << " "; // Theta(XN)
-#if DIM_Y
-			out << std::setw(8) << fluids[0]->Interface_points[2][i] << " "; // Ymin
-			out << std::setw(8) << fluids[0]->Interface_points[3][i] << " "; // Ymax
-#endif
-#if DIM_X
-			out << std::setw(8) << fluids[0]->Interface_points[0][i] << " ";															  // Xmin
-			out << std::setw(8) << fluids[0]->Interface_points[1][i] << " ";															  // Xmax
-			out << std::setw(6) << (fluids[0]->Interface_points[1][i] - fluids[0]->Interface_points[0][i]) * _DF(0.5) / Ss.ini.xa << " "; // Gamx
-#endif
-#if DIM_Z
-			out << std::setw(8) << fluids[0]->Interface_points[4][i] << " "; // Zmin
-			out << std::setw(8) << fluids[0]->Interface_points[5][i] << " "; // Zmax
-			real_t offsetz = (Ss.Boundarys[4] == 2 && Ss.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-			out << std::setw(7) << (fluids[0]->Interface_points[5][i] - fluids[0]->Interface_points[4][i]) * offsetz / Ss.ini.zc << " "; // Gamz
-#endif
-			out << "\n";
-		}
-		out.close();
-	}
-}
+// 		for (int i = 0; i < fluids[0]->pTime.size(); i++)
+// 		{
+// 			out << std::setw(11) << fluids[0]->pTime[i] << " ";		// physical time
+// 			out << std::setw(11) << fluids[0]->Theta[i] << " ";		// Theta(XN/(Xe*N2))
+// 			out << std::setw(11) << fluids[0]->Sigma[i] / rho0 << " "; // sigma: sigma_rho*rho_0(with no rho0 definition found)
+// 			out << std::setw(7) << fluids[0]->Var_max[0][i] << " "; // Tmax
+// #ifdef COP_CHEME
+// 			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+// 				out << std::setw(11) << fluids[0]->Var_max[n][i] << " ";
+// 				// out << std::setw(11) << fluids[0]->Var_max[1][i] << " ";				  // Yi(HO2)_max
+// 				// out << std::setw(11) << fluids[0]->Var_max[2][i] << " ";				  // Yi(H2O2)_max
+// #endif																				  // end COP_CHEME
+// #if DIM_Y
+// 			real_t offsety = (Ss.Boundarys[2] == 2 && Ss.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+// 			out << std::setw(7) << (fluids[0]->Interface_points[3][i] - fluids[0]->Interface_points[2][i]) * offsety / Ss.ini.yb << " "; // Gamy
+// #endif
+// 			// out << std::setw(7) << i + 1 << " ";				   // Step
+// 			out << std::setw(11) << fluids[0]->thetas[0][i] << " "; // [0]XN
+// 			out << std::setw(11) << fluids[0]->thetas[1][i] << " "; // [1]Xe*N2
+// 			out << std::setw(3) << fluids[0]->thetas[2][i] << " "; // Theta(XN)
+// #if DIM_Y
+// 			out << std::setw(8) << fluids[0]->Interface_points[2][i] << " "; // Ymin
+// 			out << std::setw(8) << fluids[0]->Interface_points[3][i] << " "; // Ymax
+// #endif
+// #if DIM_X
+// 			out << std::setw(8) << fluids[0]->Interface_points[0][i] << " ";															  // Xmin
+// 			out << std::setw(8) << fluids[0]->Interface_points[1][i] << " ";															  // Xmax
+// 			out << std::setw(6) << (fluids[0]->Interface_points[1][i] - fluids[0]->Interface_points[0][i]) * _DF(0.5) / Ss.ini.xa << " "; // Gamx
+// #endif
+// #if DIM_Z
+// 			out << std::setw(8) << fluids[0]->Interface_points[4][i] << " "; // Zmin
+// 			out << std::setw(8) << fluids[0]->Interface_points[5][i] << " "; // Zmax
+// 			real_t offsetz = (Ss.Boundarys[4] == 2 && Ss.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+// 			out << std::setw(7) << (fluids[0]->Interface_points[5][i] - fluids[0]->Interface_points[4][i]) * offsetz / Ss.ini.zc << " "; // Gamz
+// #endif
+// 			out << "\n";
+// 		}
+// 		out.close();
+// 	}
+// }
 
 void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error)
 {
