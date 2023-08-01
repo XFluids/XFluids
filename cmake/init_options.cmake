@@ -70,8 +70,12 @@ ENDIF(OUT_VTI)
 IF(ESTIM_NAN)
   add_compile_options(-DESTIM_NAN)
 
-  IF(ERROR_PATCH)
+  IF(ERROR_PATCH_PRI)
     add_compile_options(-DERROR_PATCH)
+  ENDIF()
+
+  IF(ERROR_PATCH_YI)
+    add_compile_options(-DERROR_PATCH_YI)
   ENDIF()
 ENDIF(ESTIM_NAN)
 

@@ -105,7 +105,7 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 				 {	auto reduction_max_Yi = reduction(&(pVar_max[n]), sycl::maximum<>());
 			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
 							   auto id = index.get_global_id();
-							   temp_max_Yi.combine(yi[n + 2 + NUM_SPECIES * id]); }); });
+							   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
 	}
 // // Yi(HO2)max
 // q.submit([&](sycl::handler &h)
@@ -153,37 +153,44 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 #ifdef ESTIM_NAN
 	int *error_posyi;
 	bool *error_org, *error_nan;
-	error_posyi = middle::MallocShared<int>(error_posyi, 3 + NUM_SPECIES, q);
+	error_posyi = middle::MallocShared<int>(error_posyi, 4 + NUM_SPECIES, q);
 	error_org = middle::MallocShared<bool>(error_org, 1, q), error_nan = middle::MallocShared<bool>(error_nan, 1, q);
 	*error_nan = false, *error_org = false;
 	for (size_t i = 0; i < NUM_SPECIES + 3; i++)
 		error_posyi[i] = _DF(0.0);
+	auto Sum_Epts = sycl::reduction(&(error_posyi[NUM_SPECIES + 3]), sycl::plus<>()); // error_patch_times
 
 	// // update estimate negative or nan yi and patch
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), Sum_Epts, [=](sycl::nd_item<3> index, auto &tEpts)
 							  {
 									int i = index.get_global_id(0) + bl.Bwidth_X;
 									int j = index.get_global_id(1) + bl.Bwidth_Y;
 									int k = index.get_global_id(2) + bl.Bwidth_Z;
-									EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y); }); })
+									EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y); }); }) //, tEpts
 		.wait();
 
-#ifdef ERROR_PATCH
-#else
+	int offsetx = bl.OutBC ? 0 : bl.Bwidth_X;
+	int offsety = bl.OutBC ? 0 : bl.Bwidth_Y;
+	int offsetz = bl.OutBC ? 0 : bl.Bwidth_Z;
+
 	if (*error_org)
-		error_patched_times++;
+		error_patched_times += 1; // error_posyi[NUM_SPECIES + 3];
 	if (*error_nan)
 	{
+		error_patched_times++;
 		std::cout << "Errors of Yi[";
 		for (size_t ii = 0; ii < NUM_COP; ii++)
 			std::cout << error_posyi[ii] << ", ";
-		std::cout << error_posyi[NUM_COP] << "]";
-		std::cout << " located at (i, j, k)= (" << error_posyi[NUM_SPECIES] << ", " << error_posyi[NUM_SPECIES + 1] << ", " << error_posyi[NUM_SPECIES + 2];
-		std::cout << ") captured.\n";
-		return true;
+		std::cout << error_posyi[NUM_COP] << "] located at (i, j, k)= (";
+		std::cout << error_posyi[NUM_SPECIES] - offsetx << ", " << error_posyi[NUM_SPECIES + 1] - offsety << ", " << error_posyi[NUM_SPECIES + 2] - offsetz;
+#ifdef ERROR_PATCH_YI
+			std::cout << ") patched.\n";
+#else
+			std::cout << ") captured.\n";
+			return true;
+#endif // end ERROR_PATCH_YI
 	}
-#endif // end ERROR_PATCH
 #endif // end ESTIM_NAN
 
 	q.submit([&](sycl::handler &h)
@@ -217,31 +224,30 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 														   UI, rho, u, v, w, p, T, fdata.y, H, fdata.e, fdata.gamma, c); }); })
 		.wait();
 
-#ifdef ERROR_PATCH
 	if (*error_nga)
 	{
 		std::cout << "Errors of Primitive variables[rho, T, P][";
 		for (size_t ii = 0; ii < 2 + NUM_SPECIES; ii++)
 			std::cout << error_pos[ii] << ", ";
-		std::cout << error_pos[2 + NUM_SPECIES] << "]";
-		std::cout << " located at (i, j, k)= (" << error_pos[3 + NUM_SPECIES] << ", " << error_pos[4 + NUM_SPECIES] << ", " << error_pos[5 + NUM_SPECIES];
+		std::cout << error_pos[2 + NUM_SPECIES] << "] located at (i, j, k)= (";
+		std::cout << error_pos[3 + NUM_SPECIES] - offsetx << ", " << error_pos[4 + NUM_SPECIES] - offsety << ", " << error_pos[5 + NUM_SPECIES] - offsetz;
+#ifdef ERROR_PATCH
 		std::cout << ") patched.\n";
-		error_patched_times++;
-		return true;
-	}
 #else
-	bool yiErrOut = false;
-	if ((*error_yi && yiErrOut) || *error_nga)
-	{
-		std::cout << "Errors of Primitive variables[rho, T, P][";
-		for (size_t ii = 0; ii < 2 + NUM_SPECIES; ii++)
-			std::cout << error_pos[ii] << ", ";
-		std::cout << error_pos[2 + NUM_SPECIES] << "]";
-		std::cout << " located at (i, j, k)= (" << error_pos[3 + NUM_SPECIES] << ", " << error_pos[4 + NUM_SPECIES] << ", " << error_pos[5 + NUM_SPECIES];
 		std::cout << ") captured.\n";
 		return true;
-	}
 #endif // end ERROR_PATCH
+	}
+
+	// free
+	{
+		middle::Free(error_posyi, q);
+		middle::Free(error_org, q);
+		middle::Free(error_nan, q);
+		middle::Free(error_pos, q);
+		middle::Free(error_yi, q);
+		middle::Free(error_nga, q);
+	}
 #endif // end ESTIM_NAN
 
 	return false;
@@ -452,8 +458,9 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 #endif // end DEBUG
 
 #endif
+
 	q.wait();
-	// #ifdef ESTIM_NAN
+
 	// 	int cellsize = bl.Xmax * bl.Ymax * bl.Zmax * sizeof(real_t) * NUM_SPECIES;
 	// #if DIM_X
 	// 	q.memcpy(fdata.preFwx, FluxFw, cellsize);
@@ -465,7 +472,6 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 	// 	q.memcpy(fdata.preFwz, FluxHw, cellsize);
 	// #endif
 	// 	q.wait();
-	// #endif // end ESTIM_NAN
 
 	// NOTE: positive preserving
 	auto global_ndrange_inner = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
@@ -487,9 +493,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
 					int id_r = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1);
-					real_t Tl = T[id_l], Tr = T[id_r];
-					id_l *= Emax, id_r *= Emax;
-					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxF, FluxFw, Tl, Tr, lambda_x0, lambda_x, epsilon); }); });
+					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxF, FluxFw, T, lambda_x0, lambda_x, epsilon); }); });
 #endif	  // DIM_X
 #if DIM_Y // sycl::stream error_out(1024 * 1024, 1024, h);
 	q.submit([&](sycl::handler &h)
@@ -500,9 +504,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
 					int id_r = (bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i);
-					real_t Tl = T[id_l], Tr = T[id_r];
-					id_l *= Emax, id_r *= Emax;
-					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxG, FluxGw, Tl, Tr, lambda_y0, lambda_y, epsilon); }); });
+					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxG, FluxGw, T, lambda_y0, lambda_y, epsilon); }); });
 #endif // end DIM_Y
 #if DIM_Z
 	q.submit([&](sycl::handler &h)
@@ -513,11 +515,23 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
 					int id_r = (bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i);
-					real_t Tl = T[id_l], Tr = T[id_r];
-					id_l *= Emax, id_r *= Emax;
-					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxH, FluxHw, Tl, Tr, lambda_z0, lambda_z, epsilon); }); });
+					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxH, FluxHw, T, lambda_z0, lambda_z, epsilon); }); });
 #endif // end DIM_Z
 #endif // end posti
+
+// 	q.wait();
+
+// 	int cellsize = bl.Xmax * bl.Ymax * bl.Zmax * sizeof(real_t) * NUM_SPECIES;
+// #if DIM_X
+// 	q.memcpy(fdata.preFwx, FluxFw, cellsize);
+// #endif
+// #if DIM_Y
+// 	q.memcpy(fdata.preFwy, FluxGw, cellsize);
+// #endif
+// #if DIM_Z
+// 	q.memcpy(fdata.preFwz, FluxHw, cellsize);
+// #endif
+// 	q.wait();
 
 // NOTE: add visc flux to Fluxw
 #ifdef Visc

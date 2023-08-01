@@ -207,7 +207,6 @@ void SYCLSolver::EndProcess()
 		std::cout << "MPI buffers Trans time(s) :  " << std::setw(8) << std::setprecision(6) << TransTtemp / float(nranks) << std::endl;
 	}
 #endif
-#ifdef ERROR_PATCH
 	int error_times_patched = 0;
 	for (size_t n = 0; n < NumFluid; n++)
 		error_times_patched += fluids[n]->error_patched_times;
@@ -222,7 +221,6 @@ void SYCLSolver::EndProcess()
 	{
 		std::cout << "Times of error patched: " << error_times_patched << std::endl;
 	}
-#endif // end ERROR_PATCH
 }
 
 bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t Time)
@@ -256,56 +254,14 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 			std::cout << "Too many NAN error times captured to patch, return error.\n";
 		return true;
 	}
-#endif
+#endif // end ERROR_PATCH
 
 	return error3;
 }
 
-bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag)
+bool SYCLSolver::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag)
 {
-	// estimate if rho is_nan or <0 or is_inf
-	bool error = false; //, errorp1 = false, errorp2 = false, errorp3 = false;
-	switch (flag)
-	{
-	case 1:
-		// the fisrt step
-		BoundaryCondition(q, 0);
-		error = UpdateStates(q, 0, Time, Step, "_RK1");
-#ifdef ESTIM_NAN
-		if (error)
-			return true;
-#endif // end ESTIM_NAN
-		ComputeLU(q, 0);
-		UpdateU(q, 1);
-		break;
-
-	case 2:
-		// the second step
-		BoundaryCondition(q, 1);
-		error = UpdateStates(q, 1, Time, Step, "_RK2");
-#ifdef ESTIM_NAN
-		if (error)
-			return true;
-#endif // end ESTIM_NAN
-		ComputeLU(q, 1);
-		UpdateU(q, 2);
-		break;
-
-	case 3:
-		// the third step
-		BoundaryCondition(q, 1);
-		error = UpdateStates(q, 1, Time, Step, "_RK3");
-#ifdef ESTIM_NAN
-		if (error)
-			return true;
-#endif // end ESTIM_NAN
-		ComputeLU(q, 1);
-		UpdateU(q, 3);
-		break;
-	}
-
-#ifdef ESTIM_NAN
-	bool errors[NumFluid] = {false};
+	bool error = false, errors[NumFluid];
 	int root, maybe_root, error_out = 0;
 	for (int n = 0; n < NumFluid; n++)
 	{
@@ -327,11 +283,65 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	if (error_out)
 		Output(q, rank, "UErr_" + std::to_string(Step) + "_RK" + std::to_string(flag), Time, false);
 	error = bool(error_out);
-#endif // end
 
 	q.wait();
 
 	return error; // all rank == 1 or 0
+}
+
+bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag)
+{
+	// estimate if rho is_nan or <0 or is_inf
+	bool error = false; //, errorp1 = false, errorp2 = false, errorp3 = false;
+	switch (flag)
+	{
+	case 1:
+		// the fisrt step
+		BoundaryCondition(q, 0);
+		if (UpdateStates(q, 0, Time, Step, "_RK1"))
+			return true;
+
+		ComputeLU(q, 0);
+#ifdef ESTIM_NAN
+		if (EstimateNAN(q, Time, Step, rank, flag))
+			return true;
+#endif // end ESTIM_NAN
+
+		UpdateU(q, 1);
+		break;
+
+	case 2:
+		// the second step
+		BoundaryCondition(q, 1);
+		if (UpdateStates(q, 1, Time, Step, "_RK2"))
+			return true;
+
+		ComputeLU(q, 1);
+#ifdef ESTIM_NAN
+		if (EstimateNAN(q, Time, Step, rank, flag))
+			return true;
+#endif // end ESTIM_NAN
+
+		UpdateU(q, 2);
+		break;
+
+	case 3:
+		// the third step
+		BoundaryCondition(q, 1);
+		if (UpdateStates(q, 1, Time, Step, "_RK3"))
+			return true;
+
+		ComputeLU(q, 1);
+#ifdef ESTIM_NAN
+		if (EstimateNAN(q, Time, Step, rank, flag))
+			return true;
+#endif // end ESTIM_NAN
+
+		UpdateU(q, 3);
+		break;
+	}
+
+	return false;
 }
 
 real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
@@ -385,9 +395,6 @@ bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, const
 			Output(q, rank, "PErs_" + Stepstr + RkStep, Time, true);
 			std::cout << "Output DIR(X, Y, Z = " << Ss.OutDIRX << ", " << Ss.OutDIRY << ", " << Ss.OutDIRZ << ") has been done at Step = PErs_" << Stepstr << RkStep << std::endl;
 		}
-#ifdef ERROR_PATCH
-		error_t = false;
-#else
 #ifdef USE_MPI
 		int root, maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
 		Ss.mpiTrans->communicator->synchronize();
@@ -397,9 +404,10 @@ bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, const
 		Ss.mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
 		error_t = bool(error_out);
-#endif
 		if (error_t)
 			Output(q, rank, "PErr_" + Stepstr + RkStep, Time, false);
+#else
+		error_t = false;
 #endif // end ESTIM_NAN
 	}
 
@@ -435,7 +443,7 @@ bool SYCLSolver::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step
 		return true;
 	fluids[0]->ODESolver(q, dt);
 
-	return false;
+	return EstimateNAN(q, Time, Step, rank, 4);
 }
 
 void SYCLSolver::CopyToUbak(sycl::queue &q)
@@ -776,15 +784,15 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
 #if DIM_X
-			variables_names[index] = "E-visFwx[" + std::to_string(mm) + "]";
+			variables_names[index] = "E-Fw-vis-x[" + std::to_string(mm) + "]";
 			index++;
 #endif // DIM_X
 #if DIM_Y
-			variables_names[index] = "E-visFwy[" + std::to_string(mm) + "]";
+			variables_names[index] = "E-Fw-vis-y[" + std::to_string(mm) + "]";
 			index++;
 #endif // DIM_Y
 #if DIM_Z
-			variables_names[index] = "E-visFwz[" + std::to_string(mm) + "]";
+			variables_names[index] = "E-Fw-vis-z[" + std::to_string(mm) + "]";
 			index++;
 #endif // DIM_Z
 		}
@@ -849,12 +857,12 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			variables_names[index] = "E-xzi[" + std::to_string(nn) + "]";
 			index++;
 		}
-		Onbvar += Emax;
+		Onbvar += 2 * Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
-			// variables_names[index] = "E-prevFwx[" + std::to_string(mm) + "]";
-			// index++;
-			variables_names[index] = "E-pstvFwx[" + std::to_string(mm) + "]";
+			variables_names[index] = "E-Fw-prev-x[" + std::to_string(mm) + "]";
+			index++;
+			variables_names[index] = "E-Fw-pstv-x[" + std::to_string(mm) + "]";
 			index++;
 		}
 #endif // end DIM_X
@@ -871,12 +879,12 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			variables_names[index] = "E-yzi[" + std::to_string(nn) + "]";
 			index++;
 		}
-		Onbvar += Emax;
+		Onbvar += 2 * Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
-			// variables_names[index] = "E-prevFwy[" + std::to_string(mm) + "]";
-			// index++;
-			variables_names[index] = "E-pstvFwy[" + std::to_string(mm) + "]";
+			variables_names[index] = "E-Fw-prev-y[" + std::to_string(mm) + "]";
+			index++;
+			variables_names[index] = "E-Fw-pstv-y[" + std::to_string(mm) + "]";
 			index++;
 		}
 #endif // end DIM_Y
@@ -893,12 +901,12 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			variables_names[index] = "E-zzi[" + std::to_string(nn) + "]";
 			index++;
 		}
-		Onbvar += Emax;
+		Onbvar += 2 * Emax;
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
-			// variables_names[index] = "E-prevFwz[" + std::to_string(mm) + "]";
-			// index++;
-			variables_names[index] = "E-pstvFwz[" + std::to_string(mm) + "]";
+			variables_names[index] = "E-Fw-prev-z[" + std::to_string(mm) + "]";
+			index++;
+			variables_names[index] = "E-Fw-pstv-z[" + std::to_string(mm) + "]";
 			index++;
 		}
 #endif // end DIM_Z
@@ -1306,31 +1314,31 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			outFile.write((char *)&tmp, sizeof(real_t));
 					}
 
-							MARCO_OUTLOOP
-							{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					real_t tmp = fluids[0]->h_fstate.c2x[id];
-					outFile.write((char *)&tmp, sizeof(real_t));
-							}
-
-							for (size_t nn = 0; nn < NUM_COP; nn++)
-							{
 					MARCO_OUTLOOP
 					{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c2x[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+					}
+
+					for (size_t nn = 0; nn < NUM_COP; nn++)
+					{
+			MARCO_OUTLOOP
+			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 				real_t tmp = fluids[0]->h_fstate.zix[nn + NUM_COP * id];
 				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 					}
-							}
 
 					for (size_t nn = 0; nn < Emax; nn++)
 					{
-			// MARCO_OUTLOOP
-			// {
-			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// 	real_t tmp = fluids[0]->h_fstate.preFwx[nn + Emax * id];
-			// 	outFile.write((char *)&tmp, sizeof(real_t));
-			// }
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.preFwx[nn + Emax * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
@@ -1369,70 +1377,70 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 			}
 					}
 
-			for (size_t nn = 0; nn < Emax; nn++)
+					for (size_t nn = 0; nn < Emax; nn++)
+					{
+			MARCO_OUTLOOP
 			{
-			// MARCO_OUTLOOP
-			// {
-			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// 	real_t tmp = fluids[0]->h_fstate.preFwy[nn + Emax * id];
-			// 	outFile.write((char *)&tmp, sizeof(real_t));
-			// }
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.preFwy[nn + Emax * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 				real_t tmp = fluids[0]->h_fstate.pstFwy[nn + Emax * id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-			}
+					}
 #endif // end DIM_Y
 #if DIM_Z
-			MARCO_OUTLOOP
-			{
+					MARCO_OUTLOOP
+					{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 			real_t tmp = fluids[0]->h_fstate.b1z[id];
 			outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
+					}
+					MARCO_OUTLOOP
+					{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 			real_t tmp = fluids[0]->h_fstate.b3z[id];
 			outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
+					}
+					MARCO_OUTLOOP
+					{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 			real_t tmp = fluids[0]->h_fstate.c2z[id];
 			outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			for (size_t nn = 0; nn < NUM_COP; nn++)
-			{
+					}
+					for (size_t nn = 0; nn < NUM_COP; nn++)
+					{
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 				real_t tmp = fluids[0]->h_fstate.ziz[nn + NUM_COP * id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-			}
+					}
 
-			for (size_t nn = 0; nn < Emax; nn++)
+					for (size_t nn = 0; nn < Emax; nn++)
+					{
+			MARCO_OUTLOOP
 			{
-			// MARCO_OUTLOOP
-			// {
-			// 	int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			// 	real_t tmp = fluids[0]->h_fstate.preFwz[nn + Emax * id];
-			// 	outFile.write((char *)&tmp, sizeof(real_t));
-			// }
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.preFwz[nn + Emax * id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 				real_t tmp = fluids[0]->h_fstate.pstFwz[nn + Emax * id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-			}
+					}
 #endif // end DIM_Z
 
-			for (size_t u = 0; u < Emax; u++)
-			{
+					for (size_t u = 0; u < Emax; u++)
+					{
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
@@ -1451,7 +1459,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 				real_t tmp = fluids[0]->h_LU[u + Emax * id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-			}
+					}
 		}
 #endif // end ESTIM_NAN
 

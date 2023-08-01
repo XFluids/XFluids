@@ -2482,7 +2482,7 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 	for (int k = 0; k < NUM_SPECIES; k++)
 	{
 		Dkm_aver_id[k] = sycl::max<real_t>(Dkm_aver_id[k], _DF(1.0e-10));
-		Dkm_aver_id[k] = sycl::min<real_t>(Dkm_aver_id[k], _DF(1.0e-4));
+		// Dkm_aver_id[k] = sycl::min<real_t>(Dkm_aver_id[k], _DF(1.0e-4));
 	}
 #endif // end Diffu
 }

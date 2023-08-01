@@ -74,29 +74,29 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
     int Ymax = bl.Ymax;
     real_t theta = _DF(0.0);
 #if DIM_X
-    if (i >= Xmax)
+    if (i >= Xmax - bl.Bwidth_X)
         return;
     int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 1));
     int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 1));
-    real_t Dx = sycl::sqrt<real_t>(UI[id_xp * Emax] / UI[id_xm * Emax]);
+    real_t Dx = sycl::sqrt<real_t>(rho[id_xp] / rho[id_xm]);
     real_t D1x = _DF(1.0) / (Dx + _DF(1.0));
     theta += _DF(1.0);
 #endif
 #if DIM_Y
-    if (j >= Ymax)
+    if (j >= Ymax - bl.Bwidth_Y)
         return;
     int id_ym = (Xmax * Ymax * k + Xmax * (j - 1) + i);
     int id_yp = (Xmax * Ymax * k + Xmax * (j + 1) + i);
-    real_t Dy = sycl::sqrt<real_t>(UI[id_yp * Emax] / UI[id_ym * Emax]);
+    real_t Dy = sycl::sqrt<real_t>(rho[id_yp] / rho[id_ym]);
     real_t D1y = _DF(1.0) / (Dy + _DF(1.0));
     theta += _DF(1.0);
 #endif
 #if DIM_Z
-    if (k >= bl.Zmax)
+    if (k >= bl.Zmax - bl.Bwidth_Z)
         return;
     int id_zm = (Xmax * Ymax * (k - 1) + Xmax * j + i);
     int id_zp = (Xmax * Ymax * (k + 1) + Xmax * j + i);
-    real_t Dz = sycl::sqrt<real_t>(UI[id_zp * Emax] / UI[id_zm * Emax]);
+    real_t Dz = sycl::sqrt<real_t>(rho[id_zp] / rho[id_zm]);
     real_t D1z = _DF(1.0) / (Dz + _DF(1.0));
     theta += _DF(1.0);
 #endif
@@ -114,6 +114,7 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
             error_pos[n2] = 1;
         if (spcs[n2] || spcnans[n2])
         {
+            // #ifdef ERROR_PATCH_YI
             yi[n2] = _DF(0.0);
 #if DIM_X
             yi[n2] += (y[n2 + id_xm * NUM_SPECIES] + Dx * y[n2 + id_xp * NUM_SPECIES]) * D1x;
@@ -125,11 +126,12 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
             yi[n2] += (y[n2 + id_zm * NUM_SPECIES] + Dz * y[n2 + id_zp * NUM_SPECIES]) * D1z;
 #endif
             yi[n2] *= _theta;
+            // #endif // end ERROR_PATCH_YI
         }
     }
     if (spc || spcnan)
     {
-        // //             // #ifdef ERROR_PATCH
+        // //             // #ifdef ERROR_PATCH_YI
         // //         if (spcnan)
         // //         {
         // //             T[id] = 0.0;
@@ -150,7 +152,7 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
         // //             U[2] = U[0] * v[id];
         // //             U[3] = U[0] * w[id];
         // //         }
-        // //             // #endif // end ERROR_PATCH
+        // //             // #endif // end ERROR_PATCH_YI
         real_t sum = _DF(0.0);
         for (size_t nn = 0; nn < NUM_SPECIES; nn++)
             sum += yi[nn];
@@ -159,11 +161,12 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
             yi[nn] *= sum;
         for (size_t n = 0; n < NUM_COP; n++)
             U[n + 5] = rho[id] * yi[n];
-        *error_org = true;
-        if (spcnan)
-            *error_nan = true; // add condition to avoid rewrite by other threads
-        error_pos[NUM_SPECIES] = i, error_pos[1 + NUM_SPECIES] = j, error_pos[2 + NUM_SPECIES] = k;
+        *error_org = true; //, SumPts += 1;
+        if (spcnan) // add condition to avoid rewrite by other threads
+            *error_nan = true, error_pos[NUM_SPECIES] = i, error_pos[1 + NUM_SPECIES] = j, error_pos[2 + NUM_SPECIES] = k;
     }
+    // if (i == 100 && j == 100)
+    //     SumPts += 1;
 }
 
 extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2, real_t *UI, real_t *rho,
@@ -253,20 +256,20 @@ extern SYCL_EXTERNAL void EstimateFluidNANKernel(int i, int j, int k, int x_offs
     if (k >= bl.Zmax - bl.Bwidth_Z)
         return;
 #endif
-    bool tempnegv = UI[0 + id] < 0; //|| UI[4 + id] < 0;
+    bool tempnegv = UI[0 + id] < 0 ? true : false, tempnans[Emax];
     for (size_t ii = 0; ii < Emax; ii++)
-    { //(i == 150 && j == 30 && ii == 0) ? true :
-        bool tempnan = sycl::isnan(UI[ii + id]) || sycl::isinf(UI[ii + id]);
-        if (tempnan || tempnegv)
-        {
-            *error = true;
+    {
+        tempnans[ii] = (sycl::isnan(UI[ii + id]) || sycl::isinf(UI[ii + id])) || (sycl::isnan(LUI[ii + id]) || sycl::isinf(LUI[ii + id]));
+        tempnegv = tempnegv || tempnans[ii];
+        if (tempnans[ii])
             error_pos[ii] = 1;
-        }
     }
+    if (tempnegv)
+        *error = true, error_pos[Emax + 1] = i, error_pos[Emax + 2] = j, error_pos[Emax + 3] = k;
 }
 
 extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id_l, int id_r, Block bl, Thermal thermal,
-                                                     real_t *UI, real_t *Fl, real_t *Fwall, const real_t T_l, const real_t T_r,
+                                                     real_t *UI, real_t *Fl, real_t *Fwall, real_t *T,
                                                      const real_t lambda_0, const real_t lambda, const real_t *epsilon) // , sycl::stream stream epsilon[NUM_SPECIES+2]={rho, e, y(0), ..., y(n)}
 {
 #if DIM_X
@@ -281,6 +284,8 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
     if (k >= bl.Zmax - bl.Bwidth_Z)
         return;
 #endif
+    real_t T_l = T[id_l], T_r = T[id_r];
+    id_l *= Emax, id_r *= Emax;
     // stream << "eps: " << epsilon[0] << " " << epsilon[3] << " " << epsilon[5] << " " << epsilon[NUM_SPECIES + 1] << "\n";
     // int id_l = (Xmax * Ymax * k + Xmax * j + i) * Emax;
     // int id_r = (Xmax * Ymax * k + Xmax * j + i + 1) * Emax;
@@ -361,12 +366,12 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         if (yi_q[n] < temp)
         {
             real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
-            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n]);
+            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n] + 1.0e-100);
         }
         if (yi_qp[n] < temp)
         {
             real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
-            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n]);
+            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n] + 1.0e-100);
         }
         theta = sycl::min<real_t>(theta_u, theta_p);
         for (int nn = 0; nn < Emax; nn++)
@@ -381,12 +386,12 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         if (yi_q[n] < temp)
         {
             real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
-            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n]);
+            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n] + 1.0e-100);
         }
         if (yi_qp[n] < temp)
         {
             real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
-            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n]);
+            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n] + 1.0e-100);
         }
         theta = sycl::min<real_t>(theta_u, theta_p);
         for (int nn = 0; nn < Emax; nn++)
@@ -406,7 +411,7 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
         real_t T_u = get_T(thermal, yi_u, e_u, T_l);
         real_t T_min = sycl::min<real_t>(T_u, epsilon[1]);
-        theta_u = (T_u - T_min) / (T_u - T_q);
+        theta_u = (T_u - T_min) / (T_u - T_q + 1.0e-100);
     }
     // P_q = T_q * get_CopR(thermal._Wi, yi_q);
     // if (P_q < epsilon[1])
@@ -424,7 +429,7 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
         real_t T_p = get_T(thermal, yi_up, e_p, T_r);
         real_t T_min = sycl::min<real_t>(T_p, epsilon[1]);
-        theta_p = (T_p - T_min) / (T_p - T_q);
+        theta_p = (T_p - T_min) / (T_p - T_q + 1.0e-100);
     }
     // P_q = T_q * get_CopR(thermal._Wi, yi_qp);
     // if (P_q < epsilon[1])

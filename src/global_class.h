@@ -78,7 +78,7 @@ typedef struct
 //-------------------------------------------------------------------------------------------------
 class FluidSYCL; class SYCLSolver;
 
-#define Interface_line 0.1
+#define Interface_line 0.01
 
 class FluidSYCL{
     Setup Fs;
@@ -151,6 +151,7 @@ public:
     void UpdateU(sycl::queue &q, int flag);
     void ComputeLU(sycl::queue &q, int flag);
     bool Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step);
+    bool EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag);
     static bool isBigEndian()
     {
         const int i = 1;

@@ -27,24 +27,31 @@ FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
 			std::ofstream out(file_name, std::fstream::out);
 			out.setf(std::ios::right);
 			// // defining header for tecplot(plot software)
-			out << "title='" << outputPrefix << "'\n"
-				<< "variables=Time[s], <b><greek>Q</greek></b>[-], <greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], <i>T</i><sub>max</sub>[K], ";
+			out << "title='Time_Theta_Lambda_Sigma"; //" << outputPrefix << "'\n"
+#ifdef COP_CHEME
+			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+				out << "_Yi" << Fs.species_name[n + 1];
+#endif // end COP_CHEME
+			out << "_T_teXN_teXeN2_teXe_Ymin_Ymax";
+			// #if DIM_X
+			// 			out << "_Xmin_Xmax_Lambdax";
+			// #endif // end DIM_X
+			// #if DIM_Z
+			// 			out << "_Zmin_Zmax_Lambdaz";
+			// #endif // end DIM_Z
+			out << "'\nvariables=Time[s], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], <greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], ";
 			// Time[s]: Time in tecplot x-Axis variable
 			//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
+			//<greek>L</greek><sub>y</sub>[-]: Lambday in tecplot
 			//<greek>e</greek><sub><greek>r</greek></sub>: sigma in tecplot
 			//<sub>max</sub>: T_max in tecplot sub{max} added
 			//<i>Y(HO2)</i><sub>max</sub>[-]: Yi(HO2)_max
-			//<i>Y(H2O2)</i><sub>max</sub>[-]: Yi(H2O2)_max
-			//<greek>L</greek><sub>x</sub>[-]: Gamx in tecplot
-			//<greek>L</greek><sub>y</sub>[-]: Gamy in tecplot
-			//<greek>L</greek><sub>z</sub>[-]: Gamz in tecplot
 
 #ifdef COP_CHEME
+			out << "<i>T</i><sub>max</sub>[K], ";
 			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
 				out << "<i>Y(" << Fs.species_name[n + 1] << ")</i><sub>max</sub>[-], ";
-				// out << "<i>Y(HO2)</i><sub>max</sub>[-], <i>Y(H2O2)</i><sub>max</sub>[-], ";
 #endif // end COP_CHEME
-			out << "<greek>L</greek><sub>y</sub>[-], ";
 			out << "Step, Theta(XN), Theta(Xe*N2), Theta(Xe), ";
 			out << "Ymin, Ymax";
 			// #if DIM_X
@@ -53,18 +60,12 @@ FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
 			// #if DIM_Z
 			// 			out << ", Zmin, Zmax, <greek>L</greek><sub>z</sub>[-]";
 			// #endif
-			out << "\nzone t='Time_Theta_Sigma_T";
+			out << "\nzone t='" << (DIM_X + DIM_Y + DIM_Z) << "D-";
 #ifdef COP_CHEME
-			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-				out << "_Yi" << Fs.species_name[n + 1];
+			out << "RSBI";
+#else
+			out << "ISBI";
 #endif // end COP_CHEME
-			out << "_Gamy_teXN_teXeN2_TeXN_Ymin_Ymax";
-			// #if DIM_X
-			// 			out << "_Xmin_Xmax_Gamx";
-			// #endif // end DIM_X
-			// #if DIM_Z
-			// 			out << "_Zmin_Zmax_Gamz";
-			// #endif // end DIM_Z
 			out << "', i= 1, j= 1, k= 1 \n";
 			out.close();
 		}
@@ -675,14 +676,14 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physic
 		real_t rho0 = Fs.ini.blast_density_in;
 		out << std::setw(11) << physicalTime << " ";		// physical time
 		out << std::setw(11) << theta[0] / theta[1] * real_t(Fs.BlSz.Y_inner * Fs.BlSz.my) << " "; // Theta(XN/(Xe*N2))
-		out << std::setw(11) << sigma[0] / rho0 << " ";		// sigma: sigma_rho*rho_0(with no rho0 definition found)
-		out << std::setw(7) << pVar_max[0] << " ";			// Tmax
+		real_t offsety = (Fs.Boundarys[2] == 2 && Fs.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+		out << std::setw(7) << (interface_point[3] - interface_point[2]) * offsety / Fs.ini.yb << " "; // Lambday
+		out << std::setw(11) << sigma[0] / rho0 << " ";												   // sigma: sigma_rho*rho_0(with no rho0 definition found)
 #ifdef COP_CHEME
+		out << std::setw(7) << pVar_max[0] << " "; // Tmax
 		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
 			out << std::setw(11) << pVar_max[n] << " ";
-#endif // end COP_CHEME
-		real_t offsety = (Fs.Boundarys[2] == 2 && Fs.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-		out << std::setw(7) << (interface_point[3] - interface_point[2]) * offsety / Fs.ini.yb << " "; // Gamy
+#endif													 // end COP_CHEME
 		out << std::setw(7) << Iter + 1 << " ";			 // Step
 		out << std::setw(11) << theta[0] << " ";		 // [0]XN
 		out << std::setw(11) << theta[1] << " ";		 // [1]Xe*N2
@@ -692,13 +693,13 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physic
 		// #if DIM_X
 		// 		out << std::setw(8) << interface_point[0] << " ";												 // Xmin
 		// 		out << std::setw(8) << interface_point[1] << " ";												 // Xmax
-		// 		out << std::setw(6) << (interface_point[1] - interface_point[0]) * _DF(0.5) / Fs.ini.xa << " ";	 // Gamx
+		// 		out << std::setw(6) << (interface_point[1] - interface_point[0]) * _DF(0.5) / Fs.ini.xa << " ";	 // Lambdax
 		// #endif
 		// #if DIM_Z
 		// 		out << std::setw(8) << interface_point[4] << " "; // Zmin
 		// 		out << std::setw(8) << interface_point[5] << " "; // Zmax
 		// 		real_t offsetz = (Fs.Boundarys[4] == 2 && Fs.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-		// 		out << std::setw(7) << (interface_point[5] - interface_point[4]) * offsetz / Fs.ini.zc << " "; // Gamz
+		// 		out << std::setw(7) << (interface_point[5] - interface_point[4]) * offsetz / Fs.ini.zc << " "; // Lambdaz
 		// #endif
 		out << "\n";
 		out.close();
@@ -838,6 +839,10 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 	case 3:
 		UI = d_U;
 		break;
+
+	case 4: // for Reaction
+		UI = d_U;
+		break;
 	}
 
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
@@ -862,26 +867,30 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 			int j = index.get_global_id(1) + y_offset;
 			int k = index.get_global_id(2) + z_offset;
 			EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, error_pos, UI, LU, error); });
-	 }) //, error_out
-		.wait();
+	 })
+		.wait(); //, error_out
 
 	if (*error)
 	{
-		std::cout << "Errors of UI[";
+		std::cout << "Errors of LU[";
 		for (size_t ii = 0; ii < Emax - 1; ii++)
-		{
 			std::cout << error_pos[ii] << ", ";
-		}
-		std::cout << error_pos[Emax - 1] << "] inside the step " << flag << " of RungeKutta";
-		// "located(i, j, k = "<< error_pos[Emax] << ", " << error_pos[Emax + 1] << ", " << error_pos[Emax + 2] << ")";
-		// #ifdef ERROR_PATCH
-		// 		error_patched_times += 1;
-		// 		std::cout << " patched.\n";
-		// #else
+		std::cout << error_pos[Emax - 1] << "] located at (i, j, k)= (";
+		std::cout << error_pos[Emax + 1] - x_offset << ", " << error_pos[Emax + 2] - y_offset << ", " << error_pos[Emax + 3] - z_offset;
+		if (flag <= 3)
+			std::cout << ") inside the step " << flag << " of RungeKutta";
+		else
+			std::cout << ") after the Reaction solver";
 		std::cout << " captured.\n";
-		// #endif // end ERROR_PATCH
 		return true;
 	}
+
+	// free
+	{
+		middle::Free(error, q);
+		middle::Free(error_pos, q);
+	}
+
 	return false;
 }
 
