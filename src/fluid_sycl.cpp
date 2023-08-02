@@ -113,13 +113,15 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(d_eigen_l, q);
 	sycl::free(d_eigen_r, q);
 #endif // end EIGEN_ALLOC
-#ifdef Visc
+
 	sycl::free(d_fstate.vx, q), sycl::free(h_fstate.vx, q);
 	for (size_t i = 0; i < 3; i++)
 		sycl::free(d_fstate.vxs[i], q), sycl::free(h_fstate.vxs[i], q);
-	sycl::free(d_fstate.viscosity_aver, q);
 	for (size_t i = 0; i < 9; i++)
 		sycl::free(d_fstate.Vde[i], q);
+
+#ifdef Visc // free viscous Vars
+	sycl::free(d_fstate.viscosity_aver, q);
 #ifdef Heat
 	sycl::free(d_fstate.thermal_conduct_aver, q);
 #endif // end Heat
@@ -128,6 +130,7 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(d_fstate.Dkm_aver, q);
 #endif // end Diffu
 #endif // end Visc
+
 	sycl::free(d_FluxF, q);
 	sycl::free(d_FluxG, q);
 	sycl::free(d_FluxH, q);
@@ -186,7 +189,8 @@ FluidSYCL::~FluidSYCL()
 	sycl::free(h_fstate.pstFwz, q);
 	sycl::free(d_fstate.preFwz, q);
 #endif
-#ifdef Visc
+
+#ifdef Visc // free viscous estimate Vars
 #if DIM_X
 	sycl::free(h_fstate.visFwx, q);
 	sycl::free(d_fstate.visFwx, q);
@@ -238,7 +242,7 @@ FluidSYCL::~FluidSYCL()
 #endif
 
 #endif // end Diffu
-#endif // end Vis
+#endif // end Visc
 #endif // ESTIM_NAN
 
 	// for (size_t i = 0; i < 3; i++)
@@ -317,8 +321,6 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	MemMbSize += ((double(cellbytes) / 1024.0) * 2 * Emax) / 1024.0;
 #endif // end EIGEN_ALLOC
 
-#ifdef Visc
-	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	for (size_t i = 0; i < 9; i++)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0 * 10.0;
@@ -327,6 +329,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	h_fstate.vx = static_cast<real_t *>(sycl::malloc_host(bytes, q)); // vorticity.
 	d_fstate.vx = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += 4.0 * bytes / 1024.0 / 1024.0;
+
+#ifdef Visc // allocate mem viscous Vars
+	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 #ifdef Heat
 	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0;
@@ -337,6 +342,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	MemMbSize += NUM_SPECIES * bytes / 1024.0 / 1024.0 * 2.0;
 #endif // end Diffu
 #endif // end Visc
+
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	d_FluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -399,7 +405,8 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 #endif
 	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z));
 	// MemMbSize += ((double(bytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z) * (NUM_COP + 3));
-#ifdef Visc
+
+#ifdef Visc // allocate viscous estimating Vars
 #if DIM_X
 	h_fstate.visFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	d_fstate.visFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));

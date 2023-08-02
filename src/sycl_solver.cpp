@@ -528,19 +528,17 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 		q.memcpy(fluids[n]->h_fstate.e, fluids[n]->d_fstate.e, bytes);
 		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
-#ifdef Visc
-		q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
+
 		for (size_t i = 0; i < 3; i++)
 			q.memcpy(fluids[n]->h_fstate.vxs[i], fluids[n]->d_fstate.vxs[i], bytes).wait();
-#endif // Visc
+		q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
 #ifdef COP
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
-
 #ifdef ESTIM_NAN
 		if (error)
 		{
-#ifdef Visc
+#ifdef Visc // copy vosicous estimating Vars
 #if DIM_X
 			q.memcpy(fluids[n]->h_fstate.visFwx, fluids[n]->d_fstate.visFwx, NUM_SPECIES * bytes);
 #endif
@@ -574,6 +572,7 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 #endif
 #endif // end Diffu
 #endif // end Visc
+
 			q.memcpy(fluids[n]->h_U, fluids[n]->d_U, cellbytes);
 			q.memcpy(fluids[n]->h_U1, fluids[n]->d_U1, cellbytes);
 			q.memcpy(fluids[n]->h_LU, fluids[n]->d_LU, cellbytes);
@@ -779,7 +778,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #ifdef ESTIM_NAN
 	if (error)
 	{
-#ifdef Visc
+#ifdef Visc // Out name of viscous out estimating Vars
 		Onbvar += Emax * (DIM_X + DIM_Y + DIM_Z);
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
@@ -934,7 +933,6 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	index++;
 	variables_names[index] = "O-e";
 	index++;
-#ifdef Visc
 	Onbvar += 4;
 	variables_names[index] = "O-vorticity";
 	index++;
@@ -944,7 +942,6 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	index++;
 	variables_names[index] = "O-vorticity_z";
 	index++;
-#endif
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
 		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
@@ -1167,7 +1164,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #ifdef ESTIM_NAN
 		if (error)
 		{
-#ifdef Visc
+#ifdef Visc // Out content of viscous out estimating Vars
 					for (size_t mm = 0; mm < Emax; mm++)
 					{
 #if DIM_X
@@ -1529,7 +1526,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 #endif
 					outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
-#ifdef Visc
+
 		  //[11]vorticity
 		MARCO_OUTLOOP
 		{
@@ -1555,7 +1552,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 					real_t tmp = fluids[0]->h_fstate.vxs[2][id];
 					outFile.write((char *)&tmp, sizeof(real_t));
 		} // for k
-#endif	  // end Visc
+
 #ifdef COP
 		//[COP]yii
 		for (int ii = 0; ii < NUM_SPECIES; ii++)
@@ -1764,7 +1761,6 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 	index++;
 	variables_names[index] = "O-e";
 	index++;
-#ifdef Visc
 	Onbvar += 4;
 	variables_names[index] = "O-vorticity";
 	index++;
@@ -1774,7 +1770,6 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 	index++;
 	variables_names[index] = "O-vorticity_z";
 	index++;
-#endif
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
 		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
@@ -2036,7 +2031,6 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 		real_t tmp = fluids[0]->h_fstate.e[id];
 		outFile.write((char *)&tmp, sizeof(real_t));
 	}
-#ifdef Visc
 	//[12]vorticity
 	MARCO_COUTLOOP
 	{
@@ -2061,8 +2055,7 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 		real_t tmp = fluids[0]->h_fstate.vxs[2][id];
 		outFile.write((char *)&tmp, sizeof(real_t));
-	}  // for k
-#endif // end Visc
+	} // for k
 #ifdef COP
 	//[COP]yii
 	for (int ii = 0; ii < NUM_SPECIES; ii++)
@@ -2083,10 +2076,7 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 
 void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
 { // compressible out: output dirs less than caculate dirs
-	int Cnbvar = 12;
-#ifdef Visc
-	Cnbvar += 4;
-#endif
+	int Cnbvar = 16;
 #ifdef COP
 	Cnbvar += NUM_SPECIES;
 #endif
@@ -2136,12 +2126,10 @@ void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostr
 					OutPoint[9] = fluids[0]->h_fstate.gamma[id];
 					OutPoint[10] = fluids[0]->h_fstate.T[id];
 					OutPoint[11] = fluids[0]->h_fstate.e[id];
-#ifdef Visc
 					OutPoint[12] = sqrt(fluids[0]->h_fstate.vx[id]);
 					OutPoint[13] = fluids[0]->h_fstate.vxs[0][id];
 					OutPoint[14] = fluids[0]->h_fstate.vxs[1][id];
 					OutPoint[15] = fluids[0]->h_fstate.vxs[2][id];
-#endif // end Visc
 #if COP
 					for (int n = 0; n < NUM_SPECIES; n++)
 						OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];
@@ -2150,10 +2138,8 @@ void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostr
 					out << OutPoint[0] << " " << OutPoint[1] << " " << OutPoint[2] << " "; // x, y, z
 					out << OutPoint[3] << " " << OutPoint[4] << " " << OutPoint[5] << " "; // rho, p, c
 					out << OutPoint[6] << " " << OutPoint[7] << " " << OutPoint[8] << " "; // u, v, w
-					out << OutPoint[9] << " " << OutPoint[10] << " " << OutPoint[11] << " "; // gamma, T, e
-#ifdef Visc
+					out << OutPoint[9] << " " << OutPoint[10] << " " << OutPoint[11] << " ";						 // gamma, T, e
 					out << OutPoint[12] << " " << OutPoint[13] << " " << OutPoint[14] << " " << OutPoint[15] << " "; // Vorticity
-#endif																												 // end Visc
 #if COP
 					for (int n = 0; n < NUM_SPECIES; n++)
 						out << OutPoint[Cnbvar - NUM_SPECIES] << " "; // Yi
