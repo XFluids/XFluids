@@ -42,6 +42,9 @@ build/*
 !sa*.ini
 /output
 /output-*
+*OUT-*
+/ISBI-*
+/RSBI-*
 
 
 

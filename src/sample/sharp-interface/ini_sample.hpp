@@ -1,6 +1,6 @@
 #pragma once
-#include "../../../global_class.h"
-#include "../../../device_func.hpp"
+#include "../../global_class.h"
+#include "../../device_func.hpp"
 
 /**
  * @brief  Initialize Fluid states espically primitive quantity;
@@ -46,36 +46,31 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     v[id] = _DF(0.0);
     w[id] = _DF(0.0);
 
-    real_t *yi = &(_y[NUM_SPECIES * id]);
-    for (size_t n = 0; n < NUM_SPECIES; n++)
-        yi[n] = thermal.species_ratio_out[n];
+    // // x-dir shock
+    T[id] = x < 0.005 ? 1200 : 400;
+    p[id] = x < 0.005 ? 80000 : 8000;
+    u[id] = x < 0.005 ? 750 : 0;
 
-#ifdef COP // to be 1d shock without define React
-           // for (size_t i = 0; i < NUM_SPECIES; i++)
-           //     _y[i][id] = thermal.species_ratio_out[i];
-#endif // end COP
-
-        // // Ini yi
-        // real_t yi[NUM_SPECIES];
-        // get_yi(_y, yi, id);
-
-        // // 1D multicomponent insert shock tube
-        // // x
-#if DIM_X
-    T[id] = x < 0.05 ? 400 : 1200;
-    p[id] = x < 0.05 ? 8000 : 80000;
-#endif // end DIM_X
-    /// // y
+    real_t dy_ = _DF(0.0), tmp = _DF(0.0);
+    // a circular bubble
+    dy_ = (x - 0.02) * (x - 0.02);
 #if DIM_Y
-    T[id] = y < 0.05 ? 400 : 1200;
-    p[id] = y < 0.05 ? 8000 : 80000;
+    dy_ += (y - 0.0) * (y - 0.0);
 #endif // end DIM_Y
-    // // z
 #if DIM_Z
-    T[id] = z < 0.05 ? 400 : 1200;
-    p[id] = z < 0.05 ? 8000 : 80000;
+    dy_ += (z - 0.0) * (z - 0.0);
 #endif // end DIM_Z
 
+    // // Ini interface
+    dy_ = sqrt(dy_) / 0.01 - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    real_t xrest = _DF(1.0), ff = _DF(1.0e-10), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
+    real_t *yi = &(_y[NUM_SPECIES * id]);
+    yi[NUM_SPECIES - 1] = dd * (sycl::tanh<real_t>(dy_ * 0.01 / dx)) + _DF(0.5); // molecular fraction
+    yi[0] = 0.30 * (1 - yi[NUM_SPECIES - 1]);
+    yi[1] = 0.15 * (1 - yi[NUM_SPECIES - 1]);
+    yi[2] = 0.55 * (1 - yi[NUM_SPECIES - 1]);
+
+    get_yi(yi, thermal.Wi); // get yi: mass fraction
     // Get R of mixture
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id];

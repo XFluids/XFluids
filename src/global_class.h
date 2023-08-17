@@ -16,7 +16,7 @@
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
 // for flux Reconstruction order
-#define PositivityPreserving // #ifdef used, use Lax-Friedrichs(one-order) instead high-order schemes avoiding NAN.
+// #define PositivityPreserving // #ifdef used, use Lax-Friedrichs(one-order) instead high-order schemes avoiding NAN.
 #define FLUX_method 2 //  0: local LF; 1: global LF, 2: Roe
 #if SCHEME_ORDER > 6
 const int stencil_P = 3;    // "2" for <=6 order, "3"" for >6 order
@@ -54,7 +54,10 @@ typedef struct
     // Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving
     real_t *preFwx, *preFwy, *preFwz, *pstFwx, *pstFwy, *pstFwz;
     // Error out: Ertemp1, Ertemp2: temp1,2 for Dim caculate; others for vis Flux and calculating variables of visFlux;
-    real_t *Ertemp1, *Ertemp2, *visFwx, *visFwy, *visFwz, *Dim_wallx, *hi_wallx, *Yi_wallx, *Yil_wallx, *Dim_wally, *hi_wally, *Yi_wally, *Yil_wally, *Dim_wallz, *hi_wallz, *Yi_wallz, *Yil_wallz;
+    real_t *Ertemp1, *Ertemp2, *visFwx, *visFwy, *visFwz;
+    real_t *Dim_wallx, *hi_wallx, *Yi_wallx, *Yil_wallx;
+    real_t *Dim_wally, *hi_wally, *Yi_wally, *Yil_wally;
+    real_t *Dim_wallz, *hi_wallz, *Yi_wallz, *Yil_wallz;
 } FlowData;
 
 typedef struct
@@ -86,7 +89,7 @@ class FluidSYCL{
     std::string outputPrefix, file_name;
 
 public:
-    int error_patched_times;
+    int error_patched_times, rank, nranks, SBIOutIter;
     float MPI_trans_time, MPI_BCs_time;
     long double MemMbSize, MPIMbSize;
     real_t *uvw_c_max, *theta, *sigma, *pVar_max, *interface_point;
@@ -111,6 +114,7 @@ public:
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
     bool EstimateFluidNAN(sycl::queue &q, int flag);
+    void ZeroDimensionalFreelyFlame();
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 };
 
@@ -137,7 +141,7 @@ public:
     void Output_Ubak(const int rank, const int Step, const real_t Time);
     void CopyDataFromDevice(sycl::queue &q, bool error);
     void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
-    void Output_Counts();
+    // void Output_Counts();
     void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
     void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
     void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);

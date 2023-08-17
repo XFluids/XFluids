@@ -285,6 +285,17 @@ void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
 #ifdef COP
 	for (size_t ii = 5; ii < Emax; ii++) // calculate yi
 		yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
+
+		// /** ceil(m): get an real_t value >= m and < m+1
+		//  * step(a,b): return 1 while  a <= b
+		//  */
+		// real_t posy = sycl::step(sycl::ceil(yi[NUM_COP]), _DF(1.0e-20)), sum = _DF(0.0);
+		// for (size_t ii = 0; ii < NUM_COP; ii++)
+		// 	sum += yi[ii];
+		// sum = _DF(1.0) / sum;
+		// for (size_t ii = 0; ii < NUM_COP; ii++)
+		// 	yi[ii] += yi[ii] * sum * yi[NUM_COP] * posy;
+		// yi[NUM_COP] = yi[NUM_COP] * (1 - posy);
 #endif // end COP
 }
 /**
@@ -2162,46 +2173,42 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 			 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 real_t y[NUM_SPECIES], const real_t dtg, real_t &TT, const real_t rho, const real_t e)
 {
-	// parameter
-	int itermax = 1;
-	real_t epscl = _DF(100.0);	// 1/epsmin, intermediate variable used to avoid repeated divisions
-	real_t tfd = _DF(1.000008); // round-off parameter used to determine when integration is complete
+	/**NOTE: q represents the production rate , d represents the los rate , di = pi*yi in RefP408 eq(2)
+	 * Ref.A Quasi-Steady-State Solver for the Stiff Ordinary Differential Equations of Reaction Kinetics
+	 */
+	//  parameter
+	int itermax = 1;			// iterations of correction, itermax > 1 haven't supported
+	real_t epscl = _DF(100.0);	// 1/epsmin, intermediate variable used to avoid repeated divisions, higher epscl leading to higher accuracy and lower performace
+	real_t tfd = _DF(1.0) + _DF(1.0e-10); // round-off parameter used to determine when integration is complete
 	real_t dtmin = _DF(1.0e-20);
-	real_t sqreps = _DF(0.5); // 5*sqrt(\eps, parameter used to calculate initial timestep in Eq.(52) and (53),
-							  // || \delta y_i^{c(Nc-1)} ||/||\delta y_i^{c(Nc)} ||
-	real_t epsmax = _DF(10.0), epsmin = _DF(1.0e-4);
-	real_t ymin = _DF(1.0e-20); // minimum concentration allowed for species i
-	real_t scrtch = _DF(1e-25);
-	real_t eps;
-	real_t rhoi[NUM_SPECIES];
-	real_t qs[NUM_SPECIES];
-	real_t ys[NUM_SPECIES]; // y_i^0 in Eq. (35) and {36}
-	real_t y0[NUM_SPECIES]; // y_i^0 in Eq (2), intial concentrations for the global timestep passed to Chemeq
-	real_t y1[NUM_SPECIES]; // y_i^p, predicted value from Eq. (35)
-	real_t rtau[NUM_SPECIES], rtaus[NUM_SPECIES], scrarray[NUM_SPECIES];
-	real_t q[NUM_SPECIES] = {_DF(0.0)}, d[NUM_SPECIES] = {_DF(0.0)}; // production and loss rate
-	int gcount = 0, rcount = 0;
-	int iter;
-	real_t dt = _DF(0.0);
+	real_t sqreps = _DF(0.5); // 5*sqrt(\eps, parameter used to calculate initial timestep
+							  // || \delta y_i^{c(Nc-1)} ||/(||\delta y_i^{c(Nc)} ||)
+	real_t epsmax = _DF(1.0), epsmin = _DF(1.0e-4);
+	real_t scrtch = _DF(1e-25), ymin = _DF(1.0e-20);			   // ymin: minimum concentration allowed for species i, too much low ymin decrease performance
+	real_t eps, ys[NUM_SPECIES], y0[NUM_SPECIES], y1[NUM_SPECIES]; // y0: intial concentrations for the global timestep passed to Chemeq
+	real_t scrarray[NUM_SPECIES], scrarraym[NUM_SPECIES];		   // y_i^p, predicted value from Eq. (35)
+	real_t deltascr[NUM_SPECIES], deltascrm[NUM_SPECIES];
+	real_t rtau[NUM_SPECIES], rtaus[NUM_SPECIES];							 // deprecated.
+	real_t qs[NUM_SPECIES], ds[NUM_SPECIES], q[NUM_SPECIES], d[NUM_SPECIES]; // production and loss rate
+	int gcount = 0, rcount = 0, iter;
+	real_t dt = _DF(0.0); // timestep of this flag1 step
 	real_t tn = _DF(0.0); // t-t^0, current value of the independent variable relative to the start of the global timestep
 	real_t ts;			  // independent variable at the start of the global timestep
-	real_t TTn = TT;
-	real_t TTs, TT0;
-	// save the initial inputs
-	TT0 = TTn;
+	real_t TTn = TT, TT0 = TTn, TTs;
+	// // save the initial inputs
+	real_t sumy = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
-	{
-		y0[i] = y[i];
-		y[i] = sycl::max(y[i], ymin);
-		rhoi[i] = y[i] * rho;
-	}
+		y0[i] = y[i], y[i] = sycl::max(y[i], ymin), sumy += y[i];
+	sumy = _DF(1.0) / sumy;
+	for (int i = 0; i < NUM_SPECIES; i++)
+		y[i] *= sumy;
 	real_t *species_chara = thermal.species_chara, *Hia = thermal.Hia, *Hib = thermal.Hib;
 	//=========================================================
-	// to initilize the first 'dt', q, d
+	// initial p and d before predicting
 	get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
 	QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	gcount++;
-
+	// to initilize the first 'dt'
 	real_t ascr = _DF(0.0), scr1 = _DF(0.0), scr2 = _DF(0.0); // scratch (temporary) variable
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
@@ -2214,105 +2221,113 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	dt = sycl::min(sqreps / scrtch, dtg);
 
 	//==========================================================
-	int num_iter = 0;
 flag1:
+	int num_iter = 0;
 	ts = tn;
 	TTs = TTn;
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		rtau[i] = dt * d[i] / y[i];
 		// store the 0-subscript state using s
-		ys[i] = y[i];
-		qs[i] = q[i];
-		rtaus[i] = rtau[i];
+		ys[i] = y[i];				// y before prediction
+		qs[i] = q[i], ds[i] = d[i]; // q and d before prediction
 	}
+
+// neomorph of Ref.eq(39) for rtau=1/r in eq(39)
+#define Alpha(rtau) (_DF(180.0) + rtau * (_DF(60.0) + rtau * (_DF(11.0) + rtau))) / (_DF(360.0) + rtau * (_DF(60.0) + rtau * (_DF(12.0) + rtau)));
 
 flag2:
 	num_iter++;
 	// prediction
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		real_t alpha = (real_t(180.0) + rtau[i] * (real_t(60.0) + rtau[i] * (real_t(11.0) + rtau[i]))) / (real_t(360.0) + rtau[i] * (real_t(60.0) + rtau[i] * (real_t(12.0) + rtau[i])));
-		scrarray[i] = (q[i] - d[i]) / (_DF(1.0) + alpha * rtau[i]);
+		rtau[i] = dt * ds[i] / ys[i]; // 1/r in Ref.eq(39)
+		real_t alpha = Alpha(rtau[i]);
+		scrarray[i] = dt * (qs[i] - ds[i]) / (_DF(1.0) + alpha * rtau[i]); // \delta y
+		y[i] = sycl::max(ys[i] + scrarray[i], ymin), y1[i] = y[i];		   // predicted y, results stored by y1
 	}
+	tn = ts + dt;
+	// // predict T, Kf, and Kb based predicted y, the predicted assumed not accurate, only update q, d use predicted y excluded T and Kf, Kb
+	// TTn = get_T(thermal, y, e, TTs);
+	// get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+	// // get predicted q^p , d^p based predictd y
+	QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	iter = 1;
 	while (iter <= itermax)
 	{
-		for (int i = 0; i < NUM_SPECIES; i++)
-		{
-			y[i] = sycl::max(ys[i] + dt * scrarray[i], ymin); // predicted y
-			rhoi[i] = y[i] * rho;
-		}
-		TTn = get_T(thermal, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // predicted T
-		// GetKfKb(TTn);
-		if (iter == 1)
-		{
-			tn = ts + dt;
-			for (int i = 0; i < NUM_SPECIES; i++)
-				y1[i] = y[i]; // prediction results stored by y1
-		}
-		QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+		// Iteration for correction, one prediction and itermax correction
+		// if itermax > 1, need add dt recalculator based Ref.eq(48), or even more restrict requirement Ref.eq(47) for each iter
 		gcount++;
 		eps = 1.0e-10;
 		for (int i = 0; i < NUM_SPECIES; i++)
 		{
-			real_t rtaub = 0.5 * (rtaus[i] + dt * d[i] / y[i]);
-			real_t alpha = (180.0 + rtaub * (60.0 + rtaub * (11.0 + rtaub))) / (360.0 + rtaub * (60.0 + rtaub * (12.0 + rtaub)));
-			real_t qt = (1.0 - alpha) * qs[i] + alpha * q[i];
-			real_t pb = rtaub / dt;
-			scrarray[i] = (qt - ys[i] * pb) / (1.0 + alpha * rtaub); // to get the correction y
+			real_t rtaub = 0.5 * (rtau[i] + dt * d[i] / y[i]); // p*dt
+			real_t alpha = Alpha(rtaub);
+			real_t qt = (1.0 - alpha) * qs[i] + alpha * q[i]; // q
+			// real_t pb = rtaub / dt;
+			// scrarraym[i] = scrarray[i];
+			scrarray[i] = (qt * dt - rtaub * ys[i]) / (1.0 + alpha * rtaub);
+			y[i] = sycl::max(ys[i] + scrarray[i], ymin); // correctied y
+
+			// deltascr[i] = sycl::min(scrarray[i] - scrarraym[i]); // get \delta y^c(itermax)
+			// if (iter < itermax)
+			// 	deltascrm[i] = deltascr[i];//get \delta y^c(itermax-1)
 		}
 		iter++;
+		// {
+		// 	// these three step is needn't for itermax==1 but must need for itermax > 1
+		// 	TTn = get_T(thermal, y, e, TTn);
+		// 	get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+		// 	// get the corrected q^c and d^c
+		// 	QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
+		// }
 	}
-	// get new dt & check convergence
+	// check convergence
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		scr2 = sycl::max(ys[i] + dt * scrarray[i], _DF(0.0));
-		scr1 = sycl::abs(scr2 - y1[i]);
-		y[i] = sycl::max(scr2, ymin); // new y
-		// rhoi[i] = y[i]*species[i].Wi*1e3;
-		rhoi[i] = y[i] * rho;
+		// scr2 = sycl::max(ys[i] + scrarray[i], ymin);
+		// scr1 = sycl::abs(scr2 - y1[i]);
+		// y[i] = sycl::max(scr2, ymin); // new y
+		scr1 = sycl::abs(y[i] - y1[i]);
 		if (_DF(0.5) * _DF(0.5) * (ys[i] + y[i]) > ymin)
 		{
 			scr1 = scr1 / y[i];
-			eps = sycl::max(_DF(0.5) * (scr1 + sycl::min(sycl::abs(q[i] - d[i]) / (q[i] + d[i] + real_t(1.0e-30)), scr1)), eps);
+			// eps = sycl::max(scr1, eps);
+			eps = sycl::max(_DF(0.5) * (scr1 + sycl::min(sycl::abs(q[i] - d[i] + real_t(1.0e-100)) / (q[i] + d[i] + real_t(1.0e-100)), scr1)), eps);
 		}
 	}
 	eps = eps * epscl;
-	if (eps < epsmax || num_iter > 1000)
+	if (eps < epsmax)
 	{
-		if (dtg < (tn * tfd) || num_iter > 1000)
+		if (dtg < (tn * tfd))
 		{
-			for (int i = 0; i < NUM_SPECIES; i++)
-				rhoi[i] = y[i] * rho;
-			TT = get_T(thermal, y, e, TTs); //  UpdateTemperature(-1, rhoi, rho, e, TTs); // final T
-											// GetKfKb(TT);
-			return;
+			TT = get_T(thermal, y, e, TTn); // final T
+			return;							// end of the reaction source solving.
 		}
 	}
 	else
 	{
 		tn = ts;
 	}
+	// get new dt
 	real_t rteps = 0.5 * (eps + 1.0);
 	rteps = 0.5 * (rteps + eps / rteps);
 	rteps = 0.5 * (rteps + eps / rteps);
 	real_t dto = dt;
-	dt = sycl::min(dt * (1.0 / rteps + real_t(0.005)), tfd * (dtg - tn)); // new dt
+	dt = sycl::min(dt * (1.0 / rteps + real_t(0.005)), (dtg - tn)); // tfd * (dtg - tn)); // new dt
 	if (eps > epsmax)
 	{
+		dt = sycl::min(dt, 0.34 * dto); // add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
 		rcount++;
-		dto = dt / dto;
-		for (int i = 0; i < NUM_SPECIES; i++)
-			rtaus[i] = rtaus[i] * dto;
+		// dto = dt / dto;
+		// for (int i = 0; i < NUM_SPECIES; i++)
+		// 	rtaus[i] = rtaus[i] * dto;
 		goto flag2;
 	}
 
+// A valid time step has done
 flag3:
-	for (int i = 0; i < NUM_SPECIES; i++)
-		rhoi[i] = y[i] * rho;
-	TTn = get_T(thermal, y, e, TTs); // UpdateTemperature(-1, rhoi, rho, e, TTs); // new T
-	// GetKfKb(TTn);
+	TTn = get_T(thermal, y, e, TTs); // new T
+	get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
 	QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	gcount++;
 	goto flag1;
@@ -2458,8 +2473,8 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 			{
 				if (i != k)
 				{
-					temp1 += X[i] * thermal.Wi[i];
-					temp2 += X[i] / (GetDkj(specie[i], specie[k], Dkj, T, p) + _DF(1.0e-20)); // trans_coeff.GetDkj(T, p, chemi.species[i], chemi.species[k], refstat);
+					temp1 += (X[i] + 1.0e-100) * thermal.Wi[i]; // asmuing has mixture enven for pure gas. see SuHongMin's Dissertation P19.2-35
+					temp2 += (X[i] + 1.0e-100) / (GetDkj(specie[i], specie[k], Dkj, T, p) + _DF(1.0e-100));
 				}
 			}											 // cause nan error while only one yi of the mixture given(temp1/temp2=0/0).
 			if (sycl::step(sycl::ceil(temp1), _DF(0.0))) // =1 while temp1==0.0;temp may < 0;

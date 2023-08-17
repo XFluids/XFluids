@@ -38,7 +38,7 @@ void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialPrope
 		.wait();
 }
 
-real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_t *pVar_max)
+real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t *uvw_c_max)
 {
 	real_t *c = fdata.c;
 	real_t *u = fdata.u;
@@ -51,77 +51,88 @@ real_t GetDt(sycl::queue &q, Block bl, FlowData &fdata, real_t *uvw_c_max, real_
 	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
 	auto global_ndrange = range<1>(meshSize);
 
-	// add uvw and c individually if need more resources
-	for (int n = 0; n < 3; n++)
-		uvw_c_max[n] = _DF(0.0);
-	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
-		pVar_max[n] = _DF(0.0);
-
 	real_t dtref = _DF(0.0);
-	// define reduction objects for sum, min, max reduction
-	// auto reduction_sum = reduction(sum, sycl::plus<>());
+
+	// NOTE: dt of inviscous flow
+	// add uvw and c individually if need more resources
+	for (int n = 0; n < 6; n++)
+		uvw_c_max[n] = _DF(0.0);
+
+		// define reduction objects for sum, min, max reduction
+		// auto reduction_sum = reduction(sum, sycl::plus<>());
 #if DIM_X
+	uvw_c_max[5] = sycl::max<real_t>(uvw_c_max[5], bl._dx * bl._dx);
 	q.submit([&](sycl::handler &h)
 			 {
     	auto reduction_max_x = reduction(&(uvw_c_max[0]), sycl::maximum<>());
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, [=](nd_item<1> index, auto &temp_max_x)
 					   {
-						   auto id = index.get_global_id();
-						   temp_max_x.combine(sycl::fabs<real_t>(u[id]) + c[id]); }); })
-		.wait();
-	dtref += uvw_c_max[0] / bl.dx;
+			auto id = index.get_global_id();
+			temp_max_x.combine(sycl::fabs<real_t>(u[id]) + c[id]); }); });
 #endif // end DIM_X
 #if DIM_Y
+	uvw_c_max[5] = sycl::max<real_t>(uvw_c_max[5], bl._dy * bl._dy);
 	q.submit([&](sycl::handler &h)
-			 {	auto reduction_max_y = reduction(&(uvw_c_max[1]), sycl::maximum<>());
+			 {	
+		auto reduction_max_y = reduction(&(uvw_c_max[1]), sycl::maximum<>());
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y)
 					   {
-						   auto id = index.get_global_id();
-						   temp_max_y.combine(sycl::fabs<real_t>(v[id]) + c[id]);
-					   }); })
-		.wait();
-	dtref += uvw_c_max[1] / bl.dy;
+			auto id = index.get_global_id();
+			temp_max_y.combine(sycl::fabs<real_t>(v[id]) + c[id]); }); });
 #endif // end DIM_Y
 #if DIM_Z
+	uvw_c_max[5] = sycl::max<real_t>(uvw_c_max[5], bl._dz * bl._dz);
 	q.submit([&](sycl::handler &h)
-			 {	auto reduction_max_z = reduction(&(uvw_c_max[2]), sycl::maximum<>());
+			 {	
+		auto reduction_max_z = reduction(&(uvw_c_max[2]), sycl::maximum<>());
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z)
 					   {
-						   auto id = index.get_global_id();
-						   temp_max_z.combine(sycl::fabs<real_t>(w[id]) + c[id]); }); })
-		.wait();
-	dtref += uvw_c_max[2] / bl.dz;
+			auto id = index.get_global_id();
+			temp_max_z.combine(sycl::fabs<real_t>(w[id]) + c[id]); }); });
 #endif // end DIM_Z
-	   // Tmax
-	q.submit([&](sycl::handler &h)
-			 {	auto reduction_max_T = reduction(&(pVar_max[0]), sycl::maximum<>());
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
-						   auto id = index.get_global_id();
-						   temp_max_T.combine(T[id]);}); });
-#ifdef COP_CHEME
-	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-	{
-		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_Yi = reduction(&(pVar_max[n]), sycl::maximum<>());
-			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
-							   auto id = index.get_global_id();
-							   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
-	}
-// // Yi(HO2)max
-// q.submit([&](sycl::handler &h)
-// 		 {	auto reduction_max_YHO2 = reduction(&(pVar_max[1]), sycl::maximum<>());
-// 	h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YHO2, [=](nd_item<1> index, auto &temp_max_YHO2){
-// 					   auto id = index.get_global_id();
-// 					   temp_max_YHO2.combine(yi[5 + NUM_SPECIES * id]); }); });
-// // Yi(H2O2)max
-// q.submit([&](sycl::handler &h)
-// 		 {	auto reduction_max_YH2O2 = reduction(&(pVar_max[2]), sycl::maximum<>());
-// 	h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_YH2O2, [=](nd_item<1> index, auto &temp_max_YH2O2){
-// 					   auto id = index.get_global_id();
-// 					   temp_max_YH2O2.combine(yi[6 + NUM_SPECIES * id]); }); });
-#endif // end COP_CHEME
-
 	q.wait();
+
+	dtref = uvw_c_max[0] * bl._dx + uvw_c_max[1] * bl._dy + uvw_c_max[2] * bl._dz;
+
+	// NOTE: dt of viscous flow
+#ifdef Visc
+	real_t *va = fdata.viscosity_aver;
+	real_t *tca = fdata.thermal_conduct_aver;
+	real_t *Da = fdata.Dkm_aver;
+	real_t *hi = fdata.hi;
+
+	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+	auto local_ndrange_max = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange_max), [=](sycl::nd_item<3> index)
+							  {
+    		int i = index.get_global_id(0);
+			int j = index.get_global_id(1);
+			int k = index.get_global_id(2);
+			Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, fdata.rho, fdata.p, fdata.T, fdata.Ertemp1, fdata.Ertemp2); }); })
+		.wait();
+
+	// max viscosity
+	uvw_c_max[3] = _DF(0.0);
+	auto reduction_max_miu = reduction(&(uvw_c_max[3]), sycl::maximum<>());
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_miu, [=](nd_item<1> index, auto &temp_max_miu)
+							  {
+			auto id = index.get_global_id();
+			temp_max_miu.combine(va[id]); }); });
+	// max rho
+	uvw_c_max[4] = _DF(100.0);
+	auto reduction_max_rho = reduction(&(uvw_c_max[4]), sycl::minimum<>());
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_rho, [=](nd_item<1> index, auto &temp_max_rho)
+							  {
+			auto id = index.get_global_id();
+			temp_max_rho.combine(fdata.rho[id]); }); });
+	q.wait();
+
+	real_t temp_visc = _DF(14.0 / 3.0) * uvw_c_max[3] * uvw_c_max[5] / uvw_c_max[4];
+	dtref = sycl::max<real_t>(dtref, temp_visc);
+#endif // end get viscity
 
 	return bl.CFLnumber / dtref;
 }
@@ -477,11 +488,11 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 	auto global_ndrange_inner = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 	real_t lambda_x0 = uvw_c_max[0], lambda_y0 = uvw_c_max[1], lambda_z0 = uvw_c_max[2];
 	real_t lambda_x = bl.CFLnumber / lambda_x0, lambda_y = bl.CFLnumber / lambda_y0, lambda_z = bl.CFLnumber / lambda_z0;
-	// real_t *epsilon = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 2) * sizeof(real_t), q));
-	// epsilon[0] = _DF(1.0e-13), epsilon[1] = _DF(1.0e-13);
-	real_t epsilon[NUM_SPECIES + 2] = {_DF(1.0e-13), _DF(1.0e-13)};
-	for (size_t ii = 2; ii < NUM_SPECIES + 2; ii++)
-		epsilon[ii] = _DF(1.0e-13); // Ini epsilon for y1-yN(N species)
+	real_t *epsilon = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 2) * sizeof(real_t), q));
+	epsilon[0] = _DF(1.0e-13), epsilon[1] = _DF(1.0e-13); // 0 for rho and 1 for T and P
+	// real_t epsilon[NUM_SPECIES + 2] = {_DF(1.0e-13), _DF(1.0e-13)};
+	for (size_t ii = 2; ii < NUM_SPECIES + 2; ii++) // for Yi
+		epsilon[ii] = _DF(0.0);						// Ini epsilon for y1-yN(N species)
 
 #ifdef PositivityPreserving
 #if DIM_X // sycl::stream error_out(1024 * 1024, 1024, h);
@@ -547,7 +558,7 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
-    		int i = index.get_global_id(0);
+			int i = index.get_global_id(0);
 			int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
 			Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2); }); })
@@ -807,6 +818,11 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 	q.wait();
 
 	return (duration_x + duration_y + duration_z) * 1.0e-3f;
+}
+
+void ZeroDimensionalFreelyFlameBlock(Setup &sep)
+{
+	ZeroDimensionalFreelyFlameKernel(sep, 0);
 }
 
 #ifdef COP_CHEME

@@ -1,11 +1,3 @@
-IF(EIGEN_ALLOC STREQUAL "OROC")
-  add_compile_options(-DEIGEN_ALLOC=0)
-ELSEIF(EIGEN_ALLOC STREQUAL "RGIF")
-  add_compile_options(-DEIGEN_ALLOC=1)
-ELSEIF(EIGEN_ALLOC STREQUAL "AIGE")
-  add_compile_options(-DEIGEN_ALLOC=2)
-ENDIF()
-
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
 
@@ -19,8 +11,6 @@ ENDIF()
 
 add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
 add_compile_options(-DPform_id=${Pform_id}) # first device id in sycl-ls list
-message(STATUS "Compile settings: ")
-message(STATUS "  Compile for platform: ${SelectDv}")
 
 IF(SelectDv STREQUAL "host")
   include(init_host)
@@ -55,6 +45,14 @@ add_compile_options(-DNumFluid=1)
 add_compile_options(-DMIDDLE_SYCL_ENABLED)
 add_compile_options(-DSCHEME_ORDER=${WENO_ORDER})
 
+IF(EIGEN_ALLOC STREQUAL "OROC")
+  add_compile_options(-DEIGEN_ALLOC=0)
+ELSEIF(EIGEN_ALLOC STREQUAL "RGIF")
+  add_compile_options(-DEIGEN_ALLOC=1)
+ELSEIF(EIGEN_ALLOC STREQUAL "AIGE")
+  add_compile_options(-DEIGEN_ALLOC=2)
+ENDIF()
+
 IF(USE_DOUBLE)
   add_compile_options(-DUSE_DOUBLE) # 将参数从cmakelist传入程序中
 ENDIF(USE_DOUBLE)
@@ -74,10 +72,16 @@ IF(ESTIM_NAN)
     add_compile_options(-DERROR_PATCH)
   ENDIF()
 
+  add_compile_options(-DERROR_PATCH_YII)
+
   IF(ERROR_PATCH_YI)
     add_compile_options(-DERROR_PATCH_YI)
   ENDIF()
 ENDIF(ESTIM_NAN)
+
+IF(POSITIVITY_PRESERVING)
+  add_compile_options(-DPositivityPreserving)
+ENDIF(POSITIVITY_PRESERVING)
 
 # define Thermo 1				  // 1 for NASA and 0 for JANAF
 IF(THERMAL STREQUAL "NASA")

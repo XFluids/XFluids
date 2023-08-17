@@ -65,50 +65,16 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
     xi[1] = _DF(0.15) * (xrest - xi[NUM_SPECIES - 1]);                       // O2
     xi[NUM_SPECIES - 2] = _DF(0.55) * (xrest - xi[NUM_SPECIES - 1]);         // Xe
 
+    get_yi(xi, thermal.Wi);
+
 #ifdef COP_CHEME
     real_t xre = _DF(1.0e-15), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
     for (size_t n1 = 0; n1 < NUM_SPECIES; n1++)
-        xi[n1] -= ratios; //_DF(0.0); //
+        xi[n1] -= ratios;
     for (size_t nn = 2; nn < NUM_COP - 1; nn++)
-        xi[nn] = xre; //_DF(0.0); //
+        xi[nn] = xre;
 #endif // end COP_CHEME
 
-    // // sycl::step(a, b)： return 0 while a>b，return 1 while a<=b
-    // int inbubble = sycl::step(dy_in, _DF(1.0)), outbubble = sycl::step(_DF(1.0), dy_out), bcbubble = 1 - inbubble - outbubble;
-
-    // // the first  method: use step
-    // xi[NUM_SPECIES - 2] = real_t(outbubble) * _DF(1.0) + real_t(bcbubble) * _DF(0.5); // ini.C=ini.C(read in .ini file)*ini.a; to reduce times of multiplications
-    // xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                // H2
-    // xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // O2
-    // xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // Xe
-    // //the second method: use branch
-    // if (inbubble)
-    // {
-    //     xi[0] = _DF(0.3);                //* (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // H2
-    //     xi[1] = _DF(0.15);               //* (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // O2
-    //     xi[NUM_SPECIES - 1] = _DF(0.55); //* (_DF(1.0) - xi[NUM_SPECIES - 2] - xi[NUM_SPECIES - 3]); // Xe
-    // }
-    // else if (outbubble)
-    // {
-    //     xi[NUM_SPECIES - 2] = _DF(1.0);
-    //     // xi[NUM_SPECIES - 3] = _DF(0.5); //_DF(1.0);
-    //     // xi[NUM_SPECIES - 2] = _DF(0.5); //_DF(1.0);
-    //     // xi[1] = _DF(1.0) - xi[8];
-    // }
-    // else
-    // {
-    //     xi[NUM_SPECIES - 2] = _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
-    //     xi[0] = _DF(0.3) * (_DF(1.0) - xi[NUM_SPECIES - 2]);                //- xi[NUM_SPECIES - 3]);                // H2
-    //     xi[1] = _DF(0.15) * (_DF(1.0) - xi[NUM_SPECIES - 2]);               // - xi[NUM_SPECIES - 3]);               // O2
-    //     xi[NUM_SPECIES - 1] = _DF(0.55) * (_DF(1.0) - xi[NUM_SPECIES - 2]); // - xi[NUM_SPECIES - 3]); // Xe
-    //     // for 0.71 N2 + 0.29 O2 = AIR
-    //     // xi[NUM_SPECIES - 3] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //
-    //     // xi[NUM_SPECIES - 2] = _DF(0.25) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0)); //
-    //     // xi[1] = _DF(0.575) * _DF(0.29) * _DF(0.5) * (sycl::tanh<real_t>(dy_ * ini.C) + _DF(1.0));
-    // }
-    get_yi(xi, thermal.Wi);
-    // for (size_t n = 0; n < NUM_SPECIES; n++)
-    //     _y[n][id] = xi[n];
 #endif // end COP
 
     if (x > ini.blast_center_x) //(i > 3)

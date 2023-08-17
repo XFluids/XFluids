@@ -36,7 +36,7 @@
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/EulerSYCL",
             "args": [
-                "${workspaceFolder}/sa-guss-wave.ini",
+                "${workspaceFolder}/settings/sa-guss-wave.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

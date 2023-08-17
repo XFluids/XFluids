@@ -21,24 +21,25 @@ int main(int argc, char *argv[])
 		std::cout << "Too much argcs appended to EulerSYCL while running\n";
 
 	ConfigMap configMap = broadcast_parameters(ini_path);
-	// accelerator_selector device;
-	// num_GPUS:number of GPU on this cluster, Pform_id: the first GPU's ID in all accelerators sycl detected
+	// // accelerator_selector device;
+	// // num_GPUS:number of GPU on this cluster, Pform_id: the first GPU's ID in all accelerators sycl detected
 	int num_GPUs = configMap.getInteger("mpi", "NUM", 1);
 	int device_id = rank % num_GPUs + Pform_id;
 	auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
 	sycl::queue q(device);
-	// Setup Initialize
+	// // Setup Initialize
 	Setup setup(configMap, q);
 	SYCLSolver syclsolver(setup);
-	// AllocateMemory
+	// // AllocateMemory
 	syclsolver.AllocateMemory(q);
-	//  Initialize original states
+	// //  Initialize original states
 	syclsolver.InitialCondition(q);
-	// boundary conditions
+	// // boundary conditions
 	syclsolver.BoundaryCondition(q, 0);
-	// update states by U
+	// // update states by U
+	// std::cout << "1";
 	syclsolver.UpdateStates(q, 0, syclsolver.physicalTime, syclsolver.Iteration, "_Ini");
-	// time marching by SYCL device
+	// // time marching by SYCL device
 	syclsolver.Evolution(q);
 
 #ifdef USE_MPI

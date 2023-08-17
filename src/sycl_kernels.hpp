@@ -4,6 +4,48 @@
 #include "device_func.hpp"
 #include "ini_sample.hpp"
 
+void ZeroDimensionalFreelyFlameKernel(Setup &Ss, const int rank)
+{
+#ifdef ODESolverTest
+    real_t xi[NUM_SPECIES];                                     // molecular concentration, unit: mol/cm^3
+    real_t yi[NUM_SPECIES] = {0.2, 0.1, 0, 0, 0, 0, 0, 0, 0.7}; // mass fraction
+    get_yi(yi, Ss.h_thermal.Wi);
+    real_t T0 = 1150.0, p0 = 101325.0;
+    real_t R, rho, h, e, T = T0; // h: unit: J/kg // e: enternal energy
+
+    // chemeq2 solver
+    real_t t_start = 0, t_end = 5e-4, dt = 2.0e-7, run_time = t_start;
+    std::string outputPrefix = INI_SAMPLE;
+    std::string file_name = Ss.OutputDir + "/" + outputPrefix + "-with_0DFreelyFlameTest_Rank_" + std::to_string(rank) + ".plt";
+    std::ofstream out(file_name);
+    out << "variables= time, <i>T</i>[K]";
+    for (size_t n = 0; n < NUM_SPECIES; n++)
+        out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
+    out << "\nzone t='" << outputPrefix << "'\n";
+    /* Solver loop */
+    while (run_time < t_end + dt)
+    {
+        R = get_CopR(Ss.h_thermal._Wi, yi), rho = p0 / R / T;
+        h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
+        e = h - R * T;                     // enternal energy
+        // T = get_T(Ss.h_thermal, yi, e, T); // update temperature
+        get_xi(xi, yi, Ss.h_thermal._Wi, rho);
+        out << run_time << " " << T;
+        for (int n = 0; n < NUM_SPECIES; n++)
+            out << " " << xi[n];
+        out << "\n";
+
+        real_t Kf[NUM_REA], Kb[NUM_REA];                                                                                // yi[NUM_SPECIES],//get_yi(y, yi, id);
+        get_KbKf(Kf, Kb, Ss.h_react.Rargus, Ss.h_thermal._Wi, Ss.h_thermal.Hia, Ss.h_thermal.Hib, Ss.h_react.Nu_d_, T); // get_e
+        Chemeq2(0, Ss.h_thermal, Kf, Kb, Ss.h_react.React_ThirdCoef, Ss.h_react.Rargus, Ss.h_react.Nu_b_, Ss.h_react.Nu_f_, Ss.h_react.Nu_d_, Ss.h_react.third_ind,
+                Ss.h_react.reaction_list, Ss.h_react.reactant_list, Ss.h_react.product_list, Ss.h_react.rns, Ss.h_react.rts, Ss.h_react.pls, yi, dt, T, rho, e);
+        run_time += dt;
+        // std::cout << "time = " << run_time << ", temp = " << T << "\n";
+    }
+    out.close();
+#endif // end ODESolverTest
+}
+
 // extern SYCL_EXTERNAL void XDirThetaItegralKernel(int k, Block bl, real_t *ThetaXeIn, real_t *ThetaN2In, real_t *ThetaXNIn,
 //                                                  real_t *ThetaXeOut, real_t *ThetaN2Out, real_t *ThetaXNOut)
 // {
@@ -114,7 +156,7 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
             error_pos[n2] = 1;
         if (spcs[n2] || spcnans[n2])
         {
-            // #ifdef ERROR_PATCH_YI
+#ifdef ERROR_PATCH_YI
             yi[n2] = _DF(0.0);
 #if DIM_X
             yi[n2] += (y[n2 + id_xm * NUM_SPECIES] + Dx * y[n2 + id_xp * NUM_SPECIES]) * D1x;
@@ -126,12 +168,16 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
             yi[n2] += (y[n2 + id_zm * NUM_SPECIES] + Dz * y[n2 + id_zp * NUM_SPECIES]) * D1z;
 #endif
             yi[n2] *= _theta;
-            // #endif // end ERROR_PATCH_YI
+#endif // end ERROR_PATCH_YI
+
+#ifdef ERROR_PATCH_YII
+            yi[n2] = _DF(1.0e-20);
+#endif // end ERROR_PATCH_YI
         }
     }
     if (spc || spcnan)
     {
-        // //             // #ifdef ERROR_PATCH_YI
+#ifdef ERROR_PATCH_YI
         // //         if (spcnan)
         // //         {
         // //             T[id] = 0.0;
@@ -152,7 +198,8 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
         // //             U[2] = U[0] * v[id];
         // //             U[3] = U[0] * w[id];
         // //         }
-        // //             // #endif // end ERROR_PATCH_YI
+#endif // end ERROR_PATCH_YI
+
         real_t sum = _DF(0.0);
         for (size_t nn = 0; nn < NUM_SPECIES; nn++)
             sum += yi[nn];
@@ -161,6 +208,7 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
             yi[nn] *= sum;
         for (size_t n = 0; n < NUM_COP; n++)
             U[n + 5] = rho[id] * yi[n];
+
         *error_org = true; //, SumPts += 1;
         if (spcnan) // add condition to avoid rewrite by other threads
             *error_nan = true, error_pos[NUM_SPECIES] = i, error_pos[1 + NUM_SPECIES] = j, error_pos[2 + NUM_SPECIES] = k;
@@ -324,20 +372,21 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
         yi_u[n] = (UU[tid] - FF_LF[tid]) * _rhou, yi_u[NUM_COP] -= yi_u[n];
         yi_qp[n] = (UP[tid] + FF[tid]) * _rhoqp, yi_qp[NUM_COP] -= yi_qp[n];
         yi_up[n] = (UP[tid] + FF_LF[tid]) * _rhoup, yi_up[NUM_COP] -= yi_up[n];
-        // real_t temp = epsilon[n + 2];
-        // if (yi_q[n] < temp)
-        // {
-        //     real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
-        //     theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n]);
-        // }
-        // if (yi_qp[n] < temp)
-        // {
-        //     real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
-        //     theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n]);
-        // }
-        // theta = sycl::min<real_t>(theta_u, theta_p);
-        // for (int nn = 0; nn < Emax; nn++)
-        //     Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+        theta_u = _DF(1.0), theta_p = _DF(1.0);
+        real_t temp = epsilon[n + 2];
+        if (yi_q[n] < temp)
+        {
+            real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+            theta_u = (yi_u[n] - yi_min + _DF(1.0e-100)) / (yi_u[n] - yi_q[n] + _DF(1.0e-100));
+        }
+        if (yi_qp[n] < temp)
+        {
+            real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+            theta_p = (yi_up[n] - yi_min + _DF(1.0e-100)) / (yi_up[n] - yi_qp[n] + _DF(1.0e-100));
+        }
+        theta = sycl::min<real_t>(theta_u, theta_p);
+        for (int nn = 0; nn < Emax; nn++)
+            Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
     }
     // // // correct for yn
     // real_t temp = epsilon[NUM_SPECIES + 1];
@@ -355,96 +404,94 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
     // for (int nn = 0; nn < Emax; nn++)
     //     Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
 
-#ifdef COP_CHEME
-    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1; //-1;
-#else
-    size_t begin = NUM_SPECIES - 2, end = NUM_SPECIES - 1; //-1;
-    for (size_t n = 0; n < 2; n++) // NUM_SPECIES - 2
-    {
-        theta_u = _DF(1.0), theta_p = _DF(1.0);
-        real_t temp = epsilon[n + 2];
-        if (yi_q[n] < temp)
-        {
-            real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
-            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n] + 1.0e-100);
-        }
-        if (yi_qp[n] < temp)
-        {
-            real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
-            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n] + 1.0e-100);
-        }
-        theta = sycl::min<real_t>(theta_u, theta_p);
-        for (int nn = 0; nn < Emax; nn++)
-            Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
-    }
-#endif // end COP_CHEME
+    // size_t begin = 0, end = NUM_COP - 1;
+    // #ifdef COP_CHEME
+    //     for (size_t n = 0; n < 2; n++) // NUM_SPECIES - 2
+    //     {
+    //         theta_u = _DF(1.0), theta_p = _DF(1.0);
+    //         real_t temp = epsilon[n + 2];
+    //         if (yi_q[n] < temp)
+    //         {
+    //             real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+    //             theta_u = (yi_u[n] - yi_min + 1.0e-100) / (yi_u[n] - yi_q[n] + 1.0e-100);
+    //         }
+    //         if (yi_qp[n] < temp)
+    //         {
+    //             real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+    //             theta_p = (yi_up[n] - yi_min + 1.0e-100) / (yi_up[n] - yi_qp[n] + 1.0e-100);
+    //         }
+    //         theta = sycl::min<real_t>(theta_u, theta_p);
+    //         for (int nn = 0; nn < Emax; nn++)
+    //             Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+    //     }
+    // #endif // end COP_CHEME
 
-    for (size_t n = begin; n < end; n++) // NUM_SPECIES - 2
-    {
-        theta_u = _DF(1.0), theta_p = _DF(1.0);
-        real_t temp = epsilon[n + 2];
-        if (yi_q[n] < temp)
-        {
-            real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
-            theta_u = (yi_u[n] - yi_min) / (yi_u[n] - yi_q[n] + 1.0e-100);
-        }
-        if (yi_qp[n] < temp)
-        {
-            real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
-            theta_p = (yi_up[n] - yi_min) / (yi_up[n] - yi_qp[n] + 1.0e-100);
-        }
-        theta = sycl::min<real_t>(theta_u, theta_p);
-        for (int nn = 0; nn < Emax; nn++)
-            Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
-    }
+    // for (size_t n = begin; n < end; n++) // NUM_SPECIES - 2
+    // {
+    //     theta_u = _DF(1.0), theta_p = _DF(1.0);
+    //     real_t temp = epsilon[n + 2];
+    //     if (yi_q[n] < temp)
+    //     {
+    //         real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+    //         theta_u = (yi_u[n] - yi_min + 1.0e-100) / (yi_u[n] - yi_q[n] + 1.0e-100);
+    //     }
+    //     if (yi_qp[n] < temp)
+    //     {
+    //         real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+    //         theta_p = (yi_up[n] - yi_min + 1.0e-100) / (yi_up[n] - yi_qp[n] + 1.0e-100);
+    //     }
+    //     theta = sycl::min<real_t>(theta_u, theta_p);
+    //     for (int nn = 0; nn < Emax; nn++)
+    //         Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+    // }
 
-    // // correct for positive p, method to get p for multicomponent theory:
-    // // e = UI[4]*_rho-_DF(0.5)*_rho*_rho*(UI[1]*UI[1]+UI[2]*UI[2]+UI[3]*UI[3]);
-    // // R = get_CopR(thermal._Wi, yi); T = get_T(thermal, yi, e, T); p = rho * R * T;
-    // // known that rho and yi has been preserved to be positive, only need to preserve positive T
-    real_t e_q, T_q, P_q, theta_pu = 1.0, theta_pp = 1.0;
-    theta_u = _DF(1.0), theta_p = _DF(1.0);
-    e_q = (UU[4] - FF[4] - _DF(0.5) * ((UU[1] - FF[1]) * (UU[1] - FF[1]) + (UU[2] - FF[2]) * (UU[2] - FF[2]) + (UU[3] - FF[3]) * (UU[3] - FF[3])) * _rhoq) * _rhoq;
-    T_q = get_T(thermal, yi_q, e_q, T_l);
-    if (T_q < epsilon[1])
-    {
-        real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
-        real_t T_u = get_T(thermal, yi_u, e_u, T_l);
-        real_t T_min = sycl::min<real_t>(T_u, epsilon[1]);
-        theta_u = (T_u - T_min) / (T_u - T_q + 1.0e-100);
-    }
-    // P_q = T_q * get_CopR(thermal._Wi, yi_q);
-    // if (P_q < epsilon[1])
+    // // // correct for positive p, method to get p for multicomponent theory:
+    // // // e = UI[4]*_rho-_DF(0.5)*_rho*_rho*(UI[1]*UI[1]+UI[2]*UI[2]+UI[3]*UI[3]);
+    // // // R = get_CopR(thermal._Wi, yi); T = get_T(thermal, yi, e, T); p = rho * R * T;
+    // // // known that rho and yi has been preserved to be positive, only need to preserve positive T
+    // real_t e_q, T_q, P_q, theta_pu = 1.0, theta_pp = 1.0;
+    // theta_u = _DF(1.0), theta_p = _DF(1.0);
+    // e_q = (UU[4] - FF[4] - _DF(0.5) * ((UU[1] - FF[1]) * (UU[1] - FF[1]) + (UU[2] - FF[2]) * (UU[2] - FF[2]) + (UU[3] - FF[3]) * (UU[3] - FF[3])) * _rhoq) * _rhoq;
+    // T_q = get_T(thermal, yi_q, e_q, T_l);
+    // if (T_q < epsilon[1])
     // {
     //     real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
-    //     real_t P_u = get_T(thermal, yi_u, e_u, T_l) * get_CopR(thermal._Wi, yi_u);
-    //     real_t P_min = sycl::min<real_t>(P_u, epsilon[1]);
-    //     theta_pu = (P_u - P_min) / (P_u - P_q);
+    //     real_t T_u = get_T(thermal, yi_u, e_u, T_l);
+    //     real_t T_min = sycl::min<real_t>(T_u, epsilon[1]);
+    //     theta_u = (T_u - T_min + 1.0e-100) / (T_u - T_q + 1.0e-100);
     // }
+    // // P_q = T_q * get_CopR(thermal._Wi, yi_q);
+    // // if (P_q < epsilon[1])
+    // // {
+    // //     real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
+    // //     real_t P_u = get_T(thermal, yi_u, e_u, T_l) * get_CopR(thermal._Wi, yi_u);
+    // //     real_t P_min = sycl::min<real_t>(P_u, epsilon[1]);
+    // //     theta_pu = (P_u - P_min) / (P_u - P_q);
+    // // }
 
-    e_q = (UP[4] + FF[4] - _DF(0.5) * ((UP[1] + FF[1]) * (UP[1] + FF[1]) + (UP[2] + FF[2]) * (UP[2] + FF[2]) + (UP[3] + FF[3]) * (UP[3] + FF[3])) * _rhoqp) * _rhoqp;
-    T_q = get_T(thermal, yi_qp, e_q, T_r);
-    if (T_q < epsilon[1])
-    {
-        real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
-        real_t T_p = get_T(thermal, yi_up, e_p, T_r);
-        real_t T_min = sycl::min<real_t>(T_p, epsilon[1]);
-        theta_p = (T_p - T_min) / (T_p - T_q + 1.0e-100);
-    }
-    // P_q = T_q * get_CopR(thermal._Wi, yi_qp);
-    // if (P_q < epsilon[1])
+    // e_q = (UP[4] + FF[4] - _DF(0.5) * ((UP[1] + FF[1]) * (UP[1] + FF[1]) + (UP[2] + FF[2]) * (UP[2] + FF[2]) + (UP[3] + FF[3]) * (UP[3] + FF[3])) * _rhoqp) * _rhoqp;
+    // T_q = get_T(thermal, yi_qp, e_q, T_r);
+    // if (T_q < epsilon[1])
     // {
     //     real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
-    //     real_t P_p = get_T(thermal, yi_up, e_p, T_r) * get_CopR(thermal._Wi, yi_qp);
-    //     real_t P_min = sycl::min<real_t>(P_p, epsilon[1]);
-    //     theta_pp = (P_p - P_min) / (P_p - P_q);
+    //     real_t T_p = get_T(thermal, yi_up, e_p, T_r);
+    //     real_t T_min = sycl::min<real_t>(T_p, epsilon[1]);
+    //     theta_p = (T_p - T_min + 1.0e-100) / (T_p - T_q + 1.0e-100);
     // }
-    theta = sycl::min<real_t>(theta_u, theta_p);
-    for (int n = 0; n < Emax; n++)
-        Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
-    // theta = sycl::min<real_t>(theta_pu, theta_pp);
+    // // P_q = T_q * get_CopR(thermal._Wi, yi_qp);
+    // // if (P_q < epsilon[1])
+    // // {
+    // //     real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
+    // //     real_t P_p = get_T(thermal, yi_up, e_p, T_r) * get_CopR(thermal._Wi, yi_qp);
+    // //     real_t P_min = sycl::min<real_t>(P_p, epsilon[1]);
+    // //     theta_pp = (P_p - P_min) / (P_p - P_q);
+    // // }
+    // theta = sycl::min<real_t>(theta_u, theta_p);
     // for (int n = 0; n < Emax; n++)
     //     Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
+    // // theta = sycl::min<real_t>(theta_pu, theta_pp);
+    // // for (int n = 0; n < Emax; n++)
+    // //     Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
 }
 
 #if DIM_X

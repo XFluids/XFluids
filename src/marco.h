@@ -401,9 +401,12 @@ const real_t _twle = _DF(1.0) / _DF(12.0);
 #ifdef COP
 #define MARCO_VIS_COP_IN_DIFFU1()                                                                                                       \
     Yil_wall[l] = (_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr; /* temperature gradient at wall*/ \
-    Yi_wall[l] = (_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn;
-
-// CorrectTerm += Dim_wall[l] * Yil_wall[l];
+    Yi_wall[l] = (_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn;                                           \
+    CorrectTerm += Dim_wall[l] * Yil_wall[l];
+/**
+ * NOTE: CorrectTerm for diffusion to Average the error from the last species to
+ *  all species according to the mass fraction
+ */
 #else
 #define MARCO_VIS_COP_IN_DIFFU1() Yil_wall[l] = _DF(0.0);
 #endif // COP

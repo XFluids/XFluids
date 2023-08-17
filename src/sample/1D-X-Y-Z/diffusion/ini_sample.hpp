@@ -46,39 +46,33 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     v[id] = _DF(0.0);
     w[id] = _DF(0.0);
 
-    real_t *yi = &(_y[NUM_SPECIES * id]);
-    for (size_t n = 0; n < NUM_SPECIES; n++)
-        yi[n] = thermal.species_ratio_out[n];
-
-#ifdef COP // to be 1d shock without define React
-           // for (size_t i = 0; i < NUM_SPECIES; i++)
-           //     _y[i][id] = thermal.species_ratio_out[i];
-#endif // end COP
-
-        // // Ini yi
-        // real_t yi[NUM_SPECIES];
-        // get_yi(_y, yi, id);
-
-        // // 1D multicomponent insert shock tube
-        // // x
+    // // GUASS-WAVE
+    p[id] = 101325.0;
+    real_t tmt = _DF(0.0);
 #if DIM_X
-    T[id] = x < 0.05 ? 400 : 1200;
-    p[id] = x < 0.05 ? 8000 : 80000;
+    tmt += -(x - 0.025) / 0.0025 * (x - 0.025) / 0.0025;
 #endif // end DIM_X
-    /// // y
 #if DIM_Y
-    T[id] = y < 0.05 ? 400 : 1200;
-    p[id] = y < 0.05 ? 8000 : 80000;
+    tmt += -(y - 0.025) / 0.0025 * (y - 0.025) / 0.0025;
 #endif // end DIM_Y
-    // // z
 #if DIM_Z
-    T[id] = z < 0.05 ? 400 : 1200;
-    p[id] = z < 0.05 ? 8000 : 80000;
-#endif // end DIM_Z
+    tmt += -(z - 0.025) / 0.0025 * (z - 0.025) / 0.0025;
+#endif // end DIM_Y
+    real_t fx = 1 - 0.5 * sycl::exp<real_t>(tmt);
+    real_t *yi = &(_y[NUM_SPECIES * id]), Yif[4] = {0.195, 0.591, 0.0, 0.214}, Yio[4] = {0.142, 0.758, 0.1, 0.0};
 
+    T[id] = 1350.0 + (320.0 - 1350.0) * fx;
+    for (size_t n = 0; n < NUM_SPECIES; n++)
+    {
+#ifdef DiffuReverse
+        yi[NUM_COP - n] = Yio[n] + (Yif[n] - Yio[n]) * fx;
+#else
+        yi[n] = Yio[n] + (Yif[n] - Yio[n]) * fx;
+#endif // end DiffuReverse
+    }
     // Get R of mixture
     real_t R = get_CopR(thermal._Wi, yi);
-    rho[id] = p[id] / R / T[id];
+    rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
     c[id] = sqrt(p[id] / rho[id] * Gamma_m);
 

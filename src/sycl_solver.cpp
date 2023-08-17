@@ -402,8 +402,8 @@ bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, const
 		Ss.mpiTrans->communicator->synchronize();
 		Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
 		Ss.mpiTrans->communicator->synchronize();
-#endif // end USE_MPI
 		error_t = bool(error_out);
+#endif // end USE_MPI
 		if (error_t)
 			Output(q, rank, "PErr_" + Stepstr + RkStep, Time, false);
 #else
@@ -745,7 +745,7 @@ void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t
 	}
 
 	if (rank == 0)
-		std::cout << "Output DIR(X, Y, Z = " << Ss.OutDIRX << ", " << Ss.OutDIRY << ", " << Ss.OutDIRZ << ") has been done at Step = " << interation << std::endl;
+		std::cout << "Output DIR(X, Y, Z = " << (Ss.OutDIRX && DIM_X) << ", " << (Ss.OutDIRY && DIM_Y) << ", " << (Ss.OutDIRZ && DIM_Z) << ") has been done at Step = " << interation << std::endl;
 }
 
 void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
@@ -967,8 +967,9 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	std::string temp_name = "./VTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
+	file_name = Ss.OutputDir + "/" + temp_name;
 #ifdef USE_MPI
-	file_name = Ss.OutputDir + "/" + temp_name + "_rank_" + rankFormat.str();
+	file_name = file_name + "_rank_" + rankFormat.str();
 	std::string headerfile_name = Ss.OutputDir + "/VTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
 #endif
 	file_name += ".vti";
@@ -1589,42 +1590,42 @@ void SYCLSolver::Output_plt(int rank, std::ostringstream &timeFormat, std::ostri
 	std::map<int, std::string> variables_names;
 	int index = 0;
 #if DIM_X
-	variables_names[index] = "X";
+	variables_names[index] = "x[m]";
 	index++;
 #endif // end DIM_X
 #if DIM_Y
-	variables_names[index] = "Y";
+	variables_names[index] = "y[m]";
 	index++;
 #endif // end DIM_Y
 #if DIM_Z
-	variables_names[index] = "Z";
+	variables_names[index] = "z[m]";
 	index++;
 #endif // end DIM_Z
 #if DIM_X
-	variables_names[index] = "u";
+	variables_names[index] = "<i>u</i>[m/s]";
 	index++;
 #endif // end DIM_X
 #if DIM_Y
-	variables_names[index] = "v";
+	variables_names[index] = "<i>v</i>[m/s]";
 	index++;
 #endif // end DIM_Y
 #if DIM_Z
-	variables_names[index] = "w";
+	variables_names[index] = "<i>w</i>[m/s]";
 	index++;
 #endif // end DIM_Z
-	variables_names[index] = "rho";
+	variables_names[index] = "<i><greek>r</greek></i>[kg/m<sup>3</sup>]"; // rho
 	index++;
-	variables_names[index] = "p";
+	variables_names[index] = "<i>p</i>[Pa]"; // pressure
 	index++;
-	variables_names[index] = "T";
+	variables_names[index] = "<i>T</i>[K]"; // temperature
 	index++;
-	variables_names[index] = "c";
+	variables_names[index] = "<i>c</i>[m/s]"; // sound speed
 	index++;
-	variables_names[index] = "gamma";
+	variables_names[index] = "<i><greek>g</greek></i>[-]"; // gamma
 	index++;
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
-		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
+		variables_names[ii] = "<i>Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")</i>[-]";
 #endif // COP
 
 	real_t posx = -Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner);
@@ -1637,10 +1638,14 @@ void SYCLSolver::Output_plt(int rank, std::ostringstream &timeFormat, std::ostri
 	for (int iVar = 0; iVar < Onbvar - 1; iVar++)
 		out << " " << variables_names.at(iVar) << ", ";
 	out << variables_names.at(Onbvar - 1) << "\n";
-	out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "_Rank_" << std::to_string(rank) << "', i= " << VTI.nbX + DIM_X << ", j= " << VTI.nbY + DIM_Y << ", k= " << VTI.nbZ + DIM_Z << "  DATAPACKING=BLOCK, VARLOCATION=(["
+	out << "zone t='" << outputPrefix << "_" << timeFormat.str();
+#ifdef USE_MPI
+	out << "_rank_" << std::to_string(rank);
+#endif // end USE_MPI
+	out << "', i= " << VTI.nbX + DIM_X << ", j= " << VTI.nbY + DIM_Y << ", k= " << VTI.nbZ + DIM_Z << "  DATAPACKING=BLOCK, VARLOCATION=(["
 		<< DIM_X + DIM_Y + DIM_Z + 1 << "-" << Onbvar << "]=CELLCENTERED) SOLUTIONTIME= " << timeFormat.str() << "\n";
-	real_t dimx = DIM_X, dimy = DIM_Y, dimz = DIM_Z;
 
+	real_t dimx = DIM_X, dimy = DIM_Y, dimz = DIM_Z;
 #if DIM_X
 	for (int k = VTI.minZ; k < VTI.maxZ + DIM_Z; k++)
 		for (int j = VTI.minY; j < VTI.maxY + DIM_Y; j++)
@@ -1723,8 +1728,11 @@ void SYCLSolver::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 #endif
 }
 
+// Need DIM_X+DIM_Y+DIM_Z > 1
 void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
-{												  // Init var names
+{
+#if DIM_X + DIM_Y + DIM_Z > 1
+	// Init var names
 	int Onbvar = 6 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
 #ifdef COP
 	Onbvar += NUM_SPECIES;
@@ -1774,8 +1782,11 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
 		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
 #endif // COP
-	int *OutRanks = new int[nranks];
+
+	int *OutRanks = new int[nranks]{0};
+#ifdef USE_MPI
 	GetCPT_OutRanks(OutRanks, rank, nranks);
+#endif // end USE_MPI
 
 	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
 	real_t dx = 0.0, dy = 0.0, dz = 0.0;
@@ -1806,8 +1817,9 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	std::string temp_name = "./CVTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
+	file_name = Ss.OutputDir + "/" + temp_name;
 #ifdef USE_MPI
-	file_name = Ss.OutputDir + "/" + temp_name + "_rank_" + rankFormat.str();
+	file_name = file_name + "_rank_" + rankFormat.str();
 	std::string headerfile_name = Ss.OutputDir + "/CVTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
 #endif
 	file_name += ".vti";
@@ -1862,28 +1874,35 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 				// #else
 				// 			int coords[2];
 				// #endif
-				int coords[DIM_X + DIM_Y + DIM_Z], OnbX = (Ss.OutDIRX) ? VTI.nbX : 0, OnbY = (Ss.OutDIRY) ? VTI.nbY : 0, OnbZ = (Ss.OutDIRZ) ? VTI.nbZ : 0;
+				int coords[3], OnbX = (Ss.OutDIRX) ? VTI.nbX : 0, OnbY = (Ss.OutDIRY) ? VTI.nbY : 0, OnbZ = (Ss.OutDIRZ) ? VTI.nbZ : 0;
 				Ss.mpiTrans->communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
 				outHeader << " <Piece Extent=\"";
 				// pieces in first line of column are different (due to the special
 				// pvti file format with overlapping by 1 cell)
+#if DIM_X
 				if (coords[0] == 0)
 					outHeader << 0 << " " << OnbX << " ";
 				else
 					outHeader << coords[0] * OnbX << " " << coords[0] * OnbX + OnbX << " ";
-
+#else
+				outHeader << 0 << " " << 0;
+#endif // end DIM_X
+#if DIM_Y
 				if (coords[1] == 0)
 					outHeader << 0 << " " << OnbY << " ";
 				else
 					outHeader << coords[1] * OnbY << " " << coords[1] * OnbY + OnbY << " ";
-#if 3 == DIM_X + DIM_Y + DIM_Z
-			if (coords[2] == 0)
+#else
+				outHeader << 0 << " " << 0;
+#endif // end DIM_Y
+#if DIM_Z
+				if (coords[2] == 0)
 					outHeader << 0 << " " << OnbZ << " ";
 			else
 					outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
 #else
 			outHeader << 0 << " " << 0;
-#endif
+#endif // end DIM_Z
 			outHeader << "\" Source=\"";
 			outHeader << pieceFilename << "\"/>" << std::endl;
 		}
@@ -2072,6 +2091,7 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
 	}
+#endif // end DIM_X+DIM_Y+DIM_Z > 1
 }
 
 void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
@@ -2090,23 +2110,48 @@ void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostr
 	real_t posz = -Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner);
 
 	////method 1/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef USE_MPI
 	GetCPT_OutRanks(OutRanks, rank, nranks);
 	if (OutRanks[rank] >= 0)
+#endif // end USE_MPI
 	{
 		real_t *OutPoint = new real_t[Cnbvar]; // OutPoint: each point;
 		std::string outputPrefix = INI_SAMPLE;
 		std::string file_name = Ss.OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".plt";
 		std::ofstream out(file_name);
 		// // defining header for tecplot(plot software)
-		out << "title='" << outputPrefix << "'\n"
-			<< "variables=x, y, z, rho, p, c, u, v, w";
+		out << "title='" << outputPrefix << "'\nvariables=";
+#if DIM_X
+		out << "x[m], ";
+#endif // end DIM_X
+#if DIM_Y
+		out << "y[m], ";
+#endif // end DIM_Y
+#if DIM_Z
+		out << "z[m], ";
+#endif // end DIM_Z
+		out << "<i><greek>r</greek></i>[kg/m<sup>3</sup>], <i>p</i>[Pa], <i>c</i>[m/s]";
+#if DIM_X
+		out << ", <i>u</i>[m/s]";
+#endif // end DIM_X
+#if DIM_Y
+		out << ", <i>v</i>[m/s]";
+#endif // end DIM_Y
+#if DIM_Z
+		out << ", <i>w</i>[m/s]";
+#endif // end DIM_Z
+		out << ", <i><greek>g</greek></i>[-], <i>T</i>[K], <i>e</i>[J], |<i><greek>w</greek></i>|[s<sup>-1</sup>]";
+		out << ", <i><greek>w</greek></i><sub>x</sub>[s<sup>-1</sup>], <i><greek>w</greek></i><sub>y</sub>[s<sup>-1</sup>], <i><greek>w</greek></i><sub>z</sub>[s<sup>-1</sup>]";
 #ifdef COP
-		out << ", gamma, T";
 		for (size_t n = 0; n < NUM_SPECIES; n++)
-			out << ", Y(" << Ss.species_name[n] << ")";
+			out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
 #endif
 		out << "\n";
-		out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "_Rank_" << std::to_string(rank) << "', i= " << CPT.nbX << ", j= " << CPT.nbY << ", k= " << CPT.nbZ << ", SOLUTIONTIME= " << timeFormat.str() << "\n";
+		out << "zone t='" << outputPrefix << "_" << timeFormat.str();
+#ifdef USE_MPI
+		out << "_rank_" << std::to_string(rank);
+#endif // end USE_MPI
+		out << "', i= " << CPT.nbX << ", j= " << CPT.nbY << ", k= " << CPT.nbZ << ", SOLUTIONTIME= " << timeFormat.str() << "\n";
 
 		for (int k = CPT.minZ; k < CPT.maxZ; k++)
 			for (int j = CPT.minY; j < CPT.maxY; j++)
@@ -2134,105 +2179,36 @@ void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostr
 					for (int n = 0; n < NUM_SPECIES; n++)
 						OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];
 #endif
+#if DIM_X
+					out << OutPoint[0] << " "; // x
+#endif										   // end DIM_X
+#if DIM_Y
+					out << OutPoint[1] << " "; // y
+#endif										   // end DIM_Y
+#if DIM_Z
+					out << OutPoint[2] << " "; // z
+#endif										   // end DIM_Z
+											   // rho, p, c
+					out << OutPoint[3] << " " << OutPoint[4] << " " << OutPoint[5] << " ";
+#if DIM_X
+					out << OutPoint[6] << " ";
+#endif // end DIM_X
+#if DIM_Y
+					out << OutPoint[7] << " ";
+#endif // end DIM_Y
+#if DIM_Z
+					out << OutPoint[8] << " "; // u, v, w
+#endif										   // end DIM_Z
 
-					out << OutPoint[0] << " " << OutPoint[1] << " " << OutPoint[2] << " "; // x, y, z
-					out << OutPoint[3] << " " << OutPoint[4] << " " << OutPoint[5] << " "; // rho, p, c
-					out << OutPoint[6] << " " << OutPoint[7] << " " << OutPoint[8] << " "; // u, v, w
 					out << OutPoint[9] << " " << OutPoint[10] << " " << OutPoint[11] << " ";						 // gamma, T, e
 					out << OutPoint[12] << " " << OutPoint[13] << " " << OutPoint[14] << " " << OutPoint[15] << " "; // Vorticity
 #if COP
 					for (int n = 0; n < NUM_SPECIES; n++)
-						out << OutPoint[Cnbvar - NUM_SPECIES] << " "; // Yi
+						out << OutPoint[Cnbvar - NUM_SPECIES + n] << " "; // Yi
 #endif
 					out << "\n";
 				}
 		out.close();
 		free(OutPoint);
 	}
-
-	////method 2/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// CPT.minX = 0;
-	// CPT.minY = 0;
-	// CPT.minZ = 0;
-	// CPT.nbX = Ss.OutDIRX ? VTI.nbX : 1;
-	// CPT.nbY = Ss.OutDIRY ? VTI.nbY : 1;
-	// CPT.nbZ = Ss.OutDIRZ ? VTI.nbZ : 1;
-	// CPT.maxX = CPT.minX + CPT.nbX;
-	// CPT.maxY = CPT.minY + CPT.nbY;
-	// CPT.maxZ = CPT.minZ + CPT.nbZ;
-	//////////////////////////////////////////////////
-	// real_t *OutData = new real_t[CPT.nbX * CPT.nbY * CPT.nbZ * Cnbvar];// OutData: all points to be output of one rank
-	// 	for (int k = VTI.minZ; k < VTI.maxZ; k++)
-	// 		for (int j = VTI.minY; j < VTI.maxY; j++)
-	// 			for (int i = VTI.minX; i < VTI.maxX; i++)
-	// 			{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
-	// 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-	// 				int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
-	// 				OutPoint[0] = (DIM_X) ? (pos_x)*Ss.BlSz.dx + temx : 0.0;
-	// 				OutPoint[1] = (DIM_Y) ? (pos_y)*Ss.BlSz.dy + temy : 0.0;
-	// 				OutPoint[2] = (DIM_Z) ? (pos_z)*Ss.BlSz.dz + temz : 0.0;
-	// 				OutPoint[3] = fluids[0]->h_fstate.rho[id];
-	// 				OutPoint[4] = fluids[0]->h_fstate.p[id];
-	// 				OutPoint[5] = fluids[0]->h_fstate.c[id];
-	// 				OutPoint[6] = fluids[0]->h_fstate.u[id];
-	// 				OutPoint[7] = fluids[0]->h_fstate.v[id];
-	// 				OutPoint[8] = fluids[0]->h_fstate.w[id];
-	// #if COP
-	// 				OutPoint[9] = fluids[0]->h_fstate.gamma[id];
-	// 				OutPoint[10] = fluids[0]->h_fstate.T[id];
-	// 				for (int n = 0; n < NUM_SPECIES; n++)
-	// 					OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];
-	// #endif
-	// 				Out1 = ((!Ss.OutDIRX) && (pos_x == Ss.outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
-	// 				Out2 = ((!Ss.OutDIRY) && (pos_y == Ss.outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
-	// 				Out3 = ((!Ss.OutDIRZ) && (pos_z == Ss.outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
-	// 				int ii = Out1 ? 0 : i - Ss.BlSz.Bwidth_X, jj = Out2 ? 0 : j - Ss.BlSz.Bwidth_Y, kk = Out3 ? 0 : k - Ss.BlSz.Bwidth_Z;
-	// 				int id_out = (CPT.nbX * CPT.nbY * kk + CPT.nbX * jj + ii) * Cnbvar;
-	// 				if (Out1 || Out2 || Out3)
-	// 				{
-	// 					if_outrank = rank;
-	// 					memcpy(&(OutData[id_out]), OutPoint, Cnbvar * sizeof(real_t)); // rank==0
-	// 				}
-	// 			}
-	// 	free(OutPoint);
-
-	// #ifdef USE_MPI
-	// 	Ss.mpiTrans->communicator->allGather(&(if_outrank), 1, mpiUtils::MpiComm::INT, OutRanks, 1, mpiUtils::MpiComm::INT);
-	// 	// std::cout << "OutRanks[rank], recvcounts[rank], displs[rank]= " << OutRanks[rank] << " of rank: " << rank << std::endl; //<< ", " << recvcounts[rank] << ", " << displs[rank]
-	// #endif
-	// 	if (OutRanks[rank] >= 0)
-	// 	{
-	// 		std::string outputPrefix = INI_SAMPLE;
-	// 		std::string file_name = Ss.OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".plt";
-	// 		std::ofstream out(file_name);
-	// 		// // defining header for tecplot(plot software)
-	// 		out << "title='" << outputPrefix << "'\n"
-	// 			<< "variables=x, y, z, rho, p, c, u, v, w";
-	// #ifdef COP
-	// 		out << ", gamma, T";
-	// 		for (size_t n = 0; n < NUM_SPECIES; n++)
-	// 			out << ", Y(" << Ss.species_name[n] << ")";
-	// #endif
-	// 		out << "\n";
-	// 		out << "zone t='Step_" << stepFormat.str() << "_Time_" << timeFormat.str() << "', i= " << CPT.nbX << ", j= " << CPT.nbY << ", k= " << CPT.nbZ << ", SOLUTIONTIME= " << timeFormat.str() << "\n";
-
-	// 		for (int k = CPT.minZ; k < CPT.nbZ; k++)
-	// 			for (int j = CPT.minY; j < CPT.nbY; j++)
-	// 				for (int i = CPT.minX; i < CPT.nbX; i++)
-	// 				{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
-	// 					int id_out = (CPT.nbX * CPT.nbY * k + CPT.nbX * j + i) * Cnbvar;
-
-	// 					out << OutData[id_out + 0] << " " << OutData[id_out + 1] << " " << OutData[id_out + 2] << " "; // x, y, z
-	// 					out << OutData[id_out + 3] << " " << OutData[id_out + 4] << " " << OutData[id_out + 5] << " "; // rho, p, c
-	// 					out << OutData[id_out + 6] << " " << OutData[id_out + 7] << " " << OutData[id_out + 8] << " "; // u, v, w
-	// #if COP
-	// 					out << OutData[id_out + 9] << " " << OutData[id_out + 10] << " "; // gamma,T
-	// 					for (int n = 0; n < NUM_SPECIES; n++)
-	// 						out << OutData[id_out + Cnbvar - NUM_SPECIES] << " "; // Yi
-	// #endif
-	// 					out << "\n";
-	// 				}
-	// 		out.close();
-	// 	}
-	// 	free(OutData);
 }

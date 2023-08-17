@@ -1,12 +1,15 @@
 #include "global_class.h"
 #include "block_sycl.hpp"
 
-FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
+FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
 {
 	MPI_BCs_time = 0.0;
 	MPI_trans_time = 0.0;
 	error_patched_times = 0;
-
+#ifdef USE_MPI
+	rank = Fs.mpiTrans->myRank;
+	nranks = Fs.mpiTrans->nProcs;
+#endif
 	// for (size_t i = 0; i < 3; i++)
 	// 	thetas[i].clear();
 	// for (size_t i = 0; i < NUM_SPECIES - 3; i++)
@@ -15,9 +18,15 @@ FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
 	// 	Interface_points[j].clear();
 	// pTime.clear(), Theta.clear(), Sigma.clear();
 
-	// Counts file
+#ifdef ODESolverTest
+	if (0 == rank)
+		ZeroDimensionalFreelyFlame();
+#endif // end ODESolverTest
+
+		// Counts file
+#ifdef SBICounts
 	outputPrefix = INI_SAMPLE;
-	file_name = Fs.OutputDir + "/AllCounts_" + outputPrefix + ".plt";
+	file_name = Fs.OutputDir + "/AllSBICounts_" + outputPrefix + ".plt";
 	if (Fs.myRank == 0)
 	{
 		std::fstream if_exist;
@@ -27,19 +36,24 @@ FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
 			std::ofstream out(file_name, std::fstream::out);
 			out.setf(std::ios::right);
 			// // defining header for tecplot(plot software)
-			out << "title='Time_Theta_Lambda_Sigma"; //" << outputPrefix << "'\n"
+			out << "title='Time_Theta_Lambda_Sigma_NSigma";
+			//" << outputPrefix << "'\n"
+			// Sigma: Sum(Omega^2), NSigma(Nromalized Sigma): Sum(rho[id]*Omega^2)
 #ifdef COP_CHEME
+			out << "_T";
 			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
 				out << "_Yi" << Fs.species_name[n + 1];
 #endif // end COP_CHEME
-			out << "_T_teXN_teXeN2_teXe_Ymin_Ymax";
+			out << "_Step_teXN_teXeN2_teXe_Ymin_Ymax";
 			// #if DIM_X
 			// 			out << "_Xmin_Xmax_Lambdax";
 			// #endif // end DIM_X
 			// #if DIM_Z
 			// 			out << "_Zmin_Zmax_Lambdaz";
 			// #endif // end DIM_Z
-			out << "'\nvariables=Time[s], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], <greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], ";
+			out << "'\nvariables=Time[s], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], ";
+			out << "<greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], ";
+			out << "<greek>e</greek><sub><greek>r</greek>n</sub>[m<sup>2</sup>/s<sup>2</sup>], ";
 			// Time[s]: Time in tecplot x-Axis variable
 			//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
 			//<greek>L</greek><sub>y</sub>[-]: Lambday in tecplot
@@ -60,16 +74,11 @@ FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q)
 			// #if DIM_Z
 			// 			out << ", Zmin, Zmax, <greek>L</greek><sub>z</sub>[-]";
 			// #endif
-			out << "\nzone t='" << (DIM_X + DIM_Y + DIM_Z) << "D-";
-#ifdef COP_CHEME
-			out << "RSBI";
-#else
-			out << "ISBI";
-#endif // end COP_CHEME
-			out << "', i= 1, j= 1, k= 1 \n";
+			out << "\nzone t='" << outputPrefix << "'\n";
 			out.close();
 		}
 	}
+#endif // end SBICounts
 }
 
 FluidSYCL::~FluidSYCL()
@@ -351,9 +360,9 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_wallFluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	MemMbSize += cellbytes / 1024.0 / 1024.0 * 6.0;
 	// shared memory
-	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
+	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
 	pVar_max = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 1 - 4) * sizeof(real_t), q)); // calculate Tmax, YiH2O2max, YiHO2max
-	sigma = static_cast<real_t *>(sycl::malloc_shared(sizeof(real_t), q));							  // Ref:https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq(34)
+	sigma = static_cast<real_t *>(sycl::malloc_shared(2 * sizeof(real_t), q));						  // Ref:https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq(34)
 	theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));						  // Yi(Xe),Yi(N2),Yi(Xe*N2)// Ref.eq(35)
 	interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
 
@@ -455,7 +464,7 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yil_walz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	d_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 #endif
 	MemMbSize += ((double(bytes) / 1024.0) * (3.0 + 4.0 * double(DIM_X + DIM_Y + DIM_Z))) / 1024.0 * double(NUM_SPECIES);
 #endif // end Diffu
@@ -593,23 +602,47 @@ void FluidSYCL::GetTheta(sycl::queue &q)
 	// 						temp_Zmin.combine(z), temp_Zmax.combine(z); }); });
 	// #endif // end DIM_Z
 
-	q.wait();
+#ifdef COP_CHEME
+	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
+	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
+	auto global_ndrange = range<1>(meshSize);
+	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
+		pVar_max[n] = _DF(0.0);
+	// Tmax
+	real_t *T = d_fstate.T;
+	q.submit([&](sycl::handler &h)
+			 {	auto reduction_max_T = reduction(&(pVar_max[0]), sycl::maximum<>());
+		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
+						   auto id = index.get_global_id();
+						   temp_max_T.combine(T[id]);}); });
+	//	reactants
+	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+	{
+		q.submit([&](sycl::handler &h)
+				 {	auto reduction_max_Yi = reduction(&(pVar_max[n]), sycl::maximum<>());
+			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
+							   auto id = index.get_global_id();
+							   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
+	}
+#endif // end COP_CHEME
 
-	sigma[0] = _DF(0.0);
+	sigma[0] = _DF(0.0), sigma[1] = _DF(0.0);
 	auto Sum_Sigma = sycl::reduction(&(sigma[0]), sycl::plus<>());
+	auto Sum_Sigma1 = sycl::reduction(&(sigma[1]), sycl::plus<>());
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, [=](nd_item<3> index, auto &temp_Sum_Sigma)
+				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, Sum_Sigma1, [=](nd_item<3> index, auto &temp_Sum_Sigma, auto &temp_Sum_Sigma1)
 				   {	
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
 				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-				temp_Sum_Sigma += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz; }); })
-		.wait();
+				temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
+				temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz; }); });
+	q.wait();
 
 #ifdef USE_MPI
-	real_t Xmin, Xmax, Ymin, Ymax, Zmin, Zmax, Sumsigma, thetaYXN, thetaYXeN2, thetaYXe;
+	real_t Xmin, Xmax, Ymin, Ymax, Zmin, Zmax, Sumsigma, Sumsigma1, thetaYXN, thetaYXeN2, thetaYXe;
 	Fs.mpiTrans->communicator->allReduce(&(interface_point[2]), &Ymin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 	Fs.mpiTrans->communicator->allReduce(&(interface_point[3]), &Ymax, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	// Fs.mpiTrans->communicator->allReduce(&(interface_point[0]), &Xmin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
@@ -617,6 +650,7 @@ void FluidSYCL::GetTheta(sycl::queue &q)
 	// Fs.mpiTrans->communicator->allReduce(&(interface_point[4]), &Zmin, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 	// Fs.mpiTrans->communicator->allReduce(&(interface_point[5]), &Zmax, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	Fs.mpiTrans->communicator->allReduce(&(sigma[0]), &Sumsigma, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
+	Fs.mpiTrans->communicator->allReduce(&(sigma[1]), &Sumsigma1, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 	// MPI_Group groupry;
 	// MPI_Group_incl(Fs.mpiTrans->comm_world, bl.mx * bl.mz, root_y, &groupry);
 	// Fs.mpiTrans->GroupallReduce(&(theta[0]), &thetaYXN, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM, groupry);
@@ -624,93 +658,102 @@ void FluidSYCL::GetTheta(sycl::queue &q)
 	Fs.mpiTrans->communicator->allReduce(&(theta[0]), &thetaYXN, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 	Fs.mpiTrans->communicator->allReduce(&(theta[1]), &thetaYXeN2, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 	Fs.mpiTrans->communicator->allReduce(&(theta[2]), &thetaYXe, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
-	Fs.mpiTrans->communicator->synchronize();
-	interface_point[2] = Ymin, interface_point[3] = Ymax;
-	// interface_point[0] = Xmin, interface_point[1] = Xmax;
-	// interface_point[4] = Zmin, interface_point[5] = Zmax;
-	sigma[0] = Sumsigma, theta[0] = thetaYXN, theta[1] = thetaYXeN2, theta[2] = thetaYXe;
-	Fs.mpiTrans->communicator->synchronize();
-#endif // end USE_MPI
-}
 
-real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime)
-{
-	real_t dt_ref = GetDt(q, Fs.BlSz, d_fstate, uvw_c_max, pVar_max);
-	GetTheta(q);
-	bool push = Iter % Fs.POutInterval == 0 ? true : false;
-#ifdef USE_MPI
-	real_t dt_temp;
-	Fs.mpiTrans->communicator->allReduce(&dt_ref, &dt_temp, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-	Fs.mpiTrans->communicator->synchronize();
-	dt_ref = dt_temp;
-#ifdef PositivityPreserving // NOTE: only single fluid is considered
-	real_t lambda_x0, lambda_y0, lambda_z0;
-	Fs.mpiTrans->communicator->synchronize();
-	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[0]), &lambda_x0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[1]), &lambda_y0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[2]), &lambda_z0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-	Fs.mpiTrans->communicator->synchronize();
-	uvw_c_max[0] = lambda_x0, uvw_c_max[1] = lambda_y0, uvw_c_max[2] = lambda_z0;
-#endif
+#ifdef COP_CHEME
 	real_t pVar[NUM_SPECIES - 3];
 	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
 		Fs.mpiTrans->communicator->allReduce(&(pVar_max[n]), &pVar[n], 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 	Fs.mpiTrans->communicator->synchronize();
 	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
 		pVar_max[n] = pVar[n];
+#endif // end COP_CHEME
+
+	// synchronize
 	Fs.mpiTrans->communicator->synchronize();
-	push = push && (Fs.myRank == 0);
+	// give back to each rank
+	interface_point[2] = Ymin, interface_point[3] = Ymax;
+	// interface_point[0] = Xmin, interface_point[1] = Xmax, interface_point[4] = Zmin, interface_point[5] = Zmax;
+	sigma[0] = Sumsigma, sigma[1] = Sumsigma1, theta[0] = thetaYXN, theta[1] = thetaYXeN2, theta[2] = thetaYXe;
 #endif // end USE_MPI
-	// {
-	// 	pTime.push_back(physicalTime);
-	// 	for (size_t i = 0; i < NUM_SPECIES - 3; i++)
-	// 		Var_max[i].push_back(pVar_max[i]);
-	// 	for (size_t i = 0; i < 3; i++)
-	// 		thetas[i].push_back(theta[i]); //[0]XN,[1]Xe*N2
-	// 	for (size_t j = 0; j < 6; j++)
-	// 		Interface_points[j].push_back(interface_point[j]);
-	// 	real_t rho0 = _DF(1.0), temp = Fs.BlSz.Y_inner * Fs.BlSz.my * _DF(1.0); // withou rho0 definition found
-	// 	Sigma.push_back(sigma[0] / rho0);										// Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(34)
-	// 	Theta.push_back(theta[0] / theta[1]);									// Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(35)
-	// }
+}
 
-	if (push) // append once to the counts file avoiding
+real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime)
+{
+	real_t dt_ref = GetDt(q, Fs.BlSz, Fs.d_thermal, d_fstate, uvw_c_max);
+#ifdef USE_MPI
+	real_t lambda_x0, lambda_y0, lambda_z0, miu_max, rho_min;
+	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[0]), &lambda_x0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[1]), &lambda_y0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[2]), &lambda_z0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[3]), &miu_max, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[4]), &rho_min, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+	Fs.mpiTrans->communicator->synchronize();
+	uvw_c_max[0] = lambda_x0, uvw_c_max[1] = lambda_y0, uvw_c_max[2] = lambda_z0, uvw_c_max[3] = miu_max, uvw_c_max[4] = rho_min;
+
+	dt_ref = uvw_c_max[0] * Fs.BlSz._dx + uvw_c_max[1] * Fs.BlSz._dy + uvw_c_max[2] * Fs.BlSz._dz;
+	real_t temp_vis = _DF(14.0 / 3.0) * miu_max / rho_min * uvw_c_max[5];
+	dt_ref = sycl::max<real_t>(dt_ref, temp_vis);
+	dt_ref = Fs.BlSz.CFLnumber / dt_ref;
+#endif // end USE_MPI
+
+#ifdef SBICounts
+	// bool push = Iter % Fs.POutInterval == 0 ? true : false;
+	if (Iter % Fs.POutInterval == 0) // append once to the counts file avoiding
 	{
-		std::ofstream out;
-		out.open(file_name, std::ios::out | std::ios::app);
-		out.setf(std::ios::right);
+		GetTheta(q);
 
-		real_t rho0 = Fs.ini.blast_density_in;
-		out << std::setw(11) << physicalTime << " ";		// physical time
-		out << std::setw(11) << theta[0] / theta[1] * real_t(Fs.BlSz.Y_inner * Fs.BlSz.my) << " "; // Theta(XN/(Xe*N2))
-		real_t offsety = (Fs.Boundarys[2] == 2 && Fs.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-		out << std::setw(7) << (interface_point[3] - interface_point[2]) * offsety / Fs.ini.yb << " "; // Lambday
-		out << std::setw(11) << sigma[0] / rho0 << " ";												   // sigma: sigma_rho*rho_0(with no rho0 definition found)
+		// Output
+		if (Fs.myRank == 0)
+		{
+			std::ofstream out;
+			out.open(file_name, std::ios::out | std::ios::app);
+			out.setf(std::ios::right);
+
+			out << std::setw(11) << physicalTime << " ";											   // physical time
+			/**Theta(XN/(Xe*N2))
+			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(35)
+			 */
+			out << std::setw(11) << theta[0] / theta[1] * real_t(Fs.BlSz.Y_inner * Fs.BlSz.my) << " ";
+			/**Lambday diameter of the bubble
+			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.
+			 */
+			real_t offsety = (Fs.Boundarys[2] == 2 && Fs.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+			out << std::setw(7) << (interface_point[3] - interface_point[2]) * offsety / Fs.ini.yb << " ";
+			/**sigma[0]: sum(Omega^2) sigma[1]: sum(rho*Omega^2)/rho_0
+			 * (no rho0 exact definition found) in Ref
+			 * there three initial rho in the Domain: pre-shcok rho, post-shock rho(used, higher than the pre one), bubble rho
+			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(34)
+			 */
+			real_t rho0 = Fs.ini.blast_density_in;
+			out << std::setw(11) << sigma[0] << " " << std::setw(11) << sigma[1] / rho0 << " ";
 #ifdef COP_CHEME
-		out << std::setw(7) << pVar_max[0] << " "; // Tmax
-		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-			out << std::setw(11) << pVar_max[n] << " ";
-#endif													 // end COP_CHEME
-		out << std::setw(7) << Iter + 1 << " ";			 // Step
-		out << std::setw(11) << theta[0] << " ";		 // [0]XN
-		out << std::setw(11) << theta[1] << " ";		 // [1]Xe*N2
-		out << std::setw(11) << theta[2] << " ";		 // [2]Xe
-		out << std::setw(8) << interface_point[2] << " "; // Ymin
-		out << std::setw(8) << interface_point[3] << " "; // Ymax
-		// #if DIM_X
-		// 		out << std::setw(8) << interface_point[0] << " ";												 // Xmin
-		// 		out << std::setw(8) << interface_point[1] << " ";												 // Xmax
-		// 		out << std::setw(6) << (interface_point[1] - interface_point[0]) * _DF(0.5) / Fs.ini.xa << " ";	 // Lambdax
-		// #endif
-		// #if DIM_Z
-		// 		out << std::setw(8) << interface_point[4] << " "; // Zmin
-		// 		out << std::setw(8) << interface_point[5] << " "; // Zmax
-		// 		real_t offsetz = (Fs.Boundarys[4] == 2 && Fs.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-		// 		out << std::setw(7) << (interface_point[5] - interface_point[4]) * offsetz / Fs.ini.zc << " "; // Lambdaz
-		// #endif
-		out << "\n";
-		out.close();
+			out << std::setw(7) << pVar_max[0] << " "; // Tmax
+			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+				out << std::setw(11) << pVar_max[n] << " ";
+#endif														  // end COP_CHEME
+			out << std::setw(7) << ++SBIOutIter << " ";		  // Step
+			out << std::setw(11) << theta[0] << " ";		  // [0]XN
+			out << std::setw(11) << theta[1] << " ";		  // [1]Xe*N2
+			out << std::setw(11) << theta[2] << " ";		  // [2]Xe
+			out << std::setw(8) << interface_point[2] << " "; // Ymin
+			out << std::setw(8) << interface_point[3] << " "; // Ymax
+			// #if DIM_X
+			// 		out << std::setw(8) << interface_point[0] << " ";												 // Xmin
+			// 		out << std::setw(8) << interface_point[1] << " ";												 // Xmax
+			// 		out << std::setw(6) << (interface_point[1] - interface_point[0]) * _DF(0.5) / Fs.ini.xa << " ";	 // Lambdax
+			// #endif
+			// #if DIM_Z
+			// 		out << std::setw(8) << interface_point[4] << " "; // Zmin
+			// 		out << std::setw(8) << interface_point[5] << " "; // Zmax
+			// 		real_t offsetz = (Fs.Boundarys[4] == 2 && Fs.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+			// 		out << std::setw(7) << (interface_point[5] - interface_point[4]) * offsetz / Fs.ini.zc << " "; // Lambdaz
+			// #endif
+			out << "\n";
+			out.close();
+		}
 	}
+#endif // end SBICounts
+
 	return dt_ref;
 }
 
@@ -899,6 +942,13 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 	}
 
 	return false;
+}
+
+void FluidSYCL::ZeroDimensionalFreelyFlame()
+{
+	std::cout << "0D H2-O2 freely flame testing";
+	ZeroDimensionalFreelyFlameBlock(Fs);
+	std::cout << " done.\n";
 }
 
 void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)

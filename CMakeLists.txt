@@ -22,15 +22,17 @@ endif()
 # // =======================================================
 option(USE_DOUBLE "if double" ON)
 option(OUT_VTI "out plt or vti" ON)
-option(OUT_PLT "out plt or vti" OFF)
+option(OUT_PLT "out vti for at least 2D cases" OFF)
 option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
 option(ERROR_PATCH_YI "if patch yi nan errors while capured" OFF)
 option(ERROR_PATCH_PRI "if patch rho/T/P negative or nan errors while capured" OFF)
+option(POSITIVITY_PRESERVING "if enable positive preserving based Dr.Hu" ON)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
-option(COP_CHEME "if enable chemical reaction" OFF)
+option(COP_CHEME "if enable chemical reaction" ON)
+option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)
 option(Visc "if add physic viscidity flux" ON)
 option(Heat "if add heat transfer flux" ON)
 option(Diffu "if add mass diffusion" ON) # depends on COP=ON
@@ -61,9 +63,12 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # RGIF: allocate eigen matrix in regesters of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]),which makes regesters spills out as Emax increases
 # # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l,Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t)))
 # #### Set INIT_SAMPLE for Initializing settings:
-# # for-debug, guass-wave ## util for 1D, 2D, 3D
-# # 1d-insert-st
-# # 1d-reactive-st ## automatically rewrite COP_CHEME to "ON", path to "reaction_list.dat" depends on value of REACTION_MODEL
+# # # for-debug, guass-wave, sharp-interface ## util for 1D, 2D, 3D
+# #  0d-H2-O2-freely-flame
+# # # 1d samples are forced out with plt
+# # 1d-insert-st ## automatically rewrite COP_CHEME, Visc to "OFF"
+# # 1d-reactive-st ## automatically rewrite COP_CHEME to "ON", Visc to "OFF", path to "reaction_list.dat" depends on REACTION_MODEL by default: H2O_19_reaction
+# # 1d-diffusion 1d-diffusion-reverse ## automatically rewrite Visc, Heat, Diffu to "ON", COP_CHEME to "ON"
 # # 2d-shock-bubble, 2d-under-expanded-jet ## only XY DIR support
 # # 3d-shock-bubble, 3d-under-expanded-jet
 # #### Set COP_SPECIES for location of species_list.dat read in project
@@ -73,12 +78,12 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # 2species             # # CJ_mechanism     # # inert_2species
 # # H2O_18_new_reaction  # # H2O_18_reaction  # # H2O_19_reaction     # # H2O_23_reaction
 # # RSBI-18REA           # # RSBI-19REA
-set(THERMAL "NASA") # NASA or JANAF fit
+set(THERMAL "JANAF") # NASA or JANAF fit
 set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
 set(INIT_SAMPLE "2d-shock-bubble")
-set(COP_SPECIES "insert-RSBI") # name of the folder under ./runtime.dat/
-set(REACTION_MODEL "RSBI-18REA") # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
+set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
+set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
 
 # cmake modules

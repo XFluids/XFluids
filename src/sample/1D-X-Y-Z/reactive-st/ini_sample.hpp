@@ -88,14 +88,6 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
-#if 1 != NumFluid
-    //  for both singlephase && multiphase
-    c[id] = material.Mtrl_ind == 0 ? sqrt(material.Gamma * p[id] / rho[id]) : sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
-    if (material.Mtrl_ind == 0)
-        U[Emax * id + 4] = p[id] / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
-    else
-        U[Emax * id + 4] = (p[id] + material.Gamma * (material.B - material.A)) / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
-#endif // COP
     H[id] = (U[Emax * id + 4] + p[id]) / rho[id];
     // initial U[0]-U[3]
     U[Emax * id + 0] = rho[id];
@@ -132,9 +124,6 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     }
 #endif // end COP
 
-#if NumFluid != 1
-    real_t fraction = material.Rgn_ind > 0.5 ? vof[id] : 1.0 - vof[id];
-#endif
     // give intial value for the interval matrixes
     for (int n = 0; n < Emax; n++)
     {
@@ -143,9 +132,5 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
         FluxFw[Emax * id + n] = _DF(0.0);     // numerical flux F
         FluxGw[Emax * id + n] = _DF(0.0);     // numerical flux G
         FluxHw[Emax * id + n] = _DF(0.0);     // numerical flux H
-#if NumFluid != 1
-        CnsrvU[Emax * id + n] = U[Emax * id + n] * fraction;
-        CnsrvU1[Emax * id + n] = CnsrvU[Emax * id + n];
-#endif // NumFluid
     }
 }
