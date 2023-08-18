@@ -608,6 +608,11 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 			UpdateFluidLU(i, j, k, bl, LU, FluxFw, FluxGw, FluxHw); }); })
 		.wait();
 #endif
+
+	// free
+	{
+		middle::Free(epsilon, q);
+	}
 }
 
 float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], real_t *d_UI)

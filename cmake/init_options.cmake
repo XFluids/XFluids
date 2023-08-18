@@ -72,8 +72,10 @@ IF(ESTIM_NAN)
     add_compile_options(-DERROR_PATCH)
   ENDIF()
 
+  IF(ERROR_PATCH_YII)
   add_compile_options(-DERROR_PATCH_YII)
-
+  ENDIF()
+  
   IF(ERROR_PATCH_YI)
     add_compile_options(-DERROR_PATCH_YI)
   ENDIF()

@@ -18,8 +18,6 @@ ELSE()
     set(APPEND ".ini")
 ENDIF()
 
-set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/${COP_SPECIES}") # Be invalid while option COP_CHEME "ON"
-
 # // =======================================================
 # #### util sample
 # // =======================================================
@@ -36,9 +34,9 @@ ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
     set(DIM_X "ON")
     set(COP_CHEME "OFF")
     set(WENO_ORDER "6") # WENOCU6 has the larggest unrubost at Riemann separation
+    set(COP_SPECIES "Insert-SBI")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/sharp-interface")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-shock-tube${APPEND}")
-    set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/Insert-SBI")
 
 # // =======================================================
 # #### 1d sample
@@ -49,9 +47,9 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
         set(OUT_VTI "OFF")
         set(Visc "OFF")
         set(COP_CHEME "OFF")
+        set(COP_SPECIES "1d-mc-insert-shock-tube")
         set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/insert-st")
         set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-shock-tube${APPEND}")
-        set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/1d-mc-insert-shock-tube")
     ELSEIF()
         message(FATAL_ERROR: "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -77,9 +75,9 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
         set(Heat "ON")
         set(Diffu "ON")
         set(COP_CHEME "OFF")
+        set(COP_SPECIES "1d-mc-diffusion")
         set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/diffusion")
         set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-diffusion${APPEND}")
-        set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/1d-mc-diffusion")
     ELSEIF()
         message(FATAL_ERROR: "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -93,9 +91,9 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
         set(Diffu "ON")
         set(COP_CHEME "OFF")
         add_compile_options(-DDiffuReverse)
+        set(COP_SPECIES "1d-mc-diffusion-reverse")
         set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/diffusion")
         set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-diffusion${APPEND}")
-        set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/1d-mc-diffusion-reverse")
     ELSEIF()
         message(FATAL_ERROR: "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -120,6 +118,16 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/under-expanded-jet")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-expanded-jet${APPEND}")
 
+ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
+    set(DIM_X "ON")
+    set(DIM_Y "ON")
+    set(DIM_Z "OFF")
+    set(POSITIVITY_PRESERVING "OFF")
+    set(REACTION_MODEL "H2O_21_reaction")
+    set(COP_SPECIES "Reaction/H2O_21_reaction")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/mixing-layer")
+    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-2d-mixing-layer${APPEND}")
+
 # // =======================================================
 # #### 3d sample
 # // =======================================================
@@ -143,6 +151,8 @@ ELSE()
     message(FATAL_ERROR "ini sample isn't given.")
 ENDIF()
 
+set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/${COP_SPECIES}") # Be invalid while option COP_CHEME "ON"
+
 IF(COP)
     add_compile_options(-DCOP)
 
@@ -160,6 +170,15 @@ IF(COP)
             add_compile_options(-DCHEME_SOLVER=1)
         ELSE()
         ENDIF()
+
+        IF(${CHEME_SPLITTING} MATCHES "Lie")
+            add_compile_options(-DCHEME_SPLITTING=1)
+        ELSEIF(${CHEME_SPLITTING} MATCHES "Strang")
+            add_compile_options(-DCHEME_SPLITTING=2)
+        ELSE()
+            add_compile_options(-DCHEME_SPLITTING=1) # Lie splitting by default
+        ENDIF()
+        
     ENDIF(COP_CHEME)
 ELSE(COP)
     set(Gamma "1.4")

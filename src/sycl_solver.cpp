@@ -93,6 +93,19 @@ SYCLSolver::~SYCLSolver()
 		fluids[n]->~FluidSYCL();
 }
 
+float SYCLSolver::OutThisTime(std::chrono::high_resolution_clock::time_point start_time)
+{
+#ifdef USE_MPI
+	if (rank == 0)
+#endif // end USE_MPI
+	{
+		std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+		float duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
+		std::cout << ", runtime: " << std::setw(10) << duration << "\n";
+	}
+	return duration;
+}
+
 void SYCLSolver::Evolution(sycl::queue &q)
 {
 	bool TimeLoopOut = false, Stepstop = false;
@@ -121,25 +134,34 @@ void SYCLSolver::Evolution(sycl::queue &q)
 
 			Iteration++;
 			if (rank == 0) // An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
-				std::cout << "N=" << std::setw(7) << Iteration << "     beginning physicalTime: " << std::setw(16) << std::setprecision(8) << physicalTime << "  ";
+				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
 #ifdef USE_MPI
 			Ss.mpiTrans->communicator->synchronize();
 			real_t temp;
 			Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 			dt = temp;
 			if (rank == 0)
-				std::cout << "   mpi communicated";
+				std::cout << "  mpi communicated";
 #endif // end USE_MPI
 			if (physicalTime + dt > target_t)
 				dt = target_t - physicalTime;
 			if (rank == 0)
-				std::cout << " dt: " << dt << " to do. \n";
+				std::cout << " dt: " << dt << " to do";
 			physicalTime += dt;
+
+#if CHEME_SPLITTING == 2
+			error_out = error_out || Reaction(q, 0.5 * dt, physicalTime, Iteration);
+#endif // end CHEME_SPLITTING
+
 			// solved the fluid with 3rd order Runge-Kutta method
-			error_out = SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
-#ifdef COP_CHEME
+			error_out = error_out || SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
+
+#if CHEME_SPLITTING == 2
+			error_out = error_out || Reaction(q, 0.5 * dt, physicalTime, Iteration);
+#elif CHEME_SPLITTING == 1
 			error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
-#endif // end COP_CHEME
+#endif // end CHEME_SPLITTING
+
 #ifdef ESTIM_NAN
 #ifdef USE_MPI
 			int root, maybe_root = (error_out ? rank : 0);
@@ -149,9 +171,11 @@ void SYCLSolver::Evolution(sycl::queue &q)
 			if (error_out)
 				goto flag_ernd;
 #endif
+
 			Stepstop = Ss.nStepmax <= Iteration ? true : false;
 			if (Stepstop)
 				goto flag_end;
+			OutThisTime(start_time);
 		}
 		TimeLoopOut = true;
 	}
@@ -165,8 +189,7 @@ flag_ernd:
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 #endif
-	std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
-	duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
+	OutThisTime(start_time);
 	EndProcess();
 	// Output_Counts();
 	// Output_Ubak(rank, Iteration - 1, physicalTime);
@@ -437,6 +460,7 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 
 bool SYCLSolver::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step)
 {
+#ifdef COP_CHEME
 	BoundaryCondition(q, 0);
 	bool error = UpdateStates(q, 0, Time, Step, "_React");
 	if (error)
@@ -444,6 +468,7 @@ bool SYCLSolver::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step
 	fluids[0]->ODESolver(q, dt);
 
 	return EstimateNAN(q, Time, Step, rank, 4);
+#endif // end COP_CHEME
 }
 
 void SYCLSolver::CopyToUbak(sycl::queue &q)

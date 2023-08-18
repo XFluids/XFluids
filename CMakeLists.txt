@@ -24,7 +24,8 @@ option(USE_DOUBLE "if double" ON)
 option(OUT_VTI "out plt or vti" ON)
 option(OUT_PLT "out vti for at least 2D cases" OFF)
 option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
-option(ERROR_PATCH_YI "if patch yi nan errors while capured" OFF)
+option(ERROR_PATCH_YI "if patch negative yi based Roe-Solver" OFF)
+option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" OFF)
 option(ERROR_PATCH_PRI "if patch rho/T/P negative or nan errors while capured" OFF)
 option(POSITIVITY_PRESERVING "if enable positive preserving based Dr.Hu" ON)
 option(DIM_X "if enable dim_x" ON)
@@ -69,7 +70,7 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # 1d-insert-st ## automatically rewrite COP_CHEME, Visc to "OFF"
 # # 1d-reactive-st ## automatically rewrite COP_CHEME to "ON", Visc to "OFF", path to "reaction_list.dat" depends on REACTION_MODEL by default: H2O_19_reaction
 # # 1d-diffusion 1d-diffusion-reverse ## automatically rewrite Visc, Heat, Diffu to "ON", COP_CHEME to "ON"
-# # 2d-shock-bubble, 2d-under-expanded-jet ## only XY DIR support
+# # 2d-shock-bubble, 2d-under-expanded-jet, 2d-mixing-layer ## only XY DIR support
 # # 3d-shock-bubble, 3d-under-expanded-jet
 # #### Set COP_SPECIES for location of species_list.dat read in project
 # # /runtime.dat/1d-mc-insert-shock-tube  # # /runtime.dat/2d-under-expanded-jet
@@ -81,10 +82,11 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 set(THERMAL "JANAF") # NASA or JANAF fit
 set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "2d-shock-bubble")
+set(INIT_SAMPLE "1d-reactive-st")
 set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
-set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
+set(REACTION_MODEL "H2O_19_reaction") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
+set(CHEME_SPLITTING "Lie") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie": Flow(dt)->React(dt)
 
 # cmake modules
 include(init_options) # add main exec

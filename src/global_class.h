@@ -150,6 +150,7 @@ public:
     void BoundaryCondition(sycl::queue &q, int flag);
     bool UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep);
     real_t ComputeTimeStep(sycl::queue &q);
+    float OutThisTime(std::chrono::high_resolution_clock::time_point start_time);
     bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
     bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);
     void UpdateU(sycl::queue &q, int flag);
