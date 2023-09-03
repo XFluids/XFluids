@@ -1,7 +1,7 @@
 #include "global_class.h"
 #include "marco.h"
 
-SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), nranks(1), physicalTime(0.0)
+LAMNSS::LAMNSS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), nranks(1), physicalTime(0.0)
 {
 #if USE_MPI
 	rank = Ss.mpiTrans->myRank;
@@ -10,7 +10,7 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), ra
 	MPI_trans_time = 0.0, MPI_BCs_time = 0.0;
 	for (int n = 0; n < NumFluid; n++)
 	{
-		fluids[n] = new FluidSYCL(setup);
+		fluids[n] = new Fluid(setup);
 #if 1 != NumFluid
 		fluids[n]->initialize(n);
 #endif
@@ -87,13 +87,13 @@ SYCLSolver::SYCLSolver(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), ra
 	CPT.maxZ = CPT.minZ + CPT.nbZ;
 }
 
-SYCLSolver::~SYCLSolver()
+LAMNSS::~LAMNSS()
 {
 	for (size_t n = 0; n < NumFluid; n++)
-		fluids[n]->~FluidSYCL();
+		fluids[n]->~Fluid();
 }
 
-float SYCLSolver::OutThisTime(std::chrono::high_resolution_clock::time_point start_time)
+float LAMNSS::OutThisTime(std::chrono::high_resolution_clock::time_point start_time)
 {
 #ifdef USE_MPI
 	if (rank == 0)
@@ -106,7 +106,7 @@ float SYCLSolver::OutThisTime(std::chrono::high_resolution_clock::time_point sta
 	return duration;
 }
 
-void SYCLSolver::Evolution(sycl::queue &q)
+void LAMNSS::Evolution(sycl::queue &q)
 {
 	bool TimeLoopOut = false, Stepstop = false;
 	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
@@ -196,7 +196,7 @@ flag_ernd:
 	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
 
-void SYCLSolver::EndProcess()
+void LAMNSS::EndProcess()
 {
 #ifdef USE_MPI
 	for (size_t n = 0; n < NumFluid; n++)
@@ -246,7 +246,7 @@ void SYCLSolver::EndProcess()
 	}
 }
 
-bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t Time)
+bool LAMNSS::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t Time)
 {
 	// estimate if rho is_nan or <0 or is_inf
 	int root, maybe_root, error1 = 0, error2 = 0, error3 = 0;
@@ -282,7 +282,7 @@ bool SYCLSolver::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real
 	return error3;
 }
 
-bool SYCLSolver::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag)
+bool LAMNSS::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag)
 {
 	bool error = false, errors[NumFluid];
 	int root, maybe_root, error_out = 0;
@@ -312,7 +312,7 @@ bool SYCLSolver::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, 
 	return error; // all rank == 1 or 0
 }
 
-bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag)
+bool LAMNSS::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag)
 {
 	// estimate if rho is_nan or <0 or is_inf
 	bool error = false; //, errorp1 = false, errorp2 = false, errorp3 = false;
@@ -367,7 +367,7 @@ bool SYCLSolver::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time
 	return false;
 }
 
-real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
+real_t LAMNSS::ComputeTimeStep(sycl::queue &q)
 {
 	real_t dt_ref = _DF(1.0e-10);
 #if NumFluid == 1
@@ -381,24 +381,24 @@ real_t SYCLSolver::ComputeTimeStep(sycl::queue &q)
 	return dt_ref;
 }
 
-void SYCLSolver::ComputeLU(sycl::queue &q, int flag)
+void LAMNSS::ComputeLU(sycl::queue &q, int flag)
 {
 	fluids[0]->ComputeFluidLU(q, flag);
 }
 
-void SYCLSolver::UpdateU(sycl::queue &q, int flag)
+void LAMNSS::UpdateU(sycl::queue &q, int flag)
 {
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->UpdateFluidURK3(q, flag, dt);
 }
 
-void SYCLSolver::BoundaryCondition(sycl::queue &q, int flag)
+void LAMNSS::BoundaryCondition(sycl::queue &q, int flag)
 {
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->BoundaryCondition(q, Ss.Boundarys, flag);
 }
 
-bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep)
+bool LAMNSS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep)
 {
 
 	bool error[NumFluid] = {false}, error_t = false;
@@ -437,7 +437,7 @@ bool SYCLSolver::UpdateStates(sycl::queue &q, int flag, const real_t Time, const
 	return error_t; // all rank == 1 or 0
 }
 
-void SYCLSolver::AllocateMemory(sycl::queue &q)
+void LAMNSS::AllocateMemory(sycl::queue &q)
 {
 	d_BCs = static_cast<BConditions *>(malloc_device(6 * sizeof(BConditions), q));
 
@@ -450,7 +450,7 @@ void SYCLSolver::AllocateMemory(sycl::queue &q)
 	// levelset->AllocateLSMemory();
 }
 
-void SYCLSolver::InitialCondition(sycl::queue &q)
+void LAMNSS::InitialCondition(sycl::queue &q)
 {
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->InitialU(q);
@@ -458,7 +458,7 @@ void SYCLSolver::InitialCondition(sycl::queue &q)
 	Read_Ubak(q, rank, &(Iteration), &(physicalTime));
 }
 
-bool SYCLSolver::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step)
+bool LAMNSS::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step)
 {
 #ifdef COP_CHEME
 	BoundaryCondition(q, 0);
@@ -471,21 +471,21 @@ bool SYCLSolver::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step
 #endif // end COP_CHEME
 }
 
-void SYCLSolver::CopyToUbak(sycl::queue &q)
+void LAMNSS::CopyToUbak(sycl::queue &q)
 {
 	for (int n = 0; n < NumFluid; n++)
 		q.memcpy(fluids[n]->Ubak, fluids[n]->d_U, Ss.cellbytes);
 	q.wait();
 }
 
-void SYCLSolver::CopyToU(sycl::queue &q)
+void LAMNSS::CopyToU(sycl::queue &q)
 {
 	for (int n = 0; n < NumFluid; n++)
 		q.memcpy(fluids[n]->d_U, fluids[n]->h_U, Ss.cellbytes);
 	q.wait();
 }
 
-void SYCLSolver::Output_Ubak(const int rank, const int Step, const real_t Time)
+void LAMNSS::Output_Ubak(const int rank, const int Step, const real_t Time)
 {
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	file_name = Ss.OutputDir + "/" + outputPrefix + "_ReCal";
@@ -504,7 +504,7 @@ void SYCLSolver::Output_Ubak(const int rank, const int Step, const real_t Time)
 		std::cout << "ReCal-file of Step = " << Step << " has been output." << std::endl;
 }
 
-bool SYCLSolver::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time)
+bool LAMNSS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time)
 {
 	int size = Ss.cellbytes, all_read = 1;
 	std::string file_name, outputPrefix = INI_SAMPLE;
@@ -537,7 +537,7 @@ bool SYCLSolver::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Ti
 	return true; // ReIni U for additonal continued caculate
 }
 
-void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
+void LAMNSS::CopyDataFromDevice(sycl::queue &q, bool error)
 {
 	// copy mem from device to host
 	int bytes = Ss.bytes, cellbytes = Ss.cellbytes;
@@ -631,7 +631,7 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 	q.wait();
 }
 
-// void SYCLSolver::Output_Counts()
+// void LAMNSS::Output_Counts()
 // {
 // 	if (rank == 0)
 // 	{
@@ -726,7 +726,7 @@ void SYCLSolver::CopyDataFromDevice(sycl::queue &q, bool error)
 // 	}
 // }
 
-void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error)
+void LAMNSS::Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error)
 {
 	// Write time in string timeFormat
 	std::ostringstream timeFormat;
@@ -773,7 +773,7 @@ void SYCLSolver::Output(sycl::queue &q, int rank, std::string interation, real_t
 		std::cout << "Output DIR(X, Y, Z = " << (Ss.OutDIRX && DIM_X) << ", " << (Ss.OutDIRY && DIM_Y) << ", " << (Ss.OutDIRZ && DIM_Z) << ") has been done at Step = " << interation << std::endl;
 }
 
-void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
+void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
 {
 	// Init var names
 	int Onbvar = 6 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
@@ -1597,7 +1597,7 @@ void SYCLSolver::Output_vti(int rank, std::ostringstream &timeFormat, std::ostri
 	outFile.close();
 }
 
-void SYCLSolver::Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
+void LAMNSS::Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
 {
 	std::string outputPrefix = INI_SAMPLE;
 	std::string file_name = Ss.OutputDir + "/PLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
@@ -1720,7 +1720,7 @@ void SYCLSolver::Output_plt(int rank, std::ostringstream &timeFormat, std::ostri
 	out.close();
 }
 
-void SYCLSolver::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
+void LAMNSS::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 { // compressible out: output dirs less than caculate dirs
 
 	bool Out1, Out2, Out3;
@@ -1754,7 +1754,7 @@ void SYCLSolver::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 }
 
 // Need DIM_X+DIM_Y+DIM_Z > 1
-void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
+void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
 {
 #if DIM_X + DIM_Y + DIM_Z > 1
 	// Init var names
@@ -2119,7 +2119,7 @@ void SYCLSolver::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostr
 #endif // end DIM_X+DIM_Y+DIM_Z > 1
 }
 
-void SYCLSolver::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
+void LAMNSS::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
 { // compressible out: output dirs less than caculate dirs
 	int Cnbvar = 16;
 #ifdef COP

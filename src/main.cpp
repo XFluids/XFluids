@@ -1,3 +1,30 @@
+//-----------------------------------------------------------------------------------------------------------------------
+//   This file is a main implemrntation of LAMNSS
+//-----------------------------------------------------------------------------------------------------------------------
+//
+//  LAMNSS is a parallelized C++ solver for multi-component reacting flow dynamics.
+//  It allows for large-scale high-resolution sharp-interface modeling  of both incompressible
+//  and compressible multiphase flows.
+//
+// This code is developed by Mr.Li from Prof. S Pan's group at the School of Aeronautics,
+//  Northwestern Polytechincal University.
+//
+//-----------------------------------------------------------------------------------------------------------------------
+//
+// LICENSE
+//
+// LAMNSS - Large-scale Architecture-independent Multi-component reacting Navier-Strokes equation Solver
+// Copyright (C) 2023 JinLing Li and contributors (see AUTHORS list)
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation version 3.
+//
+// CONTACT:
+// ljl66623@mail.nwpu.edu.cn
+//
+//  Xi'an, China, August 20th, 2023
+//----------------------------------------------------------------------------------------------------------------------
 #include "global_class.h"
 
 int main(int argc, char *argv[])
@@ -29,18 +56,18 @@ int main(int argc, char *argv[])
 	sycl::queue q(device);
 	// // Setup Initialize
 	Setup setup(configMap, q);
-	SYCLSolver syclsolver(setup);
+	LAMNSS solver(setup);
 	// // AllocateMemory
-	syclsolver.AllocateMemory(q);
+	solver.AllocateMemory(q);
 	// //  Initialize original states
-	syclsolver.InitialCondition(q);
+	solver.InitialCondition(q);
 	// // boundary conditions
-	syclsolver.BoundaryCondition(q, 0);
+	solver.BoundaryCondition(q, 0);
 	// // update states by U
 	// std::cout << "1";
-	syclsolver.UpdateStates(q, 0, syclsolver.physicalTime, syclsolver.Iteration, "_Ini");
+	solver.UpdateStates(q, 0, solver.physicalTime, solver.Iteration, "_Ini");
 	// // time marching by SYCL device
-	syclsolver.Evolution(q);
+	solver.Evolution(q);
 
 #ifdef USE_MPI
 	MPI_Finalize();

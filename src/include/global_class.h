@@ -79,11 +79,11 @@ typedef struct
 //-------------------------------------------------------------------------------------------------
 //								Pre-claimer
 //-------------------------------------------------------------------------------------------------
-class FluidSYCL; class SYCLSolver;
+class Fluid; class LAMNSS;
 
 #define Interface_line 0.01
 
-class FluidSYCL{
+class Fluid{
     Setup Fs;
     sycl::queue q;
     std::string outputPrefix, file_name;
@@ -102,8 +102,8 @@ public:
     std::string Fluid_name; // name of the fluid
     MaterialProperty material_property;
 
-    FluidSYCL(Setup &setup);
-    ~FluidSYCL();
+    Fluid(Setup &setup);
+    ~Fluid();
     void initialize(int n);
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
@@ -118,7 +118,7 @@ public:
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 };
 
-class SYCLSolver{
+class LAMNSS{
     Setup Ss;
     OutSize VTI, PLT, CPT;
 
@@ -127,10 +127,10 @@ public:
     int Iteration, rank, nranks;
     float duration, MPI_trans_time, MPI_BCs_time;
     BConditions *d_BCs; // boundary condition indicators
-    FluidSYCL *fluids[NumFluid];
+    Fluid *fluids[NumFluid];
 
-    SYCLSolver(Setup &setup);
-    virtual ~SYCLSolver();
+    LAMNSS(Setup &setup);
+    virtual ~LAMNSS();
     void Evolution(sycl::queue &q);
     void EndProcess();
     void AllocateMemory(sycl::queue &q);

@@ -1,7 +1,7 @@
 #include "global_class.h"
 #include "block_sycl.hpp"
 
-FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
+Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
 {
 	MPI_BCs_time = 0.0;
 	MPI_trans_time = 0.0;
@@ -81,7 +81,7 @@ FluidSYCL::FluidSYCL(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), 
 #endif // end SBICounts
 }
 
-FluidSYCL::~FluidSYCL()
+Fluid::~Fluid()
 {
 	// 设备内存
 	sycl::free(d_U, q);
@@ -265,7 +265,7 @@ FluidSYCL::~FluidSYCL()
 	// Sigma.clear(), std::vector<real_t>().swap(Sigma);
 }
 
-void FluidSYCL::initialize(int n)
+void Fluid::initialize(int n)
 {
 	Fluid_name = Fs.fname[n]; // give a name to the fluid
 	// type of material, 0: gamma gas, 1: water, 2: stiff gas
@@ -281,7 +281,7 @@ void FluidSYCL::initialize(int n)
 	material_property.lambda_0 = Fs.material_props[n][6];
 }
 
-void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
+void Fluid::AllocateFluidMemory(sycl::queue &q)
 {
 	int bytes = Fs.bytes;
 	int cellbytes = Fs.cellbytes;
@@ -486,13 +486,13 @@ void FluidSYCL::AllocateFluidMemory(sycl::queue &q)
 	}
 }
 
-void FluidSYCL::InitialU(sycl::queue &q)
+void Fluid::InitialU(sycl::queue &q)
 {
 	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
 	GetCellCenterDerivative(q, Fs.BlSz, d_fstate, Fs.Boundarys);
 }
 
-void FluidSYCL::GetTheta(sycl::queue &q)
+void Fluid::GetTheta(sycl::queue &q)
 {
 	Block bl = Fs.BlSz;
 	real_t *yi = d_fstate.y;
@@ -677,7 +677,7 @@ void FluidSYCL::GetTheta(sycl::queue &q)
 #endif // end USE_MPI
 }
 
-real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime)
+real_t Fluid::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime)
 {
 	real_t dt_ref = GetDt(q, Fs.BlSz, Fs.d_thermal, d_fstate, uvw_c_max);
 #ifdef USE_MPI
@@ -757,7 +757,7 @@ real_t FluidSYCL::GetFluidDt(sycl::queue &q, const int Iter, const real_t physic
 	return dt_ref;
 }
 
-void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
+void Fluid::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 {
 	std::chrono::high_resolution_clock::time_point start_time_x = std::chrono::high_resolution_clock::now();
 
@@ -770,7 +770,7 @@ void FluidSYCL::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 	MPI_BCs_time += std::chrono::duration<float, std::milli>(end_time_x - start_time_x).count() * 1.0e-3f;
 }
 
-bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
+bool Fluid::UpdateFluidStates(sycl::queue &q, int flag)
 {
 	real_t *UI = NULL;
 	if (flag == 0)
@@ -784,12 +784,12 @@ bool FluidSYCL::UpdateFluidStates(sycl::queue &q, int flag)
 	return false;
 }
 
-void FluidSYCL::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
+void Fluid::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
 {
 	UpdateURK3rd(q, Fs.BlSz, d_U, d_U1, d_LU, dt, flag);
 }
 
-void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
+void Fluid::ComputeFluidLU(sycl::queue &q, int flag)
 {
 	// // SYCL kernel cannot call through a function pointer
 	// void (*RoeAverageLeftX[Emax])(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
@@ -872,7 +872,7 @@ void FluidSYCL::ComputeFluidLU(sycl::queue &q, int flag)
 			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z, d_eigen_l, d_eigen_r, uvw_c_max);
 }
 
-bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
+bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 {
 	Block bl = Fs.BlSz;
 	real_t *UI, *LU = d_LU;
@@ -944,14 +944,14 @@ bool FluidSYCL::EstimateFluidNAN(sycl::queue &q, int flag)
 	return false;
 }
 
-void FluidSYCL::ZeroDimensionalFreelyFlame()
+void Fluid::ZeroDimensionalFreelyFlame()
 {
 	std::cout << "0D H2-O2 freely flame testing";
 	ZeroDimensionalFreelyFlameBlock(Fs);
 	std::cout << " done.\n";
 }
 
-void FluidSYCL::ODESolver(sycl::queue &q, real_t Time)
+void Fluid::ODESolver(sycl::queue &q, real_t Time)
 {
 #ifdef COP_CHEME
 #if 0 == CHEME_SOLVER

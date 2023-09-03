@@ -90,4 +90,11 @@ set(CHEME_SPLITTING "Lie") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie"
 
 # cmake modules
 include(init_options) # add main exec
+
+# MPI libs
+IF(USE_MPI)
+include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR})
+add_subdirectory(mpiUtils)
+ENDIF()
+# sources
 add_subdirectory(src)
