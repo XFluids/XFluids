@@ -427,7 +427,7 @@ const real_t _twle = _DF(1.0) / _DF(12.0);
 #define MARCO_Err_VisFw() ;
 #endif
 
-#ifdef Diffu
+#ifdef Visc_Diffu
 #define MARCO_VIS_Diffu()                                                                                                                           \
     real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) * _sxtn, CorrectTerm = _DF(0.0);                              \
     real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];                                                \
@@ -448,20 +448,20 @@ const real_t _twle = _DF(1.0) / _DF(12.0);
         int p_temp = p - 5;                                                                                                                         \
         F_wall_v[p] = rho_wall * Dim_wall[p_temp] * Yil_wall[p_temp] - Yi_wall[p_temp] * CorrectTerm; /*CorrectTerm = 0.0 while not added in loop*/ \
     }
-#else // Diffu
+#else // Visc_Diffu
 #define MARCO_VIS_Diffu()                                \
     for (int p = 5; p < Emax; p++) /* Avoid NAN error */ \
         F_wall_v[p] = 0.0;
-#endif // Diffu
+#endif // Visc_Diffu
 
-#ifdef Heat
+#ifdef Visc_Heat
 #define MARCO_VIS_HEAT() /* thermal conductivity at wall*/                                                                                                   \
     real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) * _sxtn; \
     kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) * _dl * _twfr; /* temperature gradient at wall*/                                          \
     F_wall_v[4] += kk;
-#else // else Heat
+#else // else Visc_Heat
 #define MARCO_VIS_HEAT() ;
-#endif // end Heat
+#endif // end Visc_Heat
 
 /**
  * get viscous flux
@@ -507,7 +507,7 @@ const real_t _twle = _DF(1.0) / _DF(12.0);
 // #define MARCO_VIS_COP_IN_DIFFU2() ;
 // #endif
 
-// #ifdef Heat
+// #ifdef Visc_Heat
 // const bool _Heat = true;
 
 // #define MARCO_VIS_HEAT()                                                                                                                                                                       \
@@ -528,7 +528,7 @@ const real_t _twle = _DF(1.0) / _DF(12.0);
 // #define MARCO_VIS_HEAT_IN_DIFFU() ;
 // #endif
 
-// #ifdef Diffu
+// #ifdef Visc_Diffu
 // const bool _Diffu = true;
 
 // #define MARCO_VIS_Diffu()                                                                                                                         \

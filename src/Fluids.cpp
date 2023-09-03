@@ -131,13 +131,13 @@ Fluid::~Fluid()
 
 #ifdef Visc // free viscous Vars
 	sycl::free(d_fstate.viscosity_aver, q);
-#ifdef Heat
+#ifdef Visc_Heat
 	sycl::free(d_fstate.thermal_conduct_aver, q);
-#endif // end Heat
-#ifdef Diffu
+#endif // end Visc_Heat
+#ifdef Visc_Diffu
 	sycl::free(d_fstate.hi, q);
 	sycl::free(d_fstate.Dkm_aver, q);
-#endif // end Diffu
+#endif // end Visc_Diffu
 #endif // end Visc
 
 	sycl::free(d_FluxF, q);
@@ -212,7 +212,7 @@ Fluid::~Fluid()
 	sycl::free(h_fstate.visFwz, q);
 	sycl::free(d_fstate.visFwz, q);
 #endif // end DIM_Z
-#ifdef Diffu
+#ifdef Visc_Diffu
 	sycl::free(h_fstate.Ertemp1, q);
 	sycl::free(h_fstate.Ertemp2, q);
 	sycl::free(h_fstate.Dkm_aver, q);
@@ -250,7 +250,7 @@ Fluid::~Fluid()
 	sycl::free(d_fstate.Yil_wallz, q);
 #endif
 
-#endif // end Diffu
+#endif // end Visc_Diffu
 #endif // end Visc
 #endif // ESTIM_NAN
 
@@ -341,15 +341,15 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 
 #ifdef Visc // allocate mem viscous Vars
 	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-#ifdef Heat
+#ifdef Visc_Heat
 	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0;
-#endif // end Heat
-#ifdef Diffu
+#endif // end Visc_Heat
+#ifdef Visc_Diffu
 	d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	MemMbSize += NUM_SPECIES * bytes / 1024.0 / 1024.0 * 2.0;
-#endif // end Diffu
+#endif // end Visc_Diffu
 #endif // end Visc
 
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -429,7 +429,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.visFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 #endif // end DIM_Z
 	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double(DIM_X + DIM_Y + DIM_Z);
-#ifdef Diffu
+#ifdef Visc_Diffu
 	h_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
 	h_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
 	h_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
@@ -467,7 +467,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 #endif
 	MemMbSize += ((double(bytes) / 1024.0) * (3.0 + 4.0 * double(DIM_X + DIM_Y + DIM_Z))) / 1024.0 * double(NUM_SPECIES);
-#endif // end Diffu
+#endif // end Visc_Diffu
 #endif // end Visc
 #endif // ESTIM_NAN
 
@@ -946,9 +946,11 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 
 void Fluid::ZeroDimensionalFreelyFlame()
 {
+#ifdef ODESolverTest
 	std::cout << "0D H2-O2 freely flame testing";
 	ZeroDimensionalFreelyFlameBlock(Fs);
 	std::cout << " done.\n";
+#endif // end ODESolverTest
 }
 
 void Fluid::ODESolver(sycl::queue &q, real_t Time)

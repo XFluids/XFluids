@@ -112,12 +112,13 @@ ENDIF(DIM_Z)
 
 IF(Visc)
   add_compile_options(-DVisc)
+
+  IF(Visc_Heat)
+    add_compile_options(-DVisc_Heat)
+ENDIF(Visc_Heat)
+
+IF(Visc_Diffu)
+    add_compile_options(-DVisc_Diffu)
+ENDIF(Visc_Diffu)
 ENDIF(Visc)
 
-IF(Heat)
-  add_compile_options(-DHeat)
-ENDIF(Heat)
-
-IF(Diffu)
-  add_compile_options(-DDiffu)
-ENDIF(Diffu)

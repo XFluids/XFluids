@@ -469,6 +469,7 @@ bool LAMNSS::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step)
 
 	return EstimateNAN(q, Time, Step, rank, 4);
 #endif // end COP_CHEME
+	return false;
 }
 
 void LAMNSS::CopyToUbak(sycl::queue &q)
@@ -530,9 +531,12 @@ bool LAMNSS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time)
 	fin.read((char *)Step, sizeof(int));
 	fin.read((char *)Time, sizeof(real_t));
 	for (size_t n = 0; n < NumFluid; n++)
-		fin.read((char *)(fluids[n]->h_U), size);
+		fin.read((char *)(fluids[n]->Ubak), size);
 	fin.close();
-	CopyToU(q);
+
+	for (int n = 0; n < NumFluid; n++)
+		q.memcpy(fluids[n]->d_U, fluids[n]->Ubak, Ss.cellbytes);
+	q.wait();
 
 	return true; // ReIni U for additonal continued caculate
 }
@@ -573,7 +577,7 @@ void LAMNSS::CopyDataFromDevice(sycl::queue &q, bool error)
 #if DIM_Z
 			q.memcpy(fluids[n]->h_fstate.visFwz, fluids[n]->d_fstate.visFwz, NUM_SPECIES * bytes);
 #endif
-#ifdef Diffu
+#ifdef Visc_Diffu
 			q.memcpy(fluids[n]->h_fstate.Ertemp1, fluids[n]->d_fstate.Ertemp1, NUM_SPECIES * bytes);
 			q.memcpy(fluids[n]->h_fstate.Ertemp2, fluids[n]->d_fstate.Ertemp2, NUM_SPECIES * bytes);
 			q.memcpy(fluids[n]->h_fstate.Dkm_aver, fluids[n]->d_fstate.Dkm_aver, NUM_SPECIES * bytes);
@@ -595,7 +599,7 @@ void LAMNSS::CopyDataFromDevice(sycl::queue &q, bool error)
 			q.memcpy(fluids[n]->h_fstate.Yi_wallz, fluids[n]->d_fstate.Yi_wallz, NUM_SPECIES * bytes);
 			q.memcpy(fluids[n]->h_fstate.Yil_wallz, fluids[n]->d_fstate.Yil_wallz, NUM_SPECIES * bytes);
 #endif
-#endif // end Diffu
+#endif // end Visc_Diffu
 #endif // end Visc
 
 			q.memcpy(fluids[n]->h_U, fluids[n]->d_U, cellbytes);
@@ -820,7 +824,7 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 			index++;
 #endif // DIM_Z
 		}
-#ifdef Diffu
+#ifdef Visc_Diffu
 		Onbvar += (NUM_SPECIES * 3);
 		Onbvar += (NUM_SPECIES * 3) * (DIM_X + DIM_Y + DIM_Z);
 		Onbvar += (NUM_SPECIES) * (DIM_X + DIM_Y + DIM_Z);
@@ -1219,7 +1223,7 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 #endif
 					}
 
-#ifdef Diffu
+#ifdef Visc_Diffu
 					for (size_t mm = 0; mm < NUM_SPECIES; mm++)
 					{
 			MARCO_OUTLOOP

@@ -2,152 +2,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "sa-debug",
+            "name": "util-debug",
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
+            "program": "${workspaceFolder}/build/src/LAMNSS",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Disable target async",
-                    "text": "set target-async off",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "guass-wave",
-            "type": "cppdbg",
-            "request": "launch",
-            "preLaunchTask": "",
-            "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [
-                "${workspaceFolder}/settings/sa-guss-wave.ini",
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Disable target async",
-                    "text": "set target-async off",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "insert-st",
-            "type": "cppdbg",
-            "request": "launch",
-            "preLaunchTask": "",
-            "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Disable target async",
-                    "text": "set target-async off",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "re-st",
-            "type": "cppdbg",
-            "request": "launch",
-            "preLaunchTask": "",
-            "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Disable target async",
-                    "text": "set target-async off",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "2d-rie",
-            "type": "cppdbg",
-            "request": "launch",
-            "preLaunchTask": "",
-            "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Disable target async",
-                    "text": "set target-async off",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "under-expanded-jet",
-            "type": "cppdbg",
-            "request": "launch",
-            "preLaunchTask": "",
-            "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
@@ -171,7 +34,7 @@
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
+            "program": "${workspaceFolder}/build/src/LAMNSS",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -184,7 +47,7 @@
             "name": "attach-mpi-debug",
             "type": "cppdbg",
             "request": "attach",
-            "program": "${workspaceFolder}/build/src/EulerSYCL",
+            "program": "${workspaceFolder}/build/src/LAMNSS",
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb",
             "setupCommands": [

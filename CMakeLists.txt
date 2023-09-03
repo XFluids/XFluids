@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-PROJECT(EulerSYCL LANGUAGES CXX)
+PROJECT(LAMNSS LANGUAGES CXX)
 
 # #default local cmake macro repository
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -35,8 +35,8 @@ option(COP "if enable compoent, based on Multi=OFF" ON)
 option(COP_CHEME "if enable chemical reaction" ON)
 option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)
 option(Visc "if add physic viscidity flux" ON)
-option(Heat "if add heat transfer flux" ON)
-option(Diffu "if add mass diffusion" ON) # depends on COP=ON
+option(Visc_Heat "if add heat transfer flux" ON)
+option(Visc_Diffu "if add mass diffusion" ON) # depends on COP=ON
 
 # // =======================================================
 # #### mpi settings
@@ -69,7 +69,7 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # # 1d samples are forced out with plt
 # # 1d-insert-st ## automatically rewrite COP_CHEME, Visc to "OFF"
 # # 1d-reactive-st ## automatically rewrite COP_CHEME to "ON", Visc to "OFF", path to "reaction_list.dat" depends on REACTION_MODEL by default: H2O_19_reaction
-# # 1d-diffusion 1d-diffusion-reverse ## automatically rewrite Visc, Heat, Diffu to "ON", COP_CHEME to "ON"
+# # 1d-diffusion 1d-diffusion-reverse ## automatically rewrite Visc, Visc_Heat, Visc_Diffu to "ON", COP_CHEME to "ON"
 # # 2d-shock-bubble, 2d-under-expanded-jet, 2d-mixing-layer ## only XY DIR support
 # # 3d-shock-bubble, 3d-under-expanded-jet
 # #### Set COP_SPECIES for location of species_list.dat read in project
@@ -95,6 +95,5 @@ include(init_options) # add main exec
 IF(USE_MPI)
 include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(mpiUtils)
-ENDIF()
-# sources
+ENDIF() # sources
 add_subdirectory(src)
