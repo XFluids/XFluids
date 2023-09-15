@@ -44,7 +44,7 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
 #if DIM_X
 extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
-										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
+										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= X_inner + Bwidth_X)
@@ -200,7 +200,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 #if DIM_Y
 extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
-										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
+										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= X_inner + Bwidth_X)
@@ -267,7 +267,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 #if DIM_Z
 extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
-										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H)
+										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= X_inner + Bwidth_X)

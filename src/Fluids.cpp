@@ -361,6 +361,9 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	MemMbSize += cellbytes / 1024.0 / 1024.0 * 6.0;
 	// shared memory
 	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
+	eigen_block_x = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
+	eigen_block_y = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
+	eigen_block_z = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
 	pVar_max = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 1 - 4) * sizeof(real_t), q)); // calculate Tmax, YiH2O2max, YiHO2max
 	sigma = static_cast<real_t *>(sycl::malloc_shared(2 * sizeof(real_t), q));						  // Ref:https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq(34)
 	theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));						  // Yi(Xe),Yi(N2),Yi(Xe*N2)// Ref.eq(35)
@@ -865,11 +868,13 @@ void Fluid::ComputeFluidLU(sycl::queue &q, int flag)
 	// #endif // end COP
 
 	if (flag == 0)
-		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z, d_eigen_l, d_eigen_r, uvw_c_max);
+		GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
+			  d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z);
 	else
-		GetLU(q, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z, d_eigen_l, d_eigen_r, uvw_c_max);
+		GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
+			  d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z);
 }
 
 bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)

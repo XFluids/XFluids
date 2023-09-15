@@ -1,10 +1,10 @@
 #include "Utils_block.hpp"
 #include "Visc_block.hpp"
 
-void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t *UI, real_t *LU,
+void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal thermal, real_t *UI, real_t *LU,
 		   real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
 		   real_t const Gamma, int const Mtrl_ind, FlowData &fdata, real_t *eigen_local_x, real_t *eigen_local_y, real_t *eigen_local_z,
-		   real_t *eigen_l, real_t *eigen_r, real_t *uvw_c_max)
+		   real_t *eigen_l, real_t *eigen_r, real_t *uvw_c_max, real_t *eigen_block_x, real_t *eigen_block_y, real_t *eigen_block_z)
 {
 	real_t *rho = fdata.rho;
 	real_t *p = fdata.p;
@@ -28,24 +28,47 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 	// proceed at x directiom and get F-flux terms at node wall
 	auto global_ndrange_x = range<3>(bl.X_inner + local_ndrange[0], bl.Y_inner, bl.Z_inner);
 
-	event ex = q.submit([&](sycl::handler &h)
-						{ h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
-										 {
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
     		int i = index.get_global_id(0);
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
-			GetLocalEigen(i, j, k, bl, 1.0, 0.0, 0.0, eigen_local_x, u, v, w, c); }); });
+			GetLocalEigen(i, j, k, bl, 1.0, 0.0, 0.0, eigen_local_x, u, v, w, c); }); })
+		.wait();
+
+	for (size_t nn = 0; nn < Emax; nn++)
+	{
+		q.submit([&](sycl::handler &h)
+				 {	auto reduction_max_eigen = reduction(&(eigen_block_x[nn]), sycl::maximum<>());
+			h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen)
+						   {
+				int i = index.get_global_id(0);
+				int j = index.get_global_id(1);
+				int k = index.get_global_id(2);
+				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+				temp_max_eigen.combine(sycl::fabs<real_t>(eigen_local_x[Emax*id+nn])); }); });
+	}
+	q.wait();
+
+#ifdef USE_MPI
+	for (size_t nn = 0; nn < Emax; nn++)
+	{
+		real_t mpi_eigen_block_x = _DF(0.0);
+		setup.mpiTrans->communicator->synchronize();
+		setup.mpiTrans->communicator->allReduce(&(eigen_block_x[nn]), &(mpi_eigen_block_x), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+		setup.mpiTrans->communicator->synchronize();
+		eigen_block_x[nn] = mpi_eigen_block_x;
+	}
+#endif // end USE_MPI
 
 	q.submit([&](sycl::handler &h)
-			 {
-		h.depends_on(ex);
-		h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
-					   {
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
     		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x, fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H);
-			 }); }); // real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
+			ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x, fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x); }); }); // real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 
 #ifdef DEBUG
 	// std::cout << "  sleep after ReconstructFluxX\n";
@@ -61,24 +84,48 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 	// proceed at y directiom and get G-flux terms at node wall
 	auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + local_ndrange[1], bl.Z_inner);
 
-	event ey = q.submit([&](sycl::handler &h)
-						{ h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
-										 {
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(
+				   sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
+				   {
     		int i = index.get_global_id(0);
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
-			GetLocalEigen(i, j, k, bl, 0.0, 1.0, 0.0, eigen_local_y, u, v, w, c); }); });
+			GetLocalEigen(i, j, k, bl, 0.0, 1.0, 0.0, eigen_local_y, u, v, w, c); }); })
+		.wait();
+
+	for (size_t nn = 0; nn < Emax; nn++)
+	{
+		q.submit([&](sycl::handler &h)
+				 {	auto reduction_max_eigen = reduction(&(eigen_block_y[nn]), sycl::maximum<>());
+			h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen)
+						   {
+				int i = index.get_global_id(0);
+				int j = index.get_global_id(1);
+				int k = index.get_global_id(2);
+				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+				temp_max_eigen.combine(sycl::fabs<real_t>(eigen_local_y[Emax*id+nn])); }); });
+	}
+	q.wait();
+
+#ifdef USE_MPI
+	for (size_t nn = 0; nn < Emax; nn++)
+	{
+		real_t mpi_eigen_block_y = _DF(0.0);
+		setup.mpiTrans->communicator->synchronize();
+		setup.mpiTrans->communicator->allReduce(&(eigen_block_y[nn]), &(mpi_eigen_block_y), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+		setup.mpiTrans->communicator->synchronize();
+		eigen_block_y[nn] = mpi_eigen_block_y;
+	}
+#endif // end USE_MPI
 
 	q.submit([&](sycl::handler &h)
-			 {
-		h.depends_on(ey);
-		h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
-					   {
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y, fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H); 
-			}); });
+			ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y, fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y); }); });
 	//.wait()
 #ifdef DEBUG
 	// std::cout << "  sleep after ReconstructFluxY\n";
@@ -95,24 +142,47 @@ void GetLU(sycl::queue &q, Block bl, BConditions BCs[6], Thermal thermal, real_t
 	   // proceed at y directiom and get G-flux terms at node wall
 	auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + local_ndrange[2]);
 
-	event ez = q.submit([&](sycl::handler &h)
-						{ h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
-										 {
+	q.submit([&](sycl::handler &h)
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
     		int i = index.get_global_id(0);
     		int j = index.get_global_id(1);
 			int k = index.get_global_id(2);
-			GetLocalEigen(i, j, k, bl, 0.0, 0.0, 1.0, eigen_local_z, u, v, w, c); }); });
+			GetLocalEigen(i, j, k, bl, 0.0, 0.0, 1.0, eigen_local_z, u, v, w, c); }); })
+		.wait();
+
+	for (size_t nn = 0; nn < Emax; nn++)
+	{
+		q.submit([&](sycl::handler &h)
+				 {	auto reduction_max_eigen = reduction(&(eigen_block_z[nn]), sycl::maximum<>());
+			h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen)
+						   {
+				int i = index.get_global_id(0);
+				int j = index.get_global_id(1);
+				int k = index.get_global_id(2);
+				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+				temp_max_eigen.combine(sycl::fabs<real_t>(eigen_local_z[Emax*id+nn])); }); });
+	}
+	q.wait();
+
+#ifdef USE_MPI
+	for (size_t nn = 0; nn < Emax; nn++)
+	{
+		real_t mpi_eigen_block_z = _DF(0.0);
+		setup.mpiTrans->communicator->synchronize();
+		setup.mpiTrans->communicator->allReduce(&(eigen_block_z[nn]), &(mpi_eigen_block_z), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+		setup.mpiTrans->communicator->synchronize();
+		eigen_block_z[nn] = mpi_eigen_block_z;
+	}
+#endif // end USE_MPI
 
 	q.submit([&](sycl::handler &h)
-			 {
-		h.depends_on(ez);
-		h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
-					   {
+			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
+							  {
     		int i = index.get_global_id(0) + bl.Bwidth_X;
 			int j = index.get_global_id(1) + bl.Bwidth_Y;
 			int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, fdata.b1z, fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H); 
-			}); }); //.wait()
+			ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, fdata.b1z, fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z); }); }); //.wait()
 #ifdef DEBUG
 	// std::cout << "  sleep after ReconstructFluxZ\n";
 	// sleep(5);
