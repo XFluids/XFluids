@@ -25,7 +25,7 @@ option(OUT_VTI "out plt or vti" ON)
 option(OUT_PLT "out vti for at least 2D cases" OFF)
 option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
 option(ERROR_PATCH_YI "if patch negative yi based Roe-Solver" OFF)
-option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" OFF)
+option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" ON)
 option(ERROR_PATCH_PRI "if patch rho/T/P negative or nan errors while capured" OFF)
 option(POSITIVITY_PRESERVING "if enable positive preserving based Dr.Hu" ON)
 option(DIM_X "if enable dim_x" ON)
@@ -81,12 +81,13 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # RSBI-18REA           # # RSBI-19REA
 set(THERMAL "JANAF") # NASA or JANAF fit
 set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
+set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "1d-reactive-st")
+set(INIT_SAMPLE "1d-insert-st")
 set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
-set(REACTION_MODEL "H2O_19_reaction") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
+set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
-set(CHEME_SPLITTING "Lie") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie": Flow(dt)->React(dt)
+set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie": Flow(dt)->React(dt)
 
 # cmake modules
 include(init_options) # add main exec

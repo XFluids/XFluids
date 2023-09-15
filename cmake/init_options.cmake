@@ -92,6 +92,15 @@ ELSEIF(THERMAL STREQUAL "JANAF")
   add_compile_options(-DThermo=0)
 ENDIF()
 
+# ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
+IF(ARTIFICIAL_VISC_TYPE STREQUAL "ROE")
+    add_compile_options(-DArtificial_type=1)
+  ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "LLF")
+    add_compile_options(-DArtificial_type=2)
+  ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "GLF")
+    add_compile_options(-DArtificial_type=3)
+ENDIF()
+
 IF(DIM_X)
   add_compile_options(-DDIM_X=1)
 ELSE(DIM_X)
