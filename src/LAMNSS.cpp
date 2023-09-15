@@ -123,6 +123,7 @@ void LAMNSS::Evolution(sycl::queue &q)
 			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput || TimeLoopOut)
 			{
 				Output(q, rank, std::to_string(Iteration), physicalTime);
+				Output_Ubak(rank, Iteration, physicalTime, true);
 				OutNum++;
 				TimeLoopOut = false;
 			}
@@ -486,10 +487,13 @@ void LAMNSS::CopyToU(sycl::queue &q)
 	q.wait();
 }
 
-void LAMNSS::Output_Ubak(const int rank, const int Step, const real_t Time)
+void LAMNSS::Output_Ubak(const int rank, const int Step, const real_t Time, bool solution)
 {
 	std::string file_name, outputPrefix = INI_SAMPLE;
-	file_name = Ss.OutputDir + "/" + outputPrefix + "_ReCal";
+	if (solution)
+		file_name = Ss.OutputDir + "/cal/" + outputPrefix + "_ReCal";
+	else
+		file_name = Ss.OutputDir + "/" + outputPrefix + "_ReCal";
 #ifdef USE_MPI
 	file_name += "_rank_" + std::to_string(rank);
 #endif

@@ -1,5 +1,7 @@
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output/cal)
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/cal)
 
 # // =======================================================
 # #### about device select
