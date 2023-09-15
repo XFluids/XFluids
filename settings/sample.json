@@ -1,0 +1,129 @@
+{
+    "run": {
+        "DtBlockSize": 8,
+        "blockSize_x": 4,
+        "blockSize_y": 4,
+        "blockSize_z": 4,
+        "nStepMax": 10,
+        "nOutMax": 10,
+        "OutDAT": 1,
+        "OutVTI": 0,
+        "OutSTL": 0,
+        "outpos_x": 1,
+        "outpos_y": 1,
+        "outpos_z": 1,
+        "OutDIRs": [
+            1,
+            1,
+            1
+        ],
+        "CFLnumber": 0.4,
+        "OutBoundary": 0,
+        "OutInterval": 10,
+        "OutTimeStamps": [
+            "0.001: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.002: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.003: {-C=X,0.0,0.0;-V=rho,P,T}"
+        ],
+        "PushInterval": 10
+    },
+    "mpi": {
+        "mx": 1,
+        "my": 1,
+        "mz": 1,
+        "DeviceSelect": [
+            1,
+            0,
+            0
+        ]
+    },
+    "equations": {
+        "Fluid_Names": [],
+        "Species_Name": [],
+        "Equ_rho": 1,
+        "Equ_momentum": [
+            1,
+            1,
+            1
+        ],
+        "Equ_energy": 1,
+        "if_overdetermined_eigen": 0
+    },
+    "sources": {},
+    "mesh": {
+        "NUM_BISD": 0,
+        "width_xt": 0.0,
+        "width_hlf": 0.0,
+        "mx_vlm": 0.0,
+        "ext_vlm": 0.0,
+        "BandforLevelset": 0.0,
+        "Refs": [
+            0.0
+        ],
+        "DOMAIN_Size": [
+            0.05,
+            0.05,
+            0.05
+        ],
+        "DOMAIN_Medg": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Resolution": [
+            200,
+            200,
+            200
+        ],
+        "BoundaryBundles": [],
+        "BoundaryBundle_x": [],
+        "BoundaryBundle_y": [],
+        "BoundaryBundle_z": [],
+        "Boundarys": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+        ]
+    },
+    "init": {
+        "blast_mach": 0.0,
+        "blast_type": 1,
+        "cop_type": 1,
+        "cop_center": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "blast_center": [
+            0.5,
+            0.0,
+            0.0
+        ],
+        "blast_upstream": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "blast_downstream": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "bubble_shape_x": 0.0,
+        "bubble_shape_ratioy": 0.0,
+        "bubble_shape_ratioz": 0.0,
+        "bubble_shape_y": 0.0,
+        "bubble_shape_z": 0.0,
+        "bubble_boundary_cells": 0.0,
+        "bubble_boundary_width": 0.0
+    }
+}

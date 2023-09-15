@@ -1,5 +1,5 @@
 --------------------------- JANAF Thermodynamic Data Coefficients ------------------------------
-! using JANAF polynomials
+! using JANAF/NASA7 polynomials
 ! reference html: https://www.osti.gov/biblio/7073290
 ! reference "./References/thermo_The_Chemkin_Thermodynamic_Data_Base.pdf" for original data and more species 
 !
@@ -10,10 +10,18 @@
 ! First line: 
 ! 	Species Name
 ! Lines 2-4 (2-8):
-! 	a1-a5;  a6,a7 b1-b3;  b4-b7   ##a1-a7 for T>1000, a1-a7 for T<1000 
+! 	a1-a5;
+! 	a6,a7 b1-b3;
+! 	b4-b7
+! 	## a1-a7 for T>1000, b1-b7 for T<1000 
 ! Last Line:
 !   mole weight(g/mol)
 -----------------------------------------------------------------------------------------------------
+*NCOP
+0.00000000E+00  0.00000000E+00 0.00000000E+00  0.00000000E+00  0.00000000E+00
+0.00000000E+00  0.00000000E+00 0.00000000E+00  0.00000000E+00  0.00000000E+00
+0.00000000E+00  0.00000000E+00 0.00000000E+00  0.00000000E+00
+0.00
 *H
 2.50000001E+00 -2.30842973E-11 1.61561948E-14 -4.73515235E-18 4.98197357E-22
 2.54736599E+04 -4.46682914E-01 2.50000000E+00 7.05332819E-13 -1.99591964E-15

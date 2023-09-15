@@ -1,0 +1,64 @@
+{
+    "run": {
+        "blockSize_x": 8,
+        "blockSize_y": 4,
+        "blockSize_z": 8,
+        "DtBlockSize": 8,
+        "nStepMax": 100000,
+        "nOutMax": 100,
+        "OutVTI": 1,
+        "CFLnumber": 0.4,
+        "OutBoundary": 0,
+        "OutInterval": 3000,
+        "OutTimeStamps": [
+            "0.00001: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00002: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00003: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00004: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00005: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00006: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00007: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00008: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00009: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.00010: {-C=X,0.0,0.0;-V=rho,P,T}"
+        ]
+    },
+    "mpi": {
+        "mx": 1,
+        "my": 1,
+        "mz": 1,
+        "DeviceSelect": [
+            1,
+            0,
+            0
+        ]
+    },
+    "equations": {
+        "Fluid_Names": [],
+        "Species_Name": [],
+        "if_overdetermined_eigen": 0
+    },
+    "sources": {},
+    "mesh": {
+        "DOMAIN_Size": [
+            0.2,
+            0.01,
+            0.1
+        ],
+        "Resolution": [
+            2000,
+            100,
+            0
+        ],
+        // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
+        "Boundarys": [
+            2,
+            2,
+            3,
+            3,
+            3,
+            3
+        ]
+    },
+    "init": {}
+}

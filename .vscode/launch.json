@@ -2,16 +2,51 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "util-debug",
+            "name": "OpenSYCL C++: Launch & Run",
+            "type": "lldb",
+            "request": "launch",
+            "preLaunchTask": "",
+            "postDebugTask": "",
+            "cwd": "${workspaceFolder}/build",
+            "program": "${workspaceFolder}/build/XFLUIDS",
+            "args": [
+                "-dev=1,0,0",
+                "-mpi=1,1,1",
+                "-run=80,4,4",
+                "-blk=2,1,1,2"
+            ],
+        },
+        {
+            "name": "OpenSYCL MPI: Attach",
+            "type": "lldb",
+            "request": "attach",
+            "pid": "${command:pickMyProcess}" // use ${command:pickProcess} to pick other users' processes
+        },
+        {
+            "name": "oneAPI C++: Launch & Run",
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/LAMNSS",
-            "args": [],
-            "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
-            "environment": [],
+            "program": "${workspaceFolder}/build/XFLUIDS",
+            "args": [
+                "-dev=1,1,0",
+                "-mpi=1,1,1",
+                "-run=80,4,4",
+                "-blk=2,1,1,2"
+            ],
+            "environment": [
+                {
+                    "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
+                    "value": "1"
+                },
+                {
+                    "name": "IGC_EnableGTLocationDebugging",
+                    "value": "1"
+                }
+            ],
+            "stopAtEntry": false,
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
@@ -25,43 +60,23 @@
                     "description": "Disable target async",
                     "text": "set target-async off",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "Do not display function arguments when printing a stack frame",
+                    "text": "set print frame-arguments none",
+                    "ignoreFailures": true
                 }
             ]
         },
         {
-            "name": "launch-mpi-debug",
+            "name": "oneAPI MPI: Attach",
             "type": "cppdbg",
-            "request": "launch",
+            "request": "attach",
             "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/LAMNSS",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
+            "program": "${workspaceFolder}/build/XFLUIDS",
             "MIMode": "gdb",
             "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
         },
-        {
-            "name": "attach-mpi-debug",
-            "type": "cppdbg",
-            "request": "attach",
-            "program": "${workspaceFolder}/build/src/LAMNSS",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Disable target async",
-                    "text": "set target-async off",
-                    "ignoreFailures": true
-                }
-            ]
-        }
     ]
 }

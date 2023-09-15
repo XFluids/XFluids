@@ -1,0 +1,2 @@
+- for gonvering equations including N species, add the first N-1 equations of species, sum of mass fraction of N species equal 1
+- Ref.High Accuracy Numerical Methods for Thermally Perfect Gas Flows with Chemistry

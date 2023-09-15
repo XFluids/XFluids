@@ -1,0 +1,55 @@
+{
+	"run": {
+		"blockSize_x": 8,
+		"blockSize_y": 8,
+		"blockSize_z": 8,
+		"DtBlockSize": 8,
+		"nStepMax": 100000000,
+		"nOutMax": 100,
+		"CFLnumber": 0.4,
+		"OutBoundary": 0,
+		"OutInterval": 10000,
+		"OutTimeStamps": [
+			"0.000010: {-C=X,0.0,0.0;-V=rho,P,T}",
+			"0.000100: {-C=X,0.0,0.0;-V=rho,P,T}",
+			"0.001000: {-C=X,0.0,0.0;-V=rho,P,T}"
+		]
+	},
+	"mpi": {
+		"mx": 1,
+		"my": 1,
+		"mz": 1,
+		"DeviceSelect": [
+			1,
+			0,
+			0
+		]
+	},
+	"equations": {
+		"Fluid_Names": [],
+		"Species_Name": [],
+		"if_overdetermined_eigen": 0
+	},
+	"sources": {},
+	"mesh": {
+		"DOMAIN_Size": [
+			0.0396,
+			0.01728,
+			0.01728
+		],
+		"Resolution": [
+			880,
+			384,
+			0
+		],
+		"Boundarys": [
+			0,
+			1,
+			0,
+			2,
+			0,
+			2
+		]
+	},
+	"init": {}
+}

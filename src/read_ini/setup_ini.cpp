@@ -1,67 +1,336 @@
-/****************************************
- * 目标是全部使用setup.ini文件控制流体参数，初始化状态，MPI设置，输出设置等尽可能多的设置
- */
-#include <iomanip>
-#include "global_setup_function.hpp"
+#include <cmath>
+#include <fstream>
+#include <iostream>
 
-Setup::Setup(ConfigMap &configMap, middle::device_t &Q) : q(Q)
+#include "setupini.h"
+#include "mixture.hpp"
+#include "fworkdir.hpp"
+#include "rangeset.hpp"
+
+// =======================================================
+// // // struct Setup Member function definitions
+// =======================================================
+Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks(nranks), apa(argc, argv)
 {
-#ifdef USE_MPI
+#ifdef USE_MPI // Create MPI session if MPI enabled
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
     MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
-    if (myRank == 0)
-#endif
-    {
-        std::cout << "<---------------------------------------------------> \n";
-    }
-    ReadIni(configMap);
+#endif         // USE_MPI
+    ReWrite(); // rewrite parameters using appended options
+    // // sycl::queue construction
+    q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[1]].get_devices()[DeviceSelect[2]]);
+    // // get Work directory
+    WorkDir = getWorkDir(std::string(argv[0]), "XFLUIDS");
+    // // NOTE: read_grid
+    grid = Gridread(q, BlSz, WorkDir + "/" + std::string(INI_SAMPLE), myRank, nRanks);
 
-    /*begin runtime read , fluid && compoent characteristics set*/
-    ReadSpecies(); // 化学反应的组分数太多不能直接放进.ini 文件，等以后实现在ini中读取数组
-#ifdef COP_CHEME
-    ReadReactions();
-#endif // end COP_CHEME
-    /*end runtime read*/
+    // /*begin runtime read , fluid && compoent characteristics set*/
+    ReadSpecies();
+    if (ReactSources)
+        ReadReactions();
+        /*end runtime read*/
 
-#ifdef Visc // read && caculate coffes for visicity
+// read && caculate coffes for visicity
+#if Visc
     GetFitCoefficient();
 #endif
 
     init(); // Ini
 #ifdef USE_MPI
     mpiTrans = new MpiTrans(BlSz, Boundarys);
-    if (0 == mpiTrans->myRank)
-        print();
-    mpiTrans->communicator->synchronize();
-#else
-    print();
-#endif // end USE_MPI
-
-    std::cout << "Selected Device: " << middle::DevInfo(q);
-#ifdef USE_MPI
-    std::cout << "  of rank: " << mpiTrans->myRank;
-#endif
-
-    std::cout << std::endl;
-    //<< q.get_device().get_info<sycl::info::device::name>() << ", version = "<< q.get_device().get_info<sycl::info::device::version>() << "\n";
-
-#ifdef USE_MPI
     mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
+    std::cout << "Selected Device: " << middle::DevInfo(q) << "  of rank: " << myRank << std::endl;
 
     CpyToGPU();
 } // Setup::Setup end
+
+// =======================================================
+// // // Initialize struct member using json value
+// =======================================================
+void Setup::ReadIni()
+{
+    /* initialize RUN parameters */
+    nStepmax = nStepmax_json;
+    // // initialize output time arrays
+    for (size_t nn = 0; nn < OutTimeArrays_json.size(); nn++)
+    {
+        std::vector<std::string> temp = Stringsplit(OutTimeArrays_json[nn], ':');
+        std::vector<std::string> tempt = Stringsplit(temp[0], ';');
+        std::vector<real_t> temp0 = Stringsplit<real_t>(tempt[1], '*');
+        temp[1].erase(0, 2), temp[1].erase(temp[1].size() - 1, 1);
+        std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
+
+        real_t tn_b = stod(tempt[0]);
+        for (size_t tn = 1; tn <= size_t(temp0[0]); tn++)
+        {
+            OutFmt this_time(tn * temp0[1] + tn_b);
+            this_time._C = apa.match(temp1, "-C");
+            this_time._V = apa.match(temp1, "-V");
+            this_time._P = apa.match(temp1, "-P");
+            OutTimeStamps.push_back(this_time);
+        }
+
+        // // 200*1.0E-6
+        // std::vector<std::string> temp = Stringsplit(OutTimeArrays_json[nn], ':');
+        // std::vector<std::string> temp0 = Stringsplit(temp[0], '*');
+        // std::vector<std::string> times = Stringsplit(temp0[1], 'E');
+        // std::vector<int> time_it = Stringsplit<int>(times[0], '.');
+        // interval = time_it[0] + real_t(time_it[1]) / _DF(10.0);
+        // real_t bak = real_t(stoi(times[1]));
+        // interval = std::pow(interval, bak);
+        // temp[1].erase(0, 2), temp[1].erase(temp[1].size() - 1, 1);
+        // std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
+        // std::vector<std::string> temp2 = apa.match(temp1, "-C", ':');
+        // for (size_t tn = 0; tn < stoi(temp0[0]); tn++)
+        // {
+        //     OutFmt this_time(tn * interval + tn_b);
+        //     this_time._V = apa.match(temp1, "-V");
+        //     this_time._P = apa.match(temp1, "-P");
+        //     OutTimeStamps.push_back(this_time);
+        // }
+        // tn_b = stoi(temp0[0]) * interval;
+    }
+
+    // // insert specific output time stamps
+    for (size_t nn = 0; nn < OutTimeStamps_json.size(); nn++)
+    {
+        std::vector<std::string> temp = Stringsplit(OutTimeStamps_json[nn], ':');
+        real_t the_time = stod(temp[0]);
+        temp[1].erase(0, 2), temp[1].erase(temp[1].size() - 1, 1);
+        std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
+        if (!std::empty(OutTimeArrays_json))
+            for (int tn = 0; tn < OutTimeStamps.size(); tn++)
+            {
+                bool is_pos = OutTimeStamps[tn].time < the_time;
+                is_pos = OutTimeStamps[tn + 1].time > the_time;
+                if (is_pos)
+                {
+                    OutTimeStamps.emplace(OutTimeStamps.begin() + (tn + 1), OutFmt(the_time));
+                    OutTimeStamps[tn + 1]._C = apa.match(temp1, "-C");
+                    OutTimeStamps[tn + 1]._V = apa.match(temp1, "-V");
+                    OutTimeStamps[tn + 1]._P = apa.match(temp1, "-P");
+                    break;
+                }
+            }
+        else
+        {
+            OutFmt this_time(the_time);
+            this_time._C = apa.match(temp1, "-C");
+            this_time._V = apa.match(temp1, "-V");
+            this_time._P = apa.match(temp1, "-P");
+            OutTimeStamps.push_back(this_time);
+        }
+    }
+
+    /* initialize React sources  */
+    BlSz.RSources = ReactSources;
+    /* initialize MPI parameters */
+    BlSz.mx = mx_json, BlSz.my = my_json, BlSz.mz = mz_json;
+    // initial rank postion to zero, will be changed in MpiTrans
+    BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
+    // for sycl::queue construction and device select
+    DeviceSelect = DeviceSelect_json; // [0]:number of alternative devices [1]:platform_id [2]:device_id.
+
+    /* initialize MESH parameters */
+    // // initialize reference parameters, for calulate coordinate while readgrid
+    BlSz.LRef = Refs[0]; // reference length
+    BlSz.CFLnumber = CFLnumber_json;
+    BlSz.DimX = Dimensions[0], BlSz.DimY = Dimensions[1], BlSz.DimZ = Dimensions[2];
+
+    // // read block size settings
+    BlSz.X_inner = Inner[0], BlSz.Y_inner = Inner[1], BlSz.Z_inner = Inner[2];
+    BlSz.Bwidth_X = Bwidth[0], BlSz.Bwidth_Y = Bwidth[1], BlSz.Bwidth_Z = Bwidth[2];
+    BlSz.Domain_xmin = Domain_medg[0], BlSz.Domain_ymin = Domain_medg[1], BlSz.Domain_zmin = Domain_medg[2];
+    BlSz.Domain_length = DOMAIN_Size[0], BlSz.Domain_width = DOMAIN_Size[1], BlSz.Domain_height = DOMAIN_Size[2];
+
+    // // read GPU block size settings
+    BlSz.BlockSize = BlockSize_json;
+    BlSz.dim_block_x = dim_block_x_json, BlSz.dim_block_y = dim_block_y_json, BlSz.dim_block_z = dim_block_z_json;
+
+    // // Simple Boundary settings
+    // // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
+    Boundarys[0] = static_cast<BConditions>(Boundarys_json[0]), Boundarys[1] = static_cast<BConditions>(Boundarys_json[1]);
+    Boundarys[2] = static_cast<BConditions>(Boundarys_json[2]), Boundarys[3] = static_cast<BConditions>(Boundarys_json[3]);
+    Boundarys[4] = static_cast<BConditions>(Boundarys_json[4]), Boundarys[5] = static_cast<BConditions>(Boundarys_json[5]);
+
+    /* initialize fluid flow parameters */
+    // // Ini Flow Field dynamic states
+    ini.Ma = Ma_json; // shock Mach number
+    ini.blast_type = blast_type;
+    ini.blast_center_x = blast_pos[0], ini.blast_center_y = blast_pos[1], ini.blast_center_z = blast_pos[2];
+    // // Bubble size and shape
+    ini.xa = xa_json, ini.yb = yb_json, ini.zc = zc_json;
+    // // upstream of blast
+    ini.blast_density_in = blast_upstates[0], ini.blast_pressure_in = blast_upstates[1];
+    ini.blast_T_in = blast_upstates[2], ini.blast_u_in = blast_upstates[3], ini.blast_v_in = blast_upstates[4], ini.blast_w_in = blast_upstates[5];
+    // // downstream of blast
+    ini.blast_density_out = blast_downstates[0], ini.blast_pressure_out = blast_downstates[1];
+    ini.blast_T_out = blast_downstates[2], ini.blast_u_out = blast_downstates[3], ini.blast_v_out = blast_downstates[4], ini.blast_w_out = blast_downstates[5];
+#ifdef COP
+    // // states inside mixture bubble
+    ini.cop_type = cop_type;
+    ini.cop_center_x = cop_pos[0], ini.cop_center_y = cop_pos[1], ini.cop_center_z = cop_pos[2];
+    ini.cop_density_in = cop_instates[0], ini.cop_pressure_in = cop_instates[1], ini.cop_T_in = cop_instates[2];
+#else  // no COP
+#endif // end COP
+}
+
+// =======================================================
+// // // Using option parameters appended executable file
+// =======================================================
+void Setup::ReWrite()
+{
+    // =======================================================
+    // // for json file read
+    ReadIni(); // Initialize parameters from json
+
+    // // rewrite X_inner, Y_inner, Z_inner, nStpeMax(if given)
+    std::vector<int> Inner_size = apa.match<int>("-run");
+    if (!std::empty(Inner_size))
+    {
+        BlSz.X_inner = Inner_size[0], BlSz.Y_inner = Inner_size[1], BlSz.Z_inner = Inner_size[2];
+        // // rewrite DimX, DimY, DimZ for computational dimensions
+        BlSz.DimX = bool(Inner_size[0]), BlSz.DimY = bool(Inner_size[1]), BlSz.DimZ = bool(Inner_size[2]);
+        if (4 == Inner_size.size())
+            nStepmax = Inner_size[3];
+    }
+
+    // // rewrite dim_block_x, dim_block_y, dim_block_z
+    std::vector<int> blkapa = apa.match<int>("-blk");
+    if (!std::empty(blkapa))
+    {
+        BlSz.dim_block_x = blkapa[0], BlSz.dim_block_y = blkapa[1], BlSz.dim_block_z = blkapa[2];
+        if (4 == blkapa.size())
+            BlSz.BlockSize = blkapa[3];
+    }
+
+    // // rewrite mx, my, mz for MPI
+    std::vector<int> mpiapa = apa.match<int>("-mpi");
+    if (!std::empty(mpiapa))
+        BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
+
+    // // open mpi threads debug;
+    std::vector<int> mpidbg = apa.match<int>("-mpidbg");
+    if (!std::empty(mpidbg))
+    {
+        // bool a = false;
+        // while (!a)
+        {
+            sleep(10);
+        };
+        // #ifdef USE_MPI
+        //         a = mpiTrans->BocastTrue(a);
+        // #endif // end USE_MPI
+    }
+
+    // // accelerator_selector device;
+    std::vector<int> devapa = apa.match<int>("-dev");
+    if (!std::empty(devapa))
+        DeviceSelect = devapa;
+#if defined(DEFINED_OPENSYCL)
+    DeviceSelect[2] += myRank % DeviceSelect[0];
+#else  // for oneAPI
+    DeviceSelect[1] += myRank % DeviceSelect[0];
+#endif // end
+}
+
+// =======================================================
+// =======================================================
+void Setup::init()
+{ // set other parameters
+    BlSz.DimS = BlSz.DimX + BlSz.DimY + BlSz.DimZ;
+    BlSz.DimX_t = BlSz.DimX, BlSz.DimY_t = BlSz.DimY, BlSz.DimZ_t = BlSz.DimZ;
+
+    BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1;
+    BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1;
+    BlSz.Z_inner = BlSz.DimZ ? BlSz.Z_inner : 1;
+
+    BlSz.Bwidth_X = BlSz.DimX ? BlSz.Bwidth_X : 0;
+    BlSz.Bwidth_Y = BlSz.DimY ? BlSz.Bwidth_Y : 0;
+    BlSz.Bwidth_Z = BlSz.DimZ ? BlSz.Bwidth_Z : 0;
+
+    BlSz.dim_block_x = BlSz.DimX ? BlSz.dim_block_x : 1;
+    BlSz.dim_block_y = BlSz.DimY ? BlSz.dim_block_y : 1;
+    BlSz.dim_block_z = BlSz.DimZ ? BlSz.dim_block_z : 1;
+
+    BlSz.Domain_length = BlSz.DimX ? BlSz.Domain_length : 1.0;
+    BlSz.Domain_width = BlSz.DimY ? BlSz.Domain_width : 1.0;
+    BlSz.Domain_height = BlSz.DimZ ? BlSz.Domain_height : 1.0;
+
+    BlSz.Domain_xmax = BlSz.Domain_xmin + BlSz.Domain_length;
+    BlSz.Domain_ymax = BlSz.Domain_ymin + BlSz.Domain_width;
+    BlSz.Domain_zmax = BlSz.Domain_zmin + BlSz.Domain_height;
+
+    BlSz.dx = BlSz.DimX ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
+    BlSz.dy = BlSz.DimY ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
+    BlSz.dz = BlSz.DimZ ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
+
+    // // maximum number of total cells
+    BlSz.Xmax = BlSz.DimX ? (BlSz.X_inner + 2 * BlSz.Bwidth_X) : 1;
+    BlSz.Ymax = BlSz.DimY ? (BlSz.Y_inner + 2 * BlSz.Bwidth_Y) : 1;
+    BlSz.Zmax = BlSz.DimZ ? (BlSz.Z_inner + 2 * BlSz.Bwidth_Z) : 1;
+
+    BlSz.dl = BlSz.dx + BlSz.dy + BlSz.dz;
+    if (BlSz.DimX)
+        BlSz.dl = std::min(BlSz.dl, BlSz.dx);
+    if (BlSz.DimY)
+        BlSz.dl = std::min(BlSz.dl, BlSz.dy);
+    if (BlSz.DimZ)
+        BlSz.dl = std::min(BlSz.dl, BlSz.dz);
+
+    BlSz.offx = (_DF(0.5) - BlSz.Bwidth_X + BlSz.myMpiPos_x * BlSz.X_inner) * BlSz.dx + BlSz.Domain_xmin;
+    BlSz.offy = (_DF(0.5) - BlSz.Bwidth_Y + BlSz.myMpiPos_y * BlSz.Y_inner) * BlSz.dy + BlSz.Domain_ymin;
+    BlSz.offz = (_DF(0.5) - BlSz.Bwidth_Z + BlSz.myMpiPos_z * BlSz.Z_inner) * BlSz.dz + BlSz.Domain_zmin;
+
+    BlSz._dx = _DF(1.0) / BlSz.dx, BlSz._dy = _DF(1.0) / BlSz.dy, BlSz._dz = _DF(1.0) / BlSz.dz, BlSz._dl = _DF(1.0) / BlSz.dl;
+
+    // // bubble size: two cell boundary
+    ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
+    ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
+    ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
+    ini.C = C_json * BlSz.mx * BlSz.X_inner;
+
+    // // DataBytes set
+    bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
+
+    // // solving system
+    BlSz.num_species = NUM_SPECIES;
+    BlSz.num_cop = NUM_SPECIES - 1;
+#ifdef GhostSpecies
+    BlSz.num_species += (-1);
+#else
+#endif
+    BlSz.num_rea = NUM_REA;
+    BlSz.num_eqn = BlSz.num_species + 4;
+
+    // Viscosity Kernel limiters
+    BlSz.Dim_limiter = std::min(std::max(Dim_limiter_json, _DF(0.0)), _DF(1.0));
+    BlSz.Yil_limiter = std::max(std::max(BlSz._dx, BlSz._dy), BlSz._dz) * std::min(std::max(Yil_limiter_json, _DF(0.0)), _DF(1.0));
+    // // Initialize shock base mach number
+    mach_shock = Mach_Shock();
+    // // Initialize shock base mach number
+    if (0 == myRank)
+        print();
+} // Setup::init
+
 // =======================================================
 // =======================================================
 void Setup::ReadSpecies()
-{                                                                                                          // compoent in or out bubble differs
-    h_thermal.species_ratio_in = middle::MallocHost<real_t>(h_thermal.species_ratio_in, NUM_SPECIES, q);   // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));  // real_t species_ratio[NUM_SPECIES]
-    h_thermal.species_ratio_out = middle::MallocHost<real_t>(h_thermal.species_ratio_out, NUM_SPECIES, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q)); // real_t species_ratio[NUM_SPECIES]
+{
+    // compoent in or out bubble differs
+    h_thermal.species_ratio_in = middle::MallocHost<real_t>(h_thermal.species_ratio_in, NUM_SPECIES, q);
+    h_thermal.species_ratio_out = middle::MallocHost<real_t>(h_thermal.species_ratio_out, NUM_SPECIES, q);
 
-    std::string path = std::string(RFile) + "/species_list.dat";
+    std::string path = WorkDir + std::string(RFile) + "/species_list.dat";
     std::fstream fins(path);
+    std::string buffer, sname;
+    // getline(fins, buffer);
+    species_name.clear();
     for (int n = 0; n < NUM_SPECIES; n++)
-        fins >> species_name[n]; // name of the species
+        fins >> sname, species_name.push_back(sname); // name list of the species
+    // NOTE: Xe_id and N2_id depends on species_list
+    BlSz.Xe_id = NUM_SPECIES - 3, BlSz.N2_id = NUM_SPECIES - 2;
 #ifdef COP
     for (int n = 0; n < NUM_SPECIES; n++) // molar ratio
         fins >> h_thermal.species_ratio_out[n];
@@ -71,22 +340,23 @@ void Setup::ReadSpecies()
 #endif // end COP
     ReadThermal();
 }
+
 // =======================================================
 // =======================================================
 void Setup::ReadThermal()
 {
-    h_thermal.species_chara = middle::MallocHost<real_t>(h_thermal.species_chara, NUM_SPECIES * SPCH_Sz, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * SPCH_Sz * sizeof(real_t), q)); // new real_t[NUM_SPECIES * SPCH_Sz];
-    h_thermal.Ri = middle::MallocHost<real_t>(h_thermal.Ri, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));                      // new real_t[NUM_SPECIES];
-    h_thermal.Wi = middle::MallocHost<real_t>(h_thermal.Wi, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));                      // new real_t[NUM_SPECIES];
-    h_thermal._Wi = middle::MallocHost<real_t>(h_thermal._Wi, NUM_SPECIES, q);                               // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));                      // new real_t[NUM_SPECIES];
-    h_thermal.Hia = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 7 * 3 * sizeof(real_t), q));             // Hia = new real_t[NUM_SPECIES * 7 * 3];
-    h_thermal.Hib = middle::MallocHost<real_t>(h_thermal.Hib, NUM_SPECIES * 2 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 2 * 3 * sizeof(real_t), q));             // Hib = new real_t[NUM_SPECIES * 2 * 3];
+    h_thermal.species_chara = middle::MallocHost<real_t>(h_thermal.species_chara, NUM_SPECIES * SPCH_Sz, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * SPCH_Sz * sizeof(real_t), q));
+    h_thermal.Ri = middle::MallocHost<real_t>(h_thermal.Ri, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+    h_thermal.Wi = middle::MallocHost<real_t>(h_thermal.Wi, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+    h_thermal._Wi = middle::MallocHost<real_t>(h_thermal._Wi, NUM_SPECIES, q);                               // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+    h_thermal.Hia = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 7 * 3 * sizeof(real_t), q));
+    h_thermal.Hib = middle::MallocHost<real_t>(h_thermal.Hib, NUM_SPECIES * 2 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 2 * 3 * sizeof(real_t), q));
 
     char Key_word[128];
 #if Thermo
-    std::string apath = std::string(RPath) + "/thermal_dynamics.dat";
+    std::string apath = WorkDir + std::string(RPath) + "/thermal_dynamics.dat";
 #else
-    std::string apath = std::string(RPath) + "/thermal_dynamics_janaf.dat";
+    std::string apath = WorkDir + std::string(RPath) + "/thermal_dynamics_janaf.dat";
 #endif
     std::fstream finc(apath);
     for (int n = 0; n < NUM_SPECIES; n++)
@@ -147,7 +417,7 @@ void Setup::ReadThermal()
     }
     finc.close();
 
-    std::string spath = std::string(RPath) + "/transport_data.dat";
+    std::string spath = WorkDir + std::string(RPath) + "/transport_data.dat";
     std::fstream fint(spath);
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
@@ -165,7 +435,7 @@ void Setup::ReadThermal()
             if (!strcmp(Key_word, species_name_n))
             {
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 0]; // int geo;//0:monoatom,1:nonpolar(linear) molecule,2:polar molecule//极性
-                fint >> h_thermal.species_chara[i * SPCH_Sz + 1]; // double epsilon_kB;//epsilon: Lennard-Jones potential well depth;unit:K//势井深度
+                fint >> h_thermal.species_chara[i * SPCH_Sz + 1]; // real_t epsilon_kB;//epsilon: Lennard-Jones potential well depth;unit:K//势井深度
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 2]; // d;//Lennard-Jones collision diameter, unit: angstroms,10e-10m//碰撞直径in 4-3;
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 3]; // mue;//dipole moment,unit:Debye(m);//偶极距
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 4]; // alpha;//polarizability;unit:cubic angstrom//极化率
@@ -178,14 +448,14 @@ void Setup::ReadThermal()
 
     h_thermal.xi_in = middle::MallocHost<real_t>(h_thermal.xi_in, NUM_SPECIES, q);
     h_thermal.xi_out = middle::MallocHost<real_t>(h_thermal.xi_out, NUM_SPECIES, q);
-    middle::MemCpy<real_t>(h_thermal.xi_in, h_thermal.species_ratio_in, NUM_SPECIES, q);
-    middle::MemCpy<real_t>(h_thermal.xi_out, h_thermal.species_ratio_out, NUM_SPECIES, q);
+    std::memcpy(h_thermal.xi_in, h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
+    std::memcpy(h_thermal.xi_out, h_thermal.species_ratio_out, NUM_SPECIES * sizeof(real_t));
 
     // transfer mole fraction to mess fraction
     get_Yi(h_thermal.species_ratio_out);
     get_Yi(h_thermal.species_ratio_in);
-    mach_shock = Mach_Shock();
 }
+
 // =======================================================
 // =======================================================
 void Setup::get_Yi(real_t *yi)
@@ -196,21 +466,14 @@ void Setup::get_Yi(real_t *yi)
     for (size_t n = 0; n < NUM_SPECIES; n++) // Ri=Ru/Wi
         yi[n] = yi[n] * h_thermal.Wi[n] / W_mix;
 }
+
 // =======================================================
 // =======================================================
 bool Setup::Mach_Shock()
 { // called after Setup::get_Yi();, only support X dir shock
     real_t Ma_1 = ini.Ma * ini.Ma;
     if (Ma_1 < 1.0)
-    {
-#ifdef USE_MPI
-        if (myRank == 0)
-#endif
-        {
-            std::cout << "   Mach number < 1, shock is not initialized by it." << std::endl;
-        }
         return false;
-    } //
 
     real_t p2 = ini.blast_pressure_out; // P2
     real_t T2 = ini.blast_T_out;        // T2
@@ -225,6 +488,7 @@ bool Setup::Mach_Shock()
     Gamma_m2 = get_CopGamma(h_thermal.species_ratio_out, T2);
     // #endif                                        // end DEBUG
     real_t c2 = std::sqrt(Gamma_m2 * R * T2); // sound speed downstream the shock
+    ini.blast_c_out = c2, ini.blast_gamma_out = Gamma_m2, ini.tau_H = _DF(2.0) * ini.xa / (ini.Ma * ini.blast_c_out);
     ini.blast_density_out = p2 / R / T2;      // rho2
     real_t rho2 = ini.blast_density_out;      // rho2
 
@@ -257,9 +521,7 @@ bool Setup::Mach_Shock()
 
     if (!Mach_Modified)
     {
-#ifdef USE_MPI
         if (myRank == 0)
-#endif
         {
             std::cout << " --> Iter post-shock states by Mach number: " << Ma << std::endl;
         }
@@ -289,16 +551,14 @@ bool Setup::Mach_Shock()
                 e1 = MARCO_Coph(T1) - p1 / rho1;
                 E1 = e1 + _DF(0.5) * (u1 * u1 + ini.blast_v_in * ini.blast_v_in + ini.blast_w_in * ini.blast_w_in);
 
-                double residual_new = rho2 * (u2 - Si) * E2 - rho1 * (u1 - Si) * E1 + p2 * u2 - p1 * u1;
-                double dfdrho = (residual_new - residual) / delta_rho;
+                real_t residual_new = rho2 * (u2 - Si) * E2 - rho1 * (u1 - Si) * E1 + p2 * u2 - p1 * u1;
+                real_t dfdrho = (residual_new - residual) / delta_rho;
                 rho1 -= delta_rho;
                 rho1 = rho1 - residual / dfdrho;
             }
             if (iter > 1000)
             {
-#ifdef USE_MPI
                 if (myRank == 0)
-#endif
                 {
                     std::cout << "   Mach number Iteration failed: Over 1000 steps has been done." << std::endl;
                 }
@@ -315,9 +575,7 @@ bool Setup::Mach_Shock()
             residual = rho2 * (u2 - Si) * E2 - rho1 * (u1 - Si) * E1 + p2 * u2 - p1 * u1;
             iter++;
 #ifdef DEBUG
-#ifdef USE_MPI
             if (myRank == 0)
-#endif
             {
                 std::cout << "   The " << iter << "th iterations, residual : " << residual << std::endl;
             }
@@ -328,11 +586,9 @@ bool Setup::Mach_Shock()
     // Ref0: https://doi.org/10.1016/j.combustflame.2022.112085 theroy
     if (Mach_Modified)
     {
-#ifdef USE_MPI
         if (myRank == 0)
-#endif
         {
-            std::cout << "--> Modified the shock's status by Ref0:https://doi.org/10.1016/j.combustflame.2022.112085" << std::endl;
+            std::cout << "\n--> Modified the shock's status by Ref0:https://doi.org/10.1016/j.combustflame.2022.112085" << std::endl;
         }
 
         rho1 = rho2 * (Gamma_m2 + _DF(1.0)) * Ma_1 / (_DF(2.0) + (Gamma_m2 - _DF(1.0)) * Ma_1);
@@ -347,22 +603,23 @@ bool Setup::Mach_Shock()
 
     return true;
 }
+
 // =======================================================
 // =======================================================
-#ifdef COP_CHEME
 void Setup::ReadReactions()
 {
-    h_react.Nu_f_ = middle::MallocHost<int>(h_react.Nu_f_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
-    h_react.Nu_b_ = middle::MallocHost<int>(h_react.Nu_b_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
-    h_react.Nu_d_ = middle::MallocHost<int>(h_react.Nu_d_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
-    h_react.React_ThirdCoef = middle::MallocHost<real_t>(h_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q); // static_cast<real_t *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(real_t), q));
-    h_react.Rargus = middle::MallocHost<real_t>(h_react.Rargus, NUM_REA * 6, q);                             // static_cast<real_t *>(sycl::malloc_host(NUM_REA * 6 * sizeof(real_t), q));
-    h_react.react_type = middle::MallocHost<int>(h_react.react_type, NUM_REA * 2, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * 2 * sizeof(int), q));
-    h_react.third_ind = middle::MallocHost<int>(h_react.third_ind, NUM_REA, q);                              // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
+    h_react.Nu_f_ = middle::MallocHost<int>(h_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
+    h_react.Nu_b_ = middle::MallocHost<int>(h_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
+    h_react.Nu_d_ = middle::MallocHost<int>(h_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
+    h_react.React_ThirdCoef = middle::MallocHost<real_t>(h_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
+    h_react.Rargus = middle::MallocHost<real_t>(h_react.Rargus, NUM_REA * 6, q);
+    h_react.react_type = middle::MallocHost<int>(h_react.react_type, NUM_REA * 2, q);
+    h_react.third_ind = middle::MallocHost<int>(h_react.third_ind, NUM_REA, q);
 
     char Key_word[128];
-    std::string rpath = std::string(RFile) + "/reaction_list.dat";
+    std::string rpath = WorkDir + std::string(RFile) + "/reaction_list.dat";
     std::ifstream fint(rpath);
+    if (fint.good())
     {
         fint.seekg(0);
         while (!fint.eof())
@@ -391,23 +648,21 @@ void Setup::ReadReactions()
                         fint >> h_react.React_ThirdCoef[i * NUM_SPECIES + j];
             }
             else if (!std::strcmp(Key_word, "*Arrhenius"))
-            { // reaction rate constant parameters, A, B, E for Arrhenius law // unit: cm^3/mole/sec/kcal
+            { // reaction rate constant parameters, A, B, E for Arrhenius law
                 for (int i = 0; i < NUM_REA; i++)
+                {
                     fint >> h_react.Rargus[i * 6 + 0] >> h_react.Rargus[i * 6 + 1] >> h_react.Rargus[i * 6 + 2];
-            } //-----------------*backwardArrhenius------------------//
-            else if (!std::strcmp(Key_word, "*A"))
-            {
-                BackArre = true;
-                // reaction rate constant parameters, A, B, E for Arrhenius law // unit: cm^3/mole/sec/kcal
-                for (int i = 0; i < NUM_REA; i++)
-                    fint >> h_react.Rargus[i * 6 + 3] >> h_react.Rargus[i * 6 + 4] >> h_react.Rargus[i * 6 + 5];
-                break;
-            } //-----------------*backwardArrhenius------------------//
+                    if (BackArre)
+                        fint >> h_react.Rargus[i * 6 + 3] >> h_react.Rargus[i * 6 + 4] >> h_react.Rargus[i * 6 + 5];
+                } //-----------------*backwardArrhenius------------------//
+            }
         }
     }
     fint.close();
+
     IniSpeciesReactions();
 }
+
 // =======================================================
 // =======================================================
 void Setup::IniSpeciesReactions()
@@ -416,13 +671,13 @@ void Setup::IniSpeciesReactions()
     {
         reaction_list[j].clear();
         for (size_t i = 0; i < NUM_REA; i++)
-        {
             if (h_react.Nu_f_[i * NUM_SPECIES + j] > 0 || h_react.Nu_b_[i * NUM_SPECIES + j] > 0)
-            {
                 reaction_list[j].push_back(i);
-            }
-        }
     }
+
+    if (0 == myRank)
+        printf("\n%d Reactions been actived                                     \n", NUM_REA);
+    bool react_error = false;
     for (size_t i = 0; i < NUM_REA; i++)
     {
         reactant_list[i].clear();
@@ -441,29 +696,113 @@ void Setup::IniSpeciesReactions()
             sum += h_react.React_ThirdCoef[i * NUM_SPECIES + j];
         }
         h_react.third_ind[i] = (sum > _DF(0.0)) ? 1 : 0;
-        ReactionType(0, i, h_react.Nu_f_, h_react.Nu_b_);
-        ReactionType(1, i, h_react.Nu_b_, h_react.Nu_f_);
+
+        if (0 == myRank)
+        { // output this reaction kinetic
+            if (i + 1 < 10)
+                std::cout << "Reaction:" << i + 1 << "  ";
+            else
+                std::cout << "Reaction:" << i + 1 << " ";
+            int numreactant = 0, numproduct = 0;
+            // // output reactant
+            for (int j = 0; j < NUM_SPECIES; ++j)
+                numreactant += h_react.Nu_f_[i * NUM_SPECIES + j];
+
+            if (numreactant == 0)
+                std::cout << "0	  <-->  ";
+            else
+            {
+                for (int j = 0; j < NUM_SPECIES; j++)
+                {
+                    if (h_react.Nu_f_[i * NUM_SPECIES + j] > 0)
+                        std::cout << h_react.Nu_f_[i * NUM_SPECIES + j] << " " << species_name[j] << " + ";
+
+                    if (NUM_COP == j)
+                    {
+                        if (h_react.React_ThirdCoef[i * NUM_SPECIES + j] > _DF(0.0))
+                            std::cout << " M ";
+                        std::cout << "  <-->  ";
+                    }
+                }
+            }
+            // // output product
+            for (int j = 0; j < NUM_SPECIES; ++j)
+                numproduct += h_react.Nu_b_[i * NUM_SPECIES + j];
+            if (numproduct == 0)
+                std::cout << "0	";
+            else
+            {
+                for (int j = 0; j < NUM_SPECIES; j++)
+                {
+                    if (h_react.Nu_b_[i * NUM_SPECIES + j] > 0)
+                        std::cout << h_react.Nu_b_[i * NUM_SPECIES + j] << " " << species_name[j] << " + ";
+
+                    if (NUM_COP == j)
+                    {
+                        if (h_react.React_ThirdCoef[i * NUM_SPECIES + j] > _DF(0.0))
+                            std::cout << " M ";
+                    }
+                }
+            }
+            std::cout << " with forward rate: " << h_react.Rargus[i * 6 + 0] << " " << h_react.Rargus[i * 6 + 1] << " " << h_react.Rargus[i * 6 + 2];
+            //-----------------*backwardArrhenius------------------//
+            if (BackArre)
+                std::cout << ", backward rate: " << h_react.Rargus[i * 6 + 3] << " " << h_react.Rargus[i * 6 + 4] << " " << h_react.Rargus[i * 6 + 5];
+            std::cout << std::endl;
+
+            if (1 == h_react.third_ind[i])
+            {
+                std::cout << " Third Body coffcients:";
+                for (int j = 0; j < NUM_SPECIES - 1; j++)
+                    std::cout << "  " << species_name[j] << ":" << h_react.React_ThirdCoef[i * NUM_SPECIES + j];
+                std::cout << "\n";
+            }
+        }
+
+        react_error || ReactionType(0, i, h_react.Nu_f_, h_react.Nu_b_); // forward reaction kinetic
+        react_error || ReactionType(1, i, h_react.Nu_b_, h_react.Nu_f_); // backward reaction kinetic
     }
+
+    // if (react_error)
+    //     exit(EXIT_FAILURE);
 }
 // =======================================================
 // =======================================================
-void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
+/**
+ * @brief determine types of reaction:
+ * 		1: "0 -> A";		2: "A -> 0";		    3: "A -> B";		    4: "A -> B + C";
+ * 	    5: "A -> A + B"     6: "A + B -> 0"		    7: "A + B -> C"		    8: "A + B -> C + D"
+ *      9: "A + B -> A";	10: "A + B -> A + C"    11: "2A -> B"		    12: "A -> 2B"
+ *      13: "2A -> B + C"	14: "A + B -> 2C"	    15: "2A + B -> C + D"   16: "2A -> 2C + D"
+ * @note  only a few simple reaction has analytical solution, for other cases one can use quasi-statical-state-approxiamte(ChemeQ2)
+ * @param i: index of the reaction
+ * @param flag: 0: forward reaction; 1: backward reaction
+ * @param Nuf,Nub: forward and backward reaction matrix
+ * @return true: has unsupported reaction kinetic type
+ * @return false: all supported reaction kinetic type
+ */
+bool Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
 {
+    std::string error_str;
     std::vector<int> forward_list, backward_list;
     if (flag == 0)
     {
-        forward_list = reactant_list[i];
-        backward_list = product_list[i];
+        error_str = "forward ";
+        forward_list = reactant_list[i], backward_list = product_list[i];
     }
     else
     {
-        forward_list = product_list[i];
-        backward_list = reactant_list[i];
+        error_str = "backward";
+        forward_list = product_list[i], backward_list = reactant_list[i];
     }
-    // reaction type
+
+    /**
+     * @brief: reaction type
+     * @note: the support is not complete
+     */
     h_react.react_type[i * 2 + flag] = 0;
-    int Od_Rec = 0, Od_Pro = 0, Num_Repeat = 0; // the order of the reaction
-    // loop all species in reaction "i"
+    int Od_Rec = 0, Od_Pro = 0, Num_Repeat = 0; // // the order of the reaction
+    // // loop all species in reaction "i"
     for (int l = 0; l < forward_list.size(); l++)
     {
         int species_id = forward_list[l];
@@ -487,12 +826,13 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
             }
         }
     }
+    // // get reaction type
     switch (Od_Rec)
     {
-    case 0: // 0th-order
+    case 0: // // 0th-order
         h_react.react_type[i * 2 + flag] = 1;
         break;
-    case 1: // 1st-order
+    case 1: // // 1st-order
         if (Od_Pro == 0)
             h_react.react_type[i * 2 + flag] = 2;
         else if (Od_Pro == 1)
@@ -504,7 +844,7 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
                 h_react.react_type[i * 2 + flag] = 12;
         }
         break;
-    case 2: // 2nd-order
+    case 2: // // 2nd-order
         if (Od_Pro == 0)
             h_react.react_type[i * 2 + flag] = 6;
         else if (Od_Pro == 1)
@@ -523,35 +863,37 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
         }
         else if (Od_Pro == 3)
         {
-            if (Nub[i * NUM_SPECIES + backward_list[0]] == 2)
+            if ((Nub[i * NUM_SPECIES + backward_list[0]] == 2) && !(Num_Repeat))
                 h_react.react_type[i * 2 + flag] = 16;
         }
-    case 3: // 3rd-order
+        break;
+    case 3: // // 3rd-order
         if (Od_Pro == 2)
         {
-            if (Nuf[i * NUM_SPECIES + forward_list[0]] == 2 || Nuf[i * NUM_SPECIES + backward_list[0]] == 2)
+            if (Nuf[i * NUM_SPECIES + forward_list[0]] == 2 || Nuf[i * NUM_SPECIES + forward_list[1]] == 2 && Nuf[i * NUM_SPECIES + backward_list[0]] == 1 && !(Num_Repeat))
                 h_react.react_type[i * 2 + flag] = 15;
         }
         break;
     }
     if (h_react.react_type[i * 2 + flag] == 0)
-#ifdef USE_MPI
+    {
         if (myRank == 0)
-#endif
-        {
-            std::cout << "reaction type error for i = " << i << "\n";
-        }
+            std::cout << " Note:no analytical solutions for" << error_str << " reaction of the " << i + 1 << " kinetic.\n";
+
+        return true;
+    }
+
+    return false;
 }
-#endif // end COP_CHEME
+
 // =======================================================
 // =======================================================
-#ifdef Visc
 /**
  * @brief read collision integral table from "collision_integral.dat"
  */
 void Setup::ReadOmega_table()
 {
-    std::string fpath = std::string(RPath) + "/collision_integral.dat";
+    std::string fpath = WorkDir + std::string(RPath) + "/collision_integral.dat";
     std::ifstream fin(fpath);
     for (int n = 0; n < 8; n++)
         fin >> delta_star[n]; // reduced dipole moment;
@@ -574,17 +916,25 @@ void Setup::ReadOmega_table()
 void Setup::GetFitCoefficient()
 {
     ReadOmega_table(); // read Omega_table here for fitting
+    real_t *Dkj_matrix = NULL, *fitted_coefficients_visc = NULL, *fitted_coefficients_therm = NULL;
+    Dkj_matrix = middle::MallocHost<real_t>(Dkj_matrix, NUM_SPECIES * NUM_SPECIES * order_polynominal_fitted, q);
+    h_thermal.Dkj_matrix = middle::MallocHost2D<real_t>(Dkj_matrix, NUM_SPECIES * NUM_SPECIES, order_polynominal_fitted, q);
+    fitted_coefficients_visc = middle::MallocHost<real_t>(fitted_coefficients_visc, NUM_SPECIES * order_polynominal_fitted, q);
+    h_thermal.fitted_coefficients_visc = middle::MallocHost2D<real_t>(fitted_coefficients_visc, NUM_SPECIES, order_polynominal_fitted, q);
+    fitted_coefficients_therm = middle::MallocHost<real_t>(fitted_coefficients_therm, NUM_SPECIES * order_polynominal_fitted, q);
+    h_thermal.fitted_coefficients_therm = middle::MallocHost2D<real_t>(fitted_coefficients_therm, NUM_SPECIES, order_polynominal_fitted, q);
+
     for (int k = 0; k < NUM_SPECIES; k++)
-    {                                                                                                                                             // Allocate Mem
-        h_thermal.fitted_coefficients_visc[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);   // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-        h_thermal.fitted_coefficients_therm[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
+    { // Allocate Mem
+        // h_thermal.fitted_coefficients_visc[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);
+        // h_thermal.fitted_coefficients_therm[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q);
 
         real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
         Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_visc[k], 0);  // Visc
         Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_therm[k], 1); // diffu
         for (int j = 0; j < NUM_SPECIES; j++)
-        {                                                                                                                                                   // Allocate Mem
-            h_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocHost<real_t>(h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
+        { // Allocate Mem
+            // h_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocHost<real_t>(h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q);
 
             real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
             if (k <= j)                                                                    // upper triangle
@@ -596,6 +946,17 @@ void Setup::GetFitCoefficient()
             }
         }
     }
+
+    real_t *d_Dkj_matrix, *d_fitted_coefficients_visc, *d_fitted_coefficients_therm;
+    d_Dkj_matrix = middle::MallocDevice<real_t>(d_Dkj_matrix, NUM_SPECIES * NUM_SPECIES * order_polynominal_fitted, q);
+    d_fitted_coefficients_visc = middle::MallocDevice<real_t>(d_fitted_coefficients_visc, NUM_SPECIES * order_polynominal_fitted, q);
+    d_fitted_coefficients_therm = middle::MallocDevice<real_t>(d_fitted_coefficients_therm, NUM_SPECIES * order_polynominal_fitted, q);
+    middle::MemCpy<real_t>(d_Dkj_matrix, Dkj_matrix, NUM_SPECIES * NUM_SPECIES * order_polynominal_fitted, q);
+    middle::MemCpy<real_t>(d_fitted_coefficients_visc, fitted_coefficients_visc, NUM_SPECIES * order_polynominal_fitted, q);
+    middle::MemCpy<real_t>(d_fitted_coefficients_therm, fitted_coefficients_therm, NUM_SPECIES * order_polynominal_fitted, q);
+    d_thermal.Dkj_matrix = middle::MallocDevice2D<real_t>(d_Dkj_matrix, NUM_SPECIES * NUM_SPECIES, order_polynominal_fitted, q);
+    d_thermal.fitted_coefficients_visc = middle::MallocDevice2D<real_t>(d_fitted_coefficients_visc, NUM_SPECIES, order_polynominal_fitted, q);
+    d_thermal.fitted_coefficients_therm = middle::MallocDevice2D<real_t>(d_fitted_coefficients_therm, NUM_SPECIES, order_polynominal_fitted, q);
 }
 
 /**
@@ -804,7 +1165,7 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
             d_p = specie_j[d];
             mue_p = specie_j[mue];
         }
-        real_t alpha_n_star = alpha_n / std::pow(d_n, _DF(3));                                                     // equation5-13
+        real_t alpha_n_star = alpha_n / std::pow(d_n, _DF(3.0));                                                   // equation5-13
         real_t mue_p_star = mue_p / std::pow(epsilon_p_kB * kB, _DF(0.5)) / std::pow(d_p, _DF(1.5)) * _DF(1.0e-6); // equation5-14
         real_t ksi = _DF(1.0) + _DF(0.25) * alpha_n_star * mue_p_star * std::sqrt(epsilon_p_kB / epsilon_n_kB);    // equation5-12
 
@@ -820,7 +1181,7 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
     real_t Dkj = _DF(3.0) * std::sqrt(_DF(2.0) * pi * std::pow(T * kB, _DF(3.0)) / W_jk) / (_DF(16.0) * PPP * pi * d_jk * d_jk * Omega1) * _DF(1.0e16); // equation5-4 //unit:cm*cm/s
     return Dkj;
 }
-#endif // Visc
+
 // =======================================================
 // =======================================================
 /**
@@ -830,7 +1191,7 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
  */
 real_t Setup::HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
-    // real_t T = T0; // sycl::max<real_t>(T0, _DF(200.0));
+    // real_t T = T0; // sycl::max(T0, _DF(200.0));
     // real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
     // #if Thermo
     //     if (T >= (_DF(1000.0)) && T < (_DF(6000.0)))
@@ -860,6 +1221,7 @@ real_t Setup::HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const 
 
     return Cpi;
 }
+
 // =======================================================
 // =======================================================
 /**
@@ -897,12 +1259,13 @@ real_t Setup::Enthalpy(const real_t T0, const int n)
 
     return hi;
 }
+
 // =======================================================
 // =======================================================
 /**
  * @brief calculate Hi of Mixture at given point	unit:J/kg/K
  */
-real_t Setup::get_Coph(const real_t yi[NUM_SPECIES], const real_t T)
+real_t Setup::get_Coph(const real_t *yi, const real_t T)
 {
     real_t h = _DF(0.0);
     for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -912,12 +1275,13 @@ real_t Setup::get_Coph(const real_t yi[NUM_SPECIES], const real_t T)
     }
     return h;
 }
+
 // =======================================================
 // =======================================================
 /**
  * @brief calculate Gamma of the mixture at given point
  */
-real_t Setup::get_CopGamma(const real_t yi[NUM_SPECIES], const real_t T)
+real_t Setup::get_CopGamma(const real_t *yi, const real_t T)
 {
     real_t Cp = _DF(0.0);
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -934,273 +1298,14 @@ real_t Setup::get_CopGamma(const real_t yi[NUM_SPECIES], const real_t T)
         exit(EXIT_FAILURE);
     }
 }
-// =======================================================
-// =======================================================
-void Setup::ReadIni(ConfigMap &configMap)
-{
-    /* initialize RUN parameters */
-    OutTimeMethod=configMap.getInteger("run","OutTimeMethod",1);// use settings in .ini file by default
-    if(1==OutTimeMethod)
-    {                                                                     // settings in .ini file
-        nOutTimeStamps = configMap.getInteger("run", "nOutTimeStamps", 0) + 1;
-        OutTimeStamps = new real_t[nOutTimeStamps];
-        OutTimeStart = configMap.getFloat("run", "OutTimeBeginning", 0.0f);
-        OutTimeStamp = configMap.getFloat("run", "OutTimeInterval", 0.0f); // OutTimeStamp
-        OutTimeStamps[0] = OutTimeStart;
-        for (size_t n = 1; n < nOutTimeStamps; n++)
-            OutTimeStamps[n] = OutTimeStamps[0] + real_t(n) * OutTimeStamp;
-    }
-    else if (0==OutTimeMethod)
-    {
-        std::string tpath = std::string(RPath) + "/time_stamps.dat";
-        std::fstream fint(tpath);
-        fint >> nOutTimeStamps; // read number of OutTimeStamps;
-        OutTimeStamps = new real_t[nOutTimeStamps];
-        for (int n = 0; n < nOutTimeStamps; n++)
-            fint >> OutTimeStamps[n];
-        fint.close();
-    }
-    else
-    {
-#ifdef USE_MPI
-        if (myRank == 0)
-#endif
-        {
-            std::cout << "Undefined Output Time Method." << std::endl;
-        }
-        exit(EXIT_FAILURE);
-    }
-    StartTime = configMap.getFloat("run", "StartTime", 0.0f); // physical time when the simulation start
-    EndTime = configMap.getFloat("run", "EndTime", OutTimeStamps[nOutTimeStamps - 1]);
-    OutTimeStamps[nOutTimeStamps - 1] = EndTime;
-    NumThread = configMap.getInteger("run", "NumThread", 8);
-    OutputDir = std::string(configMap.getString("run", "OutputDir", "./"));
-    OutBoundary = configMap.getInteger("run", "OutBoundary", 0);
-    OutDIRX = bool(configMap.getInteger("run", "OutDIRX", DIM_X));
-    OutDIRY = bool(configMap.getInteger("run", "OutDIRY", DIM_Y));
-    OutDIRZ = bool(configMap.getInteger("run", "OutDIRZ", DIM_Z));
-    outpos_x = configMap.getInteger("run", "outpos_x", 0);
-    outpos_y = configMap.getInteger("run", "outpos_y", 0);
-    outpos_z = configMap.getInteger("run", "outpos_z", 0);
-    Mach_Modified = configMap.getInteger("ini", "Mach_modified", 1);
-    nStepmax = configMap.getInteger("run", "nStepMax", 10);
-    nOutput = configMap.getInteger("run", "nOutMax", 0);
-    OutInterval = configMap.getInteger("run", "OutInterval", nStepmax);
-    POutInterval = configMap.getInteger("run", "PushInterval", 5);
-    // for thread allign
-    BlSz.BlockSize = configMap.getInteger("run", "DtBlockSize", 4);
-    BlSz.dim_block_x = DIM_X ? configMap.getInteger("run", "blockSize_x", BlSz.BlockSize) : 1;
-    BlSz.dim_block_y = DIM_Y ? configMap.getInteger("run", "blockSize_y", BlSz.BlockSize) : 1;
-    BlSz.dim_block_z = DIM_Z ? configMap.getInteger("run", "blockSize_z", BlSz.BlockSize) : 1;
 
-    /* initialize MPI parameters */
-#ifdef USE_MPI
-    BlSz.mx = DIM_X ? configMap.getInteger("mpi", "mx", 1) : 1;
-    BlSz.my = DIM_Y ? configMap.getInteger("mpi", "my", 1) : 1;
-    BlSz.mz = DIM_Z ? configMap.getInteger("mpi", "mz", 1) : 1;
-#else                    // no USE_MPI
-    BlSz.mx = 1;
-    BlSz.my = 1;
-    BlSz.mz = 1;
-#endif                   // end USE_MPI
-    BlSz.myMpiPos_x = 0; // initial rank postion to zero, will be changed in MpiTrans
-    BlSz.myMpiPos_y = 0;
-    BlSz.myMpiPos_z = 0;
-    /* initialize MESH parameters */
-    // DOMAIN_length = configMap.getFloat("mesh", "DOMAIN_length", 1.0);
-    Domain_length = configMap.getFloat("mesh", "DOMAIN_length", 1.0);
-    Domain_width = configMap.getFloat("mesh", "DOMAIN_width", 1.0);
-    Domain_height = configMap.getFloat("mesh", "DOMAIN_height", 1.0);
-    BlSz.Domain_xmin = configMap.getFloat("mesh", "xmin", 0.0); // 计算域x方向永远是最长边
-    BlSz.Domain_ymin = configMap.getFloat("mesh", "ymin", 0.0);
-    BlSz.Domain_zmin = configMap.getFloat("mesh", "zmin", 0.0);
-    // read block size set from .ini
-    BlSz.OutBC = OutBoundary;
-    BlSz.X_inner = DIM_X ? configMap.getInteger("mesh", "X_inner", 1) : 1;
-    BlSz.Y_inner = DIM_Y ? configMap.getInteger("mesh", "Y_inner", 1) : 1;
-    BlSz.Z_inner = DIM_Z ? configMap.getInteger("mesh", "Z_inner", 1) : 1;
-    BlSz.Bwidth_X = DIM_X ? configMap.getInteger("mesh", "Bwidth_X", 4) : 0;
-    BlSz.Bwidth_Y = DIM_Y ? configMap.getInteger("mesh", "Bwidth_Y", 4) : 0;
-    BlSz.Bwidth_Z = DIM_Z ? configMap.getInteger("mesh", "Bwidth_Z", 4) : 0;
-    BlSz.CFLnumber = configMap.getFloat("mesh", "CFLnumber", 0.6);
-
-    NUM_BISD = configMap.getInteger("mesh", "NUM_BISD", 1);
-    width_xt = configMap.getFloat("mesh", "width_xt", 4.0);
-    width_hlf = configMap.getFloat("mesh", "width_hlf", 2.0);
-    mx_vlm = configMap.getFloat("mesh", "mx_vlm", 0.5);
-    ext_vlm = configMap.getFloat("mesh", "ext_vlm", 0.5);
-    BandforLevelset = configMap.getFloat("mesh", "BandforLevelset", 6.0);
-
-    Boundarys[0] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmin", Symmetry));
-    Boundarys[1] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmax", Symmetry));
-    Boundarys[2] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_ymin", Symmetry));
-    Boundarys[3] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_ymax", Symmetry));
-    Boundarys[4] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_zmin", Symmetry));
-    Boundarys[5] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_zmax", Symmetry));
-
-    /* initialize FLUID parameters */
-    fname[0] = std::string(configMap.getString("fluid", "fluid1_name", "O2"));
-    material_kind[0] = configMap.getInteger("fluid", "fluid1_kind", 0);
-    // material properties:1: phase_indicator, 2:gamma, 3:A, 4:B, 5:rho0, 6:R_0, 7:lambda_0, 8:a(rtificial)s(peed of)s(ound)
-    material_props[0][0] = configMap.getFloat("fluid", "fluid1_phase_indicator", 0);
-    material_props[0][1] = configMap.getFloat("fluid", "fluid1_gamma", 0);
-    material_props[0][2] = configMap.getFloat("fluid", "fluid1_A", 0);
-    material_props[0][3] = configMap.getFloat("fluid", "fluid1_B", 0);
-    material_props[0][4] = configMap.getFloat("fluid", "fluid1_rho0", 0);
-    material_props[0][5] = configMap.getFloat("fluid", "fluid1_R0", 0);
-    material_props[0][6] = configMap.getFloat("fluid", "fluid1_lambda0", 0);
-    material_props[0][7] = configMap.getFloat("fluid", "fluid1_ac", 0);
-    // Ini Fluid dynamic states
-    ini.Ma = configMap.getFloat("init", "blast_mach", 0);
-    ini.blast_type = configMap.getInteger("fluid", "blast_type", 0);
-    ini.blast_center_x = configMap.getFloat("init", "blast_center_x", 0);
-    ini.blast_center_y = configMap.getFloat("init", "blast_center_y", 0);
-    ini.blast_center_z = configMap.getFloat("init", "blast_center_z", 0);
-    ini.blast_radius = configMap.getFloat("init", "blast_radius", 0);
-    // downstream of blast
-    ini.blast_density_out = configMap.getFloat("init", "blast_density_out", 0);
-    ini.blast_pressure_out = configMap.getFloat("init", "blast_pressure_out", 0);
-    ini.blast_T_out = configMap.getFloat("init", "blast_tempreture_out", 298.15);
-    ini.blast_u_out = configMap.getFloat("init", "blast_u_out", 0);
-    ini.blast_v_out = configMap.getFloat("init", "blast_v_out", 0);
-    ini.blast_w_out = configMap.getFloat("init", "blast_w_out", 0);
-    // upstream of blast
-    ini.blast_density_in = configMap.getFloat("init", "blast_density_in", 0);
-    ini.blast_pressure_in = configMap.getFloat("init", "blast_pressure_in", 0);
-    ini.blast_T_in = configMap.getFloat("init", "blast_tempreture_in", 298.15);
-    ini.blast_u_in = configMap.getFloat("init", "blast_u_in", 0);
-    ini.blast_v_in = configMap.getFloat("init", "blast_v_in", 0);
-    ini.blast_w_in = configMap.getFloat("init", "blast_w_in", 0);
-    // states inside mixture bubble
-#ifdef COP
-    ini.cop_type = configMap.getInteger("init", "cop_type", 0);
-    ini.cop_center_x = configMap.getFloat("init", "cop_center_x", 0);
-    ini.cop_center_y = configMap.getFloat("init", "cop_center_y", 0);
-    ini.cop_center_z = configMap.getFloat("init", "cop_center_z", 0);
-    ini.cop_density_in = configMap.getFloat("init", "cop_density_in", ini.blast_density_out);
-    ini.cop_pressure_in = configMap.getFloat("init", "cop_pressure_in", ini.blast_pressure_out);
-    ini.cop_T_in = configMap.getFloat("init", "cop_tempreture_in", ini.blast_T_out);
-    ini.cop_y1_in = configMap.getFloat("init", "cop_y1_in", 0);
-    ini.cop_y1_out = configMap.getFloat("init", "cop_y1_out", 0);
-#endif // end COP
-    // bubble size
-    real_t Dmin = Domain_length + Domain_width + Domain_height;
-#if DIM_X
-    Dmin = std::min(Domain_length, Dmin);
-#endif
-#if DIM_Y
-    Dmin = std::min(Domain_width, Dmin);
-#endif
-#if DIM_Z
-    Dmin = std::min(Domain_height, Dmin);
-#endif
-
-    ini.xa = configMap.getFloat("init", "bubble_shape_x", 0.4 * Dmin);
-    ini.yb = ini.xa / configMap.getFloat("init", "bubble_shape_ratioy", 1.0);
-    ini.zc = ini.xa / configMap.getFloat("init", "bubble_shape_ratioz", 1.0);
-    ini.yb = configMap.getFloat("init", "bubble_shape_y", ini.yb);
-    ini.zc = configMap.getFloat("init", "bubble_shape_z", ini.zc);
-    bubble_boundary = configMap.getFloat("init", "bubble_boundary_cells", 2);
-    ini.C = ini.xa * configMap.getFloat("init", "bubble_boundary_width", real_t(BlSz.mx * BlSz.X_inner) * bubble_boundary);
-}
-// =======================================================
-// =======================================================
-void Setup::init()
-{ // set other parameters
-#ifndef MIDDLE_SYCL_ENABLED
-    BlSz.dim_blk = middle::range_t(BlSz.dim_block_x, BlSz.dim_block_y, BlSz.dim_block_z);
-    BlSz.dim_grid = middle::AllocThd(BlSz.X_inner, BlSz.Y_inner, BlSz.Z_inner, BlSz.dim_blk);
-#endif // end non def MIDDLE_SYCL_ENABLED
-
-    BlSz.dx = DIM_X ? Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0); //
-    BlSz.dy = DIM_Y ? Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
-    BlSz.dz = DIM_Z ? Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
-
-    BlSz.Domain_xmax = BlSz.Domain_xmin + Domain_length;
-    BlSz.Domain_ymax = BlSz.Domain_ymin + Domain_width;
-    BlSz.Domain_zmax = BlSz.Domain_zmin + Domain_height;
-
-    // ini.blast_center_x = BlSz.Domain_xmin + ini.blast_center_x * Domain_length;
-    // ini.blast_center_y = BlSz.Domain_ymin + ini.blast_center_y * Domain_width;
-    // ini.blast_center_z = BlSz.Domain_zmin + ini.blast_center_z * Domain_height;
-
-#ifdef COP
-    // ini.cop_center_x = BlSz.Domain_xmin + ini.cop_center_x * Domain_length;
-    // ini.cop_center_y = BlSz.Domain_ymin + ini.cop_center_y * Domain_width;
-    // ini.cop_center_z = BlSz.Domain_zmin + ini.cop_center_z * Domain_height;
-#endif
-#if 2 == NumFluid
-    ini.bubble_center_x = BlSz.Domain_xmin + ini.bubble_center_x * Domain_length;
-    ini.bubble_center_y = BlSz.Domain_ymin + ini.bubble_center_y * Domain_width;
-    ini.bubble_center_z = BlSz.Domain_zmin + ini.bubble_center_z * Domain_height;
-#endif
-
-    BlSz.dl = BlSz.dx + BlSz.dy + BlSz.dz;
-    real_t cdl = BlSz.dl;
-    // // x direction
-#if DIM_X
-    BlSz.Xmax = (BlSz.X_inner + 2 * BlSz.Bwidth_X); // maximum number of total cells in x direction
-    BlSz.dl = std::min(BlSz.dl, BlSz.dx);
-    cdl = std::max(cdl, BlSz.dx);
-#else
-    BlSz.Xmax = 1;
-#endif
-    // // y direction
-#if DIM_Y
-    BlSz.Ymax = (BlSz.Y_inner + 2 * BlSz.Bwidth_Y); // maximum number of total cells in y direction
-    BlSz.dl = std::min(BlSz.dl, BlSz.dy);
-    cdl = std::max(cdl, BlSz.dy);
-#else
-    BlSz.Ymax = 1;
-#endif
-    // // z direction
-#if DIM_Z
-    BlSz.Zmax = (BlSz.Z_inner + 2 * BlSz.Bwidth_Z); // maximum number of total cells in z direction
-    BlSz.dl = std::min(BlSz.dl, BlSz.dz);
-    cdl = std::max(cdl, BlSz.dz);
-#else
-    BlSz.Zmax = 1;
-#endif
-    dt = _DF(0.0);
-    BlSz.offx = (_DF(0.5) - BlSz.Bwidth_X + BlSz.myMpiPos_x * BlSz.X_inner) * BlSz.dx + BlSz.Domain_xmin;
-    BlSz.offy = (_DF(0.5) - BlSz.Bwidth_Y + BlSz.myMpiPos_y * BlSz.Y_inner) * BlSz.dy + BlSz.Domain_ymin;
-    BlSz.offz = (_DF(0.5) - BlSz.Bwidth_Z + BlSz.myMpiPos_z * BlSz.Z_inner) * BlSz.dz + BlSz.Domain_zmin;
-
-    BlSz._dx = _DF(1.0) / BlSz.dx;
-    BlSz._dy = _DF(1.0) / BlSz.dy;
-    BlSz._dz = _DF(1.0) / BlSz.dz;
-    BlSz._dl = _DF(1.0) / BlSz.dl;
-
-    // bubble size: two cell boundary
-    ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
-    ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
-    ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
-    real_t xa_in = int(ini.xa / BlSz.dx) * BlSz.dx;
-    real_t yb_in = int(ini.yb / BlSz.dy) * BlSz.dy;
-    real_t zc_in = int(ini.zc / BlSz.dz) * BlSz.dz;
-    real_t xa_out = xa_in + bubble_boundary * BlSz.dx;
-    real_t yb_out = yb_in + bubble_boundary * BlSz.dy;
-    real_t zc_out = zc_in + bubble_boundary * BlSz.dz;
-    ini._xa2_in = _DF(1.0) / (xa_in * xa_in);
-    ini._yb2_in = _DF(1.0) / (yb_in * yb_in);
-    ini._zc2_in = _DF(1.0) / (zc_in * zc_in);
-    ini._xa2_out = _DF(1.0) / (xa_out * xa_out);
-    ini._yb2_out = _DF(1.0) / (yb_out * yb_out);
-    ini._zc2_out = _DF(1.0) / (zc_out * zc_out);
-    // DataBytes set
-    Block_Inner_Cell_Size = (BlSz.X_inner * BlSz.Y_inner * BlSz.Z_inner);
-    Block_Inner_Data_Size = (Block_Inner_Cell_Size * Emax);
-    Block_Cell_Size = (BlSz.Xmax * BlSz.Ymax * BlSz.Zmax);
-    Block_Data_Size = (Block_Cell_Size * Emax);
-    bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t);
-    cellbytes = Emax * bytes;
-} // Setup::init
 // =======================================================
 // =======================================================
 void Setup::CpyToGPU()
 {
 #ifdef USE_MPI
-    if (0 == mpiTrans->myRank)
+    mpiTrans->communicator->synchronize();
+    if (0 == myRank)
 #endif // end USE_MPI
     {
         std::cout << "<---------------------------------------------------> \n";
@@ -1228,221 +1333,265 @@ void Setup::CpyToGPU()
     middle::MemCpy<real_t>(d_thermal.xi_in, h_thermal.xi_in, NUM_SPECIES, q);
     middle::MemCpy<real_t>(d_thermal.xi_out, h_thermal.xi_out, NUM_SPECIES, q);
 
-#ifdef Visc
-    for (int k = 0; k < NUM_SPECIES; k++)
-    {                                                                                                                                               // Allocate Mem
-        d_thermal.fitted_coefficients_visc[k] = middle::MallocDevice<real_t>(d_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);   // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-        d_thermal.fitted_coefficients_therm[k] = middle::MallocDevice<real_t>(d_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-        middle::MemCpy<real_t>(d_thermal.fitted_coefficients_visc[k], h_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);
-        middle::MemCpy<real_t>(d_thermal.fitted_coefficients_therm[k], h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q);
-        for (int j = 0; j < NUM_SPECIES; j++)
-        {                                                                                                                                                     // Allocate Mem
-            d_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocDevice<real_t>(d_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-            middle::MemCpy<real_t>(d_thermal.Dkj_matrix[k * NUM_SPECIES + j], h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q);
+    if (ReactSources)
+    {
+        d_react.Nu_f_ = middle::MallocDevice<int>(d_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
+        d_react.Nu_b_ = middle::MallocDevice<int>(d_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
+        d_react.Nu_d_ = middle::MallocDevice<int>(d_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
+        d_react.react_type = middle::MallocDevice<int>(d_react.react_type, NUM_REA * 2, q);
+        d_react.third_ind = middle::MallocDevice<int>(d_react.third_ind, NUM_REA, q);
+        d_react.React_ThirdCoef = middle::MallocDevice<real_t>(d_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
+        d_react.Rargus = middle::MallocDevice<real_t>(d_react.Rargus, NUM_REA * 6, q);
+
+        middle::MemCpy<int>(d_react.Nu_f_, h_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.Nu_b_, h_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.Nu_d_, h_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.react_type, h_react.react_type, NUM_REA * 2, q);
+        middle::MemCpy<int>(d_react.third_ind, h_react.third_ind, NUM_REA, q);
+        middle::MemCpy<real_t>(d_react.React_ThirdCoef, h_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<real_t>(d_react.Rargus, h_react.Rargus, NUM_REA * 6, q);
+
+        int reaction_list_size = 0;
+        h_react.rns = middle::MallocHost<int>(h_react.rns, NUM_SPECIES, q);
+        for (size_t i = 0; i < NUM_SPECIES; i++)
+            h_react.rns[i] = reaction_list[i].size(), reaction_list_size += h_react.rns[i];
+
+        int *h_reaction_list, *d_reaction_list;
+        h_reaction_list = middle::MallocHost<int>(h_reaction_list, reaction_list_size, q);
+        h_react.reaction_list = middle::MallocHost2D<int>(h_reaction_list, NUM_SPECIES, h_react.rns, q);
+        for (size_t i = 0; i < NUM_SPECIES; i++)
+            if (h_react.rns[i] > 0)
+                std::memcpy(h_react.reaction_list[i], &(reaction_list[i][0]), sizeof(int) * h_react.rns[i]);
+        d_reaction_list = middle::MallocDevice<int>(d_reaction_list, reaction_list_size, q);
+        middle::MemCpy<int>(d_reaction_list, h_reaction_list, reaction_list_size, q);
+        d_react.reaction_list = middle::MallocDevice2D<int>(d_reaction_list, NUM_SPECIES, h_react.rns, q);
+
+        h_react.rts = middle::MallocHost<int>(h_react.rts, NUM_REA, q);
+        h_react.pls = middle::MallocHost<int>(h_react.pls, NUM_REA, q);
+        h_react.sls = middle::MallocHost<int>(h_react.sls, NUM_REA, q);
+        int rts_size = 0, pls_size = 0, sls_size = 0;
+        for (size_t i = 0; i < NUM_REA; i++)
+        {
+            h_react.rts[i] = reactant_list[i].size(), rts_size += h_react.rts[i];
+            h_react.pls[i] = product_list[i].size(), pls_size += h_react.pls[i];
+            h_react.sls[i] = species_list[i].size(), sls_size += h_react.sls[i];
         }
+        d_react.rns = middle::MallocDevice<int>(d_react.rns, NUM_SPECIES, q);
+        d_react.rts = middle::MallocDevice<int>(d_react.rts, NUM_REA, q);
+        d_react.pls = middle::MallocDevice<int>(d_react.pls, NUM_REA, q);
+        d_react.sls = middle::MallocDevice<int>(d_react.sls, NUM_REA, q);
+        middle::MemCpy<int>(d_react.rns, h_react.rns, NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.rts, h_react.rts, NUM_REA, q);
+        middle::MemCpy<int>(d_react.pls, h_react.pls, NUM_REA, q);
+        middle::MemCpy<int>(d_react.sls, h_react.sls, NUM_REA, q);
+
+        int *h_reactant_list, *h_product_list, *h_species_list, *d_reactant_list, *d_product_list, *d_species_list;
+        h_reactant_list = middle::MallocHost<int>(h_reactant_list, rts_size, q);
+        h_product_list = middle::MallocHost<int>(h_product_list, pls_size, q);
+        h_species_list = middle::MallocHost<int>(h_species_list, sls_size, q);
+        h_react.reactant_list = middle::MallocHost2D<int>(h_reactant_list, NUM_REA, h_react.rts, q);
+        h_react.product_list = middle::MallocHost2D<int>(h_product_list, NUM_REA, h_react.pls, q);
+        h_react.species_list = middle::MallocHost2D<int>(h_species_list, NUM_REA, h_react.sls, q);
+
+        for (size_t i = 0; i < NUM_REA; i++)
+        {
+            std::memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);
+            std::memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);
+            std::memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);
+        }
+
+        d_reactant_list = middle::MallocDevice<int>(d_reactant_list, rts_size, q);
+        d_product_list = middle::MallocDevice<int>(d_product_list, pls_size, q);
+        d_species_list = middle::MallocDevice<int>(d_species_list, sls_size, q);
+        middle::MemCpy<int>(d_reactant_list, h_reactant_list, rts_size, q);
+        middle::MemCpy<int>(d_product_list, h_product_list, pls_size, q);
+        middle::MemCpy<int>(d_species_list, h_species_list, sls_size, q);
+        d_react.reactant_list = middle::MallocDevice2D<int>(d_reactant_list, NUM_REA, h_react.rts, q);
+        d_react.product_list = middle::MallocDevice2D<int>(d_product_list, NUM_REA, h_react.pls, q);
+        d_react.species_list = middle::MallocDevice2D<int>(d_species_list, NUM_REA, h_react.sls, q);
+
+        // std::cout << "\n";
+        // for (size_t i = 0; i < NUM_SPECIES; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.rns[i]; j++)
+        //         std::cout << h_react.reaction_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_SPECIES; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.rns[i]; j++)
+        //              {
+        //                  stream_ct1 << d_react.reaction_list[i][j] << " ";
+        //              }
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
+
+        // for (size_t i = 0; i < NUM_REA; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.rts[i]; j++)
+        //         std::cout << h_react.reactant_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_REA; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.rts[i]; j++)
+        //                  stream_ct1 << d_react.reactant_list[i][j] << " ";
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
+
+        // for (size_t i = 0; i < NUM_REA; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.pls[i]; j++)
+        //         std::cout << h_react.product_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_REA; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.pls[i]; j++)
+        //                  stream_ct1 << d_react.product_list[i][j] << " ";
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
+
+        // for (size_t i = 0; i < NUM_REA; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.sls[i]; j++)
+        //         std::cout << h_react.species_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_REA; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.sls[i]; j++)
+        //                  stream_ct1 << d_react.species_list[i][j] << " ";
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
     }
-#endif // end Visc
-#ifdef COP_CHEME
-    d_react.Nu_f_ = middle::MallocDevice<int>(d_react.Nu_f_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
-    d_react.Nu_b_ = middle::MallocDevice<int>(d_react.Nu_b_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
-    d_react.Nu_d_ = middle::MallocDevice<int>(d_react.Nu_d_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
-    d_react.react_type = middle::MallocDevice<int>(d_react.react_type, NUM_REA * 2, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * 2 * sizeof(int), q));
-    d_react.third_ind = middle::MallocDevice<int>(d_react.third_ind, NUM_REA, q);                              // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
-    d_react.React_ThirdCoef = middle::MallocDevice<real_t>(d_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q); // static_cast<real_t *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(real_t), q));
-    d_react.Rargus = middle::MallocDevice<real_t>(d_react.Rargus, NUM_REA * 6, q);                             // static_cast<real_t *>(sycl::malloc_host(NUM_REA * 6 * sizeof(real_t), q));
 
-    middle::MemCpy<int>(d_react.Nu_f_, h_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.Nu_b_, h_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.Nu_d_, h_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.react_type, h_react.react_type, NUM_REA * 2, q);
-    middle::MemCpy<int>(d_react.third_ind, h_react.third_ind, NUM_REA, q);
-    middle::MemCpy<real_t>(d_react.React_ThirdCoef, h_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<real_t>(d_react.Rargus, h_react.Rargus, NUM_REA * 6, q);
-
-    h_react.rns = middle::MallocHost<int>(h_react.rns, NUM_SPECIES, q); // static_cast<int *>(sycl::malloc_host(NUM_SPECIES * sizeof(int), q));
-    for (size_t j = 0; j < NUM_SPECIES; j++)
-    {
-        h_react.rns[j] = reaction_list[j].size();
-        h_react.reaction_list[j] = middle::MallocHost<int>(h_react.reaction_list[j], h_react.rns[j], q);                          // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rns[j], q));
-        middle::MemCpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j], q, middle::MemCpy_t::HtH); // q.memcpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j]);
-
-        d_react.reaction_list[j] = middle::MallocDevice<int>(d_react.reaction_list[j], h_react.rns[j], q); // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rns[j], q));
-        middle::MemCpy<int>(d_react.reaction_list[j], h_react.reaction_list[j], h_react.rns[j], q);        // q.memcpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j]);
-    }
-    h_react.rts = middle::MallocHost<int>(h_react.rts, NUM_REA, q); // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
-    h_react.pls = middle::MallocHost<int>(h_react.pls, NUM_REA, q); // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
-    h_react.sls = middle::MallocHost<int>(h_react.sls, NUM_REA, q); // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
-    for (size_t i = 0; i < NUM_REA; i++)
-    {
-        h_react.rts[i] = reactant_list[i].size();
-        h_react.pls[i] = product_list[i].size();
-        h_react.sls[i] = species_list[i].size();
-        h_react.reactant_list[i] = middle::MallocHost<int>(h_react.reactant_list[i], h_react.rts[i], q);                          // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rts[i], q));
-        h_react.product_list[i] = middle::MallocHost<int>(h_react.product_list[i], h_react.pls[i], q);                            // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.pls[i], q));
-        h_react.species_list[i] = middle::MallocHost<int>(h_react.species_list[i], h_react.sls[i], q);                            // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.sls[i], q));
-        middle::MemCpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i], q, middle::MemCpy_t::HtH); // q.memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);
-        middle::MemCpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i], q, middle::MemCpy_t::HtH);   // q.memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);
-        middle::MemCpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i], q, middle::MemCpy_t::HtH);   // q.memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);
-
-        d_react.reactant_list[i] = middle::MallocDevice<int>(d_react.reactant_list[i], h_react.rts[i], q); // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rts[i], q));
-        d_react.product_list[i] = middle::MallocDevice<int>(d_react.product_list[i], h_react.pls[i], q);   // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.pls[i], q));
-        d_react.species_list[i] = middle::MallocDevice<int>(d_react.species_list[i], h_react.sls[i], q);   // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.sls[i], q));
-        middle::MemCpy<int>(d_react.reactant_list[i], h_react.reactant_list[i], h_react.rts[i], q);        // q.memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);
-        middle::MemCpy<int>(d_react.product_list[i], h_react.product_list[i], h_react.pls[i], q);          // q.memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);
-        middle::MemCpy<int>(d_react.species_list[i], h_react.species_list[i], h_react.sls[i], q);          // q.memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);
-    }
-    d_react.rns = middle::MallocDevice<int>(d_react.rns, NUM_SPECIES, q); // static_cast<int *>(sycl::malloc_host(NUM_SPECIES * sizeof(int), q));
-    d_react.rts = middle::MallocDevice<int>(d_react.rts, NUM_REA, q);     // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
-    d_react.pls = middle::MallocDevice<int>(d_react.pls, NUM_REA, q);     // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
-    d_react.sls = middle::MallocDevice<int>(d_react.sls, NUM_REA, q);     // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
-    middle::MemCpy<int>(d_react.rns, h_react.rns, NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.rts, h_react.rts, NUM_REA, q);
-    middle::MemCpy<int>(d_react.pls, h_react.pls, NUM_REA, q);
-    middle::MemCpy<int>(d_react.sls, h_react.sls, NUM_REA, q);
-#endif // COP_CHEME
 #ifdef USE_MPI
-    if (0 == mpiTrans->myRank)
+    mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
+    if (0 == myRank)
     {
         std::cout << " . Done \n";
-        std::cout << "<---------------------------------------------------> \n";
     }
 }
+
 // =======================================================
 // =======================================================
 void Setup::print()
 {
     if (mach_shock)
-    {
-        // States initializing
+    { // States initializing
         printf("blast_type: %d and blast_center(x = %.6lf , y = %.6lf , z = %.6lf).\n", ini.blast_type, ini.blast_center_x, ini.blast_center_y, ini.blast_center_z);
-        printf(" Use Mach number = %lf to reinitialize fluid states upstream the shock\n", ini.Ma);
-        printf("  States of   upstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_in, ini.blast_T_in, ini.blast_density_in, ini.blast_u_in, ini.blast_v_in, ini.blast_w_in);
-        printf("  States of downstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_out, ini.blast_T_out, ini.blast_density_out, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
-#ifdef COP
-        printf("cop_type:   %d and cop_radius: %lf.\n", ini.cop_type, ini.cop_radius);
-        printf("  cop_center: (x = %.6lf, y = %.6lf, z = %.6lf).\n", ini.cop_center_x, ini.cop_center_y, ini.cop_center_z);
-        // printf("  States inside cop bubble: (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.cop_pressure_in, ini.cop_T_in, ini.cop_density_in, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
-#endif // end COP
+        printf(" shock Mach number = %lf to reinitialize fluid states upstream the shock.\n", ini.Ma);
+        printf("  propagation speed of shock = %lf, normalized time tau_H(bubble_diameter/shock_propagation_speed)= %lf.\n", ini.Ma * ini.blast_c_out, ini.tau_H);
+        printf("  states of   upstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_in, ini.blast_T_in, ini.blast_density_in, ini.blast_u_in, ini.blast_v_in, ini.blast_w_in);
+        printf("  states of downstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_out, ini.blast_T_out, ini.blast_density_out, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
     }
-// 后接流体状态输出
+    // 后接流体状态输出
+    if (1 < NumFluid)
+    {
+        if (myRank == 0)
+            std::cout << "<---------------------------------------------------> \n";
+
+        printf("Extending width: width_xt                                : %lf\n", width_xt);
+        printf("Ghost-fluid update width: width_hlf                      : %lf\n", width_hlf);
+        printf("cells' volume less than this vule will be mixed          : %lf\n", mx_vlm);
+        printf("cells' volume less than states updated based on mixed    : %lf\n", ext_vlm);
+        printf("half-width of level set narrow band                      : %lf\n", BandforLevelset);
+        printf("Number of fluids                                         : %zu\n", BlSz.num_fluids);
+        for (size_t n = 0; n < NumFluid; n++)
+        { // 0: phase_indicator, 1: gamma, 2: A, 3: B, 4: rho0, 5: R_0, 6: lambda_0, 7: a(rtificial)s(peed of)s(ound)
+            printf("fluid[%zu]: %s, characteristics(Material, Phase_indicator, Gamma, A, B, Rho0, R_0, Lambda_0, artificial speed of sound): \n", n, Fluids_name[n].c_str());
+            printf("  %f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f\n", material_props[n][0],
+                   material_props[n][1], material_props[n][2], material_props[n][3], material_props[n][4],
+                   material_props[n][5], material_props[n][6], material_props[n][7], material_props[n][8]);
+        }
+    }
+
 #ifdef COP
+
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
+
+    std::cout << species_name.size() << " species mole/mass fraction(in/out): " << std::endl;
+    for (int n = 0; n < NUM_SPECIES; n++)
+    {
+        std::cout << "species[" << n << "]=" << std::left << std::setw(10) << species_name[n]
+                  << std::setw(5) << h_thermal.xi_in[n] << std::setw(5) << h_thermal.xi_out[n]
+                  << std::setw(15) << h_thermal.species_ratio_in[n] << std::setw(15) << h_thermal.species_ratio_out[n] << std::endl;
+    }
+
 #if Visc
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
+
+    printf("Viscisity characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): \n");
     for (size_t n = 0; n < NUM_SPECIES; n++)
     {
-        printf("compoent[%zd]: %s, characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): \n", n, species_name[n].c_str());
-        printf("  %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf\n", h_thermal.species_chara[n * SPCH_Sz + 0],
+        printf("species[%zd]: %s,    %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf\n", n,
+               species_name[n].c_str(), h_thermal.species_chara[n * SPCH_Sz + 0],
                h_thermal.species_chara[n * SPCH_Sz + 1], h_thermal.species_chara[n * SPCH_Sz + 2],
                h_thermal.species_chara[n * SPCH_Sz + 3], h_thermal.species_chara[n * SPCH_Sz + 4],
                h_thermal.species_chara[n * SPCH_Sz + 5], h_thermal.species_chara[n * SPCH_Sz + 6]);
     }
 #endif // Visc
-#ifdef COP_CHEME
-    printf("%d Reactions been actived                                     \n", NUM_REA);
-    for (size_t id = 0; id < NUM_REA; id++)
-    {
-        if (id + 1 < 10)
-            std::cout << "Reaction:" << id + 1 << "  ";
-        else
-            std::cout << "Reaction:" << id + 1 << " ";
-        int numreactant = 0, numproduct = 0;
-        // output reactant
-        for (int j = 0; j < NUM_SPECIES; ++j)
-            numreactant += h_react.Nu_f_[id * NUM_SPECIES + j];
+#endif // end COP
 
-        if (numreactant == 0)
-            std::cout << "0	"
-                      << "  <-->  ";
-        else
-        {
-            for (int j = 0; j < NUM_SPECIES; j++)
-            {
-                if (j != NUM_COP)
-                {
-                    if (h_react.Nu_f_[id * NUM_SPECIES + j] > 0)
-                        std::cout << h_react.Nu_f_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
-                }
-                else
-                {
-                    if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
-                        std::cout << " M ";
-                    std::cout << "  <-->  ";
-                }
-            }
-        }
-        // output product
-        for (int j = 0; j < NUM_SPECIES; ++j)
-            numproduct += h_react.Nu_b_[id * NUM_SPECIES + j];
-        if (numproduct == 0)
-            std::cout << "0	";
-        else
-        {
-            for (int j = 0; j < NUM_SPECIES; j++)
-            {
-                if (j != NUM_COP)
-                {
-                    if (h_react.Nu_b_[id * NUM_SPECIES + j] > 0)
-                        std::cout << h_react.Nu_b_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
-                }
-                else
-                {
-                    if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
-                        std::cout << " M ";
-                }
-            }
-        }
-        std::cout << " with rate: " << h_react.Rargus[id * 6 + 0] << " " << h_react.Rargus[id * 6 + 1] << " " << h_react.Rargus[id * 6 + 2] << std::endl;
-        //-----------------*backwardArrhenius------------------//
-        if (BackArre)
-        {
-            std::cout << " with back rate: " << h_react.Rargus[id * 6 + 3] << " " << h_react.Rargus[id * 6 + 4] << " " << h_react.Rargus[id * 6 + 5] << std::endl;
-        }
-        //-----------------*backwardArrhenius------------------//
-    }
-    std::cout << "species mass fraction" << std::endl;
-    for (int n = 0; n < NUM_SPECIES; n++)
-    {
-        std::cout << "species[" << n << "]=" << std::setw(5) << species_name[n] << std::setw(10) << h_thermal.species_ratio_in[n] << std::setw(10) << h_thermal.species_ratio_out[n] << std::endl;
-    }
-#endif // end COP_CHEME
-#endif // COP
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
 
-#if 1 != NumFluid
-    printf("Extending width: width_xt                                : %lf\n", width_xt);
-    printf("Ghost-fluid update width: width_hlf                      : %lf\n", width_hlf);
-    printf("cells' volume less than this vule will be mixed          : %lf\n", mx_vlm);
-    printf("cells' volume less than states updated based on mixed    : %lf\n", ext_vlm);
-    printf("half-width of level set narrow band                      : %lf\n", BandforLevelset);
-    printf("Number of fluids                                         : %d\n", NumFluid);
-#endif // end NumFluid
-#if 2 == NumFluid
-    printf("bubble_type: %d and bubble_radius: %lf.\n", ini.bubble_type, ini.bubbleSz);
-    printf("  bubble_center: (x =%.6lf,y =%.6lf,z =%.6lf).\n", ini.bubble_center_x, ini.bubble_center_y, ini.bubble_center_z);
-    printf("  States inside multiphase bubble:(P =%.6lf,T =%.6lf,rho =%.6lf,u =%.6lf,v =%.6lf,w =%.6lf,).\n", ini.cop_pressure_in, ini.cop_T_in, ini.cop_density_in, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
-    for (n = 0; n < NumFluid; n++)
-    { // 0: phase_indicator, 1: gamma, 2: A, 3: B, 4: rho0, 5: R_0, 6: lambda_0, 7: a(rtificial)s(peed of)s(ound)
-        printf("fluid[%d]: %s, characteristics(Material, Phase_indicator, Gamma, A, B, Rho0, R_0, Lambda_0, artificial speed of sound): \n", n, fname[n].c_str());
-        printf("  %d,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f\n", material_kind[n],
-               material_props[n][0], material_props[n][1], material_props[n][2], material_props[n][3],
-               material_props[n][4], material_props[n][5], material_props[n][6], material_props[n][7]);
-    }
-#endif
-
-    std::cout << "<---------------------------------------------------> \n";
     printf("Start time: %.6lf and End time: %.6lf                        \n", StartTime, EndTime);
-    printf("   XYZ dir Domain size:                  %1.3lf x %1.3lf x %1.3lf\n", Domain_length, Domain_width, Domain_height);
 #ifdef USE_MPI // end USE_MPI
     {          // print information about current setup
         std::cout << "MPI rank mesh setup as below: \n";
         std::cout << "   Global resolution of MPI World: " << BlSz.X_inner * BlSz.mx << " x " << BlSz.Y_inner * BlSz.my << " x " << BlSz.Z_inner * BlSz.mz << "\n";
         std::cout << "   Local  resolution of one Rank : " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
         std::cout << "   MPI Cartesian topology        : " << BlSz.mx << " x " << BlSz.my << " x " << BlSz.mz << std::endl;
-        // std::cout << "<---------------------------------------------------> \n";
     }
 #else
-    std::cout << "   Resolution of Domain:                 " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
+    std::cout << "Resolution of Domain:                 " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
 #endif // end USE_MPI
-    printf("   Difference steps: dx, dy, dz:         %lf, %lf, %lf\n", BlSz.dx, BlSz.dy, BlSz.dz);
-    std::cout << "<---------------------------------------------------> \n";
+    printf("GhostWidth Cells: Bx, By, Bz:         %d,  %d,  %d\n", BlSz.Bwidth_X, BlSz.Bwidth_Y, BlSz.Bwidth_Z);
+    printf("Block size:   bx, by, bz, Dt:         %zu,  %zu,  %zu,  %zu\n", BlSz.dim_block_x, BlSz.dim_block_y, BlSz.dim_block_z, BlSz.BlockSize);
+    printf("XYZ dir Domain size:                  %1.3lf x %1.3lf x %1.3lf\n", BlSz.Domain_length, BlSz.Domain_width, BlSz.Domain_height);
+    printf("Difference steps: dx, dy, dz:         %lf, %lf, %lf\n", BlSz.dx, BlSz.dy, BlSz.dz);
 
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
 } // Setup::print

@@ -1,8 +1,10 @@
 add_compile_options(-DUSE_MPI)
-# set(USE_PLT "OFF")
 
 include_directories($ENV{MPI_PATH}/include)
-find_library(MPI_CXX NAMES libmpi.so HINTS "$ENV{MPI_PATH}/lib")
+find_library(MPI_CXX NAMES libmpi.so libmpicxx.so HINTS "$ENV{MPI_PATH}/lib" "$ENV{MPI_PATH}/lib64")
+
+IF(NOT "$ENV{MPI_PATH}" STREQUAL "")
+
 message(STATUS "MPI settings: ")
 
 IF(EXPLICIT_ALLOC)
@@ -19,3 +21,7 @@ ENDIF()
 message(STATUS "  MPI_HOME: $ENV{MPI_PATH}")
 message(STATUS "  MPI_INC: $ENV{MPI_PATH}/include added")
 message(STATUS "  MPI_CXX lib located: ${MPI_CXX} found")
+
+ELSE()
+  message(FATAL_ERROR "Fail to find MPI_CXX library, Please set SYSTEM environment variable MPI_PATH")
+ENDIF()

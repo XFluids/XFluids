@@ -1,35 +1,68 @@
-add_executable(${PROJECT_NAME} "main.cpp")
-include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR})
+# # add external submodule
+add_subdirectory(read_grid)
+add_subdirectory(read_ini)
+add_subdirectory(mpiPacks)
 
-# # add sources of basic-solvers
-add_library(cxxsrc
-  STATIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/Fluids.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/LAMNSS.cpp
+# # add sample lib
+find_library(${INIT_SAMPLE} NAMES lib${INIT_SAMPLE}.a HINTS "${LIBRARY_OUTPUT_PATH}")
+
+IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
+  add_library(${INIT_SAMPLE}
+    STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/Fluids.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/XFLUIDS.cpp
+  )
+
+  # # add program sub-solvers
+  add_subdirectory(solver_Ini)
+  add_subdirectory(solver_BCs)
+  add_subdirectory(solver_GetDt)
+  add_subdirectory(solver_Reaction)
+  add_subdirectory(solver_UpdateStates)
+  add_subdirectory(solver_Reconstruction)
+  target_include_directories(${INIT_SAMPLE}
+    PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/include
+  )
+
+  IF(USE_MPI)
+    target_link_libraries(${INIT_SAMPLE}
+      PUBLIC
+      mpiPacks
+    )
+  ENDIF()
+
+  IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+    add_sycl_to_target(TARGET ${INIT_SAMPLE})
+  ENDIF()
+
+ELSE()
+  message(STATUS "${${INIT_SAMPLE}} is located at ${LIBRARY_OUTPUT_PATH}")
+  add_library(${INIT_SAMPLE} STATIC IMPORTED GLOBAL)
+  set_property(TARGET ${INIT_SAMPLE}
+    PROPERTY IMPORTED_LOCATION ${${INIT_SAMPLE}})
+ENDIF()
+
+# # add main implementation
+add_executable(${PROJECT_NAME} "main.cpp")
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+  ${CMAKE_SOURCE_DIR}/src/include
 )
 
-# # add basic components
-add_subdirectory(read_ini)
-
-IF(USE_MPI)
-add_subdirectory(mpiPacks)
+IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+  add_sycl_to_target(TARGET ${PROJECT_NAME})
 ENDIF()
-add_subdirectory(include)
-add_subdirectory(sycl_blocks)
-add_subdirectory(sycl_kernels)
-add_subdirectory(sycl_devices)
+
+target_link_libraries(${PROJECT_NAME}
+  PUBLIC
+  readini
+  ${INIT_SAMPLE}
+)
 
 IF(USE_MPI)
   target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-    cxxsrc
-    readini
+    PUBLIC
     mpiPacks
-  )
-ELSE()
-  target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-    cxxsrc
-    readini
   )
 ENDIF()

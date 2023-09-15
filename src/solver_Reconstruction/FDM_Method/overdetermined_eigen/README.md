@@ -1,0 +1,2 @@
+- for gonvering equations including N species, add the full N equations of species, sum of mass fraction of N species is normalized to 1
+- Ref.Étude par simulation numérique de l’auto-allumage en écoulement turbulent cisaillé supersonique

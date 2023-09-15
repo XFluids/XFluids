@@ -1,0 +1,52 @@
+{
+	"run": {
+		"blockSize_x": 8,
+		"blockSize_y": 8,
+		"blockSize_z": 8,
+		"DtBlockSize": 8,
+		"nStepMax": 10000,
+		"nOutMax": 100,
+		"CFLnumber": 0.4,
+		"OutBoundary": 0,
+		"OutInterval": 100,
+		"OutTimeStamps": [
+			0.00004
+		]
+	},
+	"mpi": {
+		"mx": 1,
+		"my": 1,
+		"mz": 1,
+		"DeviceSelect": [
+			1,
+			0,
+			0
+		]
+	},
+	"equations": {
+		"Fluid_Names": [],
+		"Species_Name": []
+	},
+	"sources": {},
+	"mesh": {
+		"Refs": [
+			0.3048
+		]
+	},
+	"init": {}
+}
+// ; BoundaryConditions: 
+// ; ; Inflow = 0, Outflow = 1, Symmetry = 2, Periodic = 3
+// ; ; nslipWall = 4, viscWall = 5, slipWall = 6, innerBlock = 7
+// BoundaryBundles=2,4,2
+// # i-surfaces
+// BoundaryBundle_x0=1,0,0,0,64,0,1,1
+// BoundaryBundle_x1=1,368,368,0,64,0,1,1
+// # j-surfaces
+// BoundaryBundle_y0=6,0,32,0,0,0,1,3000
+// BoundaryBundle_y1=6,336,368,0,0,0,1,3000
+// BoundaryBundle_y2=5,32,336,0,0,0,1,2
+// BoundaryBundle_y3=1,0,368,64,64,0,1,1
+// # k-surfaces
+// BoundaryBundle_z0=6,0,368,0,64,0,0,0
+// BoundaryBundle_z1=6,0,368,0,64,1,1,0

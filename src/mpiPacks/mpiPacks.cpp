@@ -33,40 +33,45 @@ MpiTrans::MpiTrans(Block &bl, BConditions const Boundarys[6])
 	}
 
 	// compute MPI ranks of our neighbors and set default boundary condition types
-	nNeighbors = 2 * (DIM_X + DIM_Y + DIM_Z);
-	neighborsRank[X_MIN] = DIM_X ? communicator->getNeighborRank<X_MIN>() : 0;
-	neighborsRank[X_MAX] = DIM_X ? communicator->getNeighborRank<X_MAX>() : 0;
-	neighborsRank[Y_MIN] = DIM_Y ? communicator->getNeighborRank<Y_MIN>() : 0;
-	neighborsRank[Y_MAX] = DIM_Y ? communicator->getNeighborRank<Y_MAX>() : 0;
-	neighborsRank[Z_MIN] = DIM_Z ? communicator->getNeighborRank<Z_MIN>() : 0;
-	neighborsRank[Z_MAX] = DIM_Z ? communicator->getNeighborRank<Z_MAX>() : 0;
+	nNeighbors = 2 * (bl.DimX + bl.DimY + bl.DimZ);
+	neighborsRank[X_MIN] = (bl.DimX) ? communicator->getNeighborRank<X_MIN>() : 0;
+	neighborsRank[X_MAX] = (bl.DimX) ? communicator->getNeighborRank<X_MAX>() : 0;
+	neighborsRank[Y_MIN] = (bl.DimY) ? communicator->getNeighborRank<Y_MIN>() : 0;
+	neighborsRank[Y_MAX] = (bl.DimY) ? communicator->getNeighborRank<Y_MAX>() : 0;
+	neighborsRank[Z_MIN] = (bl.DimZ) ? communicator->getNeighborRank<Z_MIN>() : 0;
+	neighborsRank[Z_MAX] = (bl.DimZ) ? communicator->getNeighborRank<Z_MAX>() : 0;
 
-	neighborsBC[X_MIN] = DIM_X ? BC_COPY : BC_UNDEFINED;
-	neighborsBC[X_MAX] = DIM_X ? BC_COPY : BC_UNDEFINED;
-	neighborsBC[Y_MIN] = DIM_Y ? BC_COPY : BC_UNDEFINED;
-	neighborsBC[Y_MAX] = DIM_Y ? BC_COPY : BC_UNDEFINED;
-	neighborsBC[Z_MIN] = DIM_Z ? BC_COPY : BC_UNDEFINED;
-	neighborsBC[Z_MAX] = DIM_Z ? BC_COPY : BC_UNDEFINED;
+	neighborsBC[X_MIN] = (bl.DimX) ? BC_COPY : BC_UNDEFINED;
+	neighborsBC[X_MAX] = (bl.DimX) ? BC_COPY : BC_UNDEFINED;
+	neighborsBC[Y_MIN] = (bl.DimY) ? BC_COPY : BC_UNDEFINED;
+	neighborsBC[Y_MAX] = (bl.DimY) ? BC_COPY : BC_UNDEFINED;
+	neighborsBC[Z_MIN] = (bl.DimZ) ? BC_COPY : BC_UNDEFINED;
+	neighborsBC[Z_MAX] = (bl.DimZ) ? BC_COPY : BC_UNDEFINED;
 
 	// Identify outside boundaries for mpi rank at edge of each direction in all mpi nRanks world
-#ifdef DIM_X
-	if (bl.myMpiPos_x == 0) // X_MIN boundary
-		neighborsBC[X_MIN] = Boundarys[XMIN];
-	if (bl.myMpiPos_x == mx - 1) // X_MAX boundary
-		neighborsBC[X_MAX] = Boundarys[XMAX];
-#endif // end DIM_X
-#ifdef DIM_Y
-	if (bl.myMpiPos_y == 0) // Y_MIN boundary
-		neighborsBC[Y_MIN] = Boundarys[YMIN];
-	if (bl.myMpiPos_y == my - 1) // Y_MAX boundary
-		neighborsBC[Y_MAX] = Boundarys[YMAX];
-#endif // end DIM_Y
-#ifdef DIM_Z
-	if (bl.myMpiPos_z == 0) // Z_MIN boundary
-		neighborsBC[Z_MIN] = Boundarys[ZMIN];
-	if (bl.myMpiPos_z == mz - 1) // Z_MAX boundary
-		neighborsBC[Z_MAX] = Boundarys[ZMAX];
-#endif // end DIM_Z
+	if (bl.DimX)
+	{
+		if (bl.myMpiPos_x == 0) // X_MIN boundary
+			neighborsBC[X_MIN] = Boundarys[XMIN];
+		if (bl.myMpiPos_x == mx - 1) // X_MAX boundary
+			neighborsBC[X_MAX] = Boundarys[XMAX];
+	}
+	if (bl.DimY)
+	{
+		if (bl.myMpiPos_y == 0) // Y_MIN boundary
+			neighborsBC[Y_MIN] = Boundarys[YMIN];
+		if (bl.myMpiPos_y == my - 1) // Y_MAX boundary
+			neighborsBC[Y_MAX] = Boundarys[YMAX];
+	}
+	if (bl.DimZ)
+	{
+		if (bl.myMpiPos_z == 0) // Z_MIN boundary
+			neighborsBC[Z_MIN] = Boundarys[ZMIN];
+		if (bl.myMpiPos_z == mz - 1) // Z_MAX boundary
+			neighborsBC[Z_MAX] = Boundarys[ZMAX];
+	}
+	// block in mpiPacks
+	mbl = bl;
 } // MpiTrans::MpiTrans
 // =======================================================
 // =======================================================
@@ -152,15 +157,52 @@ void MpiTrans::Get_RankGroupZ(MPI_Group &group, const int pos)
 
 	MPI_Group_incl(comm_world, size, members, &group);
 } // MPI_Group MpiTrans::Get_RankGroupZ
-// =======================================================
-// =======================================================
-void MpiTrans::GroupallReduce(void *input, void *result, int inputCount, int type, int op, MPI_Group group)
+  // =======================================================
+  // =======================================================
+void MpiTrans::BocastGroup2All(void *target, int type, int *group_ranks)
 {
-	MPI_Comm group_comm;
+	int root, maybe_root = group_ranks[myRank] >= 0 ? myRank : -1;
+
+	communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	// std::cout << "BcastGroup2All: root = " << root << std::endl;
+	communicator->bcast(&target, 1, type, root);
+}
+// =======================================================
+// =======================================================
+void MpiTrans::allReduce(void *input, void *result, int inputCount, int type, int op, MPI_Comm group_comm)
+{
 	MPI_Op mpiOp = communicator->getOp(op);
 	MPI_Datatype mpiType = communicator->getDataType(type);
-	MPI_Comm_create(MPI_COMM_WORLD, group, &group_comm);
 	MPI_Allreduce(input, result, inputCount, mpiType, mpiOp, group_comm);
+}
+// =======================================================
+// =======================================================
+void MpiTrans::GroupallReduce(void *input, void *result, int inputCount, int type, int op, int *group_ranks, bool bocast)
+{
+	MPI_Comm group_comm;
+	MPI_Group comm_group, mgroup;
+	MPI_Op mpiOp = communicator->getOp(op);
+	MPI_Datatype mpiType = communicator->getDataType(type);
+	std::vector<int> ranks;
+	for (size_t nn = 0; nn < nProcs; nn++)
+		if (group_ranks[nn] >= 0)
+			ranks.push_back(group_ranks[nn]);
+
+	MPI_Comm_group(MPI_COMM_WORLD, &comm_group);					 // call in all ranks
+	MPI_Group_incl(comm_group, ranks.size(), ranks.data(), &mgroup); // call in all ranks
+	MPI_Comm_create(MPI_COMM_WORLD, mgroup, &group_comm);			 // call in all ranks
+
+	if (group_ranks[myRank] >= 0)
+		MPI_Allreduce(input, result, inputCount, mpiType, mpiOp, group_comm); // call in rank of std::vector<int> &ranks
+
+	// std::cout << group_ranks[0] << " " << group_ranks[1] << " " << group_ranks[2] << " " << group_ranks[3] << std::endl;
+
+	if (bocast)
+		BocastGroup2All(result, type, group_ranks);
+
+	// MPI_Group_free(&mgroup);
+	// MPI_Group_free(&comm_group);
+	// MPI_Comm_free(&group_comm);
 }
 // =======================================================
 // =======================================================
@@ -172,86 +214,89 @@ long double MpiTrans::AllocMemory(middle::device_t &q, Block &bl, const int N)
 #ifndef EXPLICIT_ALLOC
 		h_mpiData = middle::MallocHost<MpiData>(h_mpiData, 1, q);
 #endif // end EXPLICIT_ALLOC
-#if DIM_X
-		Ghost_CellSz_x = bl.Bwidth_X * bl.Ymax * bl.Zmax * N;
-		// Ghost_DataSz_x = Ghost_CellSz_x * sizeof(real_t);
-		temp += Ghost_CellSz_x * sizeof(real_t) * 4.0 / 1024.0 / 1024.0;
+		if (bl.DimX)
+		{
+			Ghost_CellSz_x = bl.Bwidth_X * bl.Ymax * bl.Zmax * N;
+			// Ghost_DataSz_x = Ghost_CellSz_x * sizeof(real_t);
+			temp += Ghost_CellSz_x * sizeof(real_t) * 4.0 / 1024.0 / 1024.0;
 // =======================================================
 #ifdef EXPLICIT_ALLOC
-		// =======================================================
+			// =======================================================
 #ifndef AWARE_MPI
-		h_mpiData.TransBufSend_xmin = middle::MallocHost<real_t>(h_mpiData.TransBufSend_xmin, Ghost_CellSz_x, q);
-		h_mpiData.TransBufRecv_xmin = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_xmin, Ghost_CellSz_x, q);
-		h_mpiData.TransBufRecv_xmax = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_xmax, Ghost_CellSz_x, q);
-		h_mpiData.TransBufSend_xmax = middle::MallocHost<real_t>(h_mpiData.TransBufSend_xmax, Ghost_CellSz_x, q);
+			h_mpiData.TransBufSend_xmin = middle::MallocHost<real_t>(h_mpiData.TransBufSend_xmin, Ghost_CellSz_x, q);
+			h_mpiData.TransBufRecv_xmin = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_xmin, Ghost_CellSz_x, q);
+			h_mpiData.TransBufRecv_xmax = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_xmax, Ghost_CellSz_x, q);
+			h_mpiData.TransBufSend_xmax = middle::MallocHost<real_t>(h_mpiData.TransBufSend_xmax, Ghost_CellSz_x, q);
 #endif // end AWARE_MPI
-		d_mpiData.TransBufSend_xmin = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_xmin, Ghost_CellSz_x, q);
-		d_mpiData.TransBufRecv_xmin = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_xmin, Ghost_CellSz_x, q);
-		d_mpiData.TransBufRecv_xmax = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_xmax, Ghost_CellSz_x, q);
-		d_mpiData.TransBufSend_xmax = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_xmax, Ghost_CellSz_x, q);
-		// =======================================================
+			d_mpiData.TransBufSend_xmin = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_xmin, Ghost_CellSz_x, q);
+			d_mpiData.TransBufRecv_xmin = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_xmin, Ghost_CellSz_x, q);
+			d_mpiData.TransBufRecv_xmax = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_xmax, Ghost_CellSz_x, q);
+			d_mpiData.TransBufSend_xmax = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_xmax, Ghost_CellSz_x, q);
+			// =======================================================
 #else
-		h_mpiData->TransBufSend_xmin = middle::MallocHost<real_t>(h_mpiData->TransBufSend_xmin, Ghost_CellSz_x, q);
-		h_mpiData->TransBufRecv_xmin = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_xmin, Ghost_CellSz_x, q);
-		h_mpiData->TransBufRecv_xmax = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_xmax, Ghost_CellSz_x, q);
-		h_mpiData->TransBufSend_xmax = middle::MallocHost<real_t>(h_mpiData->TransBufSend_xmax, Ghost_CellSz_x, q);
+			h_mpiData->TransBufSend_xmin = middle::MallocHost<real_t>(h_mpiData->TransBufSend_xmin, Ghost_CellSz_x, q);
+			h_mpiData->TransBufRecv_xmin = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_xmin, Ghost_CellSz_x, q);
+			h_mpiData->TransBufRecv_xmax = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_xmax, Ghost_CellSz_x, q);
+			h_mpiData->TransBufSend_xmax = middle::MallocHost<real_t>(h_mpiData->TransBufSend_xmax, Ghost_CellSz_x, q);
 #endif // end EXPLICIT_ALLOC
-// =======================================================
-#endif // end DIM_X
+	   // =======================================================
+		}
 
-#if DIM_Y
-		Ghost_CellSz_y = bl.Bwidth_Y * bl.Xmax * bl.Zmax * N;
-		// Ghost_DataSz_y = Ghost_CellSz_y * sizeof(real_t);
-		temp += Ghost_CellSz_y * sizeof(real_t) * 4.0 / 1024.0 / 1024.0;
+		if (bl.DimY)
+		{
+			Ghost_CellSz_y = bl.Bwidth_Y * bl.Xmax * bl.Zmax * N;
+			// Ghost_DataSz_y = Ghost_CellSz_y * sizeof(real_t);
+			temp += Ghost_CellSz_y * sizeof(real_t) * 4.0 / 1024.0 / 1024.0;
 // =======================================================
 #ifdef EXPLICIT_ALLOC
-		// =======================================================
+			// =======================================================
 #ifndef AWARE_MPI
-		h_mpiData.TransBufSend_ymin = middle::MallocHost<real_t>(h_mpiData.TransBufSend_ymin, Ghost_CellSz_y, q);
-		h_mpiData.TransBufRecv_ymin = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_ymin, Ghost_CellSz_y, q);
-		h_mpiData.TransBufRecv_ymax = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_ymax, Ghost_CellSz_y, q);
-		h_mpiData.TransBufSend_ymax = middle::MallocHost<real_t>(h_mpiData.TransBufSend_ymax, Ghost_CellSz_y, q);
+			h_mpiData.TransBufSend_ymin = middle::MallocHost<real_t>(h_mpiData.TransBufSend_ymin, Ghost_CellSz_y, q);
+			h_mpiData.TransBufRecv_ymin = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_ymin, Ghost_CellSz_y, q);
+			h_mpiData.TransBufRecv_ymax = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_ymax, Ghost_CellSz_y, q);
+			h_mpiData.TransBufSend_ymax = middle::MallocHost<real_t>(h_mpiData.TransBufSend_ymax, Ghost_CellSz_y, q);
 #endif // end AWARE_MPI
-		d_mpiData.TransBufSend_ymin = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_ymin, Ghost_CellSz_y, q);
-		d_mpiData.TransBufRecv_ymin = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_ymin, Ghost_CellSz_y, q);
-		d_mpiData.TransBufRecv_ymax = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_ymax, Ghost_CellSz_y, q);
-		d_mpiData.TransBufSend_ymax = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_ymax, Ghost_CellSz_y, q);
-		// =======================================================
+			d_mpiData.TransBufSend_ymin = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_ymin, Ghost_CellSz_y, q);
+			d_mpiData.TransBufRecv_ymin = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_ymin, Ghost_CellSz_y, q);
+			d_mpiData.TransBufRecv_ymax = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_ymax, Ghost_CellSz_y, q);
+			d_mpiData.TransBufSend_ymax = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_ymax, Ghost_CellSz_y, q);
+			// =======================================================
 #else
-		h_mpiData->TransBufSend_ymin = middle::MallocHost<real_t>(h_mpiData->TransBufSend_ymin, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
-		h_mpiData->TransBufRecv_ymin = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_ymin, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
-		h_mpiData->TransBufRecv_ymax = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_ymax, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
-		h_mpiData->TransBufSend_ymax = middle::MallocHost<real_t>(h_mpiData->TransBufSend_ymax, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
+			h_mpiData->TransBufSend_ymin = middle::MallocHost<real_t>(h_mpiData->TransBufSend_ymin, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
+			h_mpiData->TransBufRecv_ymin = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_ymin, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
+			h_mpiData->TransBufRecv_ymax = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_ymax, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
+			h_mpiData->TransBufSend_ymax = middle::MallocHost<real_t>(h_mpiData->TransBufSend_ymax, Ghost_CellSz_y, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_y, q));
 #endif // end EXPLICIT_ALLOC
-// ======================================================
-#endif // end DIM_Y
+	   // ======================================================
+		}
 
-#if DIM_Z
-		Ghost_CellSz_z = bl.Bwidth_Z * bl.Xmax * bl.Ymax * N;
-		// Ghost_DataSz_z = Ghost_CellSz_z * sizeof(real_t);
-		temp += Ghost_CellSz_z * sizeof(real_t) * 4.0 / 1024.0 / 1024.0;
+		if (bl.DimZ)
+		{
+			Ghost_CellSz_z = bl.Bwidth_Z * bl.Xmax * bl.Ymax * N;
+			// Ghost_DataSz_z = Ghost_CellSz_z * sizeof(real_t);
+			temp += Ghost_CellSz_z * sizeof(real_t) * 4.0 / 1024.0 / 1024.0;
 // =======================================================
 #ifdef EXPLICIT_ALLOC
-		// =======================================================
+			// =======================================================
 #ifndef AWARE_MPI
-		h_mpiData.TransBufSend_zmin = middle::MallocHost<real_t>(h_mpiData.TransBufSend_zmin, Ghost_CellSz_z, q);
-		h_mpiData.TransBufRecv_zmin = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_zmin, Ghost_CellSz_z, q);
-		h_mpiData.TransBufRecv_zmax = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_zmax, Ghost_CellSz_z, q);
-		h_mpiData.TransBufSend_zmax = middle::MallocHost<real_t>(h_mpiData.TransBufSend_zmax, Ghost_CellSz_z, q);
+			h_mpiData.TransBufSend_zmin = middle::MallocHost<real_t>(h_mpiData.TransBufSend_zmin, Ghost_CellSz_z, q);
+			h_mpiData.TransBufRecv_zmin = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_zmin, Ghost_CellSz_z, q);
+			h_mpiData.TransBufRecv_zmax = middle::MallocHost<real_t>(h_mpiData.TransBufRecv_zmax, Ghost_CellSz_z, q);
+			h_mpiData.TransBufSend_zmax = middle::MallocHost<real_t>(h_mpiData.TransBufSend_zmax, Ghost_CellSz_z, q);
 #endif // end AWARE_MPI
-		d_mpiData.TransBufSend_zmin = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_zmin, Ghost_CellSz_z, q);
-		d_mpiData.TransBufRecv_zmin = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_zmin, Ghost_CellSz_z, q);
-		d_mpiData.TransBufRecv_zmax = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_zmax, Ghost_CellSz_z, q);
-		d_mpiData.TransBufSend_zmax = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_zmax, Ghost_CellSz_z, q);
-		// =======================================================
+			d_mpiData.TransBufSend_zmin = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_zmin, Ghost_CellSz_z, q);
+			d_mpiData.TransBufRecv_zmin = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_zmin, Ghost_CellSz_z, q);
+			d_mpiData.TransBufRecv_zmax = middle::MallocDevice<real_t>(d_mpiData.TransBufRecv_zmax, Ghost_CellSz_z, q);
+			d_mpiData.TransBufSend_zmax = middle::MallocDevice<real_t>(d_mpiData.TransBufSend_zmax, Ghost_CellSz_z, q);
+			// =======================================================
 #else
-		h_mpiData->TransBufSend_zmin = middle::MallocHost<real_t>(h_mpiData->TransBufSend_zmin, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
-		h_mpiData->TransBufRecv_zmin = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_zmin, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
-		h_mpiData->TransBufRecv_zmax = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_zmax, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
-		h_mpiData->TransBufSend_zmax = middle::MallocHost<real_t>(h_mpiData->TransBufSend_zmax, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
+			h_mpiData->TransBufSend_zmin = middle::MallocHost<real_t>(h_mpiData->TransBufSend_zmin, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
+			h_mpiData->TransBufRecv_zmin = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_zmin, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
+			h_mpiData->TransBufRecv_zmax = middle::MallocHost<real_t>(h_mpiData->TransBufRecv_zmax, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
+			h_mpiData->TransBufSend_zmax = middle::MallocHost<real_t>(h_mpiData->TransBufSend_zmax, Ghost_CellSz_z, q); // static_cast<real_t *>(sycl::malloc_host(Ghost_DataSz_z, q));
 #endif // end EXPLICIT_ALLOC
-// ======================================================
-#endif // end DIM_Z
+	   // ======================================================
+		}
 
 #ifndef EXPLICIT_ALLOC
 		d_mpiData = middle::MallocDevice<MpiData>(d_mpiData, 1, q);
@@ -259,24 +304,18 @@ long double MpiTrans::AllocMemory(middle::device_t &q, Block &bl, const int N)
 // #else
 // ======================================================
 // #ifdef AWARE_MPI // needn't host buffer for aware-mpi enabled, only explicit alloc needed
-// #if DIM_X
 //         middle::Free(h_mpiData.TransBufSend_xmin, q);
 //         middle::Free(h_mpiData.TransBufRecv_xmin, q);
 //         middle::Free(h_mpiData.TransBufRecv_xmax, q);
 //         middle::Free(h_mpiData.TransBufSend_xmax, q);
-// #endif // end DIM_X
-// #if DIM_Y
 //         middle::Free(h_mpiData.TransBufSend_ymin, q);
 //         middle::Free(h_mpiData.TransBufRecv_ymin, q);
 //         middle::Free(h_mpiData.TransBufRecv_ymax, q);
 //         middle::Free(h_mpiData.TransBufSend_ymax, q);
-// #endif // end DIM_Y
-// #if DIM_Z
 //         middle::Free(h_mpiData.TransBufSend_zmin, q);
 //         middle::Free(h_mpiData.TransBufRecv_zmin, q);
 //         middle::Free(h_mpiData.TransBufRecv_zmax, q);
 //         middle::Free(h_mpiData.TransBufSend_zmax, q);
-// #endif // end DIM_Z
 // #endif // AWARE_MPI
 // ======================================================
 #endif // end EXPLICIT_ALLOC
@@ -288,26 +327,29 @@ long double MpiTrans::AllocMemory(middle::device_t &q, Block &bl, const int N)
 #ifdef EXPLICIT_ALLOC
 void MpiTrans::MpiBufCpy(MpiData dest, MpiData src, middle::device_t &q)
 {
-#if DIM_X
-	middle::MemCpy<real_t>(dest.TransBufSend_xmin, src.TransBufSend_xmin, Ghost_CellSz_x, q);
-	middle::MemCpy<real_t>(dest.TransBufRecv_xmin, src.TransBufRecv_xmin, Ghost_CellSz_x, q);
-	middle::MemCpy<real_t>(dest.TransBufRecv_xmax, src.TransBufRecv_xmax, Ghost_CellSz_x, q);
-	middle::MemCpy<real_t>(dest.TransBufSend_xmax, src.TransBufSend_xmax, Ghost_CellSz_x, q);
-#endif // end DIM_X
+	if (mbl.DimX)
+	{
+		middle::MemCpy<real_t>(dest.TransBufSend_xmin, src.TransBufSend_xmin, Ghost_CellSz_x, q);
+		middle::MemCpy<real_t>(dest.TransBufRecv_xmin, src.TransBufRecv_xmin, Ghost_CellSz_x, q);
+		middle::MemCpy<real_t>(dest.TransBufRecv_xmax, src.TransBufRecv_xmax, Ghost_CellSz_x, q);
+		middle::MemCpy<real_t>(dest.TransBufSend_xmax, src.TransBufSend_xmax, Ghost_CellSz_x, q);
+	}
 
-#if DIM_Y
-	middle::MemCpy<real_t>(dest.TransBufSend_ymin, src.TransBufSend_ymin, Ghost_CellSz_y, q);
-	middle::MemCpy<real_t>(dest.TransBufRecv_ymin, src.TransBufRecv_ymin, Ghost_CellSz_y, q);
-	middle::MemCpy<real_t>(dest.TransBufRecv_ymax, src.TransBufRecv_ymax, Ghost_CellSz_y, q);
-	middle::MemCpy<real_t>(dest.TransBufSend_ymax, src.TransBufSend_ymax, Ghost_CellSz_y, q);
-#endif // end DIM_Y
+	if (mbl.DimY)
+	{
+		middle::MemCpy<real_t>(dest.TransBufSend_ymin, src.TransBufSend_ymin, Ghost_CellSz_y, q);
+		middle::MemCpy<real_t>(dest.TransBufRecv_ymin, src.TransBufRecv_ymin, Ghost_CellSz_y, q);
+		middle::MemCpy<real_t>(dest.TransBufRecv_ymax, src.TransBufRecv_ymax, Ghost_CellSz_y, q);
+		middle::MemCpy<real_t>(dest.TransBufSend_ymax, src.TransBufSend_ymax, Ghost_CellSz_y, q);
+	}
 
-#if DIM_Z
-	middle::MemCpy<real_t>(dest.TransBufSend_zmin, src.TransBufSend_zmin, Ghost_CellSz_z, q);
-	middle::MemCpy<real_t>(dest.TransBufRecv_zmin, src.TransBufRecv_zmin, Ghost_CellSz_z, q);
-	middle::MemCpy<real_t>(dest.TransBufRecv_zmax, src.TransBufRecv_zmax, Ghost_CellSz_z, q);
-	middle::MemCpy<real_t>(dest.TransBufSend_zmax, src.TransBufSend_zmax, Ghost_CellSz_z, q);
-#endif // end DIM_Z
+	if (mbl.DimZ)
+	{
+		middle::MemCpy<real_t>(dest.TransBufSend_zmin, src.TransBufSend_zmin, Ghost_CellSz_z, q);
+		middle::MemCpy<real_t>(dest.TransBufRecv_zmin, src.TransBufRecv_zmin, Ghost_CellSz_z, q);
+		middle::MemCpy<real_t>(dest.TransBufRecv_zmax, src.TransBufRecv_zmax, Ghost_CellSz_z, q);
+		middle::MemCpy<real_t>(dest.TransBufSend_zmax, src.TransBufSend_zmax, Ghost_CellSz_z, q);
+	}
 }
 #endif // end EXPLICIT_ALLOC
 // =======================================================
@@ -328,7 +370,6 @@ void MpiTrans::MpiTransBuf(middle::device_t &q, Direction Dir)
 	{
 	case XDIR:
 	{
-#if DIM_X
 #ifdef EXPLICIT_ALLOC
 // =======================================================
 #ifndef AWARE_MPI
@@ -366,13 +407,11 @@ void MpiTrans::MpiTransBuf(middle::device_t &q, Direction Dir)
 							   inptr_TransBufRecv_xmax, Ghost_CellSz_x, data_type, neighborsRank[X_MAX], 100);
 		communicator->sendrecv(inptr_TransBufSend_xmax, Ghost_CellSz_x, data_type, neighborsRank[X_MAX], 200,
 							   inptr_TransBufRecv_xmin, Ghost_CellSz_x, data_type, neighborsRank[X_MIN], 200);
-#endif // end DIM_X
 	}
 	break;
 
 	case YDIR:
 	{
-#if DIM_Y
 #ifdef EXPLICIT_ALLOC
 // =======================================================
 #ifndef AWARE_MPI
@@ -408,13 +447,11 @@ void MpiTrans::MpiTransBuf(middle::device_t &q, Direction Dir)
 							   inptr_TransBufRecv_ymax, Ghost_CellSz_y, data_type, neighborsRank[Y_MAX], 100);
 		communicator->sendrecv(inptr_TransBufSend_ymax, Ghost_CellSz_y, data_type, neighborsRank[Y_MAX], 200,
 							   inptr_TransBufRecv_ymin, Ghost_CellSz_y, data_type, neighborsRank[Y_MIN], 200);
-#endif // end DIM_Y
 	}
 	break;
 
 	case ZDIR:
 	{
-#if DIM_Z
 #ifdef EXPLICIT_ALLOC
 // =======================================================
 #ifndef AWARE_MPI
@@ -450,7 +487,6 @@ void MpiTrans::MpiTransBuf(middle::device_t &q, Direction Dir)
 							   inptr_TransBufRecv_zmax, Ghost_CellSz_z, data_type, neighborsRank[Z_MAX], 100);
 		communicator->sendrecv(inptr_TransBufSend_zmax, Ghost_CellSz_z, data_type, neighborsRank[Z_MAX], 200,
 							   inptr_TransBufRecv_zmin, Ghost_CellSz_z, data_type, neighborsRank[Z_MIN], 200);
-#endif // end DIM_Z
 	}
 	break;
 	} // end switch()
@@ -492,7 +528,7 @@ real_t MpiTrans::MpiAllReduce(real_t &var, int Option)
 	return temp;
 }
 
-bool MpiTrans::MpiBocastTrue(const bool mayTrue)
+bool MpiTrans::BocastTrue(const bool mayTrue)
 {
 	int root, maybe_root = mayTrue ? myRank : 0, error_t = mayTrue ? 1 : 0;
 #ifdef USE_MPI

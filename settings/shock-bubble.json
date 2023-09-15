@@ -1,0 +1,108 @@
+{
+	"run": {
+		"blockSize_x": 4,
+		"blockSize_y": 4,
+		"blockSize_z": 4,
+		"DtBlockSize": 4,
+		"nStepMax": 100000000,
+		"nOutMax": 2500,
+		"OutDAT": 0,
+		"OutVTI": 1,
+		"CFLnumber": 0.4,
+		"OutBoundary": 0,
+		"OutInterval": 100000,
+		"OutTimeArrays": [
+			"-0.0000005;100*0.000001: {-P=yi[Xe] > 0.01;-V=rho,vorticity,yi[Xe]}",
+			"0.0000995;100*0.000001: {-P=yi[Xe] > 0.01;-V=rho,vorticity,yi[Xe]}",
+			"0.0001995;100*0.000001: {-P=yi[Xe] > 0.01;-V=rho,vorticity,yi[Xe]}",
+			"0.0002995;100*0.000001: {-P=yi[Xe] > 0.01;-V=rho,vorticity,yi[Xe]}",
+			"0.0003995;100*0.000001: {-P=yi[Xe] > 0.01;-V=rho,vorticity,yi[Xe]}"
+		],
+		"OutTimeStamps": [
+			"0.000020: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000046: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000050: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000066: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000070: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000092: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000100: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000136: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000218: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000244: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000300: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000360: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000400: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000450: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000476: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}",
+			"0.000500: {-C=X,Y,0.0;-V=rho,P,T,vorticity,yi[Xe]}"
+		]
+	},
+	"mpi": {
+		"mx": 4,
+		"my": 1,
+		"mz": 1,
+		"DeviceSelect": [
+			1,
+			1,
+			0
+		]
+	},
+	"equations": {
+		"Fluid_Names": [],
+		"Species_Name": []
+	},
+	"sources": {},
+	"mesh": {
+		"Yil_limiter": 1.0,
+		"Dim_limiter": 1.0,
+		"DOMAIN_Size": [
+			0.2,
+			0.05,
+			0.05
+		],
+		"DOMAIN_Medg": [
+			-0.03,
+			0.0,
+			0.0
+		],
+		"Resolution": [
+			20,
+			4,
+			4
+		],
+		"Boundarys": [
+			0,
+			1,
+			2,
+			1,
+			2,
+			1
+		]
+	},
+	// Ini from https://doi.org/10.1016/j.combustflame.2015.10.016
+	"init": {
+		"blast_mach": 2.83,
+		"cop_type": 1,
+		"blast_type": 1,
+		"blast_center": [
+			-0.025,
+			0.0,
+			0.0
+		],
+		// pre-shock status 0.25atm=25331.25Pa  0.5atm=50662.5Pa  0.75atm=75993.75Pa  1atm=101325.0Pa
+		"blast_downstream": [
+			0.0, // Density
+			101325.0, // Pressure
+			295, // Tempreture
+			0.0, // Velocity_u
+			0.0, // Velocity_v
+			0.0 // Volecity_w
+		],
+		// give bubble_shape_ratioy=bubble_shape_x/bubble_shape_y =0.354, 0.650, 1.0, 1.837, 2.829
+		// // or bubble_shape_ratioz=bubble_shape_x/bubble_shape_z=bubble_shape_ratioy
+		// // or give bubble_shape_x, bubble_shape_y, bubble_shape_z directly
+		// // Ref: https://doi.org/10.1007/s10409-021-01132-9
+		"bubble_shape_x": 0.02,
+		"bubble_boundary_cells": 2 // higher for sharper interface
+	}
+}

@@ -1,100 +1,60 @@
 cmake_minimum_required(VERSION 3.10)
-PROJECT(LAMNSS LANGUAGES CXX)
+PROJECT(XFLUIDS LANGUAGES CXX)
 
-# #default local cmake macro repository
-list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+# // == Compile system =====================================
+# ####  1. oneAPI: Intel oneAPI compiling system  2. OpenSYCL: OpenSYCL syclcc compiling system
+set(SYCL_COMPILE_SYSTEM "OpenSYCL") # # oneAPI or OpenSYCL compile system,
+set(SelectDv "cuda") # which platform: host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
+set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
-# // =======================================================
-# #### cmake features init
-# // =======================================================
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(CMAKE_CXX_COMPILER "clang++")#use clang++ from oneapi/llvm
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
-endif()
-
-# // =======================================================
-# #### function option
-# // =======================================================
-option(USE_DOUBLE "if double" ON)
-option(OUT_VTI "out plt or vti" ON)
-option(OUT_PLT "out vti for at least 2D cases" OFF)
-option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
-option(ERROR_PATCH_YI "if patch negative yi based Roe-Solver" OFF)
-option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" ON)
-option(ERROR_PATCH_PRI "if patch rho/T/P negative or nan errors while capured" OFF)
-option(POSITIVITY_PRESERVING "if enable positive preserving based Dr.Hu" ON)
-option(DIM_X "if enable dim_x" ON)
-option(DIM_Y "if enable dim_y" OFF)
-option(DIM_Z "if enable dim_z" OFF)
-option(COP "if enable compoent, based on Multi=OFF" ON)
-option(COP_CHEME "if enable chemical reaction" ON)
-option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)
-option(Visc "if add physic viscidity flux" ON)
-option(Visc_Heat "if add heat transfer flux" ON)
-option(Visc_Diffu "if add mass diffusion" ON) # depends on COP=ON
-
-# // =======================================================
-# #### mpi settings
-# // =======================================================
-# #### Method of mpi buffer allocation and transfer:
-# # ON: allocate each device buffer and transfer
-# # OFF: allocate struct ptr in device
-# # set [mpi]:NUM: number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
-option(USE_MPI "if enable mpi" ON)
+# // == MPI settings =======================================
+option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
-option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
 
-# // =======================================================
-# #### about platform and device
-# // =======================================================
-set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
+# // == Functionality option ===============================
+# # // // == Ini sample selection ===========================
+# # # # (0d and 1d samples are forced out with plt)
+# # read_grid/${GRID_NAME}("read_grid/rae2822.xyz"): using Plot3D grid: ./src/read_grid/${GRID_NAME} to initialize flow field
+# # # # 1d, 2d, 3d util: for-debug, guass-wave, sharp-interface
+# # 1d-insert-st			# # 1d-reactive-st		 			## shock tube without viscisity and positivity-preserving
+# # 1d-eigen-st				# # 1d-reactive-st		 			## shock tube without viscisity and positivity-preserving
+# # 1d-diffusion 			# # 1d-diffusion-reverse 			## mass and heat diffusion without convention
+# # 1d-laminar-flame		# # 2d-detonation 					## multi-dimensional reactive laminar flame
+# # 2d-riemann(-shocks/-interruptions-reduce/-interruptions-plus/-shock-interruption) 		## no-cop sample
+# # 1d-diffusion-layer		# # 2d-mixing-layer
+# # 2d-under-expanded-jet	# # 3d-under-expanded-jet
+# # 2d-shock-bubble			# # 2d-shock-bubble-without-fuel
+# # 3d-shock-bubble			# # 3d-shock-bubble-without-fuel
+# # // // == MIXTURE_MODEL settings =========================================
+# # // // // == insert MIXURE_MODEL settings ================================
+# #	NO-COP
+# # 1d-mc-insert-shock-tube		# # 1d-mc-diffusion 			# # 1d-mc-diffusion-reverse
+# # 2d-under-expanded-jet		# # Insert-SBI 					# # Insert-SBI-without-fuel
+# # // // // == reacting MIXURE_MODEL settings ==============================
+# # Reaction/Insert-Air			# # Reaction/Inert_H2+N2
+# # Reaction/2H+O2=H+HO2		# # Reaction/N2_dissociation
+# # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
+# # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
+# # Reaction/RSBI-18REA			# # Reaction/RSBI-19REA			# # modified for RSBI samples
+set(INIT_SAMPLE "1d-eigen-st") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "Insert-SBI-without-fuel") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
-# // =======================================================
-# #### init sample
-# // =======================================================
-# #### Set INIT_SAMPLE for method of eigen_l, eigen_r allocation:
-# # OROC: calculate one row and column once in for loop(eigen_lr[Emax])
-# # RGIF: allocate eigen matrix in regesters of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]),which makes regesters spills out as Emax increases
-# # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l,Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t)))
-# #### Set INIT_SAMPLE for Initializing settings:
-# # # for-debug, guass-wave, sharp-interface ## util for 1D, 2D, 3D
-# #  0d-H2-O2-freely-flame
-# # # 1d samples are forced out with plt
-# # 1d-insert-st ## automatically rewrite COP_CHEME, Visc to "OFF"
-# # 1d-reactive-st ## automatically rewrite COP_CHEME to "ON", Visc to "OFF", path to "reaction_list.dat" depends on REACTION_MODEL by default: H2O_19_reaction
-# # 1d-diffusion 1d-diffusion-reverse ## automatically rewrite Visc, Visc_Heat, Visc_Diffu to "ON", COP_CHEME to "ON"
-# # 2d-shock-bubble, 2d-under-expanded-jet, 2d-mixing-layer ## only XY DIR support
-# # 3d-shock-bubble, 3d-under-expanded-jet
-# #### Set COP_SPECIES for location of species_list.dat read in project
-# # /runtime.dat/1d-mc-insert-shock-tube  # # /runtime.dat/2d-under-expanded-jet
-# # /runtime.dat/Reaction/2species        # # /runtime.dat/Reaction/CJ_mechanism  # # /runtime.dat/Reaction/inert_2species
-# #### Set REACTION_MODEL for reaction model using:
-# # 2species             # # CJ_mechanism     # # inert_2species
-# # H2O_18_new_reaction  # # H2O_18_reaction  # # H2O_19_reaction     # # H2O_23_reaction
-# # RSBI-18REA           # # RSBI-19REA
-set(THERMAL "JANAF") # NASA or JANAF fit
-set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
+# # // // == Convention Term ================================
+option(USE_DOUBLE "if double" ON)
+set(DISCRETIZATION_METHOD "FDM") # FVM or FDM ME FluxWall reconstruction
+set(WENO_ORDER "5") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
+set(RIEMANN_SOLVER "HLLC") # HLLC or AUSM Riemann solver, used in FVM method
+set(EIGEN_SYSTEM "positive-definite") # positive-definite or overdetermined, used in FDM method
 set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
-set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "1d-insert-st")
-set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
-set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
-set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
-set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie": Flow(dt)->React(dt)
 
-# cmake modules
-include(init_options) # add main exec
+# # // // == Viscosity Term =================================
+option(Visc "if add physic viscidity flux" OFF)
+option(Visc_Heat "if add heat transfer term" ON)
+option(Visc_Diffu "if add mass diffusion term" ON) # depends on COP=ON
+set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
 
-# MPI libs
-IF(USE_MPI)
-include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR})
-add_subdirectory(mpiUtils)
-ENDIF() # sources
-add_subdirectory(src)
+# // == CMake modules ======================================
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake") # #default local cmake macro repository
+include(init_cmake) # cmake compile options
+include(init_options) # add program functionality# // == ADD source dir =====================================
+add_subdirectory(src) # add main program source dir

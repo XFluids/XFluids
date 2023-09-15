@@ -2,24 +2,46 @@
 
 ### Reaction model
 
-H2O_18_reaction released by ChemKin, see Ref1.PREMIX: AFORTRAN Program for Modeling Steady Laminar One-Dimensional Premixed Flames Pater48
-H2O_21_reacton or mixing-layer-interaction, see Ref2.A detailed verification procedure for compressible reactive
-multicomponent Navier–Stokes solvers
-H2O_19/23_reacton relaesed by M Ó Conaire , see Ref3.A Comprehensive Modeling Study of Hydrogen Oxidation
-Reaction model for reacting shock-bubble interaction(RSBI) RSBI_18/19REA modified from H2O_18/19_reaction as Ref4.Three-dimensional reacting shock–bubble interaction:
-- replace AR with Xe, third-body of Xe coeffs are the same as AR
-- add N2 as the tenth insert gas species, its third body is set as 1.0 according to Ref4.Temperature and Third-Body Dependence of the Rate Constant for the Reaction O+O_2+M->O_3+M
+- H2O_18_reaction released by ChemKin, see Ref1.PREMIX: AFORTRAN Program for Modeling Steady Laminar One-Dimensional Premixed Flames Pater48
+- H2O_19/23_reaction relaesed by M Ó Conaire , see Ref3.A Comprehensive Modeling Study of Hydrogen Oxidation
+- H2O-N2_19_reaction for 2D-Denotation, see Ref.https://github.com/deepmodeling/deepflame-dev/blob/master/examples/dfHighSpeedFoam/twoD_detonationH2/H2_Ja.yaml
+- H2O-N2_21_reaction for mixing-layer-interaction, see Ref2.A detailed verification procedure for compressible reactivemulticomponent Navier–Stokes solvers
+- H2O-N2_25_reaction for chemeq2 validation, see NEW QUASI-STEADY-STATE AND PARTIAL-EQUILIBRIUM M ETHODS FOR INTEGRATING CHEMICALLY REACTING SYSTEMS
+- RSBI_18/19REA modified from H2O_18/19_reaction are Reaction model for reacting shock-bubble interaction(RSBI) as Ref4.Three-dimensional reacting shock–bubble interaction:
+  - replace AR with Xe, third-body of Xe coeffs are the same as AR
+  - add N2 as the tenth insert gas species
+
+#### Arrhenius Law form
+
+- Standrd ArrheniusLaw form, Ref.Evaluated Kinetic Data for High‐Temperature Reactions.
+  - *Arrhenius arguments:list A B C , k=A*T^B*exp(-C/T)
+  - *input units C: K, A: cm^3/molecule/s, NOTE: 1 mol=NA molecule
+  - *output units: k: cm^3/mol/s
+
+- Default ArrheniusLaw form, Ref.PREMIX:AFORTRAN Program for Modeling Steady Laminar One-Dimensional Premixed Flames Paper48
+  - *Arrhenius arguments:list A B E , k=A*T^B*exp(-E/R/T)
+  - *input units E: cal/mol, A: cm^3/mole/s, NOTE: 1 cal=4.184 J*mol/K
+  - *output units: k: cm^3/mol/s
+
+- Actually, C=E/R, in which E as activation energy, R as gas constant(8.314J/mol/K, 1.987cal/mol/K, 82.05cm^3*atm/mol/K);
+
+#### Third body coffcients(3bs)
+
+  - 3bs of specific species are given by reaction model
+  - 3bs of species is set as 1.0 by default according to:
+      Ref4.Temperature and Third-Body Dependence of the Rate Constant for the Reaction O+O_2+M->O_3+M
 
 ### Transport model
 
-Transport coefficients are copied form source dir of ChemKin
+Transport coefficients are copied form source dir of ChemKin, add Xe and NCOP(for no-component flow)
 
 ### Thermo model
 
-JANAF or NASA fit, Only NASA fit has original support for Xe, thermo of Xe in JANAF is set the same as AR by Author of this work
+JANAF or NASA fit, Only NASA fit has original support for Xe and is used by default, thermo of Xe in JANAF is set the same as AR by Author of this work
 
 # Alternative Refs
 
 #### Reaction mechanism, thermodynamics, transport also released but not used in this work by NUI:
 
-https://www.universityofgalway.ie/combustionchemistrycentre/mechanismdownloads/
+- Single reaction kinetics released by [NIST Chemical Kinetics Database(https://kinetics.nist.gov/kinetics/)](https://kinetics.nist.gov/kinetics/)
+- Reaction mechanism,thermodynamics and transport released by [Combustion Chemistry Centre, University of Galway(https://www.universityofgalway.ie/combustionchemistrycentre/mechanismdownloads/)](https://www.universityofgalway.ie/combustionchemistrycentre/mechanismdownloads/)

@@ -1,5 +1,5 @@
 --------------------------- NASA Glenn Thermodynamic Data Coefficients ------------------------------
-! a lite version adjusted for species of EulerSYCL using new NASA polynomials
+! a lite version adjusted for species of XFLUIDS using new NASA polynomials
 ! reference html: https://ntrs.nasa.gov/citations/20020085330
 ! reference "thermo_NASA9_nasa9_2002_E.pdf" and "thermo_NASA9_nasa9_2002_E.txt" more species 
 !

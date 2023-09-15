@@ -16,37 +16,25 @@
 *.dylib
 *.dll
 
-# Fortran module files
-*.mod
-*.smod
-
 # Compiled Static libraries
 *.lai
 *.la
 *.a
 *.lib
+/libs
 
 # Executables
 *.exe
 *.out
 *.app
+XFLUIDS
 
-EulerSYCL
-
-*.plt
-/obj
-/outdata
+# Cmake Build
 build
 build/*
-/*.ini
-!sa*.ini
-/output
-/output-*
-*OUT-*
-/ISBI-*
-/RSBI-*
+
+# Output
+/output*
+
+# Hiden files
 ~$*
-
-
-
-
