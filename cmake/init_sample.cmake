@@ -101,6 +101,23 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
 # // =======================================================
 # #### 2d sample
 # // =======================================================
+ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
+    set(DIM_X "ON")
+    set(DIM_Y "ON")
+    set(DIM_Z "OFF")
+    set(THERMAL "NASA") # NASA fit of Xe
+    set(COP_CHEME "OFF")
+    set(ESTIM_NAN "ON")
+    set(ERROR_PATCH_YII "ON")
+    set(POSITIVITY_PRESERVING "ON")
+    set(ARTIFICIAL_VISC_TYPE "GLF")
+    add_compile_options(-DSBICounts)
+    add_compile_options(-DSBI_WITHOUT_FUEL)
+    message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
+    set(COP_SPECIES "Insert-SBI-without-fuel")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
+    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
+
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(DIM_X "ON")
     set(DIM_Y "ON")
@@ -112,10 +129,12 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     add_compile_options(-DSBICounts)
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
-    if((REACTION_MODEL STREQUAL "RSBI-18REA") OR (REACTION_MODEL STREQUAL "RSBI-19REA"))
+
+    if((REACTION_MODEL STREQUAL "RSBI-18REA") OR(REACTION_MODEL STREQUAL "RSBI-19REA"))
     else()
         message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
     endif()
+
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
 
@@ -139,6 +158,23 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
 # // =======================================================
 # #### 3d sample
 # // =======================================================
+ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
+    set(DIM_X "ON")
+    set(DIM_Y "ON")
+    set(DIM_Z "ON")
+    set(THERMAL "NASA") # NASA fit of Xe
+    set(COP_CHEME "OFF")
+    set(ESTIM_NAN "ON")
+    set(ERROR_PATCH_YII "ON")
+    set(POSITIVITY_PRESERVING "ON")
+    set(ARTIFICIAL_VISC_TYPE "GLF")
+    add_compile_options(-DSBICounts)
+    add_compile_options(-DSBI_WITHOUT_FUEL)
+    message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
+    set(COP_SPECIES "Insert-SBI-without-fuel")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
+    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
+
 ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(DIM_X "ON")
     set(DIM_Y "ON")
@@ -147,13 +183,15 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(ESTIM_NAN "ON")
     set(ERROR_PATCH_YII "ON")
     set(POSITIVITY_PRESERVING "ON")
-    set(ARTIFICIAL_VISC_TYPE "GLF")    
+    set(ARTIFICIAL_VISC_TYPE "GLF")
     add_compile_options(-DSBICounts)
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
-    if((REACTION_MODEL STREQUAL "RSBI-18REA") OR (REACTION_MODEL STREQUAL "RSBI-19REA"))
+
+    if((REACTION_MODEL STREQUAL "RSBI-18REA") OR(REACTION_MODEL STREQUAL "RSBI-19REA"))
     else()
         message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
     endif()
+
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
 
@@ -194,7 +232,6 @@ IF(COP)
         ELSE()
             add_compile_options(-DCHEME_SPLITTING=1) # Lie splitting by default
         ENDIF()
-        
     ENDIF(COP_CHEME)
 ELSE(COP)
     set(Gamma "1.4")

@@ -68,8 +68,8 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # 1d-insert-st ## automatically rewrite COP_CHEME, Visc to "OFF"
 # # 1d-reactive-st ## automatically rewrite COP_CHEME to "ON", Visc to "OFF", path to "reaction_list.dat" depends on REACTION_MODEL by default: H2O_19_reaction
 # # 1d-diffusion 1d-diffusion-reverse ## automatically rewrite Visc, Visc_Heat, Visc_Diffu to "ON", COP_CHEME to "ON"
-# # 2d-shock-bubble, 2d-under-expanded-jet, 2d-mixing-layer ## only XY DIR support
-# # 3d-shock-bubble, 3d-under-expanded-jet
+# # 2d-shock-bubble, 2d-shock-bubble-without-fuel, 2d-mixing-layer, 2d-under-expanded-jet ## only XY DIR support
+# # 3d-shock-bubble, 3d-shock-bubble-without-fuel, 3d-under-expanded-jet
 # #### Set COP_SPECIES for location of species_list.dat read in project
 # # /runtime.dat/1d-mc-insert-shock-tube  # # /runtime.dat/2d-under-expanded-jet
 # # /runtime.dat/Reaction/2species        # # /runtime.dat/Reaction/CJ_mechanism  # # /runtime.dat/Reaction/inert_2species
@@ -81,7 +81,7 @@ set(THERMAL "JANAF") # NASA or JANAF fit
 set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
 set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "2d-shock-bubble")
+set(INIT_SAMPLE "2d-shock-bubble-without-fuel")
 set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
 set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
