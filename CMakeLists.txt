@@ -32,7 +32,7 @@ option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" OFF)
 option(COP "if enable compoent, based on Multi=OFF" ON)
-option(COP_CHEME "if enable chemical reaction" ON)
+option(COP_CHEME "if enable chemical reaction" OFF)
 option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)
 option(Visc "if add physic viscidity flux" ON)
 option(Visc_Heat "if add heat transfer flux" ON)
@@ -83,7 +83,7 @@ set(THERMAL "JANAF") # NASA or JANAF fit
 set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
 set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
 set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "1d-insert-st")
+set(INIT_SAMPLE "2d-shock-bubble")
 set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
 set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"

@@ -7,7 +7,7 @@ LAMNSS::LAMNSS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), n
 	rank = Ss.mpiTrans->myRank;
 	nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
-	MPI_trans_time = 0.0, MPI_BCs_time = 0.0;
+	MPI_trans_time = 0.0, MPI_BCs_time = 0.0, duration = 0.0f, duration_backup = 0.0f;
 	for (int n = 0; n < NumFluid; n++)
 	{
 		fluids[n] = new Fluid(setup);
@@ -95,13 +95,13 @@ LAMNSS::~LAMNSS()
 
 float LAMNSS::OutThisTime(std::chrono::high_resolution_clock::time_point start_time)
 {
-#ifdef USE_MPI
-	if (rank == 0)
-#endif // end USE_MPI
+	float duration = 0.0f;
+	// #ifdef USE_MPI
+	// 	if (rank == 0)
+	// #endif // end USE_MPI
 	{
 		std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
-		float duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
-		std::cout << ", runtime: " << std::setw(10) << duration << "\n";
+		duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
 	}
 	return duration;
 }
@@ -111,7 +111,6 @@ void LAMNSS::Evolution(sycl::queue &q)
 	bool TimeLoopOut = false, Stepstop = false;
 	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
 
-	duration = 0.0f;
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 	while (TimeLoop < Ss.nOutTimeStamps)
 	{
@@ -123,12 +122,12 @@ void LAMNSS::Evolution(sycl::queue &q)
 			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput || TimeLoopOut)
 			{
 				Output(q, rank, std::to_string(Iteration), physicalTime);
-				Output_Ubak(rank, Iteration, physicalTime, true);
+				Output_Ubak(rank, Iteration, physicalTime, duration, true);
 				OutNum++;
 				TimeLoopOut = false;
 			}
-			if (RcalOut % 100 == 0)
-				Output_Ubak(rank, Iteration, physicalTime);
+			if (RcalOut % 300 == 0)
+				Output_Ubak(rank, Iteration, physicalTime, duration);
 			RcalOut++;
 			// get minmum dt, if MPI used, get the minimum of all ranks
 			dt = ComputeTimeStep(q); // 2.0e-6; //
@@ -176,7 +175,9 @@ void LAMNSS::Evolution(sycl::queue &q)
 			Stepstop = Ss.nStepmax <= Iteration ? true : false;
 			if (Stepstop)
 				goto flag_end;
-			OutThisTime(start_time);
+			duration = OutThisTime(start_time) + duration_backup;
+			if (rank == 0)
+				std::cout << ", runtime: " << std::setw(10) << duration << "\n";
 		}
 		TimeLoopOut = true;
 	}
@@ -190,10 +191,10 @@ flag_ernd:
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 #endif
-	OutThisTime(start_time);
+	duration = OutThisTime(start_time) + duration_backup;
+	if (rank == 0)
+		std::cout << ", runtime: " << std::setw(10) << duration << "\n";
 	EndProcess();
-	// Output_Counts();
-	// Output_Ubak(rank, Iteration - 1, physicalTime);
 	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
 
@@ -456,7 +457,7 @@ void LAMNSS::InitialCondition(sycl::queue &q)
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->InitialU(q);
 
-	Read_Ubak(q, rank, &(Iteration), &(physicalTime));
+	Read_Ubak(q, rank, &(Iteration), &(physicalTime), &(duration_backup));
 }
 
 bool LAMNSS::Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step)
@@ -487,7 +488,7 @@ void LAMNSS::CopyToU(sycl::queue &q)
 	q.wait();
 }
 
-void LAMNSS::Output_Ubak(const int rank, const int Step, const real_t Time, bool solution)
+void LAMNSS::Output_Ubak(const int rank, const int Step, const real_t Time, const float Time_consumption, bool solution)
 {
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	if (solution)
@@ -501,15 +502,20 @@ void LAMNSS::Output_Ubak(const int rank, const int Step, const real_t Time, bool
 	std::ofstream fout(file_name, std::ios::out | std::ios::binary);
 	fout.write((char *)&(Step), sizeof(Step));
 	fout.write((char *)&(Time), sizeof(Time));
+	fout.write((char *)&(Time_consumption), sizeof(duration));
 	for (size_t n = 0; n < NumFluid; n++)
 		fout.write((char *)(fluids[n]->Ubak), Ss.cellbytes);
 	fout.close();
 
 	if (rank == 0)
-		std::cout << "ReCal-file of Step = " << Step << " has been output." << std::endl;
+	{
+		if (solution)
+			std::cout << "Solution ";
+		std::cout << "Additional calculating file of Step = " << Step << " has been output." << std::endl;
+	}
 }
 
-bool LAMNSS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time)
+bool LAMNSS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time, float *Time_consumption)
 {
 	int size = Ss.cellbytes, all_read = 1;
 	std::string file_name, outputPrefix = INI_SAMPLE;
@@ -534,6 +540,7 @@ bool LAMNSS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time)
 	}
 	fin.read((char *)Step, sizeof(int));
 	fin.read((char *)Time, sizeof(real_t));
+	fin.read((char *)Time_consumption, sizeof(float));
 	for (size_t n = 0; n < NumFluid; n++)
 		fin.read((char *)(fluids[n]->Ubak), size);
 	fin.close();

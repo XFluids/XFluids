@@ -125,7 +125,7 @@ class LAMNSS{
 public:
     real_t dt, physicalTime;
     int Iteration, rank, nranks;
-    float duration, MPI_trans_time, MPI_BCs_time;
+    float duration, duration_backup, MPI_trans_time, MPI_BCs_time;
     BConditions *d_BCs; // boundary condition indicators
     Fluid *fluids[NumFluid];
 
@@ -137,8 +137,8 @@ public:
     void InitialCondition(sycl::queue &q);
     void CopyToUbak(sycl::queue &q);
     void CopyToU(sycl::queue &q);
-    bool Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time);
-    void Output_Ubak(const int rank, const int Step, const real_t Time, bool solution = false);
+    bool Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time, float *Time_consumption);
+    void Output_Ubak(const int rank, const int Step, const real_t Time, const float Time_consumption, bool solution = false);
     void CopyDataFromDevice(sycl::queue &q, bool error);
     void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
     // void Output_Counts();
