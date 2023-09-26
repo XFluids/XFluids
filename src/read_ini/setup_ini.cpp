@@ -979,6 +979,9 @@ void Setup::ReadIni(ConfigMap &configMap)
     OutDIRX = bool(configMap.getInteger("run", "OutDIRX", DIM_X));
     OutDIRY = bool(configMap.getInteger("run", "OutDIRY", DIM_Y));
     OutDIRZ = bool(configMap.getInteger("run", "OutDIRZ", DIM_Z));
+    OutDAT = bool(configMap.getInteger("run", "OutDAT", 1));
+    OutVTI = bool(configMap.getInteger("run", "OutVTI", 0));
+    OutSTL = bool(configMap.getInteger("run", "OutSTL", 0));
     outpos_x = configMap.getInteger("run", "outpos_x", 0);
     outpos_y = configMap.getInteger("run", "outpos_y", 0);
     outpos_z = configMap.getInteger("run", "outpos_z", 0);

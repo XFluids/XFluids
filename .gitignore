@@ -33,7 +33,7 @@
 
 EulerSYCL
 
-*.plt
+*.dat
 /obj
 /outdata
 build

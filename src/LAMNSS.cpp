@@ -652,7 +652,7 @@ void LAMNSS::CopyDataFromDevice(sycl::queue &q, bool error)
 // 	{
 // 		real_t rho0 = Ss.ini.blast_density_in;
 // 		std::string outputPrefix = INI_SAMPLE;
-// 		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + "_rho0_" + std::to_string(Ss.ini.blast_density_in) + "_" + std::to_string(Ss.ini.cop_density_in) + "_" + std::to_string(Ss.ini.blast_density_out) + ".plt";
+// 		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + "_rho0_" + std::to_string(Ss.ini.blast_density_in) + "_" + std::to_string(Ss.ini.cop_density_in) + "_" + std::to_string(Ss.ini.blast_density_out) + ".dat";
 // 		std::ofstream out(file_name);
 // 		// // defining header for tecplot(plot software)
 // 		out.setf(std::ios::right);
@@ -767,21 +767,17 @@ void LAMNSS::Output(sycl::queue &q, int rank, std::string interation, real_t Tim
 	}
 	else if (!(Ss.OutDIRX && Ss.OutDIRY && Ss.OutDIRZ))
 	{
-#ifdef OUT_PLT
-		Output_cplt(rank, timeFormat, stepFormat, rankFormat);
-#endif
-#ifdef OUT_VTI
-		Output_cvti(rank, timeFormat, stepFormat, rankFormat);
-#endif // end OUT_PLT
+		if (Ss.OutDAT)
+			Output_cplt(rank, timeFormat, stepFormat, rankFormat);
+		if (Ss.OutVTI)
+			Output_cvti(rank, timeFormat, stepFormat, rankFormat);
 	}
 	else
 	{
-#ifdef OUT_PLT
-		Output_plt(rank, timeFormat, stepFormat, rankFormat, error);
-#endif
-#ifdef OUT_VTI
-		Output_vti(rank, timeFormat, stepFormat, rankFormat, error);
-#endif // end OUT_PLT
+		if (Ss.OutDAT)
+			Output_plt(rank, timeFormat, stepFormat, rankFormat, error);
+		if (Ss.OutVTI)
+			Output_vti(rank, timeFormat, stepFormat, rankFormat, error);
 	}
 
 	if (rank == 0)
@@ -1619,7 +1615,7 @@ void LAMNSS::Output_plt(int rank, std::ostringstream &timeFormat, std::ostringst
 #ifdef USE_MPI
 	file_name += "_rank_" + rankFormat.str();
 #endif
-	file_name += ".plt";
+	file_name += ".dat";
 
 	// Init var names
 	int Onbvar = 5 + (DIM_X + DIM_Y + DIM_Z) * 2; // one fluid no COP
@@ -2157,7 +2153,7 @@ void LAMNSS::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostrings
 	{
 		real_t *OutPoint = new real_t[Cnbvar]; // OutPoint: each point;
 		std::string outputPrefix = INI_SAMPLE;
-		std::string file_name = Ss.OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".plt";
+		std::string file_name = Ss.OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".dat";
 		std::ofstream out(file_name);
 		// // defining header for tecplot(plot software)
 		out << "title='" << outputPrefix << "'\nvariables=";

@@ -21,8 +21,6 @@ endif()
 # #### function option
 # // =======================================================
 option(USE_DOUBLE "if double" ON)
-option(OUT_VTI "out plt or vti" ON)
-option(OUT_PLT "out vti for at least 2D cases" OFF)
 option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
 option(ERROR_PATCH_YI "if patch negative yi based Roe-Solver" OFF)
 option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" ON)

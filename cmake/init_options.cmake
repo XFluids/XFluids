@@ -59,14 +59,6 @@ IF(USE_DOUBLE)
   add_compile_options(-DUSE_DOUBLE) # 将参数从cmakelist传入程序中
 ENDIF(USE_DOUBLE)
 
-IF(OUT_PLT)
-  add_compile_options(-DOUT_PLT)
-ENDIF(OUT_PLT)
-
-IF(OUT_VTI)
-  add_compile_options(-DOUT_VTI)
-ENDIF(OUT_VTI)
-
 IF(ESTIM_NAN)
   add_compile_options(-DESTIM_NAN)
 
@@ -75,9 +67,9 @@ IF(ESTIM_NAN)
   ENDIF()
 
   IF(ERROR_PATCH_YII)
-  add_compile_options(-DERROR_PATCH_YII)
+    add_compile_options(-DERROR_PATCH_YII)
   ENDIF()
-  
+
   IF(ERROR_PATCH_YI)
     add_compile_options(-DERROR_PATCH_YI)
   ENDIF()
@@ -96,11 +88,11 @@ ENDIF()
 
 # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
 IF(ARTIFICIAL_VISC_TYPE STREQUAL "ROE")
-    add_compile_options(-DArtificial_type=1)
-  ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "LLF")
-    add_compile_options(-DArtificial_type=2)
-  ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "GLF")
-    add_compile_options(-DArtificial_type=3)
+  add_compile_options(-DArtificial_type=1)
+ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "LLF")
+  add_compile_options(-DArtificial_type=2)
+ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "GLF")
+  add_compile_options(-DArtificial_type=3)
 ENDIF()
 
 IF(DIM_X)
@@ -126,10 +118,9 @@ IF(Visc)
 
   IF(Visc_Heat)
     add_compile_options(-DVisc_Heat)
-ENDIF(Visc_Heat)
+  ENDIF(Visc_Heat)
 
-IF(Visc_Diffu)
+  IF(Visc_Diffu)
     add_compile_options(-DVisc_Diffu)
-ENDIF(Visc_Diffu)
+  ENDIF(Visc_Diffu)
 ENDIF(Visc)
-

@@ -72,7 +72,7 @@ public:
 	real_t StartTime, EndTime, OutTimeStart, OutTimeStamp;
 	real_t *OutTimeStamps;
 	std::string OutputDir;
-	bool OutBoundary, OutDIRX, OutDIRY, OutDIRZ; // debug to if it transfer;
+	bool OutBoundary, OutDIRX, OutDIRY, OutDIRZ, OutDAT, OutVTI, OutSTL; // debug to if it transfer;
 	bool Mach_Modified;			// if post-shock theroy in Ref0 used(rewrite the value from Devesh Ranjan's theroy in Ref1 used by default): Ref0:https://doi.org/10.1016/j.combustflame.2015.10.016 Ref1:https://www.annualreviews.org/doi/10.1146/annurev-fluid-122109-160744
 	int outpos_x, outpos_y, outpos_z;
 	real_t bubble_boundary;		// number of cells for cop bubble boundary

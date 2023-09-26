@@ -26,7 +26,7 @@ Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIt
 		// Counts file
 #ifdef SBICounts
 	outputPrefix = INI_SAMPLE;
-	file_name = Fs.OutputDir + "/AllSBICounts_" + outputPrefix + ".plt";
+	file_name = Fs.OutputDir + "/AllSBICounts_" + outputPrefix + ".dat";
 	if (Fs.myRank == 0)
 	{
 		std::fstream if_exist;

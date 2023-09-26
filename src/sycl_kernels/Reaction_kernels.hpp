@@ -13,7 +13,7 @@ void ZeroDimensionalFreelyFlameKernel(Setup &Ss, const int rank)
 	// chemeq2 solver
 	real_t t_start = 0, t_end = 5e-4, dt = 2.0e-7, run_time = t_start;
 	std::string outputPrefix = INI_SAMPLE;
-	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "-with_0DFreelyFlameTest_Rank_" + std::to_string(rank) + ".plt";
+	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "-with_0DFreelyFlameTest_Rank_" + std::to_string(rank) + ".dat";
 	std::ofstream out(file_name);
 	out << "variables= time, <i>T</i>[K]";
 	for (size_t n = 0; n < NUM_SPECIES; n++)
