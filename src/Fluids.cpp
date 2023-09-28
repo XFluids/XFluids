@@ -544,9 +544,9 @@ void Fluid::GetTheta(sycl::queue &q)
 
 	for (size_t i = 0; i < 3; i++)
 		theta[i] = _DF(0.0);
-	auto Sum_YXN = sycl::reduction(&(theta[0]), sycl::plus<>());   // (Y_Xe*Y_N2)^bar
-	auto Sum_YXeN2 = sycl::reduction(&(theta[1]), sycl::plus<>()); // (Y_Xe)^bar*(Y_N2)^bar
-	auto Sum_YXe = sycl::reduction(&(theta[2]), sycl::plus<>());   // (Y_Xe)^bar*(Y_N2)^bar
+	auto Sum_YXN = sycl_reduction_plus(theta[0]);	// sycl::reduction(&(theta[0]), sycl::plus<real_t>());	 // (Y_Xe*Y_N2)^bar
+	auto Sum_YXeN2 = sycl_reduction_plus(theta[1]); // sycl::reduction(&(theta[1]), sycl::plus<real_t>());					 // (Y_Xe)^bar*(Y_N2)^bar
+	auto Sum_YXe = sycl_reduction_plus(theta[2]);	// sycl::reduction(&(theta[2]), sycl::plus<real_t>());	 // (Y_Xe)^bar*(Y_N2)^bar
 	real_t _RomY = _DF(1.0) / real_t(bl.Y_inner);
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
@@ -563,8 +563,8 @@ void Fluid::GetTheta(sycl::queue &q)
 		interface_point[i] = _DF(0.0);
 
 	// 	// #if DIM_X // XDIR
-	// 	// 	auto Rdif_Xmin = reduction(&(interface_point[0]), sycl::minimum<>());
-	// 	// 	auto Rdif_Xmax = reduction(&(interface_point[1]), sycl::maximum<>());
+	// 	// 	auto Rdif_Xmin = reduction(&(interface_point[0]), sycl::minimum<real_t>());
+	// 	// 	auto Rdif_Xmax = reduction(&(interface_point[1]), sycl::maximum<real_t>());
 	// 	// 	q.submit([&](sycl::handler &h)
 	// 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Xmin, Rdif_Xmax, [=](nd_item<3> index, auto &temp_Xmin, auto &temp_Xmax)
 	// 	// 							  {
@@ -577,8 +577,8 @@ void Fluid::GetTheta(sycl::queue &q)
 	// 	// 						temp_Xmin.combine(x), temp_Xmax.combine(x); }); });
 	// 	// #endif	  // end DIM_X
 
-	auto Rdif_Ymin = reduction(&(interface_point[2]), sycl::minimum<>());
-	auto Rdif_Ymax = reduction(&(interface_point[3]), sycl::maximum<>());
+	auto Rdif_Ymin = sycl_reduction_min(interface_point[2]); // reduction(&(interface_point[2]), sycl::minimum<real_t>());
+	auto Rdif_Ymax = sycl_reduction_max(interface_point[3]); // reduction(&(interface_point[3]), sycl::maximum<real_t>());
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax)
 							  {
@@ -591,8 +591,8 @@ void Fluid::GetTheta(sycl::queue &q)
 							temp_Ymin.combine(y), temp_Ymax.combine(y); }); });
 
 	// 	// #if DIM_Z // ZDIR
-	// 	// 	auto Rdif_Zmin = reduction(&(interface_point[4]), sycl::minimum<>());
-	// 	// 	auto Rdif_Zmax = reduction(&(interface_point[5]), sycl::maximum<>());
+	// 	// 	auto Rdif_Zmin = reduction(&(interface_point[4]), sycl::minimum<real_t>());
+	// 	// 	auto Rdif_Zmax = reduction(&(interface_point[5]), sycl::maximum<real_t>());
 	// 	// 	q.submit([&](sycl::handler &h)
 	// 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Zmin, Rdif_Zmax, [=](nd_item<3> index, auto &temp_Zmin, auto &temp_Zmax)
 	// 	// 							  {
@@ -614,7 +614,7 @@ void Fluid::GetTheta(sycl::queue &q)
 	// Tmax
 	real_t *T = d_fstate.T;
 	q.submit([&](sycl::handler &h)
-			 {	auto reduction_max_T = reduction(&(pVar_max[0]), sycl::maximum<>());
+			 {	auto reduction_max_T = sycl_reduction_max(pVar_max[0]);//reduction(&(pVar_max[0]), sycl::maximum<real_t>());
 				h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
 								   auto id = index.get_global_id();
 								   temp_max_T.combine(T[id]);}); });
@@ -622,7 +622,7 @@ void Fluid::GetTheta(sycl::queue &q)
 	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
 	{
 		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_Yi = reduction(&(pVar_max[n]), sycl::maximum<>());
+				 {	auto reduction_max_Yi = sycl_reduction_max(pVar_max[n]);//reduction(&(pVar_max[n]), sycl::maximum<real_t>());
 					h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
 									   auto id = index.get_global_id();
 									   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
@@ -630,8 +630,8 @@ void Fluid::GetTheta(sycl::queue &q)
 #endif // end COP_CHEME
 
 	sigma[0] = _DF(0.0), sigma[1] = _DF(0.0);
-	auto Sum_Sigma = sycl::reduction(&(sigma[0]), sycl::plus<>());
-	auto Sum_Sigma1 = sycl::reduction(&(sigma[1]), sycl::plus<>());
+	auto Sum_Sigma = sycl_reduction_plus(sigma[0]);	 // sycl::reduction(&(sigma[0]), sycl::plus<real_t>());
+	auto Sum_Sigma1 = sycl_reduction_plus(sigma[1]); // sycl::reduction(&(sigma[1]), sycl::plus<real_t>());
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, Sum_Sigma1, [=](nd_item<3> index, auto &temp_Sum_Sigma, auto &temp_Sum_Sigma1)
@@ -695,7 +695,7 @@ real_t Fluid::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTi
 
 	dt_ref = uvw_c_max[0] * Fs.BlSz._dx + uvw_c_max[1] * Fs.BlSz._dy + uvw_c_max[2] * Fs.BlSz._dz;
 	real_t temp_vis = _DF(14.0 / 3.0) * miu_max / rho_min * uvw_c_max[5];
-	dt_ref = sycl::max<real_t>(dt_ref, temp_vis);
+	dt_ref = sycl::max(dt_ref, temp_vis);
 	dt_ref = Fs.BlSz.CFLnumber / dt_ref;
 #endif // end USE_MPI
 

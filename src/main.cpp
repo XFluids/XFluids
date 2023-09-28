@@ -49,10 +49,16 @@ int main(int argc, char *argv[])
 
 	ConfigMap configMap = broadcast_parameters(ini_path);
 	// // accelerator_selector device;
-	// // num_GPUS:number of GPU on this cluster, Pform_id: the first GPU's ID in all accelerators sycl detected
+	// // num_GPUS:number of GPU on this cluster
 	int num_GPUs = configMap.getInteger("mpi", "NUM", 1);
-	int device_id = rank % num_GPUs + Pform_id;
-	auto device = sycl::platform::get_platforms()[device_id].get_devices()[0];
+	int platform_id = configMap.getInteger("mpi", "PLATFORM", 1);
+	int device_id = configMap.getInteger("mpi", "DEVICES_ID", 0);
+#if defined(DEFINED_OPENSYCL)
+	device_id += rank % num_GPUs;
+#else // for oneAPI
+	platform_id += rank % num_GPUs;
+#endif
+	auto device = sycl::platform::get_platforms()[platform_id].get_devices()[device_id];
 	sycl::queue q(device);
 	// // Setup Initialize
 	Setup setup(configMap, q);

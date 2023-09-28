@@ -12,7 +12,7 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
 		return;
 	int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 1));
 	int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 1));
-	real_t Dx = sycl::sqrt<real_t>(rho[id_xp] / rho[id_xm]);
+	real_t Dx = sycl::sqrt(rho[id_xp] / rho[id_xm]);
 	real_t D1x = _DF(1.0) / (Dx + _DF(1.0));
 	theta += _DF(1.0);
 #endif
@@ -21,7 +21,7 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
 		return;
 	int id_ym = (Xmax * Ymax * k + Xmax * (j - 1) + i);
 	int id_yp = (Xmax * Ymax * k + Xmax * (j + 1) + i);
-	real_t Dy = sycl::sqrt<real_t>(rho[id_yp] / rho[id_ym]);
+	real_t Dy = sycl::sqrt(rho[id_yp] / rho[id_ym]);
 	real_t D1y = _DF(1.0) / (Dy + _DF(1.0));
 	theta += _DF(1.0);
 #endif
@@ -30,7 +30,7 @@ extern SYCL_EXTERNAL void EstimateYiKernel(int i, int j, int k, Block bl, int *e
 		return;
 	int id_zm = (Xmax * Ymax * (k - 1) + Xmax * j + i);
 	int id_zp = (Xmax * Ymax * (k + 1) + Xmax * j + i);
-	real_t Dz = sycl::sqrt<real_t>(rho[id_zp] / rho[id_zm]);
+	real_t Dz = sycl::sqrt(rho[id_zp] / rho[id_zm]);
 	real_t D1z = _DF(1.0) / (Dz + _DF(1.0));
 	theta += _DF(1.0);
 #endif
@@ -132,21 +132,21 @@ extern SYCL_EXTERNAL void EstimatePrimitiveVarKernel(int i, int j, int k, Block 
 #if DIM_X
 	int id_xm = (Xmax * Ymax * k + Xmax * j + (i - 1));
 	int id_xp = (Xmax * Ymax * k + Xmax * j + (i + 1));
-	real_t Dx = sycl::sqrt<real_t>(rho[id_xp] / rho[id_xm]);
+	real_t Dx = sycl::sqrt(rho[id_xp] / rho[id_xm]);
 	real_t D1x = _DF(1.0) / (Dx + _DF(1.0));
 	theta *= _DF(0.5), Theta += _DF(1.0);
 #endif
 #if DIM_Y
 	int id_ym = (Xmax * Ymax * k + Xmax * (j - 1) + i);
 	int id_yp = (Xmax * Ymax * k + Xmax * (j + 1) + i);
-	real_t Dy = sycl::sqrt<real_t>(rho[id_yp] / rho[id_ym]);
+	real_t Dy = sycl::sqrt(rho[id_yp] / rho[id_ym]);
 	real_t D1y = _DF(1.0) / (Dy + _DF(1.0));
 	theta *= _DF(0.5), Theta += _DF(1.0);
 #endif
 #if DIM_Z
 	int id_zm = (Xmax * Ymax * (k - 1) + Xmax * j + i);
 	int id_zp = (Xmax * Ymax * (k + 1) + Xmax * j + i);
-	real_t Dz = sycl::sqrt<real_t>(rho[id_zp] / rho[id_zm]);
+	real_t Dz = sycl::sqrt(rho[id_zp] / rho[id_zm]);
 	real_t D1z = _DF(1.0) / (Dz + _DF(1.0));
 	theta *= _DF(0.5), Theta += _DF(1.0);
 #endif

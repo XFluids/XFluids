@@ -74,7 +74,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);

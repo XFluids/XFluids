@@ -2,15 +2,26 @@
 
 // =======================================================
 // =======================================================
+#if defined(DEFINED_OPENSYCL)
+#define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<real_t>())
+#define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<real_t>())
+#define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
+#else
+#define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<>())
+#define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<>())
+#define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<>())
+#endif
+// =======================================================
+// =======================================================
 /**
  * MARCO argus define for Cpi
  */
-#define MARCO_HeatCapacity_DEFINE()                                                              \
-    real_t T = sycl::max<real_t>(T0, _DF(200.0)); /*T0;*/ /*sycl::max<real_t>(T0, _DF(200.0));*/ \
+#define MARCO_HeatCapacity_DEFINE()                                              \
+    real_t T = sycl::max(T0, _DF(200.0)); /*T0;*/ /*sycl::max(T0, _DF(200.0));*/ \
     real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
 
 // #define MARCO_HeatCapacity_DEFINE()                               \
-//     real_t T = T0; /*T0;*/ /*sycl::max<real_t>(T0, _DF(200.0));*/ \
+//     real_t T = T0; /*T0;*/ /*sycl::max(T0, _DF(200.0));*/ \
 //     real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
 
 // =======================================================
@@ -18,17 +29,17 @@
 /**
  * MARCO argus define for hi
  */
-#define MARCO_Enthalpy_DEFINE(MARCO_Enthalpy)                                                                            \
-    real_t hi = _DF(0.0), TT = T0, T = sycl::max<real_t>(T0, _DF(200.0)); /*TT;*/ /*sycl::max<real_t>(T0, _DF(200.0));*/ \
-    MARCO_Enthalpy;                                                                                                      \
-    if (TT < _DF(200.0)) /*take low tempreture into consideration*/                                                      \
-    {                    /*get_hi at T>200*/                                                                             \
-        real_t Cpi = HeatCapacity(Hia, _DF(200.0), Ri, n);                                                               \
-        hi += Cpi * (TT - _DF(200.0));                                                                                   \
+#define MARCO_Enthalpy_DEFINE(MARCO_Enthalpy)                                                            \
+    real_t hi = _DF(0.0), TT = T0, T = sycl::max(T0, _DF(200.0)); /*TT;*/ /*sycl::max(T0, _DF(200.0));*/ \
+    MARCO_Enthalpy;                                                                                      \
+    if (TT < _DF(200.0)) /*take low tempreture into consideration*/                                      \
+    {                    /*get_hi at T>200*/                                                             \
+        real_t Cpi = HeatCapacity(Hia, _DF(200.0), Ri, n);                                               \
+        hi += Cpi * (TT - _DF(200.0));                                                                   \
     }
 
 // #define MARCO_Enthalpy_DEFINE(MARCO_Enthalpy)                                             \
-//     real_t hi = _DF(0.0), TT = T0, T = TT; /*TT;*/ /*sycl::max<real_t>(T0, _DF(200.0));*/ \
+//     real_t hi = _DF(0.0), TT = T0, T = TT; /*TT;*/ /*sycl::max(T0, _DF(200.0));*/ \
 //     MARCO_Enthalpy;
 
 // =======================================================

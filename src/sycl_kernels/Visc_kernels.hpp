@@ -631,3 +631,4 @@ extern SYCL_EXTERNAL void GetWallViscousFluxZ(int i, int j, int k, Block bl, rea
 	//     }
 }
 #endif // end DIM_Z
+

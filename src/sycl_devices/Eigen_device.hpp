@@ -151,7 +151,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = -_DF(0.5) * (b1 * _v);
 		eigen_l[3] = -_DF(0.5) * (b1 * _w);
 		eigen_l[4] = _DF(0.5) * b1;
-		eigen_value = sycl::fabs<real_t>(_u - _c);
+		eigen_value = sycl::fabs(_u - _c);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
 		break;
@@ -162,7 +162,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _v;
 		eigen_l[3] = _w;
 		eigen_l[4] = -_DF(1.0);
-		eigen_value = sycl::fabs<real_t>(_u);
+		eigen_value = sycl::fabs(_u);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = z[m];
 		break;
@@ -173,7 +173,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = -_DF(1.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_u);
+		eigen_value = sycl::fabs(_u);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = _DF(0.0);
 		break;
@@ -184,7 +184,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = _DF(1.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_u);
+		eigen_value = sycl::fabs(_u);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = _DF(0.0);
 		break;
@@ -195,7 +195,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.5) * (-b1 * _v);
 		eigen_l[3] = _DF(0.5) * (-b1 * _w);
 		eigen_l[4] = _DF(0.5) * b1;
-		eigen_value = sycl::fabs<real_t>(_u + _c);
+		eigen_value = sycl::fabs(_u + _c);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
 		break;
@@ -207,7 +207,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_u);
+		eigen_value = sycl::fabs(_u);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = (n + NUM_SPECIES - Emax == m) ? _DF(1.0) : _DF(0.0);
 		break;
@@ -305,7 +305,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = -_DF(0.5) * (b1 * _v + _c1);
 		eigen_l[3] = -_DF(0.5) * (b1 * _w);
 		eigen_l[4] = _DF(0.5) * b1;
-		eigen_value = sycl::fabs<real_t>(_v - _c);
+		eigen_value = sycl::fabs(_v - _c);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
 		break;
@@ -316,7 +316,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_v);
+		eigen_value = sycl::fabs(_v);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = _DF(0.0);
 		break;
@@ -327,7 +327,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _v;
 		eigen_l[3] = _w;
 		eigen_l[4] = -_DF(1.0);
-		eigen_value = sycl::fabs<real_t>(_v);
+		eigen_value = sycl::fabs(_v);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = z[m];
 		break;
@@ -338,9 +338,9 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = -_DF(1.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_v);
-		for (int n = 0; n < NUM_COP; n++)
-			eigen_l[n + Emax - NUM_COP] = _DF(0.0);
+		eigen_value = sycl::fabs(_v);
+		for (int m = 0; m < NUM_COP; n++)
+			eigen_l[m + Emax - NUM_COP] = _DF(0.0);
 		break;
 
 	case Emax - 1:
@@ -349,7 +349,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.5) * (-b1 * _v + _c1);
 		eigen_l[3] = _DF(0.5) * (-b1 * _w);
 		eigen_l[4] = _DF(0.5) * b1;
-		eigen_value = sycl::fabs<real_t>(_v + _c);
+		eigen_value = sycl::fabs(_v + _c);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
 		break;
@@ -361,7 +361,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_v);
+		eigen_value = sycl::fabs(_v);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = (n + NUM_SPECIES - Emax == m) ? _DF(1.0) : _DF(0.0);
 		break;
@@ -459,7 +459,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = -_DF(0.5) * (b1 * _v);
 		eigen_l[3] = -_DF(0.5) * (b1 * _w + _c1);
 		eigen_l[4] = _DF(0.5) * b1;
-		eigen_value = sycl::fabs<real_t>(_w - _c);
+		eigen_value = sycl::fabs(_w - _c);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
 		break;
@@ -470,7 +470,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_w);
+		eigen_value = sycl::fabs(_w);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = _DF(0.0);
 		break;
@@ -481,7 +481,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(1.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_w);
+		eigen_value = sycl::fabs(_w);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = _DF(0.0);
 		break;
@@ -492,7 +492,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _v;
 		eigen_l[3] = _w;
 		eigen_l[4] = -_DF(1.0);
-		eigen_value = sycl::fabs<real_t>(_w);
+		eigen_value = sycl::fabs(_w);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = z[m];
 		break;
@@ -503,7 +503,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.5) * (-b1 * _v);
 		eigen_l[3] = _DF(0.5) * (-b1 * _w + _c1);
 		eigen_l[4] = _DF(0.5) * b1;
-		eigen_value = sycl::fabs<real_t>(_w + _c);
+		eigen_value = sycl::fabs(_w + _c);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = -_DF(0.5) * b1 * z[m];
 		break;
@@ -515,7 +515,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[2] = _DF(0.0);
 		eigen_l[3] = _DF(0.0);
 		eigen_l[4] = _DF(0.0);
-		eigen_value = sycl::fabs<real_t>(_w);
+		eigen_value = sycl::fabs(_w);
 		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = (n + NUM_SPECIES - Emax == m) ? _DF(1.0) : _DF(0.0);
 		break;
@@ -672,11 +672,11 @@ inline void RoeAverage_x(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 	eigen_r[4][3] = _w;
 	eigen_r[4][Emax - 1] = _H + _u * _c;
 
-	eigen_value[0] = sycl::fabs<real_t>(_u - _c);
-	eigen_value[1] = sycl::fabs<real_t>(_u);
+	eigen_value[0] = sycl::fabs(_u - _c);
+	eigen_value[1] = sycl::fabs(_u);
 	eigen_value[2] = eigen_value[1];
 	eigen_value[3] = eigen_value[1];
-	eigen_value[Emax - 1] = sycl::fabs<real_t>(_u + _c);
+	eigen_value[Emax - 1] = sycl::fabs(_u + _c);
 
 #ifdef COP
 	for (int n = 0; n < NUM_COP; n++)
@@ -797,11 +797,11 @@ inline void RoeAverage_y(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 	eigen_r[4][3] = -_w;
 	eigen_r[4][Emax - 1] = _H + _v * _c;
 
-	eigen_value[0] = sycl::fabs<real_t>(_v - _c);
-	eigen_value[1] = sycl::fabs<real_t>(_v);
+	eigen_value[0] = sycl::fabs(_v - _c);
+	eigen_value[1] = sycl::fabs(_v);
 	eigen_value[2] = eigen_value[1];
 	eigen_value[3] = eigen_value[1];
-	eigen_value[Emax - 1] = sycl::fabs<real_t>(_v + _c);
+	eigen_value[Emax - 1] = sycl::fabs(_v + _c);
 
 #ifdef COP
 	for (int n = 0; n < NUM_COP; n++)
@@ -922,11 +922,11 @@ inline void RoeAverage_z(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 	eigen_r[4][3] = _H * b1 - _DF(1.0);
 	eigen_r[4][Emax - 1] = _H + _w * _c;
 
-	eigen_value[0] = sycl::fabs<real_t>(_w - _c);
-	eigen_value[1] = sycl::fabs<real_t>(_w);
+	eigen_value[0] = sycl::fabs(_w - _c);
+	eigen_value[1] = sycl::fabs(_w);
 	eigen_value[2] = eigen_value[1];
 	eigen_value[3] = eigen_value[1];
-	eigen_value[Emax - 1] = sycl::fabs<real_t>(_w + _c);
+	eigen_value[Emax - 1] = sycl::fabs(_w + _c);
 
 #ifdef COP
 	for (int n = 0; n < NUM_COP; n++)

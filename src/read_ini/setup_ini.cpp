@@ -830,7 +830,7 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
  */
 real_t Setup::HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
-    // real_t T = T0; // sycl::max<real_t>(T0, _DF(200.0));
+    // real_t T = T0; // sycl::max(T0, _DF(200.0));
     // real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
     // #if Thermo
     //     if (T >= (_DF(1000.0)) && T < (_DF(6000.0)))

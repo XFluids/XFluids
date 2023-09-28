@@ -21,36 +21,36 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 		uvw_c_max[n] = _DF(0.0);
 
 		// define reduction objects for sum, min, max reduction
-		// auto reduction_sum = reduction(sum, sycl::plus<>());
+		// auto reduction_sum = reduction(sum, sycl::plus<real_t>());
 #if DIM_X
-	uvw_c_max[5] = sycl::max<real_t>(uvw_c_max[5], bl._dx * bl._dx);
+	uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dx * bl._dx);
 	q.submit([&](sycl::handler &h)
 			 {
-    	auto reduction_max_x = reduction(&(uvw_c_max[0]), sycl::maximum<>());
+    	auto reduction_max_x = sycl_reduction_max(uvw_c_max[0]);//reduction(&(uvw_c_max[0]), sycl::maximum<real_t>());
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, [=](nd_item<1> index, auto &temp_max_x)
 					   {
 			auto id = index.get_global_id();
-			temp_max_x.combine(sycl::fabs<real_t>(u[id]) + c[id]); }); });
+			temp_max_x.combine(sycl::fabs(u[id]) + c[id]); }); });
 #endif // end DIM_X
 #if DIM_Y
-	uvw_c_max[5] = sycl::max<real_t>(uvw_c_max[5], bl._dy * bl._dy);
+	uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dy * bl._dy);
 	q.submit([&](sycl::handler &h)
 			 {	
-		auto reduction_max_y = reduction(&(uvw_c_max[1]), sycl::maximum<>());
+		auto reduction_max_y = sycl_reduction_max(uvw_c_max[1]);//reduction(&(uvw_c_max[1]), sycl::maximum<real_t>());
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y)
 					   {
 			auto id = index.get_global_id();
-			temp_max_y.combine(sycl::fabs<real_t>(v[id]) + c[id]); }); });
+			temp_max_y.combine(sycl::fabs(v[id]) + c[id]); }); });
 #endif // end DIM_Y
 #if DIM_Z
-	uvw_c_max[5] = sycl::max<real_t>(uvw_c_max[5], bl._dz * bl._dz);
+	uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dz * bl._dz);
 	q.submit([&](sycl::handler &h)
 			 {	
-		auto reduction_max_z = reduction(&(uvw_c_max[2]), sycl::maximum<>());
+		auto reduction_max_z = sycl_reduction_max(uvw_c_max[2]);//reduction(&(uvw_c_max[2]), sycl::maximum<real_t>());
 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z)
 					   {
 			auto id = index.get_global_id();
-			temp_max_z.combine(sycl::fabs<real_t>(w[id]) + c[id]); }); });
+			temp_max_z.combine(sycl::fabs(w[id]) + c[id]); }); });
 #endif // end DIM_Z
 	q.wait();
 
@@ -76,7 +76,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 
 	// // max viscosity
 	// uvw_c_max[3] = _DF(0.0);
-	// auto reduction_max_miu = reduction(&(uvw_c_max[3]), sycl::maximum<>());
+	// auto reduction_max_miu = reduction(&(uvw_c_max[3]), sycl::maximum<real_t>());
 	// q.submit([&](sycl::handler &h)
 	// 		 { h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_miu, [=](nd_item<1> index, auto &temp_max_miu)
 	// 						  {
@@ -84,7 +84,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	// 		temp_max_miu.combine(va[id]); }); });
 	// // max rho
 	// uvw_c_max[4] = _DF(100.0);
-	// auto reduction_max_rho = reduction(&(uvw_c_max[4]), sycl::minimum<>());
+	// auto reduction_max_rho = reduction(&(uvw_c_max[4]), sycl::minimum<real_t>());
 	// q.submit([&](sycl::handler &h)
 	// 		 { h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_rho, [=](nd_item<1> index, auto &temp_max_rho)
 	// 						  {
@@ -93,7 +93,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	// q.wait();
 
 	// real_t temp_visc = _DF(_DF(14.0) / _DF(3.0)) * uvw_c_max[3] * uvw_c_max[5] / uvw_c_max[4];
-	// dtref = sycl::max<real_t>(dtref, temp_visc);
+	// dtref = sycl::max(dtref, temp_visc);
 #endif // end get viscity
 
 	return bl.CFLnumber / dtref;

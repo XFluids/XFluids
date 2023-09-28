@@ -66,19 +66,19 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 #if DIM_X
     tmp += -(x - _DF(0.45)) * (x - _DF(0.45));
     tmt += -(x - _DF(0.55)) * (x - _DF(0.55));
-    u[id] = _DF(100.0) * sycl::fabs<real_t>(x);
+    u[id] = _DF(100.0) * sycl::fabs(x);
 #endif // end DIM_X
     // y
 #if DIM_Y
     tmp += -(y - _DF(0.45)) * (y - _DF(0.45));
     tmt += -(y - _DF(0.55)) * (y - _DF(0.55));
-    v[id] = _DF(100.0) * sycl::fabs<real_t>(y);
+    v[id] = _DF(100.0) * sycl::fabs(y);
 #endif // end DIM_Y
     // z
 #if DIM_Z
     tmp += -(z - _DF(0.45)) * (z - _DF(0.45));
     tmt += -(z - _DF(0.55)) * (z - _DF(0.55));
-    w[id] = _DF(100.0) * sycl::fabs<real_t>(z);
+    w[id] = _DF(100.0) * sycl::fabs(z);
 #endif // end DIM_Z
     p[id] = _DF(101325.0) + (_DF(32000.0) - _DF(101325.0)) * (_DF(1.0) - sycl::exp(tmp));
     T[id] = _DF(1350.0) + (_DF(320.0) - _DF(1350.0)) * (_DF(1.0) - sycl::exp(tmt));
@@ -87,14 +87,14 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
 #if 1 != NumFluid
     //  for both singlephase && multiphase
-    c[id] = material.Mtrl_ind == 0 ? sycl::sqrt<real_t>(material.Gamma * p[id] / rho[id]) : sycl::sqrt<real_t>(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
+    c[id] = material.Mtrl_ind == 0 ? sycl::sqrt(material.Gamma * p[id] / rho[id]) : sycl::sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
     if (material.Mtrl_ind == 0)
         U[Emax * id + 4] = p[id] / (material.Gamma - _DF(1.0)) + _DF(0.5) * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
     else

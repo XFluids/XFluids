@@ -35,7 +35,7 @@ inline real_t WENOAO53_P(real_t *f, real_t delta)
 	real_t s5 = 1.0 * (s51 + 1.0 / 10.0 * s53) * (s51 + 1.0 / 10.0 * s53) + 13.0 / 3.0 * (s52 + 123.0 / 455.0 * s54) * (s52 + 123.0 / 455.0 * s54) + 781.0 / 20.0 * s53 * s53 + 1421461.0 / 2275.0 * s54 * s54;
 
 	// Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t tau = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
+	real_t tau = (sycl::fabs(s5 - s1) + sycl::fabs(s5 - s2) + sycl::fabs(s5 - s3)) / 3.0;
 	real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
 	real_t coef_weights_2 = (1 - 0.85) * 0.85;
 	real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -88,7 +88,7 @@ inline real_t WENOAO53_M(real_t *f, real_t delta)
 	real_t s5 = 1.0 * (s51 + 1.0 / 10.0 * s53) * (s51 + 1.0 / 10.0 * s53) + 13.0 / 3.0 * (s52 + 123.0 / 455.0 * s54) * (s52 + 123.0 / 455.0 * s54) + 781.0 / 20.0 * s53 * s53 + 1421461.0 / 2275.0 * s54 * s54;
 
 	// Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t tau = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
+	real_t tau = (sycl::fabs(s5 - s1) + sycl::fabs(s5 - s2) + sycl::fabs(s5 - s3)) / 3.0;
 	real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
 	real_t coef_weights_2 = (1 - 0.85) * 0.85;
 	real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -149,7 +149,7 @@ inline real_t WENOAO73_P(real_t *f, real_t delta)
 	real_t s76 = 1.0 / 720.0 * v1 - 6.0 / 720.0 * v2 + 15.0 / 720.0 * v3 - 20.0 / 720.0 * v4 + 15.0 / 720.0 * v5 - 6.0 / 720.0 * v6 + 1 / 720.0 * v7;
 	real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
 	// Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t tau = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
+	real_t tau = (sycl::fabs(s7 - s1) + sycl::fabs(s7 - s2) + sycl::fabs(s7 - s3)) / 3.0;
 	real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
 	real_t coef_weights_2 = (1 - 0.85) * 0.85;
 	real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -210,7 +210,7 @@ inline real_t WENOAO73_M(real_t *f, real_t delta)
 	real_t s76 = 1.0 / 720.0 * v1 - 6.0 / 720.0 * v2 + 15.0 / 720.0 * v3 - 20.0 / 720.0 * v4 + 15.0 / 720.0 * v5 - 6.0 / 720.0 * v6 + 1 / 720.0 * v7;
 	real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
 	// Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t tau = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
+	real_t tau = (sycl::fabs(s7 - s1) + sycl::fabs(s7 - s2) + sycl::fabs(s7 - s3)) / 3.0;
 	real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
 	real_t coef_weights_2 = (1 - 0.85) * 0.85;
 	real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -282,8 +282,8 @@ inline real_t WENOAO753_P(real_t *f, real_t delta)
 	real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
 
 	// Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t tau_7 = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
-	real_t tau_5 = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
+	real_t tau_7 = (sycl::fabs(s7 - s1) + sycl::fabs(s7 - s2) + sycl::fabs(s7 - s3)) / 3.0;
+	real_t tau_5 = (sycl::fabs(s5 - s1) + sycl::fabs(s5 - s2) + sycl::fabs(s5 - s3)) / 3.0;
 	real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
 	real_t coef_weights_2 = (1 - 0.85) * 0.85;
 	real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -333,7 +333,7 @@ inline real_t WENOAO753_P(real_t *f, real_t delta)
 	real_t polynomial_5 = u0_5 + u1_5 * 1.0 / 2.0 + u2_5 * 1.0 / 6.0 + u3_5 * 1.0 / 20.0 + u4_5 * 1.0 / 70.0;
 
 	// Compute normalized weights for hybridization Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t sigma = sycl::abs<real_t>(s7 - s5);
+	real_t sigma = sycl::fabs(s7 - s5);
 	real_t b7 = 2.0e-16 * (1 + sigma / (s7 + 2.0e-16));
 	real_t b5 = (1 - 2.0e-16) * (1 + sigma / (s5 + 2.0e-16));
 
@@ -387,8 +387,8 @@ inline real_t WENOAO753_M(real_t *f, real_t delta)
 	real_t s7 = 1.0 * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) * (s71 + 1.0 / 10.0 * s73 + 1.0 / 126.0 * s75) + 13.0 / 3.0 * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) * (s72 + 123.0 / 455.0 * s74 + 85.0 / 2002.0 * s76) + 781.0 / 20.0 * (s73 + 26045.0 / 49203.0 * s75) * (s73 + 26045.0 / 49203.0 * s75) + 1421461.0 / 2275.0 * (s74 + 81596225.0 / 93816426.0 * s76) * (s74 + 81596225.0 / 93816426.0 * s76) + 21520059541.0 / 1377684.0 * s75 * s75 + 15510384942580921.0 / 27582029244.0 * s76 * s76;
 
 	// Compute normalized weights Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t tau_7 = (sycl::abs<real_t>(s7 - s1) + sycl::abs<real_t>(s7 - s2) + sycl::abs<real_t>(s7 - s3)) / 3.0;
-	real_t tau_5 = (sycl::abs<real_t>(s5 - s1) + sycl::abs<real_t>(s5 - s2) + sycl::abs<real_t>(s5 - s3)) / 3.0;
+	real_t tau_7 = (sycl::fabs(s7 - s1) + sycl::fabs(s7 - s2) + sycl::fabs(s7 - s3)) / 3.0;
+	real_t tau_5 = (sycl::fabs(s5 - s1) + sycl::fabs(s5 - s2) + sycl::fabs(s5 - s3)) / 3.0;
 	real_t coef_weights_1 = (1 - 0.85) * (1 - 0.85) / 2.0;
 	real_t coef_weights_2 = (1 - 0.85) * 0.85;
 	real_t coef_weights_3 = (1 - 0.85) * (1 - 0.85) / 2.0;
@@ -438,7 +438,7 @@ inline real_t WENOAO753_M(real_t *f, real_t delta)
 	real_t polynomial_5 = u0_5 + u1_5 * 1.0 / 2.0 + u2_5 * 1.0 / 6.0 + u3_5 * 1.0 / 20.0 + u4_5 * 1.0 / 70.0;
 
 	// Compute normalized weights for hybridization Note: Borges et al. suggest an epsilon value of 1e-40 to minimize the influence. We use machine precision instead.
-	real_t sigma = sycl::abs<real_t>(s7 - s5);
+	real_t sigma = sycl::fabs(s7 - s5);
 	real_t b7 = 2.0e-16 * (1 + sigma / (s7 + 2.0e-16));
 	real_t b5 = (1 - 2.0e-16) * (1 + sigma / (s5 + 2.0e-16));
 

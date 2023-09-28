@@ -40,14 +40,14 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	for (size_t nn = 0; nn < Emax; nn++)
 	{
 		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_eigen = reduction(&(eigen_block_x[nn]), sycl::maximum<>());
+				 {	auto reduction_max_eigen = sycl_reduction_max(eigen_block_x[nn]);//reduction(&(eigen_block_x[nn]), sycl::maximum<real_t>());
 					h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen)
 								{
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-					temp_max_eigen.combine(sycl::fabs<real_t>(eigen_local_x[Emax*id+nn])); }); });
+					temp_max_eigen.combine(sycl::fabs(eigen_local_x[Emax*id+nn])); }); });
 	}
 	q.wait();
 
@@ -96,14 +96,14 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	for (size_t nn = 0; nn < Emax; nn++)
 	{
 		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_eigen = reduction(&(eigen_block_y[nn]), sycl::maximum<>());
+				 {	auto reduction_max_eigen = sycl_reduction_max(eigen_block_y[nn]);//reduction(&(eigen_block_y[nn]), sycl::maximum<real_t>());
 						h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen)
 								   {
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
 						int k = index.get_global_id(2);
 						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-						temp_max_eigen.combine(sycl::fabs<real_t>(eigen_local_y[Emax*id+nn])); }); });
+						temp_max_eigen.combine(sycl::fabs(eigen_local_y[Emax*id+nn])); }); });
 	}
 	q.wait();
 
@@ -153,14 +153,14 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	for (size_t nn = 0; nn < Emax; nn++)
 	{
 		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_eigen = reduction(&(eigen_block_z[nn]), sycl::maximum<>());
+				 {	auto reduction_max_eigen = sycl_reduction_max(eigen_block_z[nn]);//reduction(&(eigen_block_z[nn]), sycl::maximum<real_t>());
 						h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen)
 									   {
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
 						int k = index.get_global_id(2);
 						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-						temp_max_eigen.combine(sycl::fabs<real_t>(eigen_local_z[Emax*id+nn])); }); });
+						temp_max_eigen.combine(sycl::fabs(eigen_local_z[Emax*id+nn])); }); });
 	}
 	q.wait();
 
@@ -332,3 +332,4 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 		middle::Free(epsilon, q);
 	}
 }
+

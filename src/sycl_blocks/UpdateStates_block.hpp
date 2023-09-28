@@ -32,7 +32,7 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 	*error_nan = false, *error_org = false;
 	for (size_t i = 0; i < NUM_SPECIES + 3; i++)
 		error_posyi[i] = _DF(0.0);
-	auto Sum_Epts = sycl::reduction(&(error_posyi[NUM_SPECIES + 3]), sycl::plus<>()); // error_patch_times
+	auto Sum_Epts = sycl_reduction_plus(error_posyi[NUM_SPECIES + 3]); // sycl::reduction(&(error_posyi[NUM_SPECIES + 3]), sycl::plus<real_t>()); // error_patch_times
 
 	// // update estimate negative or nan yi and patch
 	q.submit([&](sycl::handler &h)

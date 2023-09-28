@@ -8,7 +8,7 @@
  */
 real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
 {
-	return A * sycl::pow<real_t>(T, B) * sycl::exp(-E * _DF(4.184) / Ru / T);
+	return A * sycl::pow(T, B) * sycl::exp(-E * _DF(4.184) / Ru / T);
 }
 
 /**
@@ -25,7 +25,7 @@ real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ 
 		Nu_sum += Nu_d_[m * NUM_SPECIES + n];
 	}
 	Kck = sycl::exp<real_t>(Kck);
-	Kck *= sycl::pow<real_t>(p_atm / Ru / T * _DF(1e-6), Nu_sum); // 1e-6: m^-3 -> cm^-3
+	Kck *= sycl::pow(p_atm / Ru / T * _DF(1e-6), Nu_sum); // 1e-6: m^-3 -> cm^-3
 	return Kck;
 }
 
@@ -38,7 +38,7 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *_Wi, real_t *Hia, 
 	{
 		real_t A = Rargus[m * 6 + 0], B = Rargus[m * 6 + 1], E = Rargus[m * 6 + 2];
 #if CJ
-		Kf[m] = sycl::min<real_t>((_DF(20.0) * _DF(1.0)), A * sycl::pow<real_t>(T, B) * sycl::exp(-E / T));
+		Kf[m] = sycl::min((_DF(20.0) * _DF(1.0)), A * sycl::pow(T, B) * sycl::exp(-E / T));
 		Kb[m] = _DF(0.0);
 #else
 		Kf[m] = get_Kf_ArrheniusLaw(A, B, E, T);
@@ -81,14 +81,14 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_S
 			{
 				int specie_id = reactant_list[react_id][it];
 				int nu_f = Nu_f_[react_id * NUM_SPECIES + specie_id];
-				RPf *= sycl::pow<real_t>(C[specie_id], nu_f);
+				RPf *= sycl::pow(C[specie_id], nu_f);
 			}
 			// backward
 			for (int it = 0; it < pls[react_id]; it++)
 			{
 				int specie_id = product_list[react_id][it];
 				int nu_b = Nu_b_[react_id * NUM_SPECIES + specie_id];
-				RPb *= sycl::pow<real_t>(C[specie_id], nu_b);
+				RPb *= sycl::pow(C[specie_id], nu_b);
 			}
 			q[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPf + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPb;
 			d[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPb + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPf;
@@ -116,7 +116,7 @@ real_t sign(real_t a)
  */
 real_t sign(real_t a, real_t b)
 {
-	return sign(b) * sycl::abs<real_t>(a);
+	return sign(b) * sycl::abs(a);
 }
 
 /**
@@ -151,7 +151,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	// // save the initial inputs
 	real_t sumy = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
-		y0[i] = y[i], y[i] = sycl::max<real_t>(y[i], ymin), sumy += y[i];
+		y0[i] = y[i], y[i] = sycl::max(y[i], ymin), sumy += y[i];
 	sumy = _DF(1.0) / sumy;
 	for (int i = 0; i < NUM_SPECIES; i++)
 		y[i] *= sumy;
@@ -165,13 +165,13 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	real_t ascr = _DF(0.0), scr1 = _DF(0.0), scr2 = _DF(0.0); // scratch (temporary) variable
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		ascr = sycl::abs<real_t>(q[i]);
+		ascr = sycl::abs(q[i]);
 		scr2 = sign(_DF(1.0) / y[i], _DF(0.1) * epsmin * ascr - d[i]);
 		scr1 = scr2 * d[i];
-		scrtch = sycl::max<real_t>(scr1, scrtch);
-		scrtch = sycl::max<real_t>(scrtch, -sycl::abs(ascr - d[i]) * scr2);
+		scrtch = sycl::max(scr1, scrtch);
+		scrtch = sycl::max(scrtch, -sycl::abs(ascr - d[i]) * scr2);
 	}
-	dt = sycl::min<real_t>(sqreps / scrtch, dtg);
+	dt = sycl::min(sqreps / scrtch, dtg);
 
 	//==========================================================
 flag1:
@@ -196,7 +196,7 @@ flag2:
 		rtau[i] = dt * ds[i] / ys[i]; // 1/r in Ref.eq(39)
 		real_t alpha = Alpha(rtau[i]);
 		scrarray[i] = dt * (qs[i] - ds[i]) / (_DF(1.0) + alpha * rtau[i]); // \delta y
-		y[i] = sycl::max<real_t>(ys[i] + scrarray[i], ymin), y1[i] = y[i]; // predicted y, results stored by y1
+		y[i] = sycl::max(ys[i] + scrarray[i], ymin), y1[i] = y[i]; // predicted y, results stored by y1
 	}
 	tn = ts + dt;
 	// // predict T, Kf, and Kb based predicted y, the predicted assumed not accurate, only update q, d use predicted y excluded T and Kf, Kb
@@ -219,7 +219,7 @@ flag2:
 			// real_t pb = rtaub / dt;
 			// scrarraym[i] = scrarray[i];
 			scrarray[i] = (qt * dt - rtaub * ys[i]) / (_DF(1.0) + alpha * rtaub);
-			y[i] = sycl::max<real_t>(ys[i] + scrarray[i], ymin); // correctied y
+			y[i] = sycl::max(ys[i] + scrarray[i], ymin); // correctied y
 
 			// deltascr[i] = sycl::min(scrarray[i] - scrarraym[i]); // get \delta y^c(itermax)
 			// if (iter < itermax)
@@ -240,12 +240,12 @@ flag2:
 		// scr2 = sycl::max(ys[i] + scrarray[i], ymin);
 		// scr1 = sycl::abs(scr2 - y1[i]);
 		// y[i] = sycl::max(scr2, ymin); // new y
-		scr1 = sycl::abs<real_t>(y[i] - y1[i]);
+		scr1 = sycl::abs(y[i] - y1[i]);
 		if (_DF(0.5) * _DF(0.5) * (ys[i] + y[i]) > ymin)
 		{
 			scr1 = scr1 / y[i];
 			// eps = sycl::max(scr1, eps);
-			eps = sycl::max<real_t>(_DF(0.5) * (scr1 + sycl::min<real_t>(sycl::abs<real_t>(q[i] - d[i] + _DF(1.0e-40)) / (q[i] + d[i] + _DF(1.0e-40)), scr1)), eps);
+			eps = sycl::max(_DF(0.5) * (scr1 + sycl::min(sycl::abs(q[i] - d[i] + _DF(1.0e-40)) / (q[i] + d[i] + _DF(1.0e-40)), scr1)), eps);
 		}
 	}
 	eps = eps * epscl;
@@ -266,10 +266,10 @@ flag2:
 	rteps = _DF(0.5) * (rteps + eps / rteps);
 	rteps = _DF(0.5) * (rteps + eps / rteps);
 	real_t dto = dt;
-	dt = sycl::min<real_t>(dt * (_DF(1.0) / rteps + _DF(0.005)), (dtg - tn)); // tfd * (dtg - tn)); // new dt
+	dt = sycl::min(dt * (_DF(1.0) / rteps + _DF(0.005)), (dtg - tn)); // tfd * (dtg - tn)); // new dt
 	if (eps > epsmax)
 	{
-		dt = sycl::min<real_t>(dt, _DF(0.34) * dto); // add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
+		dt = sycl::min(dt, _DF(0.34) * dto); // add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
 		rcount++;
 		// dto = dt / dto;
 		// for (int i = 0; i < NUM_SPECIES; i++)

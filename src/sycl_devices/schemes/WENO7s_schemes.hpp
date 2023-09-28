@@ -165,7 +165,7 @@ inline real_t weno7Z_P(real_t *f, real_t delta)
 	real_t S2 = S12 * S12 + 13.0 / 12.0 * S22 * S22 + 1043.0 / 960.0 * S32 * S32 + 1.0 / 12.0 * S12 * S32;
 	real_t S3 = S13 * S13 + 13.0 / 12.0 * S23 * S23 + 1043.0 / 960.0 * S33 * S33 + 1.0 / 12.0 * S13 * S33;
 	// Alpha weights
-	real_t tau7 = sycl::abs<real_t>(S0 - S3);
+	real_t tau7 = sycl::fabs(S0 - S3);
 	real_t a0 = C0 * (1.0 + tau7 / (S0 + 1.0e-40));
 	real_t a1 = C1 * (1.0 + tau7 / (S1 + 1.0e-40));
 	real_t a2 = C2 * (1.0 + tau7 / (S2 + 1.0e-40));
@@ -222,7 +222,7 @@ inline real_t weno7Z_M(real_t *f, real_t delta)
 	real_t S2 = S12 * S12 + 13.0 / 12.0 * S22 * S22 + 1043.0 / 960.0 * S32 * S32 + 1.0 / 12.0 * S12 * S32;
 	real_t S3 = S13 * S13 + 13.0 / 12.0 * S23 * S23 + 1043.0 / 960.0 * S33 * S33 + 1.0 / 12.0 * S13 * S33;
 	// Alpha weights
-	real_t tau7 = sycl::abs<real_t>(S0 - S3);
+	real_t tau7 = sycl::fabs(S0 - S3);
 	real_t a0 = C0 * (1.0 + tau7 / (S0 + 1.0e-40));
 	real_t a1 = C1 * (1.0 + tau7 / (S1 + 1.0e-40));
 	real_t a2 = C2 * (1.0 + tau7 / (S2 + 1.0e-40));

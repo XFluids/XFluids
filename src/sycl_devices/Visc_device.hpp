@@ -32,9 +32,9 @@ real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], cons
 real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const real_t T)
 {
 	real_t phi = _DF(0.0);
-	phi = sycl::pow<real_t>(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow<real_t>(Viscosity(fcv[int(specie_k[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
-	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sycl::sqrt<real_t>(_DF(2.0));
-	phi = phi * sycl::pow<real_t>(_DF(1.0) + specie_k[Wi] / specie_j[Wi], -_DF(0.5));
+	phi = sycl::pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow(Viscosity(fcv[int(specie_k[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
+	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sycl::sqrt(_DF(2.0));
+	phi = phi * sycl::pow(_DF(1.0) + specie_k[Wi] / specie_j[Wi], -_DF(0.5));
 	return phi;
 }
 
@@ -164,8 +164,8 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 	   // NOTE: add limiter:
 	for (int k = 0; k < NUM_SPECIES; k++)
 	{
-		Dkm_aver_id[k] = sycl::max<real_t>(Dkm_aver_id[k], _DF(1.0e-10));
-		// Dkm_aver_id[k] = sycl::min<real_t>(Dkm_aver_id[k], _DF(1.0e-4));
+		Dkm_aver_id[k] = sycl::max(Dkm_aver_id[k], _DF(1.0e-10));
+		// Dkm_aver_id[k] = sycl::min(Dkm_aver_id[k], _DF(1.0e-4));
 	}
 #endif // end Visc_Diffu
 }

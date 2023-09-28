@@ -24,7 +24,7 @@ inline real_t WENOCU6_BODYGPU(const real_t v1, const real_t v2, const real_t v3,
 
 	// weights
 	real_t s55 = (s1 + s3 + _DF(4.0) * s2) * _six;
-	real_t s5 = sycl::fabs<real_t>(s6 - s55);
+	real_t s5 = sycl::fabs(s6 - s55);
 	real_t r0 = _DF(20.0);
 	real_t r1 = r0 + s5 / (s1 + epsilon);
 	real_t r2 = r0 + s5 / (s2 + epsilon);

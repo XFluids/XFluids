@@ -50,7 +50,7 @@ void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, re
 	p = (NCOP_Gamma - _DF(1.0)) * rho * tme; //(UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
 #endif // end COP
 	H = (UI[4] + p) * rho1;
-	c = sycl::sqrt<real_t>(gamma * p * rho1);
+	c = sycl::sqrt(gamma * p * rho1);
 	e = tme;
 }
 
@@ -66,7 +66,7 @@ void ReGetStates(Thermal thermal, real_t *yi, real_t *U, real_t &rho, real_t &u,
 	p = rho * R * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
 	H = (U[4] + p) * rho1;
-	c = sycl::sqrt<real_t>(gamma * p * rho1);
+	c = sycl::sqrt(gamma * p * rho1);
 
 	// U[1] = rho * u;
 	// U[2] = rho * v;

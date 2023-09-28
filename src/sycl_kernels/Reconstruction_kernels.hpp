@@ -111,7 +111,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 	//     //     {
 	//     //         int _i_1 = i + m, _j_1 = j, _k_1 = k;
 	//     //         int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /*int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m*/
-	//     //         eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
+	//     //         eigen_local_max = sycl::max(eigen_local_max, sycl::fabs(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
 	//     //     }
 	//     //     for (int m = -3; m <= 4; m++)
 	//     //     {
@@ -157,7 +157,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 	//     //         {
 	//     //             int _i_1 = i + m, _j_1 = j, _k_1 = k;
 	//     //             int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /* int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m */
-	//     //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
+	//     //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
 	//     //         }
 	//     //     }
 	//     //     for (size_t m = 0; m < stencil_size; m++)
@@ -343,7 +343,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 	//     //         {
 	//     //             int _i_1 = i, _j_1 = j, _k_1 = k + m;
 	//     //             int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                       /* int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m */
-	//     //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs<real_t>(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
+	//     //             eigen_local_max = sycl::max(eigen_local_max, sycl::fabs(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/
 	//     //         }
 	//     //     }
 	//     //     for (size_t m = 0; m < stencil_size; m++)
@@ -418,13 +418,13 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 
 	// // correct for positive density
 	theta_u = _DF(1.0), theta_p = _DF(1.0);
-	rho_min = sycl::min<real_t>(UU[0], epsilon[0]);
+	rho_min = sycl::min(UU[0], epsilon[0]);
 	if (UU[0] - FF[0] < rho_min)
 		theta_u = (UU[0] - FF_LF[0] - rho_min) / (FF[0] - FF_LF[0]);
-	rho_min = sycl::min<real_t>(UP[0], epsilon[0]);
+	rho_min = sycl::min(UP[0], epsilon[0]);
 	if (UP[0] + FF[0] < rho_min)
 		theta_p = (UP[0] + FF_LF[0] - rho_min) / (FF_LF[0] - FF[0]);
-	theta = sycl::min<real_t>(theta_u, theta_p);
+	theta = sycl::min(theta_u, theta_p);
 	for (int n = 0; n < Emax; n++)
 	{
 		FF[n] = (_DF(1.0) - theta) * FF_LF[n] + theta * FF[n];
@@ -446,15 +446,15 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 		real_t temp = epsilon[n + 2];
 		if (yi_q[n] < temp)
 		{
-			real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+			real_t yi_min = sycl::min(yi_u[n], temp);
 			theta_u = (yi_u[n] - yi_min + _DF(1.0e-40)) / (yi_u[n] - yi_q[n] + _DF(1.0e-40));
 		}
 		if (yi_qp[n] < temp)
 		{
-			real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+			real_t yi_min = sycl::min(yi_up[n], temp);
 			theta_p = (yi_up[n] - yi_min + _DF(1.0e-40)) / (yi_up[n] - yi_qp[n] + _DF(1.0e-40));
 		}
-		theta = sycl::min<real_t>(theta_u, theta_p);
+		theta = sycl::min(theta_u, theta_p);
 		for (int nn = 0; nn < Emax; nn++)
 			Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
 	}
@@ -462,15 +462,15 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	// real_t temp = epsilon[NUM_SPECIES + 1];
 	// if (yi_q[NUM_COP] < temp)
 	// {
-	//     real_t yi_min = sycl::min<real_t>(yi_u[NUM_COP], temp);
+	//     real_t yi_min = sycl::min(yi_u[NUM_COP], temp);
 	//     theta_u = (yi_u[NUM_COP] - yi_min) / (yi_u[NUM_COP] - yi_q[NUM_COP]);
 	// }
 	// if (yi_qp[NUM_COP] < temp)
 	// {
-	//     real_t yi_min = sycl::min<real_t>(yi_up[NUM_COP], temp);
+	//     real_t yi_min = sycl::min(yi_up[NUM_COP], temp);
 	//     theta_p = (yi_up[NUM_COP] - yi_min) / (yi_up[NUM_COP] - yi_qp[NUM_COP]);
 	// }
-	// theta = sycl::min<real_t>(theta_u, theta_p);
+	// theta = sycl::min(theta_u, theta_p);
 	// for (int nn = 0; nn < Emax; nn++)
 	//     Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
 
@@ -482,15 +482,15 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	//         real_t temp = epsilon[n + 2];
 	//         if (yi_q[n] < temp)
 	//         {
-	//             real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+	//             real_t yi_min = sycl::min(yi_u[n], temp);
 	//             theta_u = (yi_u[n] - yi_min + 1.0e-100) / (yi_u[n] - yi_q[n] + 1.0e-100);
 	//         }
 	//         if (yi_qp[n] < temp)
 	//         {
-	//             real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+	//             real_t yi_min = sycl::min(yi_up[n], temp);
 	//             theta_p = (yi_up[n] - yi_min + 1.0e-100) / (yi_up[n] - yi_qp[n] + 1.0e-100);
 	//         }
-	//         theta = sycl::min<real_t>(theta_u, theta_p);
+	//         theta = sycl::min(theta_u, theta_p);
 	//         for (int nn = 0; nn < Emax; nn++)
 	//             Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
 	//     }
@@ -502,15 +502,15 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	//     real_t temp = epsilon[n + 2];
 	//     if (yi_q[n] < temp)
 	//     {
-	//         real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
+	//         real_t yi_min = sycl::min(yi_u[n], temp);
 	//         theta_u = (yi_u[n] - yi_min + 1.0e-100) / (yi_u[n] - yi_q[n] + 1.0e-100);
 	//     }
 	//     if (yi_qp[n] < temp)
 	//     {
-	//         real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
+	//         real_t yi_min = sycl::min(yi_up[n], temp);
 	//         theta_p = (yi_up[n] - yi_min + 1.0e-100) / (yi_up[n] - yi_qp[n] + 1.0e-100);
 	//     }
-	//     theta = sycl::min<real_t>(theta_u, theta_p);
+	//     theta = sycl::min(theta_u, theta_p);
 	//     for (int nn = 0; nn < Emax; nn++)
 	//         Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
 	// }
@@ -527,7 +527,7 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	// {
 	//     real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
 	//     real_t T_u = get_T(thermal, yi_u, e_u, T_l);
-	//     real_t T_min = sycl::min<real_t>(T_u, epsilon[1]);
+	//     real_t T_min = sycl::min(T_u, epsilon[1]);
 	//     theta_u = (T_u - T_min + 1.0e-100) / (T_u - T_q + 1.0e-100);
 	// }
 	// // P_q = T_q * get_CopR(thermal._Wi, yi_q);
@@ -535,7 +535,7 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	// // {
 	// //     real_t e_u = (UU[4] - FF_LF[4] - _DF(0.5) * ((UU[1] - FF_LF[1]) * (UU[1] - FF_LF[1]) + (UU[2] - FF_LF[2]) * (UU[2] - FF_LF[2]) + (UU[3] - FF_LF[3]) * (UU[3] - FF_LF[3])) * _rhou) * _rhou;
 	// //     real_t P_u = get_T(thermal, yi_u, e_u, T_l) * get_CopR(thermal._Wi, yi_u);
-	// //     real_t P_min = sycl::min<real_t>(P_u, epsilon[1]);
+	// //     real_t P_min = sycl::min(P_u, epsilon[1]);
 	// //     theta_pu = (P_u - P_min) / (P_u - P_q);
 	// // }
 
@@ -545,7 +545,7 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	// {
 	//     real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
 	//     real_t T_p = get_T(thermal, yi_up, e_p, T_r);
-	//     real_t T_min = sycl::min<real_t>(T_p, epsilon[1]);
+	//     real_t T_min = sycl::min(T_p, epsilon[1]);
 	//     theta_p = (T_p - T_min + 1.0e-100) / (T_p - T_q + 1.0e-100);
 	// }
 	// // P_q = T_q * get_CopR(thermal._Wi, yi_qp);
@@ -553,13 +553,13 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	// // {
 	// //     real_t e_p = (UP[4] + FF_LF[4] - _DF(0.5) * ((UP[1] + FF_LF[1]) * (UP[1] + FF_LF[1]) + (UP[2] + FF_LF[2]) * (UP[2] + FF_LF[2]) + (UP[3] + FF_LF[3]) * (UP[3] + FF_LF[3])) * _rhoup) * _rhoup;
 	// //     real_t P_p = get_T(thermal, yi_up, e_p, T_r) * get_CopR(thermal._Wi, yi_qp);
-	// //     real_t P_min = sycl::min<real_t>(P_p, epsilon[1]);
+	// //     real_t P_min = sycl::min(P_p, epsilon[1]);
 	// //     theta_pp = (P_p - P_min) / (P_p - P_q);
 	// // }
-	// theta = sycl::min<real_t>(theta_u, theta_p);
+	// theta = sycl::min(theta_u, theta_p);
 	// for (int n = 0; n < Emax; n++)
 	//     Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
-	// // theta = sycl::min<real_t>(theta_pu, theta_pp);
+	// // theta = sycl::min(theta_pu, theta_pp);
 	// // for (int n = 0; n < Emax; n++)
 	// //     Fwall[n + id_l] = (_DF(1.0) - theta) * F_LF[n] + theta * Fwall[n + id_l];
 }

@@ -78,14 +78,14 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
 #if 1 != NumFluid
     //  for both singlephase && multiphase
-    c[id] = material.Mtrl_ind == 0 ? sycl::sqrt<real_t>(material.Gamma * p[id] / rho[id]) : sycl::sqrt<real_t>(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
+    c[id] = material.Mtrl_ind == 0 ? sycl::sqrt(material.Gamma * p[id] / rho[id]) : sycl::sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
     if (material.Mtrl_ind == 0)
         U[Emax * id + 4] = p[id] / (material.Gamma - _DF(1.0)) + _DF(0.5) * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
     else

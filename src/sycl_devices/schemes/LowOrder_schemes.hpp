@@ -25,7 +25,7 @@ inline real_t minmod(real_t r)
  */
 inline real_t van_Leer(real_t r)
 {
-	return (r + sycl::abs<real_t>(r)) / (1.0 + sycl::abs<real_t>(r));
+	return (r + sycl::fabs(r)) / (1.0 + sycl::fabs(r));
 }
 
 /**

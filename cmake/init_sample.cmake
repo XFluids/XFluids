@@ -233,6 +233,7 @@ IF(COP)
             add_compile_options(-DCHEME_SPLITTING=1) # Lie splitting by default
         ENDIF()
     ENDIF(COP_CHEME)
+
 ELSE(COP)
     set(Gamma "1.4")
     add_compile_options(-DNUM_SPECIES=1)

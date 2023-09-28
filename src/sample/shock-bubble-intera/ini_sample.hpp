@@ -58,9 +58,9 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
 #endif // end DIM_Z
 
     // // Ini bubble
-    dy_ = sycl::sqrt<real_t>(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    dy_ = sycl::sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
     real_t xrest = _DF(1.0), ff = _DF(1.0e-4), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
-    xi[NUM_SPECIES - 1] = dd * (sycl::tanh<real_t>(dy_ * ini.C)) + _DF(0.5); // increase ini.C for a sharper boundary //[-1,1]--0.5(1-ff)*[-1,1]+0.5-->[ff,1-ff]
+    xi[NUM_SPECIES - 1] = dd * (sycl::tanh(dy_ * ini.C)) + _DF(0.5); // increase ini.C for a sharper boundary //[-1,1]--0.5(1-ff)*[-1,1]+0.5-->[ff,1-ff]
 #if defined(SBI_WITHOUT_FUEL)
     xi[0] = _DF(0.51) * (xrest - xi[NUM_SPECIES - 1]);               // O2
     xi[NUM_SPECIES - 2] = _DF(0.49) * (xrest - xi[NUM_SPECIES - 1]); // Xe
@@ -182,7 +182,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     rho[id] = p[id] / R / T[id];
 
     // real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    // c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
+    // c[id] = sycl::sqrt(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);

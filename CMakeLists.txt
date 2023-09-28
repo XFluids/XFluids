@@ -3,60 +3,83 @@ PROJECT(LAMNSS LANGUAGES CXX)
 
 # #default local cmake macro repository
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(init_cmake) # cmake compile options
 
 # // =======================================================
-# #### cmake features init
+# #### compile system:
+# ####  1. oneAPI:       Intel oneAPI compiling system
+# ####  2. OpenSYCL:     OpenSYCL syclcc compiling system
 # // =======================================================
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(CMAKE_CXX_COMPILER "clang++") # use clang++ from oneapi/llvm
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+set(SYCL_COMPILE_SYSTEM "oneAPI") # # oneAPI or OpenSYCL
+# // = about oneAPI platform and device ==================
+set(SelectDv "cuda-nvcxx") # which platform for compile options: omp(for host), cuda-nvcxx(for nvidia), hip(for amd)
+set(ARCH "75") # omp: no ARCH needed;# cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
-endif()
+# // =======================================================
+IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+  # // =======================================================
+  IF(SelectDv MATCHES "cuda")
+    set(ARCH "cc${ARCH}")
+  ELSEIF(SelectDv STREQUAL "hip")
+    set(ARCH "gfx${ARCH}")
+  ENDIF()
+
+  add_compile_options(-DDEFINED_OPENSYCL)
+  set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress=set_but_not_used,declared_but_not_referenced,used_before_set --opensycl-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
+
+# // =======================================================
+ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
+  # // =======================================================
+  add_compile_options(-DDEFINED_ONEAPI)
+  set(CMAKE_CXX_COMPILER "clang++") # for Intel oneAPI compiling system
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+
+  # // =======================================================
+ENDIF()
 
 # // =======================================================
 # #### function option
 # // =======================================================
 option(USE_DOUBLE "if double" ON)
-option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
-option(ERROR_PATCH_YI "if patch negative yi based Roe-Solver" OFF)
-option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" ON)
-option(ERROR_PATCH_PRI "if patch rho/T/P negative or nan errors while capured" OFF)
-option(POSITIVITY_PRESERVING "if enable positive preserving based Dr.Hu" ON)
 option(DIM_X "if enable dim_x" ON)
 option(DIM_Y "if enable dim_y" OFF)
 option(DIM_Z "if enable dim_z" OFF)
-option(COP "if enable compoent, based on Multi=OFF" ON)
-option(COP_CHEME "if enable chemical reaction" OFF)
-option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)
+option(COP "if enable compoent" ON)
 option(Visc "if add physic viscidity flux" ON)
+option(COP_CHEME "if enable chemical reaction" OFF)
+option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
+option(ERROR_PATCH_YI "if patch negative yi based Roe-Solver" OFF)
+option(ERROR_PATCH_PRI "if patch rho/T/P errors while capured" OFF)
+option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" ON)
+option(POSITIVITY_PRESERVING "if enable positive preserving based Dr.Hu" ON)
+option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)
 option(Visc_Heat "if add heat transfer flux" ON)
 option(Visc_Diffu "if add mass diffusion" ON) # depends on COP=ON
 
 # // =======================================================
 # #### mpi settings
 # // =======================================================
-# #### Method of mpi buffer allocation and transfer:
+# #### EXPLICIT_ALLOC: Method of mpi buffer allocation and transfer:
 # # ON: allocate each device buffer and transfer
 # # OFF: allocate struct ptr in device
-# # set [mpi]:NUM: number of mpi devices in sycl-ls list; # 1 for host, 2 for 3080Tix2
 option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
 
 # // =======================================================
-# #### about platform and device
-# // =======================================================
-set(SelectDv "nvidia") # define which platform and devices for compile options: host, nvidia, amd, intel
-set(ARCH "sm_75") # cuda: sm_86, sm_75 # hip: gfx906, gfx1030
-set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
-
-# // =======================================================
 # #### init sample
 # // =======================================================
+set(THERMAL "JANAF") # NASA or JANAF fit
+set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
+set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
+set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
+set(INIT_SAMPLE "2d-shock-bubble")
+set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
+set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
+set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
+set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie": Flow(dt)->React(dt)
+
 # #### Set INIT_SAMPLE for method of eigen_l, eigen_r allocation:
 # # OROC: calculate one row and column once in for loop(eigen_lr[Emax])
 # # RGIF: allocate eigen matrix in regesters of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]),which makes regesters spills out as Emax increases
@@ -77,22 +100,14 @@ set(Pform_id "2") # first device id in sycl-ls list #1 for host, 2 for GPU
 # # 2species             # # CJ_mechanism     # # inert_2species
 # # H2O_18_new_reaction  # # H2O_18_reaction  # # H2O_19_reaction     # # H2O_23_reaction
 # # RSBI-18REA           # # RSBI-19REA
-set(THERMAL "JANAF") # NASA or JANAF fit
-set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for FluxWall reconstruction
-set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
-set(EIGEN_ALLOC "OROC") # #OROC# #RGIF# #AIGE
-set(INIT_SAMPLE "2d-shock-bubble-without-fuel")
-set(COP_SPECIES "Insert-SBI") # name of the folder under ./runtime.dat/
-set(REACTION_MODEL "RSBI-19REA") # H2O_19_reaction # RSBI-18REA # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
-set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
-set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie": Flow(dt)->React(dt)
 
 # cmake modules
 include(init_options) # add main exec
 
 # MPI libs
 IF(USE_MPI)
-include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR})
-add_subdirectory(mpiUtils)
+  include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR})
+  add_subdirectory(mpiUtils)
 ENDIF() # sources
+
 add_subdirectory(src)

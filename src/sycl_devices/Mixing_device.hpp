@@ -144,7 +144,7 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 		real_t df = sycl::min(func_T / (dfunc_T + _DF(1.0e-30)), _DF(1e-3) * T);
 		df = sycl::max(df, -_DF(1e-2) * T);
 		T = T - df;
-		if (sycl::abs<real_t>(df) <= tol)
+		if (sycl::fabs(df) <= tol)
 			break;
 		// if (i == 100)
 		// {
@@ -175,7 +175,7 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 		// 		f_mid = func_T;
 		// 		if (f_mid <= 0.0)
 		// 			rt_bis = T;
-		// 		if (sycl::abs<real_t>(df) <= x_eps || f_mid == 0.0)
+		// 		if (sycl::abs(df) <= x_eps || f_mid == 0.0)
 		// 			break;
 		// 		if (j == 100)
 		// 		{
