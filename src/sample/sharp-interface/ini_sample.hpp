@@ -47,25 +47,25 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     w[id] = _DF(0.0);
 
     // // x-dir shock
-    T[id] = x < 0.005 ? 1200 : 400;
-    p[id] = x < 0.005 ? 80000 : 8000;
-    u[id] = x < 0.005 ? 750 : 0;
+    T[id] = x < _DF(0.005) ? _DF(1200.0) : _DF(400.0);
+    p[id] = x < _DF(0.005) ? _DF(80000.0) : _DF(8000.0);
+    u[id] = x < _DF(0.005) ? _DF(750.0) : _DF(0.0);
 
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
     // a circular bubble
-    dy_ = (x - 0.02) * (x - 0.02);
+    dy_ = (x - _DF(0.02)) * (x - _DF(0.02));
 #if DIM_Y
-    dy_ += (y - 0.0) * (y - 0.0);
+    dy_ += (y - _DF(0.0)) * (y - _DF(0.0));
 #endif // end DIM_Y
 #if DIM_Z
-    dy_ += (z - 0.0) * (z - 0.0);
+    dy_ += (z - _DF(0.0)) * (z - _DF(0.0));
 #endif // end DIM_Z
 
     // // Ini interface
-    dy_ = sqrt(dy_) / 0.01 - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
+    dy_ = sycl::sqrt<real_t>(dy_) / _DF(0.01) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
     real_t xrest = _DF(1.0), ff = _DF(1.0e-10), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
     real_t *yi = &(_y[NUM_SPECIES * id]);
-    yi[NUM_SPECIES - 1] = dd * (sycl::tanh<real_t>(dy_ * 0.01 / dx)) + _DF(0.5); // molecular fraction
+    yi[NUM_SPECIES - 1] = dd * (sycl::tanh<real_t>(dy_ * _DF(0.01) / dx)) + _DF(0.5); // molecular fraction
     yi[0] = 0.30 * (1 - yi[NUM_SPECIES - 1]);
     yi[1] = 0.15 * (1 - yi[NUM_SPECIES - 1]);
     yi[2] = 0.55 * (1 - yi[NUM_SPECIES - 1]);
@@ -75,7 +75,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);

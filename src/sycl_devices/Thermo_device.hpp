@@ -90,7 +90,7 @@ real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const rea
 	else if (T >= _DF(6000.0))
 		S = Ri * ((-_DF(0.5) * Hia[n * 7 * 3 + 0 * 3 + 2] * _T - Hia[n * 7 * 3 + 1 * 3 + 2]) * _T + Hia[n * 7 * 3 + 2 * 3 + 2] * sycl::log(T) + (Hia[n * 7 * 3 + 3 * 3 + 2] + (_DF(0.5) * Hia[n * 7 * 3 + 4 * 3 + 2] + (Hia[n * 7 * 3 + 5 * 3 + 2] * _OT + Hia[n * 7 * 3 + 6 * 3 + 2] * _DF(0.25) * T) * T) * T) * T + Hib[n * 2 * 3 + 1 * 3 + 2]);
 #else
-	if (T > 1000)
+	if (T > _DF(1000.0))
 		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 1 * 3 + 0] + (_DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] * _OT + Hia[n * 7 * 3 + 4 * 3 + 0] * _DF(0.25) * T) * T) * T) * T + Hia[n * 7 * 3 + 6 * 3 + 0]);
 	else
 		S = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 1 * 3 + 1] + (_DF(0.5) * Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] * _OT + Hia[n * 7 * 3 + 4 * 3 + 1] * _DF(0.25) * T) * T) * T) * T + Hia[n * 7 * 3 + 6 * 3 + 1]);
@@ -121,5 +121,9 @@ real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const rea
  */
 real_t get_Gibson(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t T, const real_t Ri, const int n)
 {
-	return (get_Entropy(Hia, Hib, Ri, T, n) - get_Enthalpy(Hia, Hib, T, Ri, n) / T) / Ri;
+	real_t temp = _DF(0.0);
+	temp += get_Entropy(Hia, Hib, _DF(1.0), T, n);
+	temp += (-get_Enthalpy(Hia, Hib, T, _DF(1.0), n) / T);
+	// temp /= Ri;
+	return temp;
 }

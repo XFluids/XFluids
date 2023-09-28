@@ -100,7 +100,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
 
     if (i <= 3)
     {
@@ -127,7 +127,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
 #if 1 != NumFluid
     //  for both singlephase && multiphase
-    c[id] = material.Mtrl_ind == 0 ? sqrt(material.Gamma * p[id] / rho[id]) : sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
+    c[id] = material.Mtrl_ind == 0 ? sycl::sqrt<real_t>(material.Gamma * p[id] / rho[id]) : sycl::sqrt<real_t>(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
     if (material.Mtrl_ind == 0)
         U[Emax * id + 4] = p[id] / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
     else

@@ -20,7 +20,7 @@ using real_t = float; // #define real_t float;
 #define NUM_COP (NUM_SPECIES - 1) // number of components
 #define Emax (NUM_SPECIES + 4)	  // maximum number of equations(4+NUM_SPECIES): 0 density, 1 x_momentum, 2 y_momentum, 3 z_momentum, 4 energy
 
-const real_t _OT = (1.0 / 3.0);
+const real_t _OT = (_DF(1.0) / _DF(3.0));
 const int order_polynominal_fitted = 4;
 const int SPCH_Sz = 9;									  // number of characteristic of compoent,species_cahra[NUM_SPECIES*SPCH_Sz]
 const real_t pi = _DF(3.1415926535897932384626433832795); // M_PI;

@@ -127,8 +127,8 @@ public:
 #endif // end COP_CHEME
 
 #ifdef Visc
-	double Omega_table[2][37][8];	  // collision integral for viscosity and thermal conductivity(first index=0) & binary diffusion coefficient(first index=1)
-	double delta_star[8], T_star[37]; // reduced temperature and reduced dipole moment,respectively;
+	real_t Omega_table[2][37][8];	  // collision integral for viscosity and thermal conductivity(first index=0) & binary diffusion coefficient(first index=1)
+	real_t delta_star[8], T_star[37]; // reduced temperature and reduced dipole moment,respectively;
 	void ReadOmega_table();
 	void GetFitCoefficient();
 	void Fitting(real_t *specie_k, real_t *specie_j, real_t *aa, int indicator);

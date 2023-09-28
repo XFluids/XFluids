@@ -165,7 +165,7 @@ void Setup::ReadThermal()
             if (!strcmp(Key_word, species_name_n))
             {
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 0]; // int geo;//0:monoatom,1:nonpolar(linear) molecule,2:polar molecule//极性
-                fint >> h_thermal.species_chara[i * SPCH_Sz + 1]; // double epsilon_kB;//epsilon: Lennard-Jones potential well depth;unit:K//势井深度
+                fint >> h_thermal.species_chara[i * SPCH_Sz + 1]; // real_t epsilon_kB;//epsilon: Lennard-Jones potential well depth;unit:K//势井深度
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 2]; // d;//Lennard-Jones collision diameter, unit: angstroms,10e-10m//碰撞直径in 4-3;
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 3]; // mue;//dipole moment,unit:Debye(m);//偶极距
                 fint >> h_thermal.species_chara[i * SPCH_Sz + 4]; // alpha;//polarizability;unit:cubic angstrom//极化率
@@ -289,8 +289,8 @@ bool Setup::Mach_Shock()
                 e1 = MARCO_Coph(T1) - p1 / rho1;
                 E1 = e1 + _DF(0.5) * (u1 * u1 + ini.blast_v_in * ini.blast_v_in + ini.blast_w_in * ini.blast_w_in);
 
-                double residual_new = rho2 * (u2 - Si) * E2 - rho1 * (u1 - Si) * E1 + p2 * u2 - p1 * u1;
-                double dfdrho = (residual_new - residual) / delta_rho;
+                real_t residual_new = rho2 * (u2 - Si) * E2 - rho1 * (u1 - Si) * E1 + p2 * u2 - p1 * u1;
+                real_t dfdrho = (residual_new - residual) / delta_rho;
                 rho1 -= delta_rho;
                 rho1 = rho1 - residual / dfdrho;
             }
@@ -804,7 +804,7 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
             d_p = specie_j[d];
             mue_p = specie_j[mue];
         }
-        real_t alpha_n_star = alpha_n / std::pow(d_n, _DF(3));                                                     // equation5-13
+        real_t alpha_n_star = alpha_n / std::pow(d_n, _DF(3.0));                                                   // equation5-13
         real_t mue_p_star = mue_p / std::pow(epsilon_p_kB * kB, _DF(0.5)) / std::pow(d_p, _DF(1.5)) * _DF(1.0e-6); // equation5-14
         real_t ksi = _DF(1.0) + _DF(0.25) * alpha_n_star * mue_p_star * std::sqrt(epsilon_p_kB / epsilon_n_kB);    // equation5-12
 

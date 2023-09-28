@@ -71,7 +71,7 @@ real_t Omega2_interpolated(const real_t Tstar)
  */
 real_t ZrotFunc(real_t x)
 {
-    real_t zrot = 1.0 + std::sqrt(pi * x) * pi / 2.0 + x * (0.25 * pi * pi + 2.0) + std::pow(pi * x, 1.5);
+    real_t zrot = _DF(1.0) + std::sqrt(pi * x) * pi / _DF(2.0) + x * (_DF(0.25) * pi * pi + _DF(2.0)) + std::pow(pi * x, _DF(1.5));
     return zrot;
 }
 
@@ -85,7 +85,7 @@ real_t ZrotFunc(real_t x)
 void Solve_Overdeter_equations(real_t AA[][order_polynominal_fitted], real_t *b, int mm, real_t *xx)
 {
     int nn = order_polynominal_fitted;
-    double CC[nn][nn], dd[nn]; // the coefficient matrix and RHS column vector of the corresponding normal equatons
+    real_t CC[nn][nn], dd[nn]; // the coefficient matrix and RHS column vector of the corresponding normal equatons
     for (int i = 0; i < nn; i++)
     {
         dd[i] = 0.0;

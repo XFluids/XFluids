@@ -92,7 +92,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	// 		temp_max_rho.combine(fdata.rho[id]); }); });
 	// q.wait();
 
-	// real_t temp_visc = _DF(14.0 / 3.0) * uvw_c_max[3] * uvw_c_max[5] / uvw_c_max[4];
+	// real_t temp_visc = _DF(_DF(14.0) / _DF(3.0)) * uvw_c_max[3] * uvw_c_max[5] / uvw_c_max[4];
 	// dtref = sycl::max<real_t>(dtref, temp_visc);
 #endif // end get viscity
 

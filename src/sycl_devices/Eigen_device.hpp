@@ -26,9 +26,9 @@ real_t get_RoeAverage(const real_t left, const real_t right, const real_t D, con
 real_t get_DpDrho(const real_t hN, const real_t RN, const real_t q2, const real_t Cp, const real_t R, const real_t T, const real_t e, const real_t gamma)
 {
 #if CJ
-	return (Gamma0 - 1.0) * e; // p/rho;//
+	return (Gamma0 - _DF(1.0)) * e; // p/rho;//
 #else
-	double RNT = RN * T; // unit: J/kg
+	real_t RNT = RN * T; // unit: J/kg
 	return (gamma - _DF(1.0)) * (_DF(0.5) * q2 - hN + Cp * RNT / R);
 	// NOTE:return gamma * RNT + (gamma - _DF(1.0)) * (e - hN); // is not right
 #endif
@@ -71,7 +71,7 @@ real_t SoundSpeedMultiSpecies(real_t *zi, real_t &b1, real_t &b3, real_t *_Yi, r
 	}
 	// method 1
 	real_t temp1 = dp - (_dpdrho * drho + _dpde * de + Sum_dpdrhoi);
-	real_t temp = temp1 / (_dpdrho * _dpdrho * drho * drho + _dpde * de * _dpde * de + Sum_dpdrhoi2 + 1e-19);
+	real_t temp = temp1 / (_dpdrho * _dpdrho * drho * drho + _dpde * de * _dpde * de + Sum_dpdrhoi2 + _DF(1e-19));
 
 	for (int n = 0; n < NUM_COP; n++)
 	{

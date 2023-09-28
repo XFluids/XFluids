@@ -50,7 +50,7 @@ extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, Ini
         Yif[NUM_COP] += -Yif[nn], Yio[NUM_COP] += -Yio[nn];
 
     real_t Tf = 545.0, To = 1475.0, Uf = 973.0, Uo = 1634.0;
-    real_t fx = sycl::tanh<real_t>(2.0 * y / (1.44E-4));
+    real_t fx = sycl::tanh<real_t>(_DF(2.0) * y / _DF(1.44E-4));
 
     u[id] = _DF(0.5) * (Uf + Uo + (Uf - Uo) * fx);
     T[id] = _DF(0.5) * (Tf + To + (Tf - To) * fx);
@@ -118,7 +118,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);

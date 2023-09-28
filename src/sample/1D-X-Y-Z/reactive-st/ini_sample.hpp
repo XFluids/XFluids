@@ -62,28 +62,28 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
         // // 1D reactive shock tube
         // // x
 #if DIM_X
-    rho[id] = x < 0.06 ? 0.072 : 0.18075;
-    u[id] = x < 0.06 ? 0.0 : -487.34;
-    p[id] = x < 0.06 ? 7173 : 35594;
+    rho[id] = x < _DF(0.06) ? _DF(0.072) : _DF(0.18075);
+    u[id] = x < _DF(0.06) ? _DF(0.0) : _DF(-487.34);
+    p[id] = x < _DF(0.06) ? _DF(7173.0) : _DF(35594.0);
 #endif // end DIM_X
 // y
 #if DIM_Y
-    rho[id] = y < 0.06 ? 0.072 : 0.18075;
-    v[id] = y < 0.06 ? 0.0 : -487.34;
-    p[id] = y < 0.06 ? 7173 : 35594;
+    rho[id] = y < _DF(0.06) ? _DF(0.072) : _DF(0.18075);
+    v[id] = y < _DF(0.06) ? _DF(0.0) : _DF(-487.34);
+    p[id] = y < _DF(0.06) ? _DF(7173.0) : _DF(35594.0);
 #endif // end DIM_Y
 // // z
 #if DIM_Z
-    rho[id] = z < 0.06 ? 0.072 : 0.18075;
-    w[id] = z < 0.06 ? 0.0 : -487.34;
-    p[id] = z < 0.06 ? 7173 : 35594;
+    rho[id] = z < _DF(0.06) ? _DF(0.072) : _DF(0.18075);
+    w[id] = z < _DF(0.06) ? _DF(0.0) : _DF(-487.34);
+    p[id] = z < _DF(0.06) ? _DF(7173.0) : _DF(35594.0);
 #endif // end DIM_Z
 
     // Get R of mixture
     real_t R = get_CopR(thermal._Wi, yi);
     T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);

@@ -7,11 +7,11 @@ void ZeroDimensionalFreelyFlameKernel(Setup &Ss, const int rank)
 	real_t xi[NUM_SPECIES];										// molecular concentration, unit: mol/cm^3
 	real_t yi[NUM_SPECIES] = {0.2, 0.1, 0, 0, 0, 0, 0, 0, 0.7}; // mass fraction
 	get_yi(yi, Ss.h_thermal.Wi);
-	real_t T0 = 1150.0, p0 = 101325.0;
+	real_t T0 = _DF(1150.0), p0 = _DF(101325.0);
 	real_t R, rho, h, e, T = T0; // h: unit: J/kg // e: enternal energy
 
 	// chemeq2 solver
-	real_t t_start = 0, t_end = 5e-4, dt = 2.0e-7, run_time = t_start;
+	real_t t_start = _DF(0.0), t_end = _DF(5e-4), dt = _DF(2.0e-7), run_time = t_start;
 	std::string outputPrefix = INI_SAMPLE;
 	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "-with_0DFreelyFlameTest_Rank_" + std::to_string(rank) + ".dat";
 	std::ofstream out(file_name);

@@ -81,7 +81,7 @@ typedef struct
 //-------------------------------------------------------------------------------------------------
 class Fluid; class LAMNSS;
 
-#define Interface_line 0.01
+#define Interface_line _DF(0.01)
 
 class Fluid{
     Setup Fs;

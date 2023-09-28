@@ -47,21 +47,21 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     w[id] = _DF(0.0);
 
     // // GUASS-WAVE
-    p[id] = 101325.0;
+    p[id] = _DF(101325.0);
     real_t tmt = _DF(0.0);
 #if DIM_X
-    tmt += -(x - 0.025) / 0.0025 * (x - 0.025) / 0.0025;
+    tmt += -(x - _DF(0.025)) / _DF(0.0025) * (x - _DF(0.025)) / _DF(0.0025);
 #endif // end DIM_X
 #if DIM_Y
-    tmt += -(y - 0.025) / 0.0025 * (y - 0.025) / 0.0025;
+    tmt += -(y - _DF(0.025)) / _DF(0.0025) * (y - _DF(0.025)) / _DF(0.0025);
 #endif // end DIM_Y
 #if DIM_Z
-    tmt += -(z - 0.025) / 0.0025 * (z - 0.025) / 0.0025;
+    tmt += -(z - _DF(0.025)) / _DF(0.0025) * (z - _DF(0.025)) / _DF(0.0025);
 #endif // end DIM_Y
-    real_t fx = 1 - 0.5 * sycl::exp<real_t>(tmt);
-    real_t *yi = &(_y[NUM_SPECIES * id]), Yif[4] = {0.195, 0.591, 0.0, 0.214}, Yio[4] = {0.142, 0.758, 0.1, 0.0};
+    real_t fx = _DF(1.0) - _DF(0.5) * sycl::exp<real_t>(tmt);
+    real_t *yi = &(_y[NUM_SPECIES * id]), Yif[4] = {_DF(0.195), _DF(0.591), _DF(0.0), _DF(0.214)}, Yio[4] = {_DF(0.142), _DF(0.758), _DF(0.1), _DF(0.0)};
 
-    T[id] = 1350.0 + (320.0 - 1350.0) * fx;
+    T[id] = _DF(1350.0) + (_DF(320.0) - _DF(1350.0)) * fx;
     for (size_t n = 0; n < NUM_SPECIES; n++)
     {
 #ifdef DiffuReverse
@@ -74,7 +74,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id];
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);

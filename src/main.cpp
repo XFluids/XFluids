@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	else if (argc == 2)
 		ini_path = std::string(argv[1]);
 	else
-		std::cout << "Too much argcs appended to EulerSYCL while running\n";
+		std::cout << "Too much argcs appended to EulerSYCL while running.\n";
 
 	ConfigMap configMap = broadcast_parameters(ini_path);
 	// // accelerator_selector device;
@@ -64,7 +64,6 @@ int main(int argc, char *argv[])
 	// // boundary conditions
 	solver.BoundaryCondition(q, 0);
 	// // update states by U
-	// std::cout << "1";
 	solver.UpdateStates(q, 0, solver.physicalTime, solver.Iteration, "_Ini");
 	// // time marching by SYCL device
 	solver.Evolution(q);

@@ -4,9 +4,9 @@
 
 /**
  * @brief get viscosity at temperature T(unit:K)(fit)
- * @return double,unit: Pa.s=kg/(m.s)
+ * @return real_t,unit: Pa.s=kg/(m.s)
  */
-real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const double T0)
+real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const real_t T0)
 {
 	// real_t Tref = Reference_params[3], visref = Reference_params[5];
 	real_t T = T0; //* Tref; // nondimension==>dimension
@@ -27,20 +27,20 @@ real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], cons
 
 /**
  * @brief get viscosity at temperature T(unit:K)
- * @return double,unit: Pa.s=kg/(m.s)
+ * @return real_t,unit: Pa.s=kg/(m.s)
  */
 real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const real_t T)
 {
 	real_t phi = _DF(0.0);
 	phi = sycl::pow<real_t>(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow<real_t>(Viscosity(fcv[int(specie_k[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
-	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sycl::sqrt(_DF(2.0));
+	phi = (phi + _DF(1.0)) * (phi + _DF(1.0)) * _DF(0.5) / sycl::sqrt<real_t>(_DF(2.0));
 	phi = phi * sycl::pow<real_t>(_DF(1.0) + specie_k[Wi] / specie_j[Wi], -_DF(0.5));
 	return phi;
 }
 
 /**
  * @brief get thermal conductivity at temperature T(unit:K)
- * @return double,unit: W/(m.K)
+ * @return real_t,unit: W/(m.K)
  */
 real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polynominal_fitted], const real_t T0)
 {
@@ -133,7 +133,7 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
 #if 1 < NUM_SPECIES
 	{
-		double temp1, temp2;
+		real_t temp1, temp2;
 		for (int k = 0; k < NUM_SPECIES; k++)
 		{
 			temp1 = _DF(0.0), temp2 = _DF(1.0e-20);
@@ -141,8 +141,8 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 			{
 				if (i != k)
 				{
-					temp1 += (X[i] + 1.0e-100) * thermal.Wi[i]; // asmuing has mixture enven for pure gas. see SuHongMin's Dissertation P19.2-35
-					temp2 += (X[i] + 1.0e-100) / (GetDkj(specie[i], specie[k], Dkj, T, p) + _DF(1.0e-100));
+					temp1 += (X[i] + _DF(1.0e-40)) * thermal.Wi[i]; // asmuing has mixture enven for pure gas. see SuHongMin's Dissertation P19.2-35
+					temp2 += (X[i] + _DF(1.0e-40)) / (GetDkj(specie[i], specie[k], Dkj, T, p) + _DF(1.0e-40));
 				}
 			}											 // cause nan error while only one yi of the mixture given(temp1/temp2=0/0).
 			if (sycl::step(sycl::ceil(temp1), _DF(0.0))) // =1 while temp1==0.0;temp may < 0;

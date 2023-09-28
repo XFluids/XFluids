@@ -33,7 +33,7 @@ extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA
 	eigen_local[Emax * id + Emax - 1] = uuPc;
 #elif SCHEME_ORDER == 7
 	for (size_t ii = 0; ii < Emax; ii++)
-		eigen_local[Emax * id + ii] = 0.0;
+		eigen_local[Emax * id + ii] = _DF(0.0);
 #endif // end FLUX_method
 
 	// real_t de_fw[Emax];
@@ -61,7 +61,7 @@ extern SYCL_EXTERNAL void ReconstructFluxX(int i, int j, int k, Block bl, Therma
 	// preparing some interval value for roe average
 	MARCO_ROE();
 
-	MARCO_GETC2()
+	MARCO_GETC2();
 
 #if 1 == EIGEN_ALLOC
 	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
@@ -217,7 +217,7 @@ extern SYCL_EXTERNAL void ReconstructFluxY(int i, int j, int k, Block bl, Therma
 	// preparing some interval value for roe average
 	MARCO_ROE();
 
-	MARCO_GETC2()
+	MARCO_GETC2();
 
 #if 1 == EIGEN_ALLOC
 	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
@@ -284,7 +284,7 @@ extern SYCL_EXTERNAL void ReconstructFluxZ(int i, int j, int k, Block bl, Therma
 	// preparing some interval value for roe average
 	MARCO_ROE();
 
-	MARCO_GETC2()
+	MARCO_GETC2();
 
 #if 1 == EIGEN_ALLOC
 	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
@@ -447,12 +447,12 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 		if (yi_q[n] < temp)
 		{
 			real_t yi_min = sycl::min<real_t>(yi_u[n], temp);
-			theta_u = (yi_u[n] - yi_min + _DF(1.0e-100)) / (yi_u[n] - yi_q[n] + _DF(1.0e-100));
+			theta_u = (yi_u[n] - yi_min + _DF(1.0e-40)) / (yi_u[n] - yi_q[n] + _DF(1.0e-40));
 		}
 		if (yi_qp[n] < temp)
 		{
 			real_t yi_min = sycl::min<real_t>(yi_up[n], temp);
-			theta_p = (yi_up[n] - yi_min + _DF(1.0e-100)) / (yi_up[n] - yi_qp[n] + _DF(1.0e-100));
+			theta_p = (yi_up[n] - yi_min + _DF(1.0e-40)) / (yi_up[n] - yi_qp[n] + _DF(1.0e-40));
 		}
 		theta = sycl::min<real_t>(theta_u, theta_p);
 		for (int nn = 0; nn < Emax; nn++)
@@ -519,7 +519,7 @@ extern SYCL_EXTERNAL void PositivityPreservingKernel(int i, int j, int k, int id
 	// // // e = UI[4]*_rho-_DF(0.5)*_rho*_rho*(UI[1]*UI[1]+UI[2]*UI[2]+UI[3]*UI[3]);
 	// // // R = get_CopR(thermal._Wi, yi); T = get_T(thermal, yi, e, T); p = rho * R * T;
 	// // // known that rho and yi has been preserved to be positive, only need to preserve positive T
-	// real_t e_q, T_q, P_q, theta_pu = 1.0, theta_pp = 1.0;
+	// real_t e_q, T_q, P_q, theta_pu = _DF(1.0), theta_pp = _DF(1.0);
 	// theta_u = _DF(1.0), theta_p = _DF(1.0);
 	// e_q = (UU[4] - FF[4] - _DF(0.5) * ((UU[1] - FF[1]) * (UU[1] - FF[1]) + (UU[2] - FF[2]) * (UU[2] - FF[2]) + (UU[3] - FF[3]) * (UU[3] - FF[3])) * _rhoq) * _rhoq;
 	// T_q = get_T(thermal, yi_q, e_q, T_l);

@@ -514,33 +514,33 @@ void Fluid::GetTheta(sycl::queue &q)
 				YDirThetaItegralKernel(i, k, bl, yi, smyXe, smyN2, smyXN); }); })
 		.wait();
 
-	// #ifdef USE_MPI
-	// 	real_t temp = _DF(1.0) / (bl.my * bl.Y_inner);
-	// 	int *root_y = new int[bl.mx * bl.mz], size = bl.X_inner *bl.Z_inner;
-	// 	for (size_t pos_x = 0; pos_x < bl.mx; pos_x++)
-	// 		for (size_t pos_z = 0; pos_z < bl.mz; pos_z++)
-	// 		{
-	// 			MPI_Group groupy;
-	// 			root_y[pos_x * bl.mz + pos_z] = Fs.mpiTrans->Get_RankGroupXZ(groupy, pos_x, pos_z); // only sum ranks at YDIR
-	// 			real_t *tempYXe = new real_t[size], *tempYN2 = new real_t[size], *tempYXN = new real_t[size];
-	// 			for (size_t jj = 0; jj < bl.Z_inner; jj++)
-	// 				for (size_t ii = 0; ii < bl.X_inner; ii++)
-	// 				{
-	// 					Fs.mpiTrans->GroupallReduce(&(smyXe[bl.X_inner * jj + ii]), &(tempYXe[bl.X_inner * jj + ii]), 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM, groupy);
-	// 					Fs.mpiTrans->GroupallReduce(&(smyN2[bl.X_inner * jj + ii]), &(tempYN2[bl.X_inner * jj + ii]), 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM, groupy);
-	// 					Fs.mpiTrans->GroupallReduce(&(smyXN[bl.X_inner * jj + ii]), &(tempYXN[bl.X_inner * jj + ii]), 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM, groupy);
-	// 				}
-	// 			Fs.mpiTrans->communicator->synchronize();
-	// 			if (root_y[pos_x * bl.mz + pos_z] == Fs.mpiTrans->myRank)
-	// 				for (size_t jj = 0; jj < bl.Z_inner; jj++)
-	// 					for (size_t ii = 0; ii < bl.X_inner; ii++)
-	// 					{
-	// 						smyXe[bl.X_inner * jj + ii] = temp * tempYXe[bl.X_inner * jj + ii]; //(Y_Xe)^bar=SUM(Y_Xe)/(bl.my*bl.Y_inner)
-	// 						smyN2[bl.X_inner * jj + ii] = temp * tempYN2[bl.X_inner * jj + ii]; //(Y_N2)^bar=SUM(Y_N2)/(bl.my*bl.Y_inner)
-	// 						smyXN[bl.X_inner * jj + ii] = temp * tempYXN[bl.X_inner * jj + ii]; //(Y_Xe*Y_N2)^bar=SUM(Y_Xe*Y_N2)/(bl.my*bl.Y_inner)
-	// 					}
-	// 		}
-	// #endif // end USE_MPI
+	// 	// #ifdef USE_MPI
+	// 	// 	real_t temp = _DF(1.0) / (bl.my * bl.Y_inner);
+	// 	// 	int *root_y = new int[bl.mx * bl.mz], size = bl.X_inner *bl.Z_inner;
+	// 	// 	for (size_t pos_x = 0; pos_x < bl.mx; pos_x++)
+	// 	// 		for (size_t pos_z = 0; pos_z < bl.mz; pos_z++)
+	// 	// 		{
+	// 	// 			MPI_Group groupy;
+	// 	// 			root_y[pos_x * bl.mz + pos_z] = Fs.mpiTrans->Get_RankGroupXZ(groupy, pos_x, pos_z); // only sum ranks at YDIR
+	// 	// 			real_t *tempYXe = new real_t[size], *tempYN2 = new real_t[size], *tempYXN = new real_t[size];
+	// 	// 			for (size_t jj = 0; jj < bl.Z_inner; jj++)
+	// 	// 				for (size_t ii = 0; ii < bl.X_inner; ii++)
+	// 	// 				{
+	// 	// 					Fs.mpiTrans->GroupallReduce(&(smyXe[bl.X_inner * jj + ii]), &(tempYXe[bl.X_inner * jj + ii]), 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM, groupy);
+	// 	// 					Fs.mpiTrans->GroupallReduce(&(smyN2[bl.X_inner * jj + ii]), &(tempYN2[bl.X_inner * jj + ii]), 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM, groupy);
+	// 	// 					Fs.mpiTrans->GroupallReduce(&(smyXN[bl.X_inner * jj + ii]), &(tempYXN[bl.X_inner * jj + ii]), 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM, groupy);
+	// 	// 				}
+	// 	// 			Fs.mpiTrans->communicator->synchronize();
+	// 	// 			if (root_y[pos_x * bl.mz + pos_z] == Fs.mpiTrans->myRank)
+	// 	// 				for (size_t jj = 0; jj < bl.Z_inner; jj++)
+	// 	// 					for (size_t ii = 0; ii < bl.X_inner; ii++)
+	// 	// 					{
+	// 	// 						smyXe[bl.X_inner * jj + ii] = temp * tempYXe[bl.X_inner * jj + ii]; //(Y_Xe)^bar=SUM(Y_Xe)/(bl.my*bl.Y_inner)
+	// 	// 						smyN2[bl.X_inner * jj + ii] = temp * tempYN2[bl.X_inner * jj + ii]; //(Y_N2)^bar=SUM(Y_N2)/(bl.my*bl.Y_inner)
+	// 	// 						smyXN[bl.X_inner * jj + ii] = temp * tempYXN[bl.X_inner * jj + ii]; //(Y_Xe*Y_N2)^bar=SUM(Y_Xe*Y_N2)/(bl.my*bl.Y_inner)
+	// 	// 					}
+	// 	// 		}
+	// 	// #endif // end USE_MPI
 
 	for (size_t i = 0; i < 3; i++)
 		theta[i] = _DF(0.0);
@@ -552,9 +552,9 @@ void Fluid::GetTheta(sycl::queue &q)
 			 { h.parallel_for(
 				   sycl::nd_range<1>(sycl::range<1>(bl.X_inner * bl.Z_inner), sycl::range<1>(bl.BlockSize)), Sum_YXN, Sum_YXeN2, Sum_YXe, [=](nd_item<1> index, auto &tSum_YXN, auto &tSum_YXeN2, auto &tSum_YXe)
 				   { auto id = index.get_global_id(0);
-			tSum_YXN += smyXN[id];
-			tSum_YXeN2 += smyXe[id]  * smyN2[id];
-			tSum_YXe += smyXe[id]; }); })
+				tSum_YXN += smyXN[id];
+				tSum_YXeN2 += smyXe[id]  * smyN2[id];
+				tSum_YXe += smyXe[id]; }); })
 		.wait();
 
 	auto local_ndrange3d = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
@@ -562,48 +562,48 @@ void Fluid::GetTheta(sycl::queue &q)
 	for (size_t i = 0; i < 6; i++)
 		interface_point[i] = _DF(0.0);
 
-	// #if DIM_X // XDIR
-	// 	auto Rdif_Xmin = reduction(&(interface_point[0]), sycl::minimum<>());
-	// 	auto Rdif_Xmax = reduction(&(interface_point[1]), sycl::maximum<>());
-	// 	q.submit([&](sycl::handler &h)
-	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Xmin, Rdif_Xmax, [=](nd_item<3> index, auto &temp_Xmin, auto &temp_Xmax)
-	// 							  {
-	// 					int i = index.get_global_id(0) + bl.Bwidth_X;
-	// 					int j = index.get_global_id(1) + bl.Bwidth_Y;
-	// 					int k = index.get_global_id(2) + bl.Bwidth_Z;
-	// 					real_t x = i * bl.dx + bl.offx;
-	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-	// 					if (yi[id * NUM_SPECIES - 2] > Interface_line)
-	// 						temp_Xmin.combine(x), temp_Xmax.combine(x); }); });
-	// #endif	  // end DIM_X
+	// 	// #if DIM_X // XDIR
+	// 	// 	auto Rdif_Xmin = reduction(&(interface_point[0]), sycl::minimum<>());
+	// 	// 	auto Rdif_Xmax = reduction(&(interface_point[1]), sycl::maximum<>());
+	// 	// 	q.submit([&](sycl::handler &h)
+	// 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Xmin, Rdif_Xmax, [=](nd_item<3> index, auto &temp_Xmin, auto &temp_Xmax)
+	// 	// 							  {
+	// 	// 					int i = index.get_global_id(0) + bl.Bwidth_X;
+	// 	// 					int j = index.get_global_id(1) + bl.Bwidth_Y;
+	// 	// 					int k = index.get_global_id(2) + bl.Bwidth_Z;
+	// 	// 					real_t x = i * bl.dx + bl.offx;
+	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+	// 	// 					if (yi[id * NUM_SPECIES - 2] > Interface_line)
+	// 	// 						temp_Xmin.combine(x), temp_Xmax.combine(x); }); });
+	// 	// #endif	  // end DIM_X
 
 	auto Rdif_Ymin = reduction(&(interface_point[2]), sycl::minimum<>());
 	auto Rdif_Ymax = reduction(&(interface_point[3]), sycl::maximum<>());
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax)
-							  {	
-					int i = index.get_global_id(0) + bl.Bwidth_X;
-					int j = index.get_global_id(1) + bl.Bwidth_Y;
-					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					real_t y = j * bl.dy + bl.offy;
-					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-					if (yi[id * NUM_SPECIES - 2] > Interface_line)
-						temp_Ymin.combine(y), temp_Ymax.combine(y); }); });
+							  {
+						int i = index.get_global_id(0) + bl.Bwidth_X;
+						int j = index.get_global_id(1) + bl.Bwidth_Y;
+						int k = index.get_global_id(2) + bl.Bwidth_Z;
+						real_t y = j * bl.dy + bl.offy;
+						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+						if (yi[id * NUM_SPECIES - 2] > Interface_line)
+							temp_Ymin.combine(y), temp_Ymax.combine(y); }); });
 
-	// #if DIM_Z // ZDIR
-	// 	auto Rdif_Zmin = reduction(&(interface_point[4]), sycl::minimum<>());
-	// 	auto Rdif_Zmax = reduction(&(interface_point[5]), sycl::maximum<>());
-	// 	q.submit([&](sycl::handler &h)
-	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Zmin, Rdif_Zmax, [=](nd_item<3> index, auto &temp_Zmin, auto &temp_Zmax)
-	// 							  {
-	// 					int i = index.get_global_id(0) + bl.Bwidth_X;
-	// 					int j = index.get_global_id(1) + bl.Bwidth_Y;
-	// 					int k = index.get_global_id(2) + bl.Bwidth_Z;
-	// 					real_t z = k * bl.dz + bl.offz;
-	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-	// 					if (yi[id * NUM_SPECIES - 2] > Interface_line)
-	// 						temp_Zmin.combine(z), temp_Zmax.combine(z); }); });
-	// #endif // end DIM_Z
+	// 	// #if DIM_Z // ZDIR
+	// 	// 	auto Rdif_Zmin = reduction(&(interface_point[4]), sycl::minimum<>());
+	// 	// 	auto Rdif_Zmax = reduction(&(interface_point[5]), sycl::maximum<>());
+	// 	// 	q.submit([&](sycl::handler &h)
+	// 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Zmin, Rdif_Zmax, [=](nd_item<3> index, auto &temp_Zmin, auto &temp_Zmax)
+	// 	// 							  {
+	// 	// 					int i = index.get_global_id(0) + bl.Bwidth_X;
+	// 	// 					int j = index.get_global_id(1) + bl.Bwidth_Y;
+	// 	// 					int k = index.get_global_id(2) + bl.Bwidth_Z;
+	// 	// 					real_t z = k * bl.dz + bl.offz;
+	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
+	// 	// 					if (yi[id * NUM_SPECIES - 2] > Interface_line)
+	// 	// 						temp_Zmin.combine(z), temp_Zmax.combine(z); }); });
+	// 	// #endif // end DIM_Z
 
 #ifdef COP_CHEME
 	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
@@ -615,17 +615,17 @@ void Fluid::GetTheta(sycl::queue &q)
 	real_t *T = d_fstate.T;
 	q.submit([&](sycl::handler &h)
 			 {	auto reduction_max_T = reduction(&(pVar_max[0]), sycl::maximum<>());
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
-						   auto id = index.get_global_id();
-						   temp_max_T.combine(T[id]);}); });
+				h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
+								   auto id = index.get_global_id();
+								   temp_max_T.combine(T[id]);}); });
 	//	reactants
 	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
 	{
 		q.submit([&](sycl::handler &h)
 				 {	auto reduction_max_Yi = reduction(&(pVar_max[n]), sycl::maximum<>());
-			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
-							   auto id = index.get_global_id();
-							   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
+					h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
+									   auto id = index.get_global_id();
+									   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
 	}
 #endif // end COP_CHEME
 
@@ -635,13 +635,13 @@ void Fluid::GetTheta(sycl::queue &q)
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, Sum_Sigma1, [=](nd_item<3> index, auto &temp_Sum_Sigma, auto &temp_Sum_Sigma1)
-				   {	
-				int i = index.get_global_id(0) + bl.Bwidth_X;
-				int j = index.get_global_id(1) + bl.Bwidth_Y;
-				int k = index.get_global_id(2) + bl.Bwidth_Z;
-				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-				temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
-				temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz; }); });
+				   {
+					int i = index.get_global_id(0) + bl.Bwidth_X;
+					int j = index.get_global_id(1) + bl.Bwidth_Y;
+					int k = index.get_global_id(2) + bl.Bwidth_Z;
+					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+					temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
+					temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz; }); });
 	q.wait();
 
 #ifdef USE_MPI

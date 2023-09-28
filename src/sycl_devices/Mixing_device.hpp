@@ -76,7 +76,6 @@ real_t get_CopW(Thermal thermal, const real_t yi[NUM_SPECIES])
 	real_t _W = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
 		_W += yi[ii] * thermal._Wi[ii]; // Wi
-	// printf("W=%lf \n", 1.0 / _W);
 	return _DF(1.0) / _W;
 }
 
@@ -88,7 +87,7 @@ real_t get_CopGamma(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t 
 	real_t Cp = get_CopCp(thermal, yi, T);
 	real_t CopW = get_CopW(thermal, yi);
 	real_t _CopGamma = Cp / (Cp - Ru / CopW);
-	if (_CopGamma > 1)
+	if (_CopGamma > _DF(1.0))
 	{
 		return _CopGamma;
 	}
@@ -130,10 +129,10 @@ void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t yi
 real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, const real_t T0)
 {
 	real_t T = T0;
-	real_t tol = 1.0e-6, T_dBdr = 100.0, T_uBdr = 1.0e4, x_eps = 1.0e-3;
+	real_t tol = _DF(1.0e-6), T_dBdr = _DF(100.0), T_uBdr = _DF(1.0e4), x_eps = _DF(1.0e-3);
 	// tol /= Tref, T_dBdr /= Tref, T_uBdr /= Tref, x_eps /= Tref;
 	real_t rt_bis, f, f_mid;
-	real_t func_T = 0, dfunc_T = 0;
+	real_t func_T = _DF(0.0), dfunc_T = _DF(0.0);
 
 	for (int i = 1; i < 101; i++)
 	{

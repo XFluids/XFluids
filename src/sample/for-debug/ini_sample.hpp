@@ -64,41 +64,41 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
     real_t tmt = _DF(0.0);
     // x
 #if DIM_X
-    tmp += -(x - 0.45) * (x - 0.45);
-    tmt += -(x - 0.55) * (x - 0.55);
-    u[id] = 100.0 * sycl::fabs<real_t>(x);
+    tmp += -(x - _DF(0.45)) * (x - _DF(0.45));
+    tmt += -(x - _DF(0.55)) * (x - _DF(0.55));
+    u[id] = _DF(100.0) * sycl::fabs<real_t>(x);
 #endif // end DIM_X
     // y
 #if DIM_Y
-    tmp += -(y - 0.45) * (y - 0.45);
-    tmt += -(y - 0.55) * (y - 0.55);
-    v[id] = 100.0 * sycl::fabs<real_t>(y);
+    tmp += -(y - _DF(0.45)) * (y - _DF(0.45));
+    tmt += -(y - _DF(0.55)) * (y - _DF(0.55));
+    v[id] = _DF(100.0) * sycl::fabs<real_t>(y);
 #endif // end DIM_Y
     // z
 #if DIM_Z
-    tmp += -(z - 0.45) * (z - 0.45);
-    tmt += -(z - 0.55) * (z - 0.55);
-    w[id] = 100.0 * sycl::fabs<real_t>(z);
+    tmp += -(z - _DF(0.45)) * (z - _DF(0.45));
+    tmt += -(z - _DF(0.55)) * (z - _DF(0.55));
+    w[id] = _DF(100.0) * sycl::fabs<real_t>(z);
 #endif // end DIM_Z
-    p[id] = 101325.0 + (32000.0 - 101325.0) * (1 - sycl::exp(tmp));
-    T[id] = 1350.0 + (320.0 - 1350.0) * (1 - sycl::exp(tmt));
+    p[id] = _DF(101325.0) + (_DF(32000.0) - _DF(101325.0)) * (_DF(1.0) - sycl::exp(tmp));
+    T[id] = _DF(1350.0) + (_DF(320.0) - _DF(1350.0)) * (_DF(1.0) - sycl::exp(tmt));
 
     // Get R of mixture
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id]; // T[id] = p[id] / R / rho[id]; //
     real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    c[id] = sqrt(p[id] / rho[id] * Gamma_m);
+    c[id] = sycl::sqrt<real_t>(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
     U[Emax * id + 4] = rho[id] * (h + _DF(0.5) * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id])) - p[id];
 #if 1 != NumFluid
     //  for both singlephase && multiphase
-    c[id] = material.Mtrl_ind == 0 ? sqrt(material.Gamma * p[id] / rho[id]) : sqrt(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
+    c[id] = material.Mtrl_ind == 0 ? sycl::sqrt<real_t>(material.Gamma * p[id] / rho[id]) : sycl::sqrt<real_t>(material.Gamma * (p[id] + material.B - material.A) / rho[id]);
     if (material.Mtrl_ind == 0)
-        U[Emax * id + 4] = p[id] / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
+        U[Emax * id + 4] = p[id] / (material.Gamma - _DF(1.0)) + _DF(0.5) * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
     else
-        U[Emax * id + 4] = (p[id] + material.Gamma * (material.B - material.A)) / (material.Gamma - 1.0) + 0.5 * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
+        U[Emax * id + 4] = (p[id] + material.Gamma * (material.B - material.A)) / (material.Gamma - _DF(1.0)) + _DF(0.5) * rho[id] * (u[id] * u[id] + v[id] * v[id] + w[id] * w[id]);
 #endif // COP
     H[id] = (U[Emax * id + 4] + p[id]) / rho[id];
     // initial U[0]-U[3]
@@ -137,7 +137,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 #endif // end COP
 
 #if NumFluid != 1
-    real_t fraction = material.Rgn_ind > 0.5 ? vof[id] : 1.0 - vof[id];
+    real_t fraction = material.Rgn_ind > _DF(0.5) ? vof[id] : _DF(1.0) - vof[id];
 #endif
     // give intial value for the interval matrixes
     for (int n = 0; n < Emax; n++)

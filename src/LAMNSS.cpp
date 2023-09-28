@@ -96,9 +96,6 @@ LAMNSS::~LAMNSS()
 float LAMNSS::OutThisTime(std::chrono::high_resolution_clock::time_point start_time)
 {
 	float duration = 0.0f;
-	// #ifdef USE_MPI
-	// 	if (rank == 0)
-	// #endif // end USE_MPI
 	{
 		std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 		duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
