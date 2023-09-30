@@ -1,6 +1,6 @@
 #pragma once
 #include "../../../include/global_class.h"
-#include "../../../sycl_devices/device_func.hpp"
+#include "../sycl_devices.hpp"
 
 /**
  * @brief  Initialize Fluid states espically primitive quantity;

@@ -4,4 +4,4 @@ target_include_directories(cxxsrc
 
 target_include_directories(cxxsrc
 	PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR}/schemes)
+	${CMAKE_CURRENT_SOURCE_DIR}/Eigen_system/positive-definite_matrix)

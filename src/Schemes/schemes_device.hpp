@@ -9,6 +9,32 @@
 #include "TENOs_schemes.hpp"
 #include "WENOAOs_schemes.hpp"
 
+// =======================================================
+//    Rename Reconstruction schemes
+#define MARCO_WENO5 weno5old_GPU(&pp[3], &mm[3])
+#define MARCO_WENOCU6 WENOCU6_GPU(&pp[3], &mm[3], dl)
+#if SCHEME_ORDER == 5
+#define WENO_GPU MARCO_WENO5
+#elif SCHEME_ORDER == 6
+#define WENO_GPU MARCO_WENOCU6
+#endif
+
+// =======================================================
+//    Artificial_type in Flux Reconstruction
+#if 1 == Artificial_type // ROE
+#define Roe_type _DF(1.0)
+#define LLF_type _DF(0.0)
+#define GLF_type _DF(0.0)
+#elif 2 == Artificial_type // LLF
+#define Roe_type _DF(0.0)
+#define LLF_type _DF(1.0)
+#define GLF_type _DF(0.0)
+#elif 3 == Artificial_type // GLF
+#define Roe_type _DF(0.0)
+#define LLF_type _DF(0.0)
+#define GLF_type _DF(1.0)
+#endif
+
 // //-----------------------------------------------------------------------------------------
 // //		the Schemes List
 // //-----------------------------------------------------------------------------------------

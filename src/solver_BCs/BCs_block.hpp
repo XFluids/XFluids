@@ -133,8 +133,9 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 #endif // USE_MPI
 	BConditions BC2 = BCs[2], BC3 = BCs[3];
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
-							  {
+			 { h.parallel_for(
+				   sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
+				   {
 								  int i = index.get_global_id(0);
 								  int j0 = index.get_global_id(1) + 0;
 								  int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
@@ -151,7 +152,7 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 								  else
 #endif																													  // USE_MPI
 									  FluidBCKernelY(i, j1, k, bl, BC3, d_UI, bl.Y_inner, bl.Ymax - bl.Bwidth_Y - 1, -1); //
-							  }); })
+				   }); })
 		.wait();
 #endif // end DIM_Y
 
@@ -184,8 +185,9 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 #endif // USE_MPI
 	BConditions BC4 = BCs[4], BC5 = BCs[5];
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
-							  {
+			 { h.parallel_for(
+				   sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
+				   {
 								  int i = index.get_global_id(0);
 								  int j = index.get_global_id(1);
 								  int k0 = index.get_global_id(2) + 0;
@@ -202,7 +204,7 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 								  else
 #endif
 									  FluidBCKernelZ(i, j, k1, bl, BC5, d_UI, bl.Z_inner, bl.Zmax - bl.Bwidth_Z - 1, -1); //
-							  }); })
+				   }); })
 		.wait();
 #endif // end DIM_Z
 	q.wait();

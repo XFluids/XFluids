@@ -2,7 +2,7 @@
 
 #include "global_class.h"
 #include "marco.h"
-#include "device_func.hpp"
+#include "sycl_devices.hpp"
 #include "ini_sample.hpp"
 
 // extern SYCL_EXTERNAL void XDirThetaItegralKernel(int k, Block bl, real_t *ThetaXeIn, real_t *ThetaN2In, real_t *ThetaXNIn,

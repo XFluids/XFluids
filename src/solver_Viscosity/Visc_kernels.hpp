@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Flux_discrete.h"
 #include "Utils_kernels.hpp"
 
 extern SYCL_EXTERNAL void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde, real_t *const *Voxs, real_t *Vox)
