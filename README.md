@@ -11,7 +11,7 @@
   ````bash
   source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
   # or you can use the script files
-  source ./script/oneapi_xx.sh
+  source ./oneAPI_script/oneapi_base.sh
   ````
 - #### Device discovery: exec "sycl-ls" in cmd for device counting
 
