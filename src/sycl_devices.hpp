@@ -2,7 +2,7 @@
 
 #include "Thermo_device.hpp"
 #include "Mixing_device.hpp"
-#include "Eigen_device.hpp"
+#include "Recon_device.hpp"
 #include "Update_device.hpp"
 #include "Visc_device.hpp"
 

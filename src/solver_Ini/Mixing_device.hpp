@@ -140,7 +140,7 @@ real_t get_T(Thermal thermal, const real_t yi[NUM_SPECIES], const real_t e, cons
 		// NOTE: T<0 makes a majority of NAN erors, three methods:
 		// 1. add df limiter
 		// 2. add visFlux limiter
-		// 2. return origin T while update T<0
+		// 3. return origin T while update T<0
 		real_t df = sycl::min(func_T / (dfunc_T + _DF(1.0e-30)), _DF(1e-3) * T);
 		df = sycl::max(df, -_DF(1e-2) * T);
 		T = T - df;

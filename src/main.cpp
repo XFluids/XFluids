@@ -36,8 +36,7 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
 #else
-	int rank = 0;
-	int nRanks = 1;
+	int rank = 0, nRanks = 1;
 #endif // USE_MPI
 	std::string ini_path;
 	if (argc < 2)

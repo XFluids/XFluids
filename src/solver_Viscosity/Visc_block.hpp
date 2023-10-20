@@ -1,5 +1,8 @@
 #pragma once
-#include "Utils_block.hpp"
+
+#include "Util_block.hpp"
+#include "Visc_kernels.hpp"
+#include "Visc_Order_kernels.hpp"
 
 void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditions BC[6])
 {

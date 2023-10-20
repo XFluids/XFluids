@@ -31,6 +31,12 @@ typedef struct
 	real_t *Dkj_matrix[NUM_SPECIES * NUM_SPECIES];
 } Thermal;
 
+typedef struct
+{
+	real_t X, Y, Z; // x/y/z-dir vector component;
+	real_t Mag;		//;
+} Volume;
+
 #ifdef COP_CHEME
 typedef struct
 {

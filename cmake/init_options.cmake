@@ -7,35 +7,13 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/cal)
 # #### about device select
 # // =======================================================
 message(STATUS "CMAKE STATUS:")
-
-IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  set(SelectDv "omp") # define which platform and devices for compile options: host, nvidia, amd, intel
-ENDIF()
-
-IF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
-  IF(SelectDv STREQUAL "omp")
-    include(init_host)
-  ELSEIF(SelectDv MATCHES "cuda")
-    include(init_cuda)
-    message(STATUS "  Compile for ARCH: ${ARCH}")
-  ELSEIF(SelectDv STREQUAL "hip")
-    include(init_hip)
-    message(STATUS "  Compile for ARCH: ${ARCH}")
-  ELSEIF(SelectDv STREQUAL "intel")
-    include(init_intel)
-    message(STATUS "  Compile for ARCH: ${ARCH}")
-  ENDIF()
-ENDIF()
-
+include(init_compile_system) # SYCL compile system
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDEBUG")
 message(STATUS "  CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
 message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "  CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "  CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
-
-add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
-
 include(init_sample)
 
 IF(USE_MPI)

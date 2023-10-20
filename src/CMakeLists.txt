@@ -27,17 +27,15 @@ add_subdirectory(solver_Viscosity)
 add_subdirectory(solver_Reaction)
 add_subdirectory(solver_UpdateStates)
 
+target_link_libraries(${PROJECT_NAME}
+  PRIVATE
+  cxxsrc
+  readini
+)
+
 IF(USE_MPI)
   target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    cxxsrc
-    readini
     mpiPacks
-  )
-ELSE()
-  target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-    cxxsrc
-    readini
   )
 ENDIF()
