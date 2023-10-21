@@ -1,17 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
 PROJECT(LAMNSS LANGUAGES CXX)
+
 # // == Compile system =====================================
 # ####  1. oneAPI:       Intel oneAPI compiling system
 # ####  2. OpenSYCL:     OpenSYCL syclcc compiling system
-set(SYCL_COMPILE_SYSTEM "oneAPI") # # oneAPI or OpenSYCL
+set(SYCL_COMPILE_SYSTEM "OpenSYCL") # # oneAPI or OpenSYCL
 set(SelectDv "cuda") # which platform for compile options: omp(for host), cuda(for nvidia), hip(for amd)
-set(ARCH "75") # omp: no ARCH needed;# cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
+set(ARCH "75") # omp: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
-option(USE_MPI "if enable mpi" ON)
+option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
-option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # Method of mpi buffer allocation and transfer
-# #### EXPLICIT_ALLOC: 1. ON: allocate each device buffer and transfer. 2. OFF: allocate struct ptr in device
+option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # # EXPLICIT_ALLOC: 1. ON: allocate each device buffer and transfer. 2. OFF: allocate struct ptr in device
 
 # // == Functionality option ===============================
 option(USE_DOUBLE "if double" ON)
@@ -29,10 +29,11 @@ set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall
 set(DISCRETIZATION_METHOD "FDM") # FVM or FDM
 set(RIEMANN_SOLVER "HLLC") # HLLC or AUSM Riemann solver, used in FVM method
 set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
-set(EIGEN_SYSTEM "positive-definite") # positive-definite or overdetermined, used in FDM method
+
 # # OROC: calculate one row and column once in registers "for" loop(eigen_lr[Emax])
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
 # # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l, Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t))) with low performance
+set(EIGEN_SYSTEM "positive-definite") # positive-definite or overdetermined, used in FDM method
 set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs eigen max, GLF for global Lax-Friedrichs eigen max of all points in Domain
 option(Visc "if add physic viscidity flux" ON)
 option(Visc_Heat "if add heat transfer term" ON)
@@ -55,18 +56,21 @@ set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "L
 set(INIT_SAMPLE "1d-diffusion") # Set INIT_SAMPLE for Initializing settings
 set(COP_SPECIES "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
 set(REACTION_MODEL "RSBI-19REA") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
+
 # #### Set REACTION_MODEL for reaction model using:
 # # 2species             # # CJ_mechanism     # # inert_2species
 # # H2O_18_new_reaction  # # H2O_18_reaction  # # H2O_19_reaction     # # H2O_23_reaction
 # # RSBI-18REA           # # RSBI-19REA
 
 # cmake modules
-list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")# #default local cmake macro repository
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake") # #default local cmake macro repository
 include(init_cmake) # cmake compile options
+include(init_compile) # SYCL compile system
 include(init_options) # add program functionality
 
 # MPI libs
 IF(USE_MPI)
+  include(init_mpi)
   include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR})
   add_subdirectory(mpiUtils)
 ENDIF() # sources

@@ -43,7 +43,7 @@ void ZeroDimensionalFreelyFlameKernel(Setup &Ss, const int rank)
 }
 
 #ifdef COP_CHEME
-extern SYCL_EXTERNAL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
+extern void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
 {
 	MARCO_DOMAIN();
 #ifdef DIM_X

@@ -11,6 +11,12 @@ target_sources(mpiPacks
 	PRIVATE
 	mpiPacks.cpp
 )
+
+IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+	add_sycl_to_target(TARGET mpiPacks SOURCES mpiPacks.cpp)
+ENDIF()
+
+
 target_link_libraries(mpiPacks
 	PUBLIC
 	mpiUtils

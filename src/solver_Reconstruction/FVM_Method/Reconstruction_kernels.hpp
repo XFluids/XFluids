@@ -15,7 +15,7 @@
  * @param rho, p, u, v, w, y, T is all the primitive variables used to high-order reconstruction and flux consruction.
  * @param face_vector is the area face vector and magnitude of face area.
  */
-extern SYCL_EXTERNAL void ReconstructFlux(int *left_id, int *right_id, int id, int energy_dir, Block bl, Thermal thermal, real_t *Fwall,
+extern void ReconstructFlux(int *left_id, int *right_id, int id, int energy_dir, Block bl, Thermal thermal, real_t *Fwall,
 										  real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *face_vector)
 {
 	int Xmax = bl.Xmax, Ymax = bl.Ymax;

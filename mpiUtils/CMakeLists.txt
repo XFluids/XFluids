@@ -13,14 +13,12 @@ target_sources(mpiUtils
   ${CMAKE_CURRENT_SOURCE_DIR}/MpiComm.h
   PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/MpiCommCart.h
-) 
-# add_library(mpiUtils
-# STATIC
-# error.h
-# mpiEnums.h
-# MpiTransComm.h
-# MpiTransComm.cpp
-# )
+)
+
+IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+  add_sycl_to_target(TARGET mpiUtils)
+ENDIF()
+
 target_link_libraries(mpiUtils
   PUBLIC
   ${MPI_CXX}

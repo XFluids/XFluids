@@ -10,7 +10,7 @@
 
   ````bash
   source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
-  # or you can use the script files
+  # or you can use the script files(only basic environments are included)
   source ./oneAPI_script/oneapi_base.sh
   ````
 - #### Device discovery: exec "sycl-ls" in cmd for device counting
@@ -27,6 +27,11 @@
 - #### [boost-version-1.83](https://www.boost.org/users/history/version_1_83_0.html)
 - #### [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp), [different backends need different dependencies](https://github.com/jiuxiaocloud/uconfig/blob/master/3.7-opensycl(based%20boost).md)
 - #### add libs and includes of boost-version-1.83, AdaptiveCpp and dependencies to ENV PATHs
+- #### LAMNSS use find_package(AdaptiveCpp) to find AdaptiveCpp and use app sycl compile system, set cmake option AdaptiveCpp_DIR
+
+  ````cmake
+  cmake -DAdaptiveCpp_DIR=/path/to/AdaptiveCpp/lib/cmake/AdaptiveCpp ..
+  ````
 - #### Device discovery: exec "acpp-info" in cmd for device counting
 
 ## 2. select target device in SYCL project
@@ -54,15 +59,25 @@
     cd ./EulerSYCL
     mkdir build && cd ./build
     cmake -DCMAKE_BUILD_TYPE=Release ..
-    make -j
+    make -j4 ## too much cores used occurs errors
 ````
 
 ### 3.3. RUN
 
-- EulerSYCL automatically read ${workspaceFolder}/*.ini file depending on INIT_SAMPLE setting, you can still append other specific .ini file to EulerSYCL in cmd
+- EulerSYCL automatically read ${workspaceFolder}/settings/*.ini file depending on INIT_SAMPLE setting in ${workspaceFolder}/CMakeLists.txt
+
+  ````bash
+    $./EulerSYCL
+  ````
+- Append other specific .ini file to EulerSYCL in cmd is supportted
 
   ````bash
     $./EulerSYCL ./setup.ini
+  ````
+- Append MPI Cartesian coord size(mx, my, mz=1 by default), <...> is alternative
+
+  ````bash
+    $ mpirn -n mx*my*mz ./EulerSYCL <./setup.ini> <mx> <my> <mz>
   ````
 
 ## 4. MPI libs
@@ -115,10 +130,12 @@
 
 | name of parameters |                          function                          | type | default value |
 | :----------------- | :---------------------------------------------------------: | :--: | :------------ |
-| NUM                |            number of MPI devices can be selected            | int | 1             |
 | mx                 | number of MPI threads at X direction in MPI Cartesian space | int | 1             |
 | my                 | number of MPI threads at Y direction in MPI Cartesian space | int | 1             |
 | mz                 | number of MPI threads at Z direction in MPI Cartesian space | int | 1             |
+| NUM                |            number of MPI devices can be selected            | int | 1             |
+| PLATFORM           |            platform id selected                             | int | 1             |
+| DEVICES_ID         |            device id selected                               | int | 0             |
 
 ### 5.3. [mesh] parameters
 

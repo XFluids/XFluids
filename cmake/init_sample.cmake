@@ -247,7 +247,7 @@ ENDIF(COP)
 
 add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
 message(STATUS "Util features: ")
-message(STATUS "  Running platform: ${SelectDv}")
+message(STATUS "  Running platform: ${SYCL_COMPILE_SYSTEM}:${SelectDv}")
 message(STATUS "  Double precision: ${USE_DOUBLE}")
 message(STATUS "  DIM_X: ${DIM_X}, DIM_Y: ${DIM_Y}, DIM_Z: ${DIM_Z}")
 message(STATUS "  Positivity_Preserving: ${POSITIVITY_PRESERVING}")

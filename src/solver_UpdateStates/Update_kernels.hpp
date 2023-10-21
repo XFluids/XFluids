@@ -2,7 +2,7 @@
 
 #include "Utils_kernels.hpp"
 
-extern SYCL_EXTERNAL void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, real_t *_y)
+extern void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, real_t *_y)
 {
 #if DIM_X
 	if (i >= bl.Xmax)
@@ -23,9 +23,9 @@ extern SYCL_EXTERNAL void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI,
 	Getrhoyi(U, rho[id], yi);
 }
 
-extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-												 real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y,
-												 real_t *gamma, real_t *T, real_t *e, real_t const Gamma) //, const sycl::stream &stream_ct1
+extern void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+								   real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y,
+								   real_t *gamma, real_t *T, real_t *e, real_t const Gamma) //, const sycl::stream &stream_ct1
 {
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -68,7 +68,7 @@ extern SYCL_EXTERNAL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, 
 	// // get_Array(FluxH, de_fz, Emax, id);
 }
 
-extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
+extern void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
 	MARCO_DOMAIN();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -94,7 +94,7 @@ extern SYCL_EXTERNAL void UpdateURK3rdKernel(int i, int j, int k, Block bl, real
 	// get_Array(LU, de_LU, Emax, id);
 }
 
-extern SYCL_EXTERNAL void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
+extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
 {
 	MARCO_DOMAIN();
 	int id = Xmax * Ymax * k + Xmax * j + i;

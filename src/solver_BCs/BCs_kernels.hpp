@@ -2,7 +2,7 @@
 
 #include "Utils_kernels.hpp"
 
-extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
+extern void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -71,7 +71,7 @@ extern SYCL_EXTERNAL void FluidBCKernelX(int i, int j, int k, Block bl, BConditi
 	}
 }
 
-extern SYCL_EXTERNAL void FluidBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
+extern void FluidBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -140,7 +140,7 @@ extern SYCL_EXTERNAL void FluidBCKernelY(int i, int j, int k, Block bl, BConditi
 	}
 }
 
-extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
+extern void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -210,7 +210,7 @@ extern SYCL_EXTERNAL void FluidBCKernelZ(int i, int j, int k, Block bl, BConditi
 }
 
 #if USE_MPI
-extern SYCL_EXTERNAL void FluidMpiCopyKernelX(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
+extern void FluidMpiCopyKernelX(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
 											  const int Bwidth_Xset, const MpiCpyType Cpytype)
 {
 	int Xmax = bl.Xmax;
@@ -237,7 +237,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelX(int i, int j, int k, Block bl, rea
 	}
 }
 
-extern SYCL_EXTERNAL void FluidMpiCopyKernelY(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
+extern void FluidMpiCopyKernelY(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
 											  const int Bwidth_Yset, const MpiCpyType Cpytype)
 {
 	int Xmax = bl.Xmax;
@@ -264,7 +264,7 @@ extern SYCL_EXTERNAL void FluidMpiCopyKernelY(int i, int j, int k, Block bl, rea
 	}
 }
 
-extern SYCL_EXTERNAL void FluidMpiCopyKernelZ(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
+extern void FluidMpiCopyKernelZ(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
 											  const int Bwidth_Zset, const MpiCpyType Cpytype)
 {
 	int Xmax = bl.Xmax;

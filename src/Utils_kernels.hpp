@@ -5,7 +5,7 @@
 #include "sycl_devices.hpp"
 #include "ini_sample.hpp"
 
-// extern SYCL_EXTERNAL void XDirThetaItegralKernel(int k, Block bl, real_t *ThetaXeIn, real_t *ThetaN2In, real_t *ThetaXNIn,
+// extern void XDirThetaItegralKernel(int k, Block bl, real_t *ThetaXeIn, real_t *ThetaN2In, real_t *ThetaXNIn,
 //                                                  real_t *ThetaXeOut, real_t *ThetaN2Out, real_t *ThetaXNOut)
 // {
 //     MARCO_DOMAIN_GHOST();
@@ -24,7 +24,7 @@
 //     }
 // }
 
-extern SYCL_EXTERNAL void YDirThetaItegralKernel(int i, int k, Block bl, real_t *y, real_t *ThetaXe, real_t *ThetaN2, real_t *ThetaXN)
+extern void YDirThetaItegralKernel(int i, int k, Block bl, real_t *y, real_t *ThetaXe, real_t *ThetaN2, real_t *ThetaXN)
 {
 	MARCO_DOMAIN_GHOST();
 #if DIM_X

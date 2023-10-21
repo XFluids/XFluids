@@ -2,7 +2,7 @@
 
 #include "Utils_kernels.hpp"
 
-extern SYCL_EXTERNAL void GetLocalEigen(int i, int j, int k, Block bl, real_t AA, real_t BB, real_t CC, real_t *eigen_local, real_t *u, real_t *v, real_t *w, real_t *c)
+extern void GetLocalEigen(int i, int j, int k, Block bl, real_t AA, real_t BB, real_t CC, real_t *eigen_local, real_t *u, real_t *v, real_t *w, real_t *c)
 {
 	MARCO_DOMAIN();
 	int id = Xmax * Ymax * k + Xmax * j + i;

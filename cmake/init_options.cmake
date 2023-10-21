@@ -1,25 +1,9 @@
+include(init_sample)
+
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output/cal)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/cal)
-
-# // =======================================================
-# #### about device select
-# // =======================================================
-message(STATUS "CMAKE STATUS:")
-include(init_compile_system) # SYCL compile system
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDEBUG")
-message(STATUS "  CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
-message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
-message(STATUS "  CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
-message(STATUS "  CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
-include(init_sample)
-
-IF(USE_MPI)
-  include(init_mpi)
-ENDIF(USE_MPI)
-
 # // =======================================================
 # #### about compile definitions
 # // =======================================================

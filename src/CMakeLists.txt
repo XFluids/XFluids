@@ -1,11 +1,17 @@
 add_executable(${PROJECT_NAME} "main.cpp")
-
 # # add sources of basic-solvers
 add_library(cxxsrc
   STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/Fluids.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/LAMNSS.cpp
 )
+
+IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+  add_sycl_to_target(TARGET ${PROJECT_NAME})
+  add_sycl_to_target(TARGET cxxsrc)
+ENDIF()
+
+
 target_include_directories(cxxsrc
   PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR})

@@ -7,6 +7,12 @@ target_sources (readini
   PRIVATE
    setup_ini.cpp 
 )
+
+IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+    add_sycl_to_target(TARGET readini SOURCES setup_ini.cpp)
+ENDIF()
+
+
 ##add libs
 add_subdirectory(config)
 target_link_libraries(readini

@@ -6,14 +6,14 @@
  * @brief  Initialize Fluid states espically primitive quantity;
  * @return void
  */
-extern SYCL_EXTERNAL void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
+extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
                                               real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T) {}
 
 /**
  * @brief  Initialize conservative quantity;
  * @return void
  */
-extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
+extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
                                           real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
                                           real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
@@ -58,7 +58,7 @@ extern SYCL_EXTERNAL void InitialUFKernel(int i, int j, int k, Block bl, Materia
 #if DIM_Z
     tmt += -(z - _DF(0.025)) / _DF(0.0025) * (z - _DF(0.025)) / _DF(0.0025);
 #endif // end DIM_Y
-    real_t fx = _DF(1.0) - _DF(0.5) * sycl::exp<real_t>(tmt);
+    real_t fx = _DF(1.0) - _DF(0.5) * sycl::exp(tmt);
     real_t *yi = &(_y[NUM_SPECIES * id]), Yif[4] = {_DF(0.195), _DF(0.591), _DF(0.0), _DF(0.214)}, Yio[4] = {_DF(0.142), _DF(0.758), _DF(0.1), _DF(0.0)};
 
     T[id] = _DF(1350.0) + (_DF(320.0) - _DF(1350.0)) * fx;

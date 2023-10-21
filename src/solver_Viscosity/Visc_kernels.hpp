@@ -3,7 +3,7 @@
 #include "Flux_discrete.h"
 #include "Utils_kernels.hpp"
 
-extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
+extern void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -66,7 +66,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelX(int i, int j, int k, Block b
 	}
 }
 
-extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
+extern void CenterDerivativeBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -129,7 +129,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelY(int i, int j, int k, Block b
 	}
 }
 
-extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
+extern void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
@@ -192,7 +192,7 @@ extern SYCL_EXTERNAL void CenterDerivativeBCKernelZ(int i, int j, int k, Block b
 	}
 }
 
-extern SYCL_EXTERNAL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
+extern void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
 												  real_t *Dkm_aver, real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T, real_t *Ertemp1, real_t *Ertemp2)
 {
 #ifdef DIM_X
