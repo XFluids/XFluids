@@ -4,6 +4,7 @@
 #include <cstring>
 #include "global_setup.h"
 #include "config/ConfigMap.h" //use readini
+#include "../read_grid/readgrid.h"
 #ifdef COP
 #include "case_setup.h"
 #endif
@@ -31,12 +32,6 @@ typedef struct
 	real_t *Dkj_matrix[NUM_SPECIES * NUM_SPECIES];
 } Thermal;
 
-typedef struct
-{
-	real_t X, Y, Z; // x/y/z-dir vector component;
-	real_t Mag;		//;
-} Volume;
-
 #ifdef COP_CHEME
 typedef struct
 {
@@ -50,6 +45,7 @@ struct Setup
 {
 public:
 	middle::device_t q;
+	Gridread grid;
 	Block BlSz;
 	IniShape ini;
 	Thermal d_thermal, h_thermal;
@@ -113,7 +109,7 @@ public:
 	int Block_Data_Size;
 	int bytes, cellbytes;
 
-	Setup(ConfigMap &configMap, middle::device_t &Q);
+	Setup(int argc, char **argv, int rank = 0, int nranks = 1);
 	void ReadIni(ConfigMap &configMap);
 	void init();
 	void print(); // only print once when is_print = false

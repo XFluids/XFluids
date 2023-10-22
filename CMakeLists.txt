@@ -4,12 +4,12 @@ PROJECT(LAMNSS LANGUAGES CXX)
 # // == Compile system =====================================
 # ####  1. oneAPI:       Intel oneAPI compiling system
 # ####  2. OpenSYCL:     OpenSYCL syclcc compiling system
-set(SYCL_COMPILE_SYSTEM "OpenSYCL") # # oneAPI or OpenSYCL
+set(SYCL_COMPILE_SYSTEM "oneAPI") # # oneAPI or OpenSYCL
 set(SelectDv "cuda") # which platform for compile options: omp(for host), cuda(for nvidia), hip(for amd)
 set(ARCH "75") # omp: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
-option(USE_MPI "if enable mpi" OFF)
+option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # # EXPLICIT_ALLOC: 1. ON: allocate each device buffer and transfer. 2. OFF: allocate struct ptr in device
 
@@ -46,6 +46,7 @@ set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "L
 
 # // == Ini sample selection ===============================
 # # # # (0d and 1d samples are forced out with plt)
+# # read_grid/${GRID_NAME}: using Plot3D grid: ./src/read_grid/${GRID_NAME} to initialize flow field, "read_grid/rae2822.xyz"
 # # 1d, 2d, 3d util: for-debug, guass-wave, sharp-interface
 # # 0d-H2-O2-freely-flame, depends on both COP_CHEME and COP_CHEME_TEST are set "ON"
 # # 1d-insert-st ## automatically rewrite COP_CHEME, Visc to "OFF"
@@ -53,7 +54,7 @@ set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "L
 # # 1d-diffusion 1d-diffusion-reverse ## automatically rewrite Visc, Visc_Heat, Visc_Diffu to "ON", COP_CHEME to "OFF"
 # # 2d-shock-bubble, 2d-shock-bubble-without-fuel, 2d-mixing-layer, 2d-under-expanded-jet ## only XY DIR support
 # # 3d-shock-bubble, 3d-shock-bubble-without-fuel, 3d-under-expanded-jet
-set(INIT_SAMPLE "1d-diffusion") # Set INIT_SAMPLE for Initializing settings
+set(INIT_SAMPLE "1d-diffusion") # set INIT_SAMPLE for Initializing settings
 set(COP_SPECIES "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
 set(REACTION_MODEL "RSBI-19REA") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 

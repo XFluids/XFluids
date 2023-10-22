@@ -99,4 +99,6 @@ typedef struct
 	//--for-Mpi: mx means number of ranks in x direction, myMpiPos_x means location of this rank in x-dir ranks(from 0 to mx-1)
 	int mx, my, mz, myMpiPos_x, myMpiPos_y, myMpiPos_z;
 	real_t offx, offy, offz;
+    // reference parameters, for calulate coordinate while readgrid
+	real_t LRef;
 } Block;

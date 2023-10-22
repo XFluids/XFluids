@@ -29,49 +29,23 @@
 
 int main(int argc, char *argv[])
 {
-#ifdef USE_MPI
-	// Create MPI session if MPI enabled
-	int rank, nRanks;
+#ifdef USE_MPI // Create MPI session if MPI enabled
 	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
-#else
-	int rank = 0, nRanks = 1;
 #endif // USE_MPI
-	std::string ini_path;
-	if (argc < 2)
-		ini_path = std::string(IniFile);
-	else if (argc == 2)
-		ini_path = std::string(argv[1]);
-	else
-		std::cout << "Too much argcs appended to EulerSYCL while running.\n";
-
-	ConfigMap configMap = broadcast_parameters(ini_path);
-	// // accelerator_selector device;
-	// // num_GPUS:number of GPU on this cluster
-	int num_GPUs = configMap.getInteger("mpi", "NUM", 1);
-	int platform_id = configMap.getInteger("mpi", "PLATFORM", 1);
-	int device_id = configMap.getInteger("mpi", "DEVICES_ID", 0);
-#if defined(DEFINED_OPENSYCL)
-	device_id += rank % num_GPUs;
-#else // for oneAPI
-	platform_id += rank % num_GPUs;
-#endif
-	auto device = sycl::platform::get_platforms()[platform_id].get_devices()[device_id];
-	sycl::queue q(device);
 	// // Setup Initialize
-	Setup setup(configMap, q);
+	Setup setup(argc, argv);
+	// // Solver Construction
 	LAMNSS solver(setup);
 	// // AllocateMemory
-	solver.AllocateMemory(q);
-	// //  Initialize original states
-	solver.InitialCondition(q);
-	// // boundary conditions
-	solver.BoundaryCondition(q, 0);
-	// // update states by U
-	solver.UpdateStates(q, 0, solver.physicalTime, solver.Iteration, "_Ini");
-	// // time marching by SYCL device
-	solver.Evolution(q);
+	solver.AllocateMemory(setup.q);
+	// // Initialize original states
+	solver.InitialCondition(setup.q);
+	// // Boundary conditions
+	solver.BoundaryCondition(setup.q);
+	// // Update states by U
+	solver.UpdateStates(setup.q);
+	// // Time marching by SYCL device
+	solver.Evolution(setup.q);
 
 #ifdef USE_MPI
 	MPI_Finalize();

@@ -131,35 +131,38 @@ public:
 
     LAMNSS(Setup &setup);
     virtual ~LAMNSS();
-    void Evolution(sycl::queue &q);
-    void EndProcess();
+    // Memory manage
     void AllocateMemory(sycl::queue &q);
-    void InitialCondition(sycl::queue &q);
-    void CopyToUbak(sycl::queue &q);
-    void CopyToU(sycl::queue &q);
-    bool Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time, float *Time_consumption);
-    void Output_Ubak(const int rank, const int Step, const real_t Time, const float Time_consumption, bool solution = false);
     void CopyDataFromDevice(sycl::queue &q, bool error);
-    void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
-    // void Output_Counts();
-    void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
-    void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
-    void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
-    void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
-    void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
-    void BoundaryCondition(sycl::queue &q, int flag);
-    bool UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep);
+    // Functionity
+    void CopyToU(sycl::queue &q);
+    void CopyToUbak(sycl::queue &q);
+    bool Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time, float *Time_consumption);
+    bool EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag);
+    void Output_Ubak(const int rank, const int Step, const real_t Time, const float Time_consumption, bool solution = false);
+    // Solvers
+    void EndProcess();
+    void Evolution(sycl::queue &q);
+    void InitialCondition(sycl::queue &q);
     real_t ComputeTimeStep(sycl::queue &q);
+    void BoundaryCondition(sycl::queue &q, int flag = 0);
     float OutThisTime(std::chrono::high_resolution_clock::time_point start_time);
+    bool UpdateStates(sycl::queue &q, int flag = 0, const real_t Time = 0, const int Step = 0, std::string RkStep = "_Ini");
     bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
     bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);
     void UpdateU(sycl::queue &q, int flag);
     void ComputeLU(sycl::queue &q, int flag);
     bool Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step);
-    bool EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag);
+    // Output
     static bool isBigEndian()
     {
         const int i = 1;
         return ((*(char *)&i) == 0);
     }
+    void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
+    void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
+    void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
+    void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
+    void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
+    void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
 };

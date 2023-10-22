@@ -21,7 +21,12 @@ ENDIF()
 # // =======================================================
 # #### util sample
 # // =======================================================
-IF(INIT_SAMPLE STREQUAL "for-debug")
+IF(INIT_SAMPLE MATCHES "read_grid/") # read grid
+    set(INIT_SAMPLE "${CMAKE_SOURCE_DIR}/src/${INIT_SAMPLE}")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/read-grid")
+    set(INI_FILE "${INIT_SAMPLE}.ini")
+
+ELSEIF(INIT_SAMPLE STREQUAL "for-debug")
     set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/for-debug")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-debug${APPEND}")
 
@@ -245,7 +250,6 @@ ELSE(COP)
     set(COP_SPECIES "Only one species actived and set Gamma to ${Gamma}") # Be invalid while option COP_CHEME "ON"
 ENDIF(COP)
 
-add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
 message(STATUS "Util features: ")
 message(STATUS "  Running platform: ${SYCL_COMPILE_SYSTEM}:${SelectDv}")
 message(STATUS "  Double precision: ${USE_DOUBLE}")
@@ -283,6 +287,7 @@ message(STATUS "  Sample COP  header path: ${COP_SPECIES}")
 message(STATUS "  Sample ini  file   path: ${INI_FILE}")
 
 set(COP_THERMAL_PATH "${CMAKE_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
+add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
 add_compile_options(-DIniFile="${INI_FILE}")
 add_compile_options(-DRFile="${COP_SPECIES}")
 add_compile_options(-DRPath="${COP_THERMAL_PATH}")
@@ -292,6 +297,3 @@ include_directories(
     "${COP_SPECIES}"
     "${INI_SAMPLE_PATH}"
 )
-
-# ${COP_SPECIES}: 依据算例文件中的"case_setup.h"头文件自动设置NUM_SPECIES && NUM_REACTIONS #
-# ${INI_SAMPLE_PATH}: 依据sample文件夹中的"ini_sample.hpp"文件选择 #

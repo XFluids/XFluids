@@ -4,18 +4,38 @@
 #include <iomanip>
 #include "global_setup_function.hpp"
 
-Setup::Setup(ConfigMap &configMap, middle::device_t &Q) : q(Q)
+Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks(nranks)
 {
-#ifdef USE_MPI
+#ifdef USE_MPI // Create MPI session if MPI enabled
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
     MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
-    if (myRank == 0)
-#endif
-    {
-        std::cout << "<---------------------------------------------------> \n";
-    }
-    ReadIni(configMap);
+#endif // USE_MPI
 
+    std::string ini_path;
+    if (argc < 2)
+        ini_path = std::string(IniFile);
+    else if (argc == 2)
+        ini_path = std::string(argv[1]);
+    else if (0 == myRank)
+        std::cout << "Too much argcs appended to EulerSYCL while running.\n";
+    ConfigMap configMap = broadcast_parameters(ini_path);
+
+    // // accelerator_selector device;
+    {
+        int num_GPUs = configMap.getInteger("mpi", "NUM", 1); // // num_GPUS:number of GPU on this cluster
+        int platform_id = configMap.getInteger("mpi", "PLATFORM", 1);
+        int device_id = configMap.getInteger("mpi", "DEVICES_ID", 0);
+#if defined(DEFINED_OPENSYCL)
+        device_id += rank % num_GPUs;
+#else // for oneAPI
+        platform_id += rank % num_GPUs;
+#endif
+        q = sycl::queue(sycl::platform::get_platforms()[platform_id].get_devices()[device_id]);
+    }
+
+    ReadIni(configMap);
+    // NOTE: read_grid
+    grid = Gridread(q, BlSz, std::string(INI_SAMPLE), myRank, nRanks);
     /*begin runtime read , fluid && compoent characteristics set*/
     ReadSpecies(); // 化学反应的组分数太多不能直接放进.ini 文件，等以后实现在ini中读取数组
 #ifdef COP_CHEME
@@ -1017,6 +1037,9 @@ void Setup::ReadIni(ConfigMap &configMap)
     BlSz.Domain_xmin = configMap.getFloat("mesh", "xmin", 0.0); // 计算域x方向永远是最长边
     BlSz.Domain_ymin = configMap.getFloat("mesh", "ymin", 0.0);
     BlSz.Domain_zmin = configMap.getFloat("mesh", "zmin", 0.0);
+    /* initialize reference parameters, for calulate coordinate while readgrid*/
+    BlSz.LRef = configMap.getFloat("mesh", "LRef", 1.0);// reference length
+
     // read block size set from .ini
     BlSz.OutBC = OutBoundary;
     BlSz.X_inner = DIM_X ? configMap.getInteger("mesh", "X_inner", 1) : 1;

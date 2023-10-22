@@ -1,4 +1,5 @@
 add_executable(${PROJECT_NAME} "main.cpp")
+
 # # add sources of basic-solvers
 add_library(cxxsrc
   STATIC
@@ -11,13 +12,15 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
   add_sycl_to_target(TARGET cxxsrc)
 ENDIF()
 
-
 target_include_directories(cxxsrc
   PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR})
 
 # # add basic components
 add_subdirectory(read_ini)
+
+# # add external grid read submodule
+add_subdirectory(read_grid)
 
 IF(USE_MPI)
   add_subdirectory(mpiPacks)
@@ -37,6 +40,7 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE
   cxxsrc
   readini
+  readgrid
 )
 
 IF(USE_MPI)
