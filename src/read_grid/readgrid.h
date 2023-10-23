@@ -1,7 +1,7 @@
 #pragma once
 
 // #include "setup.h"
-#include <CL/sycl.hpp>
+// #include <CL/sycl.hpp>
 // #include "dpc_common.hpp"
 // using namespace std;
 #include <map>

@@ -2,8 +2,46 @@
  * 目标是全部使用setup.ini文件控制流体参数，初始化状态，MPI设置，输出设置等尽可能多的设置
  */
 #include <iomanip>
+#include <algorithm>
 #include "global_setup_function.hpp"
 
+// =======================================================
+// // // struct AppendParas Member function definitions
+// =======================================================
+template <typename T>
+std::vector<T> AppendParas::match(std::string option)
+{
+    size_t i = 0;
+    option += "=";
+    for (i = 0; i < argc; i++)
+    {
+        if (std::string(argv[i]).find(option) != std::string::npos)
+        {
+            return Stringsplit<T>(std::string(argv[i]).erase(0, option.length()));
+            break;
+        }
+    }
+    return std::vector<T>();
+}
+
+std::vector<std::string> AppendParas::match(std::string option)
+{
+    size_t i = 0;
+    option += "=";
+    for (i = 0; i < argc; i++)
+    {
+        if (std::string(argv[i]).find(option) != std::string::npos)
+        {
+            return Stringsplit(std::string(argv[i]).erase(0, option.length()));
+            break;
+        }
+    }
+    return std::vector<std::string>();
+}
+
+// =======================================================
+// // // struct Setup Member function definitions
+// =======================================================
 Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks(nranks)
 {
 #ifdef USE_MPI // Create MPI session if MPI enabled
@@ -11,31 +49,20 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
 #endif // USE_MPI
 
-    std::string ini_path;
-    if (argc < 2)
-        ini_path = std::string(IniFile);
-    else if (argc == 2)
-        ini_path = std::string(argv[1]);
-    else if (0 == myRank)
-        std::cout << "Too much argcs appended to EulerSYCL while running.\n";
-    ConfigMap configMap = broadcast_parameters(ini_path);
-
-    // // accelerator_selector device;
-    {
-        int num_GPUs = configMap.getInteger("mpi", "NUM", 1); // // num_GPUS:number of GPU on this cluster
-        auto DeviceSelect = Stringsplit<int>(configMap.getString("mpi", "DeviceSelect", "1,0"));
-#if defined(DEFINED_OPENSYCL)
-        DeviceSelect[1] += rank % num_GPUs;
-#else // for oneAPI
-        DeviceSelect[0] += rank % num_GPUs;
-#endif
-        q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[0]].get_devices()[DeviceSelect[1]]);
+    { // // for ini file read
+        apa = AppendParas(argc, argv);
+        std::vector<std::string> iniapa = apa.match("-ini");
+        std::string ini_path = ((argc < 2) || std::empty(iniapa)) ? std::string(IniFile) : iniapa[0];
+        ReadIni(broadcast_parameters(ini_path));
     }
 
-    ReadIni(configMap);
-    // NOTE: read_grid
+    ReWrite(); // rewrite parameters using appended options
+    // // sycl::queue construction
+    q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[1]].get_devices()[DeviceSelect[2]]);
+    // // NOTE: read_grid
     grid = Gridread(q, BlSz, std::string(INI_SAMPLE), myRank, nRanks);
-    /*begin runtime read , fluid && compoent characteristics set*/
+
+    // /*begin runtime read , fluid && compoent characteristics set*/
     ReadSpecies(); // 化学反应的组分数太多不能直接放进.ini 文件，等以后实现在ini中读取数组
 #ifdef COP_CHEME
     ReadReactions();
@@ -955,12 +982,12 @@ real_t Setup::get_CopGamma(const real_t yi[NUM_SPECIES], const real_t T)
 }
 // =======================================================
 // =======================================================
-void Setup::ReadIni(ConfigMap &configMap)
+void Setup::ReadIni(ConfigMap configMap)
 {
     /* initialize RUN parameters */
-    OutTimeMethod=configMap.getInteger("run","OutTimeMethod",1);// use settings in .ini file by default
-    if(1==OutTimeMethod)
-    {                                                                     // settings in .ini file
+    OutTimeMethod = configMap.getInteger("run", "OutTimeMethod", 1); // use settings in .ini file by default
+    if (1 == OutTimeMethod)
+    { // settings in .ini file
         nOutTimeStamps = configMap.getInteger("run", "nOutTimeStamps", 0) + 1;
         OutTimeStamps = new real_t[nOutTimeStamps];
         OutTimeStart = configMap.getFloat("run", "OutTimeBeginning", 0.0f);
@@ -969,7 +996,7 @@ void Setup::ReadIni(ConfigMap &configMap)
         for (size_t n = 1; n < nOutTimeStamps; n++)
             OutTimeStamps[n] = OutTimeStamps[0] + real_t(n) * OutTimeStamp;
     }
-    else if (0==OutTimeMethod)
+    else if (0 == OutTimeMethod)
     {
         std::string tpath = std::string(RPath) + "/time_stamps.dat";
         std::fstream fint(tpath);
@@ -1020,9 +1047,12 @@ void Setup::ReadIni(ConfigMap &configMap)
     BlSz.mx = DIM_X ? configMap.getInteger("mpi", "mx", 1) : 1;
     BlSz.my = DIM_Y ? configMap.getInteger("mpi", "my", 1) : 1;
     BlSz.mz = DIM_Z ? configMap.getInteger("mpi", "mz", 1) : 1;
-#else                    // no USE_MPI
+#else // no USE_MPI
     BlSz.mx = 1, BlSz.my = 1, BlSz.mz = 1;
 #endif
+    // for sycl::queue construction and device select
+    // // [0]:number of alternative devices [1]:platform_id [2]:device_id.
+    DeviceSelect = Stringsplit<int>(configMap.getString("mpi", "DeviceSelect", "1,1,0"));
     // initial rank postion to zero, will be changed in MpiTrans
     BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
 
@@ -1034,7 +1064,7 @@ void Setup::ReadIni(ConfigMap &configMap)
     BlSz.Domain_ymin = configMap.getFloat("mesh", "ymin", 0.0);
     BlSz.Domain_zmin = configMap.getFloat("mesh", "zmin", 0.0);
     /* initialize reference parameters, for calulate coordinate while readgrid*/
-    BlSz.LRef = configMap.getFloat("mesh", "LRef", 1.0);// reference length
+    BlSz.LRef = configMap.getFloat("mesh", "LRef", 1.0); // reference length
 
     // read block size set from .ini
     BlSz.OutBC = OutBoundary;
@@ -1056,11 +1086,11 @@ void Setup::ReadIni(ConfigMap &configMap)
     /* Boundary Bundles settings */
     NBoundarys = Stringsplit<int>(configMap.getString("mesh", "BoundaryBundles", "2,2,2"));
     for (size_t ii = 0; ii < NBoundarys[0]; ii++) // X Boundary Bundles
-        Boundary_x.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_x" + std::to_string(ii), "Symmetry")));
+        Boundary_x.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_x" + std::to_string(ii), "2,0,0,0,0,0,0,1")));
     for (size_t jj = 0; jj < NBoundarys[1]; jj++) // Y Boundary Bundles
-        Boundary_y.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_y" + std::to_string(jj), "Symmetry")));
+        Boundary_y.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_y" + std::to_string(jj), "2,0,0,0,0,0,0,1")));
     for (size_t kk = 0; kk < NBoundarys[2]; kk++) // Z Boundary Bundles
-        Boundary_z.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_z" + std::to_string(kk), "Symmetry")));
+        Boundary_z.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_z" + std::to_string(kk), "2,0,0,0,0,0,0,1")));
 
     Boundarys[0] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmin", Symmetry));
     Boundarys[1] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmax", Symmetry));
@@ -1077,9 +1107,10 @@ void Setup::ReadIni(ConfigMap &configMap)
     {
         material_props.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Fluid_" + std::to_string(nn) + "_Prop", "")));
 #if defined(COP) // component species and initial mass fraction read
-        species_name = Stringsplit(configMap.getString("fluid", "Species" + std::to_string(nn), ""));
-        species_ratio.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Species_ratio_in", "")));
-        species_ratio.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Species_ratio_out", "")));
+// TODO: std::vector<std::string> species_name;
+// species_name = Stringsplit(configMap.getString("fluid", "Species" + std::to_string(nn), ""));
+// species_ratio.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Species_ratio_in", "")));
+// species_ratio.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Species_ratio_out", "")));
 #endif // end COP
     }
 
@@ -1136,6 +1167,27 @@ void Setup::ReadIni(ConfigMap &configMap)
     ini.zc = configMap.getFloat("init", "bubble_shape_z", ini.zc);
     bubble_boundary = configMap.getFloat("init", "bubble_boundary_cells", 2);
     ini.C = ini.xa * configMap.getFloat("init", "bubble_boundary_width", real_t(BlSz.mx * BlSz.X_inner) * bubble_boundary);
+}
+
+// =======================================================
+// // // Using option parameters appended executable file
+// =======================================================
+void Setup::ReWrite()
+{
+    // // rewrite mx, my, mz for MPI
+    std::vector<int> mpiapa = apa.match<int>("-mpi");
+    if (!std::empty(mpiapa))
+        BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
+
+    // // accelerator_selector device;
+    std::vector<int> devapa = apa.match<int>("-dev");
+    if (!std::empty(devapa))
+        DeviceSelect = devapa;
+#if defined(DEFINED_OPENSYCL)
+    DeviceSelect[2] += myRank % DeviceSelect[0];
+#else  // for oneAPI
+    DeviceSelect[1] += myRank % DeviceSelect[0];
+#endif // end
 }
 // =======================================================
 // =======================================================

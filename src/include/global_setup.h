@@ -40,7 +40,7 @@ enum BConditions
 	Outflow = 1,
 	Symmetry = 2,
 	Periodic = 3,
-	Wall = 4,
+	nslipWall = 4,
 	viscWall = 5,
 	slipWall = 6,
 	innerBlock = 7,

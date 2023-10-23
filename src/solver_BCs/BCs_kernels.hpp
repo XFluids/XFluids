@@ -47,7 +47,7 @@ extern void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, 
 	}
 	break;
 
-	case Wall:
+	case nslipWall:
 	{
 		int offset = 2 * (Bwidth_X + mirror_offset) - 1;
 		int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
@@ -116,7 +116,7 @@ extern void FluidBCKernelY(int i, int j, int k, Block bl, BConditions const BC, 
 	}
 	break;
 
-	case Wall:
+	case nslipWall:
 	{
 		int offset = 2 * (Bwidth_Y + mirror_offset) - 1;
 		int target_id = Xmax * Ymax * k + Xmax * (offset - j) + i;
@@ -185,7 +185,7 @@ extern void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, 
 	}
 	break;
 
-	case Wall:
+	case nslipWall:
 	{
 		int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
 		int target_id = Xmax * Ymax * (offset - k) + Xmax * j + i;

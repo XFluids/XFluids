@@ -64,20 +64,16 @@
 
 ### 3.3. RUN
 
-- LAMNSS automatically read ${workspaceFolder}/settings/*.ini file depending on INIT_SAMPLE setting in ${workspaceFolder}/CMakeLists.txt
+- LAMNSS automatically read <${workspaceFolder}/settings/*.ini> file depending on INIT_SAMPLE setting in ${workspaceFolder}/CMakeLists.txt
 
   ````bash
     $./LAMNSS
   ````
-- Append other specific .ini file to LAMNSS in cmd is supportted
+- Append options to LAMNSS in cmd for another settings, all options are optional, all options are listed in [6. executable file options]()
 
   ````bash
-    $./LAMNSS ./setup.ini
-  ````
-- Append MPI Cartesian coord size(mx, my, mz=1 by default), <...> is alternative
-
-  ````bash
-    $ mpirn -n mx*my*mz ./LAMNSS <./setup.ini> <mx> <my> <mz>
+    $ ./LAMNSS -ini=./setup.ini -dev=1,1,0
+    $ mpirun -n mx*my*mz ./LAMNSS -ini=./setup.ini -dev=1,1,0 -mpi=2,1,1
   ````
 
 ## 4. MPI libs
@@ -203,14 +199,25 @@
   | cop_pressure_in       |                      P of the fluid in compoent area                      | float | blast_pressure_out                               |
   | cop_tempreture_in     |                      T of the fluid in compoent area                      | float | blast_tempreture_in                              |
 
-## 6. output data format
+## 6. executable file options
 
 - #### set "OutDAT", "OutVTI" as 1 in .ini file
 
-### 6.1. tecplot file
+  | name of options  |                         function                                   | type | default value |
+  | :--------------- | :--------------------------------------------------------: | :---: | :-----------------   |
+  | -h               |               output all options and input rules                           |  nan         |
+  | -ini             |               path to an alternative .ini configure file                   |  int | nan   |
+  | -mpi             |               mpi cartesian size: mx,my,mz                                 |  int | 1,1,1 |
+  | -dev             |               device counting and selecting: munber,platform,device        |  int | 1,1,0 |
+
+## 7. output data format
+
+- #### set "OutDAT", "OutVTI" as 1 in .ini file
+
+### 7.1. tecplot file
 
 - import .dat files of all ranks of one Step for visualization, points overlapped between boundarys of ranks(3D parallel tecplot format file visualization is not supportted, using tecplot for 1D visualization is recommended)
 
-### 6.2. vtk file
+### 7.2. vtk file
 
 - use `paraview` to open `*.pvti` files for MPI visualization(1D visualization is not allowed, using paraview for 2/3D visualization is recommended);

@@ -49,7 +49,7 @@ extern void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions
 	}
 	break;
 
-	case Wall:
+	case nslipWall:
 	{
 		int offset = 2 * (Bwidth_X + mirror_offset) - 1;
 		int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
@@ -112,7 +112,7 @@ extern void CenterDerivativeBCKernelY(int i, int j, int k, Block bl, BConditions
 	}
 	break;
 
-	case Wall:
+	case nslipWall:
 	{
 		int offset = 2 * (Bwidth_Y + mirror_offset) - 1;
 		int target_id = Xmax * Ymax * k + Xmax * (offset - j) + i;
@@ -175,7 +175,7 @@ extern void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions
 	}
 	break;
 
-	case Wall:
+	case nslipWall:
 	{
 		int offset = 2 * (Bwidth_Z + mirror_offset) - 1;
 		int target_id = Xmax * Ymax * (k - offset) + Xmax * j + i;

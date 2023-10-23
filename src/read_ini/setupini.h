@@ -41,24 +41,48 @@ typedef struct
 } Reaction;
 #endif // end COP_CHEME
 
+struct AppendParas
+{
+	int argc;
+	char **argv;
+	AppendParas(){};
+	~AppendParas(){};
+	AppendParas(int argc, char **argv) : argc(argc), argv(argv){};
+	template <typename T>
+	std::vector<T> match(std::string option);
+	std::vector<std::string> match(std::string option);
+};
+
 struct Setup
 {
 public:
 	middle::device_t q;
-	Gridread grid;
 	Block BlSz;
 	IniShape ini;
+	Gridread grid;
+	AppendParas apa;
 	Thermal d_thermal, h_thermal;
 #ifdef COP_CHEME
 	Reaction d_react, h_react;
 #endif // end COP
+
+	//--for-MPI&Device-----------------------
 	int myRank, nRanks;
+	std::vector<int> DeviceSelect; // for Device counting and selecting
+	int OutInterval, POutInterval, NumThread, nStepmax, nOutput; // nOutpu: Number of output files
+	int Mem_s, Block_Inner_Cell_Size, Block_Inner_Data_Size;
+	int Block_Cell_Size, Block_Data_Size, bytes, cellbytes;
+
 	//--for-Mesh-----------------------------
-	real_t dt;
 	real_t Domain_length, Domain_width, Domain_height;
 	BConditions Boundarys[6];
 	std::vector<int> NBoundarys;
 	std::vector<std::vector<int>> Boundary_x, Boundary_y, Boundary_z;
+
+	//--for-Mesh-----------------------------
+	real_t dt;
+	std::string OutputDir;
+	int OutTimeMethod, nOutTimeStamps;
 	/**set output time with two methods below:
 	 * switch method with value of OutTimeMethod:0 or 1
 	 * 0. read ./runtime.dat/output_time.dat
@@ -66,30 +90,30 @@ public:
 	 * 		OutTime=OutTimeStart+x*outTimeStamp (0<=x<=nOutTimeStamps)
 	 * 	    EndTime=OutTimeStart+OutTimeStamp*nOutTimeStamps
 	 * */
-	int OutTimeMethod, nOutTimeStamps;
-	real_t StartTime, EndTime, OutTimeStart, OutTimeStamp;
-	real_t *OutTimeStamps;
-	std::string OutputDir;
+	real_t StartTime, EndTime, OutTimeStart, OutTimeStamp, *OutTimeStamps;
 	bool OutBoundary, OutDIRX, OutDIRY, OutDIRZ, OutDAT, OutVTI, OutSTL; // debug to if it transfer;
-	bool Mach_Modified;			// if post-shock theroy in Ref0 used(rewrite the value from Devesh Ranjan's theroy in Ref1 used by default): Ref0:https://doi.org/10.1016/j.combustflame.2015.10.016 Ref1:https://www.annualreviews.org/doi/10.1146/annurev-fluid-122109-160744
+	bool Mach_Modified;
+	// Mach_Modified: if post-shock theroy in Ref0 used(rewrite the value from Devesh Ranjan's theroy in Ref1 used by default):
+	// // ef0:https://doi.org/10.1016/j.combustflame.2015.10.016 Ref1:https://www.annualreviews.org/doi/10.1146/annurev-fluid-122109-160744
 	int outpos_x, outpos_y, outpos_z;
 
 	//--for-Fluids-----------------------------
 	int NUM_BISD;
 	bool mach_shock;
-	std::vector<std::string> fname, species_name; // give a name to the fluid, species
+	std::vector<std::string> fname;		   //, species_name // give a name to the fluid
+	std::string species_name[NUM_SPECIES]; // give a name to the species
 	// material properties: 0:material_kind, 1:phase_indicator, 2:gamma, 3:A, 4:B, 5:rho0, 6:R_0, 7:lambda_0, 8:a(rtificial)s(peed of)s(ound)
 	// // material_kind: type of material, 0: gamma gas, 1: water, 2: stiff gas ;// fluid indicator and EOS Parameters
 	std::vector<std::vector<real_t>> material_props, species_ratio;
-	real_t bubble_boundary;		// number of cells for cop bubble boundary
-	real_t width_xt;			// Extending width (cells)
-	real_t width_hlf;			// Ghost-fluid update width
-	real_t mx_vlm;				// Cells with volume fraction less than this value will be mixed
-	real_t ext_vlm;				// For cells with volume fraction less than this value, their states are updated based on mixing
-	real_t BandforLevelset;		// half-width of level set narrow band
+	real_t bubble_boundary; // number of cells for cop bubble boundary
+	real_t width_xt;		// Extending width (cells)
+	real_t width_hlf;		// Ghost-fluid update width
+	real_t mx_vlm;			// Cells with volume fraction less than this value will be mixed
+	real_t ext_vlm;			// For cells with volume fraction less than this value, their states are updated based on mixing
+	real_t BandforLevelset; // half-width of level set narrow band
 
 #ifdef COP_CHEME
-	//-----------------*backwardArrhenius------------------//
+							//-----------------*backwardArrhenius------------------//
 	bool BackArre = false;
 	std::vector<int> reaction_list[NUM_SPECIES]; // 数组的每一个元素都是一个vector
 	std::vector<int> reactant_list[NUM_REA];
@@ -97,20 +121,9 @@ public:
 	std::vector<int> species_list[NUM_REA];
 #endif // COP_CHEME
 
-	//--for-Host-&&-Device--------------------------
-	int Mem_s;
-	int nStepmax;
-	int nOutput; // Number of output files
-	int OutInterval, POutInterval;
-	int NumThread;
-	int Block_Inner_Cell_Size;
-	int Block_Inner_Data_Size;
-	int Block_Cell_Size;
-	int Block_Data_Size;
-	int bytes, cellbytes;
-
 	Setup(int argc, char **argv, int rank = 0, int nranks = 1);
-	void ReadIni(ConfigMap &configMap);
+	void ReadIni(ConfigMap configMap);
+	void ReWrite();
 	void init();
 	void print(); // only print once when is_print = false
 	void CpyToGPU();

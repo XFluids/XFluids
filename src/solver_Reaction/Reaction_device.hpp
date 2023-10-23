@@ -24,7 +24,7 @@ real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ 
 		Kck += Nu_d_[m * NUM_SPECIES + n] * S;
 		Nu_sum += Nu_d_[m * NUM_SPECIES + n];
 	}
-	Kck = sycl::exp<real_t>(Kck);
+	Kck = sycl::exp(Kck);
 	Kck *= sycl::pow(p_atm / Ru / T * _DF(1e-6), Nu_sum); // 1e-6: m^-3 -> cm^-3
 	return Kck;
 }
@@ -81,14 +81,14 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_S
 			{
 				int specie_id = reactant_list[react_id][it];
 				int nu_f = Nu_f_[react_id * NUM_SPECIES + specie_id];
-				RPf *= sycl::pow(C[specie_id], nu_f);
+				RPf *= sycl::pown(C[specie_id], nu_f);
 			}
 			// backward
 			for (int it = 0; it < pls[react_id]; it++)
 			{
 				int specie_id = product_list[react_id][it];
 				int nu_b = Nu_b_[react_id * NUM_SPECIES + specie_id];
-				RPb *= sycl::pow(C[specie_id], nu_b);
+				RPb *= sycl::pown(C[specie_id], nu_b);
 			}
 			q[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPf + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPb;
 			d[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPb + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPf;
@@ -116,7 +116,7 @@ real_t sign(real_t a)
  */
 real_t sign(real_t a, real_t b)
 {
-	return sign(b) * sycl::abs(a);
+	return sign(b) * sycl::fabs(a);
 }
 
 /**
@@ -165,11 +165,11 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	real_t ascr = _DF(0.0), scr1 = _DF(0.0), scr2 = _DF(0.0); // scratch (temporary) variable
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		ascr = sycl::abs(q[i]);
+		ascr = sycl::fabs(q[i]);
 		scr2 = sign(_DF(1.0) / y[i], _DF(0.1) * epsmin * ascr - d[i]);
 		scr1 = scr2 * d[i];
 		scrtch = sycl::max(scr1, scrtch);
-		scrtch = sycl::max(scrtch, -sycl::abs(ascr - d[i]) * scr2);
+		scrtch = sycl::max(scrtch, -sycl::fabs(ascr - d[i]) * scr2);
 	}
 	dt = sycl::min(sqreps / scrtch, dtg);
 
@@ -240,12 +240,12 @@ flag2:
 		// scr2 = sycl::max(ys[i] + scrarray[i], ymin);
 		// scr1 = sycl::abs(scr2 - y1[i]);
 		// y[i] = sycl::max(scr2, ymin); // new y
-		scr1 = sycl::abs(y[i] - y1[i]);
+		scr1 = sycl::fabs(y[i] - y1[i]);
 		if (_DF(0.5) * _DF(0.5) * (ys[i] + y[i]) > ymin)
 		{
 			scr1 = scr1 / y[i];
 			// eps = sycl::max(scr1, eps);
-			eps = sycl::max(_DF(0.5) * (scr1 + sycl::min(sycl::abs(q[i] - d[i] + _DF(1.0e-40)) / (q[i] + d[i] + _DF(1.0e-40)), scr1)), eps);
+			eps = sycl::max(_DF(0.5) * (scr1 + sycl::min(sycl::fabs(q[i] - d[i] + _DF(1.0e-40)) / (q[i] + d[i] + _DF(1.0e-40)), scr1)), eps);
 		}
 	}
 	eps = eps * epscl;

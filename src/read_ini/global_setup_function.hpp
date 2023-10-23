@@ -146,7 +146,6 @@ void Solve_Overdeter_equations(real_t AA[][order_polynominal_fitted], real_t *b,
  */
 std::vector<std::string> Stringsplit(std::string str, const char split = ',')
 {
-    bool error = false;
     std::string token;                   // recive buffers
     std::istringstream iss(str);         // input stream
     std::vector<std::string> str_output; // recive buffers
@@ -159,7 +158,7 @@ std::vector<std::string> Stringsplit(std::string str, const char split = ',')
     return str_output;
 }
 
-template <typename T>
+template <typename T = std::string>
 std::vector<T> Stringsplit(std::string str, const char split = ',')
 {
     bool error = false;

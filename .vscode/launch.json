@@ -14,19 +14,26 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Disable target async",
-                    "text": "set target-async off",
-                    "ignoreFailures": true
-                }
-            ]
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
+        },
+        {
+            "name": "util-debug-para",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "",
+            "postDebugTask": "",
+            "program": "${workspaceFolder}/build/src/LAMNSS",
+            "args": [
+                "-mpi=2,1,1",
+                "-dev=1,1,0",
+                "-ini=/home/ljl/Documents/LAMNSS/settings/sa-1d-reactive-st-mpi.ini",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
         },
         {
             "name": "launch-mpi-debug",
