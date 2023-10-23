@@ -41,9 +41,12 @@ enum BConditions
 	Symmetry = 2,
 	Periodic = 3,
 	Wall = 4,
+	viscWall = 5,
+	slipWall = 6,
+	innerBlock = 7,
 #ifdef USE_MPI
-	BC_COPY = 5,
-	BC_UNDEFINED = 6
+	BC_COPY = 99,
+	BC_UNDEFINED = 100
 #endif // USE_MPI
 };
 

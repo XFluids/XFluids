@@ -23,14 +23,13 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     // // accelerator_selector device;
     {
         int num_GPUs = configMap.getInteger("mpi", "NUM", 1); // // num_GPUS:number of GPU on this cluster
-        int platform_id = configMap.getInteger("mpi", "PLATFORM", 1);
-        int device_id = configMap.getInteger("mpi", "DEVICES_ID", 0);
+        auto DeviceSelect = Stringsplit<int>(configMap.getString("mpi", "DeviceSelect", "1,0"));
 #if defined(DEFINED_OPENSYCL)
-        device_id += rank % num_GPUs;
+        DeviceSelect[1] += rank % num_GPUs;
 #else // for oneAPI
-        platform_id += rank % num_GPUs;
+        DeviceSelect[0] += rank % num_GPUs;
 #endif
-        q = sycl::queue(sycl::platform::get_platforms()[platform_id].get_devices()[device_id]);
+        q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[0]].get_devices()[DeviceSelect[1]]);
     }
 
     ReadIni(configMap);
@@ -1022,15 +1021,12 @@ void Setup::ReadIni(ConfigMap &configMap)
     BlSz.my = DIM_Y ? configMap.getInteger("mpi", "my", 1) : 1;
     BlSz.mz = DIM_Z ? configMap.getInteger("mpi", "mz", 1) : 1;
 #else                    // no USE_MPI
-    BlSz.mx = 1;
-    BlSz.my = 1;
-    BlSz.mz = 1;
-#endif                   // end USE_MPI
-    BlSz.myMpiPos_x = 0; // initial rank postion to zero, will be changed in MpiTrans
-    BlSz.myMpiPos_y = 0;
-    BlSz.myMpiPos_z = 0;
+    BlSz.mx = 1, BlSz.my = 1, BlSz.mz = 1;
+#endif
+    // initial rank postion to zero, will be changed in MpiTrans
+    BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
+
     /* initialize MESH parameters */
-    // DOMAIN_length = configMap.getFloat("mesh", "DOMAIN_length", 1.0);
     Domain_length = configMap.getFloat("mesh", "DOMAIN_length", 1.0);
     Domain_width = configMap.getFloat("mesh", "DOMAIN_width", 1.0);
     Domain_height = configMap.getFloat("mesh", "DOMAIN_height", 1.0);
@@ -1057,6 +1053,15 @@ void Setup::ReadIni(ConfigMap &configMap)
     ext_vlm = configMap.getFloat("mesh", "ext_vlm", 0.5);
     BandforLevelset = configMap.getFloat("mesh", "BandforLevelset", 6.0);
 
+    /* Boundary Bundles settings */
+    NBoundarys = Stringsplit<int>(configMap.getString("mesh", "BoundaryBundles", "2,2,2"));
+    for (size_t ii = 0; ii < NBoundarys[0]; ii++) // X Boundary Bundles
+        Boundary_x.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_x" + std::to_string(ii), "Symmetry")));
+    for (size_t jj = 0; jj < NBoundarys[1]; jj++) // Y Boundary Bundles
+        Boundary_y.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_y" + std::to_string(jj), "Symmetry")));
+    for (size_t kk = 0; kk < NBoundarys[2]; kk++) // Z Boundary Bundles
+        Boundary_z.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_z" + std::to_string(kk), "Symmetry")));
+
     Boundarys[0] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmin", Symmetry));
     Boundarys[1] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmax", Symmetry));
     Boundarys[2] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_ymin", Symmetry));
@@ -1065,18 +1070,20 @@ void Setup::ReadIni(ConfigMap &configMap)
     Boundarys[5] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_zmax", Symmetry));
 
     /* initialize FLUID parameters */
-    fname[0] = std::string(configMap.getString("fluid", "fluid1_name", "O2"));
-    material_kind[0] = configMap.getInteger("fluid", "fluid1_kind", 0);
-    // material properties:1: phase_indicator, 2:gamma, 3:A, 4:B, 5:rho0, 6:R_0, 7:lambda_0, 8:a(rtificial)s(peed of)s(ound)
-    material_props[0][0] = configMap.getFloat("fluid", "fluid1_phase_indicator", 0);
-    material_props[0][1] = configMap.getFloat("fluid", "fluid1_gamma", 0);
-    material_props[0][2] = configMap.getFloat("fluid", "fluid1_A", 0);
-    material_props[0][3] = configMap.getFloat("fluid", "fluid1_B", 0);
-    material_props[0][4] = configMap.getFloat("fluid", "fluid1_rho0", 0);
-    material_props[0][5] = configMap.getFloat("fluid", "fluid1_R0", 0);
-    material_props[0][6] = configMap.getFloat("fluid", "fluid1_lambda0", 0);
-    material_props[0][7] = configMap.getFloat("fluid", "fluid1_ac", 0);
-    // Ini Fluid dynamic states
+    // material_properties: 0:fluid_kind; 1:phase_indicator; 2:gamma; 3:A; 4:B;
+    // // 5:rho0; 6:R_0; 7:lambda_0; 8:a(rtificial)s(peed of)s(ound)
+    fname = Stringsplit(configMap.getString("fluid", "Fluid_Names", ""));
+    for (size_t nn = 0; nn < NumFluid; nn++)
+    {
+        material_props.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Fluid_" + std::to_string(nn) + "_Prop", "")));
+#if defined(COP) // component species and initial mass fraction read
+        species_name = Stringsplit(configMap.getString("fluid", "Species" + std::to_string(nn), ""));
+        species_ratio.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Species_ratio_in", "")));
+        species_ratio.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Species_ratio_out", "")));
+#endif // end COP
+    }
+
+    // Ini Flow Field dynamic states
     ini.Ma = configMap.getFloat("init", "blast_mach", 0);
     ini.blast_type = configMap.getInteger("fluid", "blast_type", 0);
     ini.blast_center_x = configMap.getFloat("init", "blast_center_x", 0);
@@ -1108,8 +1115,10 @@ void Setup::ReadIni(ConfigMap &configMap)
     ini.cop_T_in = configMap.getFloat("init", "cop_tempreture_in", ini.blast_T_out);
     ini.cop_y1_in = configMap.getFloat("init", "cop_y1_in", 0);
     ini.cop_y1_out = configMap.getFloat("init", "cop_y1_out", 0);
+#else  // no COP
 #endif // end COP
-    // bubble size
+
+    // Bubble size
     real_t Dmin = Domain_length + Domain_width + Domain_height;
 #if DIM_X
     Dmin = std::min(Domain_length, Dmin);
@@ -1120,7 +1129,6 @@ void Setup::ReadIni(ConfigMap &configMap)
 #if DIM_Z
     Dmin = std::min(Domain_height, Dmin);
 #endif
-
     ini.xa = configMap.getFloat("init", "bubble_shape_x", 0.4 * Dmin);
     ini.yb = ini.xa / configMap.getFloat("init", "bubble_shape_ratioy", 1.0);
     ini.zc = ini.xa / configMap.getFloat("init", "bubble_shape_ratioz", 1.0);

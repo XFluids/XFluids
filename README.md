@@ -1,4 +1,4 @@
-# Euler-SYCL
+# LAMNSS
 
 ## 1. Dependencies before cmake
 
@@ -11,7 +11,7 @@
   ````bash
   source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
   # or you can use the script files(only basic environments are included)
-  source ./oneAPI_script/oneapi_base.sh
+  source ./scripts/opeAPI/oneapi_base.sh
   ````
 - #### Device discovery: exec "sycl-ls" in cmd for device counting
 
@@ -56,7 +56,7 @@
 ### 3.2. BUILD
 
 ````bash
-    cd ./EulerSYCL
+    cd ./LAMNSS
     mkdir build && cd ./build
     cmake -DCMAKE_BUILD_TYPE=Release ..
     make -j4 ## too much cores used occurs errors
@@ -64,20 +64,20 @@
 
 ### 3.3. RUN
 
-- EulerSYCL automatically read ${workspaceFolder}/settings/*.ini file depending on INIT_SAMPLE setting in ${workspaceFolder}/CMakeLists.txt
+- LAMNSS automatically read ${workspaceFolder}/settings/*.ini file depending on INIT_SAMPLE setting in ${workspaceFolder}/CMakeLists.txt
 
   ````bash
-    $./EulerSYCL
+    $./LAMNSS
   ````
-- Append other specific .ini file to EulerSYCL in cmd is supportted
+- Append other specific .ini file to LAMNSS in cmd is supportted
 
   ````bash
-    $./EulerSYCL ./setup.ini
+    $./LAMNSS ./setup.ini
   ````
 - Append MPI Cartesian coord size(mx, my, mz=1 by default), <...> is alternative
 
   ````bash
-    $ mpirn -n mx*my*mz ./EulerSYCL <./setup.ini> <mx> <my> <mz>
+    $ mpirn -n mx*my*mz ./LAMNSS <./setup.ini> <mx> <my> <mz>
   ````
 
 ## 4. MPI libs

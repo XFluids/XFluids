@@ -137,3 +137,55 @@ void Solve_Overdeter_equations(real_t AA[][order_polynominal_fitted], real_t *b,
         xx[m] = dd[m];
 }
 #endif // end Visc
+
+/**
+ * string split
+ * @param str is the std::string that is to be splitted
+ * @param split is the separator to split str
+ * @return std::vector<T> output
+ */
+std::vector<std::string> Stringsplit(std::string str, const char split = ',')
+{
+    bool error = false;
+    std::string token;                   // recive buffers
+    std::istringstream iss(str);         // input stream
+    std::vector<std::string> str_output; // recive buffers
+
+    while (getline(iss, token, split)) // take "split" as separator
+    {
+        str_output.push_back(token);
+    }
+
+    return str_output;
+}
+
+template <typename T>
+std::vector<T> Stringsplit(std::string str, const char split = ',')
+{
+    bool error = false;
+    std::string token;                   // recive buffers
+    std::vector<T> output;               // recive buffers
+    std::istringstream iss(str);         // input stream
+    std::vector<std::string> str_output; // recive buffers
+
+    while (getline(iss, token, split)) // take "split" as separator
+    {
+        str_output.push_back(token);
+    }
+    if (typeid(T) == typeid(int))
+        std::transform(str_output.begin(), str_output.end(), std::back_inserter(output),
+                       [](std::string &sr)
+                       { return std::stoi(sr); });
+    else if (typeid(T) == typeid(float))
+        std::transform(str_output.begin(), str_output.end(), std::back_inserter(output),
+                       [](std::string &sr)
+                       { return std::stof(sr); });
+    else if (typeid(T) == typeid(double))
+        std::transform(str_output.begin(), str_output.end(), std::back_inserter(output),
+                       [](std::string &sr)
+                       { return std::stod(sr); });
+    else
+        std::cout << "Error: unsupportted return template type" << std::endl;
+
+    return output;
+}

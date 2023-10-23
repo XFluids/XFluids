@@ -269,16 +269,16 @@ void Fluid::initialize(int n)
 {
 	Fluid_name = Fs.fname[n]; // give a name to the fluid
 	// type of material, 0: gamma gas, 1: water, 2: stiff gas
-	material_property.Mtrl_ind = Fs.material_kind[n];
+	material_property.Mtrl_ind = Fs.material_props[n][0];
 	// fluid indicator and EOS Parameters
-	material_property.Rgn_ind = Fs.material_props[n][0];
-	// gamma, A, B, rho0, mu_0, R_0, lambda_0
-	material_property.Gamma = Fs.material_props[n][1];
-	material_property.A = Fs.material_props[n][2];
-	material_property.B = Fs.material_props[n][3];
-	material_property.rho0 = Fs.material_props[n][4];
-	material_property.R_0 = Fs.material_props[n][5];
-	material_property.lambda_0 = Fs.material_props[n][6];
+	material_property.Rgn_ind = Fs.material_props[n][1];
+	// gamma, A, B, rho0, R_0, lambda_0, sound_speed
+	material_property.Gamma = Fs.material_props[n][2];
+	material_property.A = Fs.material_props[n][3];
+	material_property.B = Fs.material_props[n][4];
+	material_property.rho0 = Fs.material_props[n][5];
+	material_property.R_0 = Fs.material_props[n][6];
+	material_property.lambda_0 = Fs.material_props[n][7];
 }
 
 void Fluid::AllocateFluidMemory(sycl::queue &q)
