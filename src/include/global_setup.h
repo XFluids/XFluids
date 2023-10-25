@@ -1,4 +1,6 @@
 #pragma once
+
+#include <vector>
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
@@ -105,3 +107,17 @@ typedef struct
     // reference parameters, for calulate coordinate while readgrid
 	real_t LRef;
 } Block;
+
+struct BoundaryRange
+{
+	BConditions type;
+	int xmin, ymin, zmin, xmax, ymax, zmax;
+	int tag;
+	BoundaryRange(){};
+	BoundaryRange(std::vector<int> vec)
+	{
+		type = BConditions(vec[0]);
+		xmin = vec[1], xmax = vec[2], ymin = vec[3];
+		ymax = vec[4], zmin = vec[5], zmax = vec[6], tag = vec[7];
+	};
+};

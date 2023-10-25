@@ -57,6 +57,16 @@ extern void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions
 			Vde_x[n][id] = -Vde_x[n][target_id];
 	}
 	break;
+
+	case viscWall:
+		break;
+
+	case slipWall:
+		break;
+
+	case innerBlock:
+		break;
+
 #ifdef USE_MPI
 	case BC_COPY:
 		break;
@@ -120,6 +130,16 @@ extern void CenterDerivativeBCKernelY(int i, int j, int k, Block bl, BConditions
 			Vde_y[n][id] = -Vde_y[n][target_id];
 	}
 	break;
+
+	case viscWall:
+		break;
+
+	case slipWall:
+		break;
+
+	case innerBlock:
+		break;
+
 #ifdef USE_MPI
 	case BC_COPY:
 		break;
@@ -183,6 +203,16 @@ extern void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions
 			Vde_z[n][id] = -Vde_z[n][target_id];
 	}
 	break;
+
+	case viscWall:
+		break;
+
+	case slipWall:
+		break;
+
+	case innerBlock:
+		break;
+
 #ifdef USE_MPI
 	case BC_COPY:
 		break;

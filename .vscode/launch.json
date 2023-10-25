@@ -24,9 +24,9 @@
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/src/LAMNSS",
             "args": [
-                "-mpi=2,1,1",
                 "-dev=1,1,0",
-                "-ini=/home/ljl/Documents/LAMNSS/settings/sa-1d-reactive-st-mpi.ini",
+                // "-mpi=2,1,1",
+                // "-ini=/home/ljl/Documents/LAMNSS/settings/sa-1d-reactive-st-mpi.ini",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",

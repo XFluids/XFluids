@@ -6,7 +6,6 @@
 // using namespace std;
 #include <map>
 #include <cmath>
-#include <vector>
 #include <iomanip>
 #include <cstdlib> //for malloc()
 #include <fstream>

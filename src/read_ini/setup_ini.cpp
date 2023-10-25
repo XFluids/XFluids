@@ -1084,13 +1084,13 @@ void Setup::ReadIni(ConfigMap configMap)
     BandforLevelset = configMap.getFloat("mesh", "BandforLevelset", 6.0);
 
     /* Boundary Bundles settings */
-    NBoundarys = Stringsplit<int>(configMap.getString("mesh", "BoundaryBundles", "2,2,2"));
+    std::vector<int> NBoundarys = Stringsplit<int>(configMap.getString("mesh", "BoundaryBundles", "2,2,2"));
     for (size_t ii = 0; ii < NBoundarys[0]; ii++) // X Boundary Bundles
-        Boundary_x.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_x" + std::to_string(ii), "2,0,0,0,0,0,0,1")));
+        Boundary_x.push_back(BoundaryRange(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_x" + std::to_string(ii), "2,0,0,0,0,0,0,1"))));
     for (size_t jj = 0; jj < NBoundarys[1]; jj++) // Y Boundary Bundles
-        Boundary_y.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_y" + std::to_string(jj), "2,0,0,0,0,0,0,1")));
+        Boundary_y.push_back(BoundaryRange(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_y" + std::to_string(jj), "2,0,0,0,0,0,0,1"))));
     for (size_t kk = 0; kk < NBoundarys[2]; kk++) // Z Boundary Bundles
-        Boundary_z.push_back(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_z" + std::to_string(kk), "2,0,0,0,0,0,0,1")));
+        Boundary_z.push_back(BoundaryRange(Stringsplit<int>(configMap.getString("mesh", "BoundaryBundle_z" + std::to_string(kk), "2,0,0,0,0,0,0,1"))));
 
     Boundarys[0] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmin", Symmetry));
     Boundarys[1] = static_cast<BConditions>(configMap.getInteger("mesh", "boundary_xmax", Symmetry));

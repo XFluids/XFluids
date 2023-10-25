@@ -2,6 +2,10 @@
 
 #include "Utils_kernels.hpp"
 
+extern void FluidBCKernel(BoundaryRange &BC, Block &bl, real_t *d_UI)
+{
+}
+
 extern void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *d_UI, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
@@ -62,6 +66,42 @@ extern void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, 
 #endif // end COP
 	}
 	break;
+
+	case viscWall:
+	{
+		int offset = 2 * (Bwidth_X + mirror_offset) - 1;
+		int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
+		d_UI[Emax * id + 0] = d_UI[Emax * target_id + 0];
+		d_UI[Emax * id + 1] = -d_UI[Emax * target_id + 1];
+		d_UI[Emax * id + 2] = -d_UI[Emax * target_id + 2];
+		d_UI[Emax * id + 3] = -d_UI[Emax * target_id + 3];
+		d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
+#ifdef COP
+		for (int n = Emax - NUM_COP; n < Emax; n++)
+			d_UI[Emax * id + n] = d_UI[Emax * target_id + n];
+#endif // end COP
+	}
+	break;
+
+	case slipWall:
+	{
+		int offset = 2 * (Bwidth_X + mirror_offset) - 1;
+		int target_id = Xmax * Ymax * k + Xmax * j + (offset - i);
+		d_UI[Emax * id + 0] = d_UI[Emax * target_id + 0];
+		d_UI[Emax * id + 1] = -d_UI[Emax * target_id + 1];
+		d_UI[Emax * id + 2] = -d_UI[Emax * target_id + 2];
+		d_UI[Emax * id + 3] = -d_UI[Emax * target_id + 3];
+		d_UI[Emax * id + 4] = d_UI[Emax * target_id + 4];
+#ifdef COP
+		for (int n = Emax - NUM_COP; n < Emax; n++)
+			d_UI[Emax * id + n] = d_UI[Emax * target_id + n];
+#endif // end COP
+	}
+	break;
+
+	case innerBlock:
+		break;
+
 #ifdef USE_MPI
 	case BC_COPY:
 		break;
@@ -131,6 +171,16 @@ extern void FluidBCKernelY(int i, int j, int k, Block bl, BConditions const BC, 
 #endif // end COP
 	}
 	break;
+
+	case viscWall:
+		break;
+
+	case slipWall:
+		break;
+
+	case innerBlock:
+		break;
+
 #ifdef USE_MPI
 	case BC_COPY:
 		break;
@@ -200,6 +250,16 @@ extern void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, 
 #endif // end COP
 	}
 	break;
+
+	case viscWall:
+		break;
+
+	case slipWall:
+		break;
+
+	case innerBlock:
+		break;
+
 #ifdef USE_MPI
 	case BC_COPY:
 		break;
@@ -209,7 +269,6 @@ extern void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, 
 	}
 }
 
-#if USE_MPI
 extern void FluidMpiCopyKernelX(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
 											  const int Bwidth_Xset, const MpiCpyType Cpytype)
 {
@@ -290,4 +349,3 @@ extern void FluidMpiCopyKernelZ(int i, int j, int k, Block bl, real_t *d_TransBu
 			d_UI[Emax * id + n] = d_TransBuf[Emax * tid + n];
 	}
 }
-#endif // end USE_MPI
