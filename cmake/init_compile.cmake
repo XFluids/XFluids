@@ -11,6 +11,7 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	IF(SelectDv STREQUAL "cuda")
 		set(ARCH "cc${ARCH}")
 		set(SelectDv "cuda-nvcxx")
+		# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system # /opt/nvidia/hpc_sdk/Linux_x86_64/22.11/compilers/bin/nvc++
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress=set_but_not_used,declared_but_not_referenced,used_before_set,code_is_unreachable")
 	ELSEIF(SelectDv STREQUAL "hip")
 		set(ARCH "gfx${ARCH}")

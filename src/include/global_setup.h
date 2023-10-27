@@ -5,11 +5,19 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+// SYCL headers
+#include <sycl/sycl.hpp>
 // #include <dpct/dpct.hpp>
 //  use middleware targeting to multi-backends
+#include "compile_sycl.h"
+#ifdef COP
+#include "case_setup.h"
+#endif
+#include "Eigen_global_definition.h"
 #include "../../middleware/middle.hpp"
-#include "global_marco.h"
 
+// =======================================================
+//    Global precision settings
 #ifdef USE_DOUBLE
 using real_t = double; // #define real_t double;
 #define _DF(a) a
@@ -18,11 +26,15 @@ using real_t = float; // #define real_t float;
 #define _DF(a) a##f
 #endif //  USE_DOUBLE
 
-#define CJ 0					  // 1: CJ detonation case
-#define NUM_COP (NUM_SPECIES - 1) // number of components
-#define Emax (NUM_SPECIES + 4)	  // maximum number of equations(4+NUM_SPECIES): 0 density, 1 x_momentum, 2 y_momentum, 3 z_momentum, 4 energy
+#define CJ 0 // 1: CJ detonation case
+#define Interface_line _DF(0.01)
 
+// =======================================================
+//    Global __device__ constant
 const real_t _OT = (_DF(1.0) / _DF(3.0));
+const real_t _sxtn = _DF(1.0) / _DF(16.0);
+const real_t _twfr = _DF(1.0) / _DF(24.0);
+const real_t _twle = _DF(1.0) / _DF(12.0);
 const int order_polynominal_fitted = 4;
 const int SPCH_Sz = 9;									  // number of characteristic of compoent,species_cahra[NUM_SPECIES*SPCH_Sz]
 const real_t pi = _DF(3.1415926535897932384626433832795); // M_PI;
@@ -33,6 +45,39 @@ const real_t Tref = _DF(1.0);							  // reference T
 #ifdef Visc
 const real_t kB = _DF(1.3806549 * 1.0e-16); // Boltzmann constant,unit:erg/K=10e-7 J/K
 const real_t NA = _DF(6.02214129 * 1.0e23); // Avogadro constant
+#endif
+
+// constexpr real_t Gamma = 1.4; // 1.666667;
+// for flux Reconstruction order
+// #define PositivityPreserving // #ifdef used, use Lax-Friedrichs(one-order) instead high-order schemes avoiding NAN.
+#define FLUX_method 2 //  0: local LF; 1: global LF, 2: Roe
+#if SCHEME_ORDER > 6
+const int stencil_P = 3;	// "2" for <=6 order, "3"" for >6 order
+const int stencil_size = 8; // "6" for <=6 order, "8"" for >6 order
+#elif SCHEME_ORDER <= 6
+const int stencil_P = 2;	// "2" for <=6 order, "3"" for >6 order
+const int stencil_size = 6; // "6" for <=6 order, "8"" for >6 order
+#endif
+// for nodemisonlizing
+const real_t Reference_params[8] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+// 0: l_ref(unit :m), 1: rho_ref(unit :kg/m3)(air), 2: p_ref(unit :Pa)(air),
+// 3: T_ref(unit :K), 4:W0_ref(air mole mass,unit :g/mol) 5:μ_ref(unit:Pa.s=kg/(m.s))(air)
+// 6: t_ref(unit :s), 7:ReynoldsNumber=rho_ref*u_ref*l_ref/vis_ref
+
+// =======================================================
+//    Artificial_type in Flux Reconstruction
+#if 1 == Artificial_type // ROE
+#define Roe_type _DF(1.0)
+#define LLF_type _DF(0.0)
+#define GLF_type _DF(0.0)
+#elif 2 == Artificial_type // LLF
+#define Roe_type _DF(0.0)
+#define LLF_type _DF(1.0)
+#define GLF_type _DF(0.0)
+#elif 3 == Artificial_type // GLF
+#define Roe_type _DF(0.0)
+#define LLF_type _DF(0.0)
+#define GLF_type _DF(1.0)
 #endif
 
 // All kinds of Boundary Conditions
@@ -60,6 +105,19 @@ enum BoundaryLocation
 	YMAX = 3,
 	ZMIN = 4,
 	ZMAX = 5
+};
+
+enum VdeType
+{
+	ducx = 0,
+	dvcx = 1,
+	dwcx = 2,
+	ducy = 3,
+	dvcy = 4,
+	dwcy = 5,
+	ducz = 6,
+	dvcz = 7,
+	dwcz = 8
 };
 
 enum Specie_chara
@@ -108,6 +166,37 @@ typedef struct
 	real_t LRef;
 } Block;
 
+typedef struct
+{
+	int blast_type, cop_type; // blast_type: 0 for 1d shock , 1 for circular shock //cop_type: 0 for 1d set   , 1 for bubble of cop
+	real_t blast_center_x, blast_center_y, blast_center_z, blast_radius,
+		blast_density_in, blast_density_out, blast_pressure_in, blast_pressure_out,
+		blast_T_in, blast_T_out,
+		blast_u_in, blast_v_in, blast_w_in, blast_u_out, blast_v_out, blast_w_out;
+	real_t cop_center_x, cop_center_y, cop_center_z, cop_radius, cop_density_in,
+		cop_pressure_in, cop_T_in, cop_y1_in, cop_y1_out;
+	real_t Ma, xa, yb, zc, C, _xa2, _yb2, _zc2, _xa2_in, _yb2_in, _zc2_in, _xa2_out, _yb2_out, _zc2_out; //  shock much number
+	real_t bubble_center_x, bubble_center_y, bubble_center_z, bubbleSz;									 //  Note: Domain_length may be the max value of the Domain size
+} IniShape;
+
+typedef struct
+{
+	real_t *species_chara, *Ri, *Wi, *_Wi, *Hia, *Hib, *species_ratio_in, *species_ratio_out, *xi_in, *xi_out; // Ri=Ru/Wi;
+	real_t *fitted_coefficients_visc[NUM_SPECIES], *fitted_coefficients_therm[NUM_SPECIES];					   // length: order_polynominal_fitted
+	real_t *Dkj_matrix[NUM_SPECIES * NUM_SPECIES];
+} Thermal;
+
+typedef struct
+{
+	int *Nu_b_, *Nu_f_, *Nu_d_, *react_type, *third_ind; // for forward && back reaction
+	real_t *React_ThirdCoef, *Rargus;					 // 从文件读的Reaction参数数据放在Rargus这个指针的空间里方便GPU调用，排布顺序是A,B,E,AA,BB,EE
+#ifdef COP_CHEME
+	int *reaction_list[NUM_SPECIES], *reactant_list[NUM_REA], *product_list[NUM_REA], *species_list[NUM_REA], *rns, *rts, *pls, *sls;
+#else
+	int **reaction_list, **reactant_list, **product_list, **species_list, *rns, *rts, *pls, *sls;
+#endif
+} Reaction;
+
 struct BoundaryRange
 {
 	BConditions type;
@@ -121,3 +210,36 @@ struct BoundaryRange
 		ymax = vec[4], zmin = vec[5], zmax = vec[6], tag = vec[7];
 	};
 };
+
+typedef struct
+{
+	// primitive variables
+	real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma, *e;
+	// cop(y) and vis variables
+	real_t *y, *thetaXe, *thetaN2, *thetaXN, *Vde[9], *vxs[3], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+	// Error out: varibles of eigen system
+	real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
+	// Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving
+	real_t *preFwx, *preFwy, *preFwz, *pstFwx, *pstFwy, *pstFwz;
+	// Error out: Ertemp1, Ertemp2: temp1,2 for Dim caculate; others for vis Flux and calculating variables of visFlux;
+	real_t *Ertemp1, *Ertemp2, *visFwx, *visFwy, *visFwz;
+	real_t *Dim_wallx, *hi_wallx, *Yi_wallx, *Yil_wallx;
+	real_t *Dim_wally, *hi_wally, *Yi_wally, *Yil_wally;
+	real_t *Dim_wallz, *hi_wallz, *Yi_wallz, *Yil_wallz;
+} FlowData;
+
+typedef struct
+{
+	int Mtrl_ind;
+	real_t Rgn_ind;			  // indicator for region: inside interface, -1.0 or outside 1.0
+	real_t Gamma, A, B, rho0; // Eos Parameters and maxium sound speed
+	real_t R_0, lambda_0;	  // gas constant and heat conductivity
+} MaterialProperty;
+
+typedef struct
+{
+	int nbX, nbY, nbZ;	  // number of points output along each DIR
+	int minX, minY, minZ; // beginning point of output along each DIR
+	int maxX, maxY, maxZ; // ending point of output along each DIR
+
+} OutSize;

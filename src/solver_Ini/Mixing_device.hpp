@@ -1,6 +1,5 @@
 #pragma once
 
-#include "schemes_device.hpp"
 #include "Thermo_device.hpp"
 /**
  *@brief debug for array

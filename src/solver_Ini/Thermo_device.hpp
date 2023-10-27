@@ -1,6 +1,7 @@
 #pragma once
 
-#include "schemes_device.hpp"
+#include "global_setup.h"
+#include "marcos/marco_thermal.h"
 
 /**
  * @brief calculate Cpi of the specie at given point

@@ -1,4 +1,4 @@
-#include "Utils_block.hpp"
+#include "BCs_kernels.hpp"
 
 float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], real_t *d_UI)
 {

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "schemes_device.hpp"
-#include "Mixing_device.hpp"
+#include "global_setup.h"
+#include "marcos/marco_global.h"
+#include "../read_ini/setupini.h"
 
 void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
 {

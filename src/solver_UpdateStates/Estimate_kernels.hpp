@@ -1,6 +1,8 @@
 #pragma once
 
-#include "Utils_kernels.hpp"
+#include "global_setup.h"
+#include "marcos/marco_global.h"
+#include "../read_ini/setupini.h"
 
 extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool *error_org, bool *error_nan, real_t *UI, real_t *rho, real_t *y)
 {

@@ -1,51 +1,67 @@
-add_executable(${PROJECT_NAME} "main.cpp")
+# # add external submodule
+add_subdirectory(mpiPacks)
+add_subdirectory(read_grid)
+add_subdirectory(read_ini)
 
-# # add sources of basic-solvers
-add_library(cxxsrc
-  STATIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/Fluids.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/LAMNSS.cpp
+find_library(${INIT_SAMPLE} NAMES lib${INIT_SAMPLE}.a HINTS "${LIBRARY_OUTPUT_PATH}")
+
+IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
+  add_library(${INIT_SAMPLE}
+    STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/Fluids.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/LAMNSS.cpp
+  )
+
+  # # add program sub-solvers
+  add_subdirectory(solver_Ini)
+  add_subdirectory(solver_BCs)
+  add_subdirectory(solver_GetDt)
+  add_subdirectory(solver_Reaction)
+  add_subdirectory(solver_UpdateStates)
+  add_subdirectory(solver_Reconstruction)
+  target_include_directories(${INIT_SAMPLE}
+    PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/include
+  )
+
+  IF(USE_MPI)
+    target_link_libraries(${INIT_SAMPLE}
+      PUBLIC
+      mpiPacks
+    )
+  ENDIF()
+
+  IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+    add_sycl_to_target(TARGET ${INIT_SAMPLE})
+  ENDIF()
+
+ELSE()
+  message(STATUS "${${INIT_SAMPLE}} is located at ${CMAKE_CURRENT_SOURCE_DIR}")
+  add_library(${INIT_SAMPLE} STATIC IMPORTED GLOBAL)
+  set_property(TARGET ${INIT_SAMPLE}
+    PROPERTY IMPORTED_LOCATION ${${INIT_SAMPLE}})
+ENDIF()
+
+# # add main implementation
+add_executable(${PROJECT_NAME} "main.cpp")
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+  ${CMAKE_SOURCE_DIR}/src/include
 )
 
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
   add_sycl_to_target(TARGET ${PROJECT_NAME})
-  add_sycl_to_target(TARGET cxxsrc)
 ENDIF()
-
-target_include_directories(cxxsrc
-  PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR})
-
-# # add basic components
-add_subdirectory(read_ini)
-
-# # add external grid read submodule
-add_subdirectory(read_grid)
-
-IF(USE_MPI)
-  add_subdirectory(mpiPacks)
-ENDIF()
-
-add_subdirectory(include)
-add_subdirectory(Schemes)
-add_subdirectory(solver_Ini)
-add_subdirectory(solver_BCs)
-add_subdirectory(solver_GetDt)
-add_subdirectory(solver_Reconstruction)
-add_subdirectory(solver_Viscosity)
-add_subdirectory(solver_Reaction)
-add_subdirectory(solver_UpdateStates)
 
 target_link_libraries(${PROJECT_NAME}
-  PRIVATE
-  cxxsrc
+  PUBLIC
   readini
-  readgrid
+  ${INIT_SAMPLE}
 )
 
 IF(USE_MPI)
   target_link_libraries(${PROJECT_NAME}
-    PRIVATE
+    PUBLIC
     mpiPacks
   )
 ENDIF()

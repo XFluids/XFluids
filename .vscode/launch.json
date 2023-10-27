@@ -7,7 +7,7 @@
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/LAMNSS",
+            "program": "${workspaceFolder}/build/LAMNSS",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
@@ -22,7 +22,7 @@
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/LAMNSS",
+            "program": "${workspaceFolder}/build/LAMNSS",
             "args": [
                 "-dev=1,1,0",
                 // "-mpi=2,1,1",

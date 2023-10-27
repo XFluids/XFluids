@@ -4,42 +4,11 @@
 #include <cstring>
 #include "global_setup.h"
 #include "config/ConfigMap.h" //use readini
+#include "marcos/marco_thermal.h"
 #include "../read_grid/readgrid.h"
-#ifdef COP
-#include "case_setup.h"
-#endif
 #ifdef USE_MPI
-#include "mpiPacks.h"
+#include "../mpiPacks/mpiPacks.h"
 #endif
-
-typedef struct
-{
-	int blast_type, cop_type; // blast_type: 0 for 1d shock , 1 for circular shock //cop_type: 0 for 1d set   , 1 for bubble of cop
-	real_t blast_center_x, blast_center_y, blast_center_z, blast_radius,
-		blast_density_in, blast_density_out, blast_pressure_in, blast_pressure_out,
-		blast_T_in, blast_T_out,
-		blast_u_in, blast_v_in, blast_w_in, blast_u_out, blast_v_out, blast_w_out;
-	real_t cop_center_x, cop_center_y, cop_center_z, cop_radius, cop_density_in,
-		cop_pressure_in, cop_T_in, cop_y1_in, cop_y1_out;
-	real_t Ma, xa, yb, zc, C, _xa2, _yb2, _zc2, _xa2_in, _yb2_in, _zc2_in, _xa2_out, _yb2_out, _zc2_out; //  shock much number
-	real_t bubble_center_x, bubble_center_y, bubble_center_z, bubbleSz;									 //  Note: Domain_length may be the max value of the Domain size
-} IniShape;
-
-typedef struct
-{
-	real_t *species_chara, *Ri, *Wi, *_Wi, *Hia, *Hib, *species_ratio_in, *species_ratio_out, *xi_in, *xi_out; // Ri=Ru/Wi;
-	real_t *fitted_coefficients_visc[NUM_SPECIES], *fitted_coefficients_therm[NUM_SPECIES];				 // length: order_polynominal_fitted
-	real_t *Dkj_matrix[NUM_SPECIES * NUM_SPECIES];
-} Thermal;
-
-#ifdef COP_CHEME
-typedef struct
-{
-	int *Nu_b_, *Nu_f_, *Nu_d_, *react_type, *third_ind; // for forward && back reaction
-	real_t *React_ThirdCoef, *Rargus;					 // 从文件读的Reaction参数数据放在Rargus这个指针的空间里方便GPU调用，排布顺序是A,B,E,AA,BB,EE
-	int *reaction_list[NUM_SPECIES], *reactant_list[NUM_REA], *product_list[NUM_REA], *species_list[NUM_REA], *rns, *rts, *pls, *sls;
-} Reaction;
-#endif // end COP_CHEME
 
 struct AppendParas
 {
@@ -61,10 +30,8 @@ public:
 	IniShape ini;
 	Gridread grid;
 	AppendParas apa;
-	Thermal d_thermal, h_thermal;
-#ifdef COP_CHEME
 	Reaction d_react, h_react;
-#endif // end COP
+	Thermal d_thermal, h_thermal;
 
 	//--for-MPI&Device-----------------------
 	int myRank, nRanks;

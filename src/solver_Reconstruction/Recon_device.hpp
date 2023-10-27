@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Eigen_matrix.hpp"
-#include "schemes_device.hpp"
+#include "global_setup.h"
+#include "marcos/marco_global.h"
+#include "../read_ini/setupini.h"
 
 /**
  * @brief Roe average of value u_l and u_r

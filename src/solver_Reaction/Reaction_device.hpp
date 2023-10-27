@@ -1,7 +1,12 @@
 #pragma once
 
-#include "schemes_device.hpp"
-#include "Thermo_device.hpp"
+#include "global_setup.h"
+#include "marcos/marco_global.h"
+#include "../read_ini/setupini.h"
+
+#ifndef NUM_REA
+#define NUM_REA 1
+#endif // end NUM_REA
 
 /**
  * @brief get_Kf
@@ -101,7 +106,7 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_S
 /**
  * @brief sign for one argus
  */
-real_t sign(real_t a)
+real_t frsign(real_t a)
 {
 	if (a > 0)
 		return _DF(1.0);
@@ -114,9 +119,9 @@ real_t sign(real_t a)
 /**
  * @brief sign for two argus
  */
-real_t sign(real_t a, real_t b)
+real_t frsign(real_t a, real_t b)
 {
-	return sign(b) * sycl::fabs(a);
+	return frsign(b) * sycl::fabs(a);
 }
 
 /**
@@ -166,7 +171,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
 		ascr = sycl::fabs(q[i]);
-		scr2 = sign(_DF(1.0) / y[i], _DF(0.1) * epsmin * ascr - d[i]);
+		scr2 = frsign(_DF(1.0) / y[i], _DF(0.1) * epsmin * ascr - d[i]);
 		scr1 = scr2 * d[i];
 		scrtch = sycl::max(scr1, scrtch);
 		scrtch = sycl::max(scrtch, -sycl::fabs(ascr - d[i]) * scr2);

@@ -159,7 +159,7 @@
 
 ### 5.4. [init] parameters
 
-- #### Some arguments may be invalid due to samples settings kernel function inside /src/sample/
+- #### Some arguments may be invalid due to samples settings kernel function inside /src/solver_Ini/sample/
 
   | name of parameters    |                                  function                                  | type | default value                                    |
   | :-------------------- | :------------------------------------------------------------------------: | :---: | :----------------------------------------------- |

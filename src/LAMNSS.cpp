@@ -1,5 +1,4 @@
 #include "global_class.h"
-#include "marco.h"
 
 LAMNSS::LAMNSS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), nranks(1), physicalTime(0.0)
 {
@@ -1039,54 +1038,54 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 			for (int iVar = 0; iVar < Onbvar; iVar++)
 			{
 #if USE_DOUBLE
-			outHeader << "      <PDataArray type=\"Float64\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+				outHeader << "      <PDataArray type=\"Float64\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
 #else
-			outHeader << "      <PDataArray type=\"Float32\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+				outHeader << "      <PDataArray type=\"Float32\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
 #endif // end USE_DOUBLE
 			}
-		outHeader << "    </PCellData>" << std::endl;
-		// Out put for 2D && 3D;
-		for (int iPiece = 0; iPiece < Ss.mpiTrans->nProcs; ++iPiece)
-		{
-			std::ostringstream pieceFormat;
-			pieceFormat.width(5);
-			pieceFormat.fill('0');
-			pieceFormat << iPiece;
-			std::string pieceFilename = temp_name + "_rank_" + pieceFormat.str() + ".vti";
+			outHeader << "    </PCellData>" << std::endl;
+			// Out put for 2D && 3D;
+			for (int iPiece = 0; iPiece < Ss.mpiTrans->nProcs; ++iPiece)
+			{
+				std::ostringstream pieceFormat;
+				pieceFormat.width(5);
+				pieceFormat.fill('0');
+				pieceFormat << iPiece;
+				std::string pieceFilename = temp_name + "_rank_" + pieceFormat.str() + ".vti";
 // get MPI coords corresponding to MPI rank iPiece
 #if 3 == DIM_X + DIM_Y + DIM_Z
-			int coords[3];
+				int coords[3];
 #else
-			int coords[2];
+				int coords[2];
 #endif
-			Ss.mpiTrans->communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
-			outHeader << " <Piece Extent=\"";
-			// pieces in first line of column are different (due to the special
-			// pvti file format with overlapping by 1 cell)
-			if (coords[0] == 0)
-				outHeader << 0 << " " << VTI.nbX << " ";
-			else
-				outHeader << coords[0] * VTI.nbX << " " << coords[0] * VTI.nbX + VTI.nbX << " ";
+				Ss.mpiTrans->communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
+				outHeader << " <Piece Extent=\"";
+				// pieces in first line of column are different (due to the special
+				// pvti file format with overlapping by 1 cell)
+				if (coords[0] == 0)
+					outHeader << 0 << " " << VTI.nbX << " ";
+				else
+					outHeader << coords[0] * VTI.nbX << " " << coords[0] * VTI.nbX + VTI.nbX << " ";
 
-			if (coords[1] == 0)
-				outHeader << 0 << " " << VTI.nbY << " ";
-			else
-				outHeader << coords[1] * VTI.nbY << " " << coords[1] * VTI.nbY + VTI.nbY << " ";
+				if (coords[1] == 0)
+					outHeader << 0 << " " << VTI.nbY << " ";
+				else
+					outHeader << coords[1] * VTI.nbY << " " << coords[1] * VTI.nbY + VTI.nbY << " ";
 #if 3 == DIM_X + DIM_Y + DIM_Z
-			if (coords[2] == 0)
-				outHeader << 0 << " " << VTI.nbZ << " ";
-			else
-				outHeader << coords[2] * VTI.nbZ << " " << coords[2] * VTI.nbZ + VTI.nbZ << " ";
+				if (coords[2] == 0)
+					outHeader << 0 << " " << VTI.nbZ << " ";
+				else
+					outHeader << coords[2] * VTI.nbZ << " " << coords[2] * VTI.nbZ + VTI.nbZ << " ";
 #else
-			outHeader << 0 << " " << 0;
+				outHeader << 0 << " " << 0;
 #endif
-			outHeader << "\" Source=\"";
-			outHeader << pieceFilename << "\"/>" << std::endl;
-		}
-		outHeader << "</PImageData>" << std::endl;
-		outHeader << "</VTKFile>" << std::endl;
-		// close header file
-		outHeader.close();
+				outHeader << "\" Source=\"";
+				outHeader << pieceFilename << "\"/>" << std::endl;
+			}
+			outHeader << "</PImageData>" << std::endl;
+			outHeader << "</VTKFile>" << std::endl;
+			// close header file
+			outHeader.close();
 		} // end writing pvti header
 	}
 #endif
@@ -1141,356 +1140,356 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 #if DIM_X
 		MARCO_OUTLOOP
 		{
-		real_t tmp = (DIM_X) ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner) + _DF(0.5)) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin : 0.0;
-		outFile.write((char *)&tmp, sizeof(real_t));
+			real_t tmp = (DIM_X) ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner) + _DF(0.5)) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin : 0.0;
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		  //[1]u
 		MARCO_OUTLOOP
 		{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.u[id];
+			real_t tmp = fluids[0]->h_fstate.u[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.u[id] : fluids[1]->h_fstate.u[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.u[id] : fluids[1]->h_fstate.u[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
-		}		  // for i	  // for j		  // for k
-#endif			  // end DIM_X
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i	  // for j		  // for k
+#endif	  // end DIM_X
 #if DIM_Y
 		//[2]y
 		MARCO_OUTLOOP
 		{
-					real_t tmp = (DIM_Y) ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner) + _DF(0.5)) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin : 0.0;
-					outFile.write((char *)&tmp, sizeof(real_t));
+			real_t tmp = (DIM_Y) ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner) + _DF(0.5)) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin : 0.0;
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		  //[3]v
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.v[id];
+			real_t tmp = fluids[0]->h_fstate.v[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.v[id] : fluids[1]->h_fstate.v[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.v[id] : fluids[1]->h_fstate.v[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
-		}		  // for i
-#endif			  // end DIM_Y
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
+#endif	  // end DIM_Y
 #if DIM_Z
 		//[4]z
 		MARCO_OUTLOOP
 		{
-					real_t tmp = (DIM_Z) ? (i - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner) + _DF(0.5)) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin : 0.0;
-					outFile.write((char *)&tmp, sizeof(real_t));
+			real_t tmp = (DIM_Z) ? (i - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner) + _DF(0.5)) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin : 0.0;
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		  //[5]w
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.w[id];
+			real_t tmp = fluids[0]->h_fstate.w[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.w[id] : fluids[1]->h_fstate.w[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.w[id] : fluids[1]->h_fstate.w[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
-		}		  // for i
-#endif			  // end DIM_Z
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
+#endif	  // end DIM_Z
 
 #ifdef ESTIM_NAN
 		if (error)
 		{
 #ifdef Visc // Out content of viscous out estimating Vars
-					for (size_t mm = 0; mm < Emax; mm++)
-					{
-#if DIM_X
-			MARCO_OUTLOOP
+			for (size_t mm = 0; mm < Emax; mm++)
 			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.visFwx[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+#if DIM_X
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.visFwx[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 #endif
 #if DIM_Y
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.visFwy[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.visFwy[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 #endif
 #if DIM_Z
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.visFwz[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.visFwz[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 #endif
-					}
+			}
 
 #ifdef Visc_Diffu
-					for (size_t mm = 0; mm < NUM_SPECIES; mm++)
-					{
-			MARCO_OUTLOOP
+			for (size_t mm = 0; mm < NUM_SPECIES; mm++)
 			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Dkm_aver[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Ertemp1[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Ertemp2[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Dkm_aver[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Ertemp1[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Ertemp2[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 
 #if DIM_X
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Dim_wallx[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.hi_wallx[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Yi_wallx[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Yil_wallx[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Dim_wallx[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.hi_wallx[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Yi_wallx[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Yil_wallx[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 #endif
 #if DIM_Y
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Dim_wally[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.hi_wally[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Yi_wally[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Yil_wally[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Dim_wally[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.hi_wally[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Yi_wally[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Yil_wally[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 #endif
 #if DIM_Z
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Dim_wallz[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.hi_wallz[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Yi_wallz[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.Yil_wallz[mm + NUM_SPECIES * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Dim_wallz[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.hi_wallz[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Yi_wallz[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.Yil_wallz[mm + NUM_SPECIES * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 #endif
-					}
+			}
 #endif
 #endif
 #if DIM_X
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.b1x[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.b3x[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.c2x[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-
-					for (size_t nn = 0; nn < NUM_COP; nn++)
-					{
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.zix[nn + NUM_COP * id];
+				real_t tmp = fluids[0]->h_fstate.b1x[id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-					}
 
-					for (size_t nn = 0; nn < Emax; nn++)
-					{
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.preFwx[nn + Emax * id];
+				real_t tmp = fluids[0]->h_fstate.b3x[id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
+
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.pstFwx[nn + Emax * id];
+				real_t tmp = fluids[0]->h_fstate.c2x[id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-					}
+
+			for (size_t nn = 0; nn < NUM_COP; nn++)
+			{
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.zix[nn + NUM_COP * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+			}
+
+			for (size_t nn = 0; nn < Emax; nn++)
+			{
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.preFwx[nn + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.pstFwx[nn + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+			}
 #endif // end DIM_X
 
 #if DIM_Y
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.b1y[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.b3y[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.c2y[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-					for (size_t nn = 0; nn < NUM_COP; nn++)
-					{
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.ziy[nn + NUM_COP * id];
+				real_t tmp = fluids[0]->h_fstate.b1y[id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-					}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.b3y[id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.c2y[id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			for (size_t nn = 0; nn < NUM_COP; nn++)
+			{
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.ziy[nn + NUM_COP * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+			}
 
-					for (size_t nn = 0; nn < Emax; nn++)
-					{
-			MARCO_OUTLOOP
+			for (size_t nn = 0; nn < Emax; nn++)
 			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.preFwy[nn + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.preFwy[nn + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.pstFwy[nn + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.pstFwy[nn + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-					}
 #endif // end DIM_Y
 #if DIM_Z
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.b1z[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.b3z[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.c2z[id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					}
-					for (size_t nn = 0; nn < NUM_COP; nn++)
-					{
 			MARCO_OUTLOOP
 			{
 				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.ziz[nn + NUM_COP * id];
+				real_t tmp = fluids[0]->h_fstate.b1z[id];
 				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-					}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.b3z[id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.c2z[id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			for (size_t nn = 0; nn < NUM_COP; nn++)
+			{
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.ziz[nn + NUM_COP * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+			}
 
-					for (size_t nn = 0; nn < Emax; nn++)
-					{
-			MARCO_OUTLOOP
+			for (size_t nn = 0; nn < Emax; nn++)
 			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.preFwz[nn + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.preFwz[nn + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_fstate.pstFwz[nn + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_fstate.pstFwz[nn + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-					}
 #endif // end DIM_Z
 
-					for (size_t u = 0; u < Emax; u++)
-					{
-			MARCO_OUTLOOP
+			for (size_t u = 0; u < Emax; u++)
 			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_U[u + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_U[u + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_U1[u + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
+				MARCO_OUTLOOP
+				{
+					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+					real_t tmp = fluids[0]->h_LU[u + Emax * id];
+					outFile.write((char *)&tmp, sizeof(real_t));
+				}
 			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_U1[u + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-			MARCO_OUTLOOP
-			{
-				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-				real_t tmp = fluids[0]->h_LU[u + Emax * id];
-				outFile.write((char *)&tmp, sizeof(real_t));
-			}
-					}
 		}
 #endif // end ESTIM_NAN
 
@@ -1510,96 +1509,96 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.rho[id];
+			real_t tmp = fluids[0]->h_fstate.rho[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		//[7]P
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.p[id];
+			real_t tmp = fluids[0]->h_fstate.p[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.p[id] : fluids[1]->h_fstate.p[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.p[id] : fluids[1]->h_fstate.p[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		  //[8]Gamma
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.gamma[id];
+			real_t tmp = fluids[0]->h_fstate.gamma[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.gamma[id] : fluids[1]->h_fstate.gamma[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.gamma[id] : fluids[1]->h_fstate.gamma[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		//[9]T
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.T[id];
+			real_t tmp = fluids[0]->h_fstate.T[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.T[id] : fluids[1]->h_fstate.T[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.T[id] : fluids[1]->h_fstate.T[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		//[10]e
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 #if 1 == NumFluid
-					real_t tmp = fluids[0]->h_fstate.e[id];
+			real_t tmp = fluids[0]->h_fstate.e[id];
 #elif 2 == NumFluid
-					real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.e[id] : fluids[1]->h_fstate.e[id];
+			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.e[id] : fluids[1]->h_fstate.e[id];
 #endif
-					outFile.write((char *)&tmp, sizeof(real_t));
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 
-		  //[11]vorticity
+		//[11]vorticity
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
-					outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					real_t tmp = fluids[0]->h_fstate.vxs[0][id];
-					outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[0][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					real_t tmp = fluids[0]->h_fstate.vxs[1][id];
-					outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[1][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for j
 		MARCO_OUTLOOP
 		{
-					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-					real_t tmp = fluids[0]->h_fstate.vxs[2][id];
-					outFile.write((char *)&tmp, sizeof(real_t));
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[2][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for k
 
 #ifdef COP
 		//[COP]yii
 		for (int ii = 0; ii < NUM_SPECIES; ii++)
 		{
-					MARCO_OUTLOOP
-					{
-			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
-			outFile.write((char *)&tmp, sizeof(real_t));
-					} // for i
-		}			  // for yii
-#endif				  // end  COP
-	}				  // End Var Output
+			MARCO_OUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			} // for i
+		}	  // for yii
+#endif		  // end  COP
+	}		  // End Var Output
 	outFile << "  </AppendedData>" << std::endl;
 	outFile << "</VTKFile>" << std::endl;
 	outFile.close();
@@ -1645,7 +1644,7 @@ void LAMNSS::Output_plt(int rank, std::ostringstream &timeFormat, std::ostringst
 #if DIM_Z
 	variables_names[index] = "<i>w</i>[m/s]";
 	index++;
-#endif // end DIM_Z
+#endif																	  // end DIM_Z
 	variables_names[index] = "<i><greek>r</greek></i>[kg/m<sup>3</sup>]"; // rho
 	index++;
 	variables_names[index] = "<i>p</i>[Pa]"; // pressure
@@ -1683,27 +1682,27 @@ void LAMNSS::Output_plt(int rank, std::ostringstream &timeFormat, std::ostringst
 	for (int k = VTI.minZ; k < VTI.maxZ + DIM_Z; k++)
 		for (int j = VTI.minY; j < VTI.maxY + DIM_Y; j++)
 		{
-					for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
-			out << dimx * ((i + posx) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin) << " ";
-					out << "\n";
+			for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
+				out << dimx * ((i + posx) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin) << " ";
+			out << "\n";
 		}
 #endif
 #if DIM_Y
 	for (int k = VTI.minZ; k < VTI.maxZ + DIM_Z; k++)
 		for (int j = VTI.minY; j < VTI.maxY + DIM_Y; j++)
 		{
-					for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
-			out << dimy * ((j + posy) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin) << " ";
-					out << "\n";
+			for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
+				out << dimy * ((j + posy) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin) << " ";
+			out << "\n";
 		}
 #endif
 #if DIM_Z
 	for (int k = VTI.minZ; k < VTI.maxZ + DIM_Z; k++)
 		for (int j = VTI.minY; j < VTI.maxY + DIM_Y; j++)
 		{
-					for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
-			out << dimz * ((k + posz) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin) << " ";
-					out << "\n";
+			for (int i = VTI.minX; i < VTI.maxX + DIM_X; i++)
+				out << dimz * ((k + posz) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin) << " ";
+			out << "\n";
 		}
 #endif
 #if DIM_X
@@ -1743,17 +1742,17 @@ void LAMNSS::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 	////method 1/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	for (int k = VTI.minZ; k < VTI.maxZ; k++)
 		for (int j = VTI.minY; j < VTI.maxY; j++)
-					for (int i = VTI.minX; i < VTI.maxX; i++)
-					{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
-			int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
-			Out1 = ((!Ss.OutDIRX) && (pos_x == Ss.outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
-			Out2 = ((!Ss.OutDIRY) && (pos_y == Ss.outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
-			Out3 = ((!Ss.OutDIRZ) && (pos_z == Ss.outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
-			if (Out1 || Out2 || Out3)
-			{
-				if_outrank = rank;
+			for (int i = VTI.minX; i < VTI.maxX; i++)
+			{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
+				int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
+				Out1 = ((!Ss.OutDIRX) && (pos_x == Ss.outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
+				Out2 = ((!Ss.OutDIRY) && (pos_y == Ss.outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
+				Out3 = ((!Ss.OutDIRZ) && (pos_z == Ss.outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
+				if (Out1 || Out2 || Out3)
+				{
+					if_outrank = rank;
+				}
 			}
-					}
 
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->allGather(&(if_outrank), 1, mpiUtils::MpiComm::INT, OutRanks, 1, mpiUtils::MpiComm::INT);
@@ -1931,14 +1930,14 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 #if DIM_Z
 				if (coords[2] == 0)
 					outHeader << 0 << " " << OnbZ << " ";
-			else
+				else
 					outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
 #else
-			outHeader << 0 << " " << 0;
+				outHeader << 0 << " " << 0;
 #endif // end DIM_Z
-			outHeader << "\" Source=\"";
-			outHeader << pieceFilename << "\"/>" << std::endl;
-		}
+				outHeader << "\" Source=\"";
+				outHeader << pieceFilename << "\"/>" << std::endl;
+			}
 		outHeader << "</PImageData>" << std::endl;
 		outHeader << "</VTKFile>" << std::endl;
 		// close header file
@@ -1979,150 +1978,150 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 		for (int iVar = 0; iVar < Onbvar; iVar++)
 		{
 #if USE_DOUBLE
-		outFile << "     <DataArray type=\"Float64\" Name=\"";
+			outFile << "     <DataArray type=\"Float64\" Name=\"";
 #else
-		outFile << "     <DataArray type=\"Float32\" Name=\"";
+			outFile << "     <DataArray type=\"Float32\" Name=\"";
 #endif // end USE_DOUBLE
-		outFile << variables_names.at(iVar)
-				<< "\" format=\"appended\" offset=\""
-				<< iVar * nbX * nbY * nbZ * sizeof(real_t) + iVar * sizeof(unsigned int)
-				<< "\" />" << std::endl;
+			outFile << variables_names.at(iVar)
+					<< "\" format=\"appended\" offset=\""
+					<< iVar * nbX * nbY * nbZ * sizeof(real_t) + iVar * sizeof(unsigned int)
+					<< "\" />" << std::endl;
 		}
-	outFile << "    </CellData>" << std::endl;
-	outFile << "  </Piece>" << std::endl;
-	outFile << "  </ImageData>" << std::endl;
-	outFile << "  <AppendedData encoding=\"raw\">" << std::endl;
-	// write the leading undescore
-	outFile << "_";
-	// then write heavy data (column major format)
-	unsigned int nbOfWords = nbX * nbY * nbZ * sizeof(real_t);
+		outFile << "    </CellData>" << std::endl;
+		outFile << "  </Piece>" << std::endl;
+		outFile << "  </ImageData>" << std::endl;
+		outFile << "  <AppendedData encoding=\"raw\">" << std::endl;
+		// write the leading undescore
+		outFile << "_";
+		// then write heavy data (column major format)
+		unsigned int nbOfWords = nbX * nbY * nbZ * sizeof(real_t);
 #if DIM_X
-	//[0]x
-	MARCO_COUTLOOP
-	{
-		real_t tmp = (DIM_X) ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner) + _DF(0.5)) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin : 0.0;
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[1]u
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.u[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-#endif
-#if DIM_Y
-	//[2]y
-	MARCO_COUTLOOP
-	{
-		real_t tmp = (DIM_Y) ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner) + _DF(0.5)) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin : 0.0;
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[3]v
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.v[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-#endif
-#if DIM_Z
-	//[4]z
-	MARCO_COUTLOOP
-	{
-		real_t tmp = (DIM_Z) ? (i - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner) + _DF(0.5)) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin : 0.0;
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[5]w
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.w[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-#endif
-	//[6]V-c
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.c[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[7]rho
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.rho[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[8]P
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.p[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[9]Gamma
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.gamma[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[10]T
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.T[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[11]e
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.e[id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	//[12]vorticity
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
-		outFile.write((char *)&tmp, sizeof(real_t));
-	}
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.vxs[0][id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	} // for i
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.vxs[1][id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	} // for j
-	MARCO_COUTLOOP
-	{
-		int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-		real_t tmp = fluids[0]->h_fstate.vxs[2][id];
-		outFile.write((char *)&tmp, sizeof(real_t));
-	} // for k
-#ifdef COP
-	//[COP]yii
-	for (int ii = 0; ii < NUM_SPECIES; ii++)
-	{
+		//[0]x
+		MARCO_COUTLOOP
+		{
+			real_t tmp = (DIM_X) ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner) + _DF(0.5)) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin : 0.0;
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[1]u
 		MARCO_COUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-			real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
+			real_t tmp = fluids[0]->h_fstate.u[id];
 			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+#endif
+#if DIM_Y
+		//[2]y
+		MARCO_COUTLOOP
+		{
+			real_t tmp = (DIM_Y) ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner) + _DF(0.5)) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin : 0.0;
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[3]v
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.v[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+#endif
+#if DIM_Z
+		//[4]z
+		MARCO_COUTLOOP
+		{
+			real_t tmp = (DIM_Z) ? (i - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner) + _DF(0.5)) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin : 0.0;
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[5]w
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.w[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+#endif
+		//[6]V-c
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[7]rho
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.rho[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[8]P
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.p[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[9]Gamma
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.gamma[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[10]T
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.T[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[11]e
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.e[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[12]vorticity
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[0][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[1][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for j
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[2][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for k
+#ifdef COP
+		//[COP]yii
+		for (int ii = 0; ii < NUM_SPECIES; ii++)
+		{
+			MARCO_COUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
+				outFile.write((char *)&tmp, sizeof(real_t));
 			}
-	}
+		}
 #endif // end  COP
-	outFile << "  </AppendedData>" << std::endl;
-	outFile << "</VTKFile>" << std::endl;
-	outFile.close();
+		outFile << "  </AppendedData>" << std::endl;
+		outFile << "</VTKFile>" << std::endl;
+		outFile.close();
 	}
 #endif // end DIM_X+DIM_Y+DIM_Z > 1
 }

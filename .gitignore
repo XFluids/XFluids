@@ -34,6 +34,7 @@
 LAMNSS
 
 /obj
+/libs
 /outdata
 build
 build/*

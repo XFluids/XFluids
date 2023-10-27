@@ -1,8 +1,12 @@
 #pragma once
 
-#include "Utils_kernels.hpp"
-#include "Eigen_value.hpp"
-#include "Eigen_callback.h"
+#include "global_setup.h"
+#include "marcos/marco_global.h"
+#include "../read_ini/setupini.h"
+#include "../include/sycl_devices.hpp"
+
+#include "../Recon_device.hpp"
+#include "Eigen_matrix.hpp"
 
 extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,

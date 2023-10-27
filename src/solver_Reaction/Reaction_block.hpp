@@ -1,8 +1,43 @@
-#include "Utils_block.hpp"
+#include "Reaction_kernels.hpp"
 
-void ZeroDimensionalFreelyFlameBlock(Setup &sep)
+void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 {
-	ZeroDimensionalFreelyFlameKernel(sep, 0);
+	real_t xi[NUM_SPECIES], yi[NUM_SPECIES]; // molecular concentration, unit: mol/cm^3; mass fraction
+	memcpy(yi, Ss.h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
+	// get_yi(yi, Ss.h_thermal.Wi);
+	real_t T0 = _DF(1150.0), p0 = _DF(101325.0);
+	real_t R, rho, h, e, T = T0; // h: unit: J/kg // e: enternal energy
+
+	// chemeq2 solver
+	real_t t_start = _DF(0.0), t_end = _DF(5e-4), dt = _DF(2.0e-7), run_time = t_start;
+	std::string outputPrefix = INI_SAMPLE;
+	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "-with_0DFreelyFlameTest_Rank_" + std::to_string(rank) + ".dat";
+	std::ofstream out(file_name);
+	out << "variables= time, <i>T</i>[K]";
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+		out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
+	out << "\nzone t='" << outputPrefix << "'\n";
+	/* Solver loop */
+	while (run_time < t_end + dt)
+	{
+		R = get_CopR(Ss.h_thermal._Wi, yi), rho = p0 / R / T;
+		h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
+		e = h - R * T;					   // enternal energy
+		// T = get_T(Ss.h_thermal, yi, e, T); // update temperature
+		get_xi(xi, yi, Ss.h_thermal._Wi, rho);
+		out << run_time << " " << T;
+		for (int n = 0; n < NUM_SPECIES; n++)
+			out << " " << xi[n];
+		out << "\n";
+
+		real_t Kf[NUM_REA], Kb[NUM_REA];																				// yi[NUM_SPECIES],//get_yi(y, yi, id);
+		get_KbKf(Kf, Kb, Ss.h_react.Rargus, Ss.h_thermal._Wi, Ss.h_thermal.Hia, Ss.h_thermal.Hib, Ss.h_react.Nu_d_, T); // get_e
+		Chemeq2(0, Ss.h_thermal, Kf, Kb, Ss.h_react.React_ThirdCoef, Ss.h_react.Rargus, Ss.h_react.Nu_b_, Ss.h_react.Nu_f_, Ss.h_react.Nu_d_, Ss.h_react.third_ind,
+				Ss.h_react.reaction_list, Ss.h_react.reactant_list, Ss.h_react.product_list, Ss.h_react.rns, Ss.h_react.rts, Ss.h_react.pls, yi, dt, T, rho, e);
+		run_time += dt;
+		// std::cout << "time = " << run_time << ", temp = " << T << "\n";
+	}
+	out.close();
 }
 
 void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)

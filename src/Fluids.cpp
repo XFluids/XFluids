@@ -1,5 +1,11 @@
 #include "global_class.h"
-#include "sycl_blocks.hpp"
+
+#include "sycl_kernels.hpp"
+#include "solver_Ini/Ini_block.hpp"
+#include "solver_BCs/BCs_block.hpp"
+#include "solver_GetDt/GlobalDt_block.hpp"
+#include "solver_Reaction/Reaction_block.hpp"
+#include "solver_Reconstruction/Reconstruction_block.hpp"
 
 Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
 {
@@ -712,7 +718,7 @@ real_t Fluid::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTi
 			out.open(file_name, std::ios::out | std::ios::app);
 			out.setf(std::ios::right);
 
-			out << std::setw(11) << physicalTime << " ";											   // physical time
+			out << std::setw(11) << physicalTime << " "; // physical time
 			/**Theta(XN/(Xe*N2))
 			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(35)
 			 */

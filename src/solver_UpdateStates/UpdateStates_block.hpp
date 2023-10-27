@@ -1,4 +1,5 @@
-#include "Utils_block.hpp"
+#include "Update_kernels.hpp"
+#include "Estimate_kernels.hpp"
 
 bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma, int &error_patched_times)
 {

@@ -2,7 +2,7 @@ add_compile_options(-DUSE_MPI)
 # set(USE_PLT "OFF")
 
 include_directories($ENV{MPI_PATH}/include)
-find_library(MPI_CXX NAMES libmpi.so HINTS "$ENV{MPI_PATH}/lib")
+find_library(MPI_CXX NAMES libmpi.so libmpicxx.so HINTS "$ENV{MPI_PATH}/lib" "$ENV{MPI_PATH}/lib64")
 message(STATUS "MPI settings: ")
 
 IF(EXPLICIT_ALLOC)

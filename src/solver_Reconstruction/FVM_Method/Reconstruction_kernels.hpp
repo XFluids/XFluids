@@ -1,7 +1,9 @@
 #pragma once
 
-#include "Utils_kernels.hpp"
-#include "Riemann_solver.hpp"
+#include "global_setup.h"
+#include "marcos/marco_global.h"
+#include "../read_ini/setupini.h"
+#include "../include/sycl_devices.hpp"
 
 /**
  * @param left_id is the array for right high-order primitive variables reconstruction.

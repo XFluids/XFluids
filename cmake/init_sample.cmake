@@ -23,15 +23,15 @@ ENDIF()
 # // =======================================================
 IF(INIT_SAMPLE MATCHES "read_grid/") # read grid
     set(INIT_SAMPLE "${CMAKE_SOURCE_DIR}/src/${INIT_SAMPLE}")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/read-grid")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/read-grid")
     set(INI_FILE "${INIT_SAMPLE}.ini")
 
 ELSEIF(INIT_SAMPLE STREQUAL "for-debug")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/for-debug")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/for-debug")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-debug${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "guass-wave")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/guass-wave")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/guass-wave")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-guass-wave${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
@@ -40,7 +40,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
     set(COP_CHEME "OFF")
     set(WENO_ORDER "6") # WENOCU6 has the larggest unrubost at Riemann separation
     set(COP_SPECIES "Insert-SBI")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/sharp-interface")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/sharp-interface")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-shock-tube${APPEND}")
 
 # // =======================================================
@@ -53,7 +53,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
         set(COP_SPECIES "1d-mc-insert-shock-tube")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/insert-st")
+        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/insert-st")
         set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-shock-tube${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
@@ -66,7 +66,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
         set(COP_CHEME_TEST "ON")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/reactive-st")
+        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/reactive-st")
         set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-reactive-st${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
@@ -81,7 +81,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
         set(COP_SPECIES "1d-mc-diffusion")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/diffusion")
+        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
         set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-diffusion${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
@@ -97,7 +97,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
         set(POSITIVITY_PRESERVING "OFF")
         add_compile_options(-DDiffuReverse)
         set(COP_SPECIES "1d-mc-diffusion-reverse")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/1D-X-Y-Z/diffusion")
+        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
         set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-diffusion${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
@@ -120,7 +120,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     add_compile_options(-DSBI_WITHOUT_FUEL)
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(COP_SPECIES "Insert-SBI-without-fuel")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
@@ -140,14 +140,14 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
         message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
     endif()
 
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/under-expanded-jet")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/under-expanded-jet")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-expanded-jet${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
@@ -157,7 +157,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(POSITIVITY_PRESERVING "OFF")
     set(REACTION_MODEL "H2O_21_reaction")
     set(COP_SPECIES "Reaction/H2O_21_reaction")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/mixing-layer")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/mixing-layer")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-2d-mixing-layer${APPEND}")
 
 # // =======================================================
@@ -177,7 +177,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
     add_compile_options(-DSBI_WITHOUT_FUEL)
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(COP_SPECIES "Insert-SBI-without-fuel")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
@@ -197,14 +197,14 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
         message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
     endif()
 
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/shock-bubble-intera")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "3d-under-expanded-jet")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "ON")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/under-expanded-jet")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/under-expanded-jet")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-expanded-jet${APPEND}")
 ELSE()
     message(FATAL_ERROR "ini sample isn't given.")
@@ -246,7 +246,7 @@ ELSE(COP)
     add_compile_options(-DNUM_REA=0)
     set(INIT_SAMPLE "not-compoent")
     set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-not-compoent.ini")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/sample/not-compoent")
+    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/not-compoent")
     set(COP_SPECIES "Only one species actived and set Gamma to ${Gamma}") # Be invalid while option COP_CHEME "ON"
 ENDIF(COP)
 
@@ -296,4 +296,17 @@ include_directories(
     BEFORE
     "${COP_SPECIES}"
     "${INI_SAMPLE_PATH}"
+    "${CMAKE_SOURCE_DIR}/src/solver_Reconstruction/viscosity/${VISCOSITY_ORDER}_Order"
 )
+
+IF(${DISCRETIZATION_METHOD} STREQUAL "FDM")
+    include_directories(
+        BEFORE
+        "${CMAKE_SOURCE_DIR}/src/solver_Reconstruction/${DISCRETIZATION_METHOD}_Method"
+        "${CMAKE_SOURCE_DIR}/src/solver_Reconstruction/${DISCRETIZATION_METHOD}_Method/${EIGEN_SYSTEM}_eigen"
+    )
+ENDIF()
+
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/libs/${INIT_SAMPLE})
+set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/libs/${INIT_SAMPLE})
+

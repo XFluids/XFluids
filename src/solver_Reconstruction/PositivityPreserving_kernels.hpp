@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Utils_kernels.hpp"
+#include "Recon_device.hpp"
 
 extern void PositivityPreservingKernel(int i, int j, int k, int id_l, int id_r, Block bl, Thermal thermal,
 													 real_t *UI, real_t *Fl, real_t *Fwall, real_t *T,

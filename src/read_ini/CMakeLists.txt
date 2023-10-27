@@ -1,22 +1,37 @@
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-) # 将本文件内的库文件链接到上一级父文件夹中，父文件夹只需add_subdirectory
-add_library(readini "")
-target_sources(readini
-    PRIVATE
-    setup_ini.cpp
-)
+find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
-IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
-    add_sycl_to_target(TARGET readini SOURCES setup_ini.cpp)
+IF("${readini}" STREQUAL "readini-NOTFOUND")
+    add_library(readini "")
+    target_sources(readini
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/setup_ini.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/config/ConfigMap.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/config/inih/ini.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/config/inih/INIReader.cpp
+        PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/setupini.h
+    )
+    target_include_directories(readini
+        PUBLIC
+        ${CMAKE_SOURCE_DIR}/src/include
+    )
+
+    # #add libs
+    target_link_libraries(readini
+        PUBLIC
+        readgrid
+    )
+
+    IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+        add_sycl_to_target(TARGET readini)
+    ENDIF()
+ELSE()
+    message(STATUS "${readini} is located at ${CMAKE_CURRENT_SOURCE_DIR}")
+    add_library(readini STATIC IMPORTED GLOBAL)
+    set_property(TARGET readini
+        PROPERTY IMPORTED_LOCATION ${readini})
+    target_link_libraries(readini
+        INTERFACE
+        readgrid
+    )
 ENDIF()
-
-# #add libs
-add_subdirectory(config)
-
-target_link_libraries(readini
-    PUBLIC
-    config
-    readgrid
-)
