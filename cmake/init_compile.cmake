@@ -11,8 +11,9 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	IF(SelectDv STREQUAL "cuda")
 		set(ARCH "cc${ARCH}")
 		set(SelectDv "cuda-nvcxx")
+
 		# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system # /opt/nvidia/hpc_sdk/Linux_x86_64/22.11/compilers/bin/nvc++
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress=set_but_not_used,declared_but_not_referenced,used_before_set,code_is_unreachable")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress=set_but_not_used,declared_but_not_referenced,used_before_set,code_is_unreachable,unsigned_compare_with_zero")
 	ELSEIF(SelectDv STREQUAL "hip")
 		set(ARCH "gfx${ARCH}")
 	ENDIF()
@@ -20,7 +21,6 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	add_compile_options(-DDEFINED_OPENSYCL)
 
 	# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
-
 	IF((${CMAKE_BUILD_TYPE} STREQUAL "Debug") OR(SelectDv STREQUAL "omp"))
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
 	ELSE()

@@ -1202,6 +1202,9 @@ void Setup::init()
     BlSz.dy = DIM_Y ? Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
     BlSz.dz = DIM_Z ? Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
 
+    BlSz.Domain_width = Domain_width;
+    BlSz.Domain_height = Domain_height;
+    BlSz.Domain_length = Domain_length;
     BlSz.Domain_xmax = BlSz.Domain_xmin + Domain_length;
     BlSz.Domain_ymax = BlSz.Domain_ymin + Domain_width;
     BlSz.Domain_zmax = BlSz.Domain_zmin + Domain_height;

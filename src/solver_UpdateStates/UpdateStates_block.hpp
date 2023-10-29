@@ -54,7 +54,7 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 	if (*error_nan)
 	{
 		error_patched_times++;
-		std::cout << "Errors of Yi[";
+		std::cout << "\nErrors of Yi[";
 		for (size_t ii = 0; ii < NUM_COP; ii++)
 			std::cout << error_posyi[ii] << ", ";
 		std::cout << error_posyi[NUM_COP] << "] located at (i, j, k)= (";

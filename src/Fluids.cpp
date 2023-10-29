@@ -4,7 +4,9 @@
 #include "solver_Ini/Ini_block.hpp"
 #include "solver_BCs/BCs_block.hpp"
 #include "solver_GetDt/GlobalDt_block.hpp"
+#if defined(COP_CHEME)
 #include "solver_Reaction/Reaction_block.hpp"
+#endif
 #include "solver_Reconstruction/Reconstruction_block.hpp"
 
 Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
@@ -370,10 +372,13 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	eigen_block_x = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
 	eigen_block_y = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
 	eigen_block_z = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
+
+#ifdef SBICounts
 	pVar_max = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 1 - 4) * sizeof(real_t), q)); // calculate Tmax, YiH2O2max, YiHO2max
 	sigma = static_cast<real_t *>(sycl::malloc_shared(2 * sizeof(real_t), q));						  // Ref:https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq(34)
 	theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));						  // Yi(Xe),Yi(N2),Yi(Xe*N2)// Ref.eq(35)
 	interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
+#endif // end SBICounts
 
 #ifdef ESTIM_NAN
 	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));

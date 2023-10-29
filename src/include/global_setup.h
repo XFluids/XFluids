@@ -150,19 +150,20 @@ enum MpiCpyType
 typedef struct
 {
 	//--for-Thread---------------------------
-	int BlockSize;
-	int dim_block_x, dim_block_y, dim_block_z;
+	int dim_block_x, dim_block_y, dim_block_z, BlockSize;
 	//--for-Mesh-----------------------------
 	bool OutBC;
-	int Xmax, Ymax, Zmax;
-	int X_inner, Y_inner, Z_inner;
 	int Bwidth_X, Bwidth_Y, Bwidth_Z; // Bounadry Width
-	real_t Domain_xmin, Domain_ymin, Domain_zmin, Domain_xmax, Domain_ymax, Domain_zmax;
+	int Xmax, Ymax, Zmax, X_inner, Y_inner, Z_inner;
+	//--for-Domain-size----------------------
+	real_t Domain_xmin, Domain_ymin, Domain_zmin;
+	real_t Domain_xmax, Domain_ymax, Domain_zmax;
+	real_t Domain_length, Domain_width, Domain_height;
 	real_t dx, dy, dz, dl, _dx, _dy, _dz, _dl, CFLnumber;
 	//--for-Mpi: mx means number of ranks in x direction, myMpiPos_x means location of this rank in x-dir ranks(from 0 to mx-1)
-	int mx, my, mz, myMpiPos_x, myMpiPos_y, myMpiPos_z;
 	real_t offx, offy, offz;
-    // reference parameters, for calulate coordinate while readgrid
+	int mx, my, mz, myMpiPos_x, myMpiPos_y, myMpiPos_z;
+	// reference parameters, for calulate coordinate while readgrid
 	real_t LRef;
 } Block;
 
