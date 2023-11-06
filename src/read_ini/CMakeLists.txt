@@ -1,3 +1,4 @@
+add_subdirectory(config)
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
@@ -5,9 +6,6 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
     target_sources(readini
         PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/setup_ini.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/config/ConfigMap.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/config/inih/ini.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/config/inih/INIReader.cpp
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/setupini.h
     )
@@ -19,6 +17,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
     # #add libs
     target_link_libraries(readini
         PUBLIC
+        config
         readgrid
     )
 
@@ -26,12 +25,13 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         add_sycl_to_target(TARGET readini)
     ENDIF()
 ELSE()
-    message(STATUS "${readini} is located at ${CMAKE_CURRENT_SOURCE_DIR}")
+    message(STATUS "${readini} is located at ${LIBRARY_OUTPUT_PATH}")
     add_library(readini STATIC IMPORTED GLOBAL)
     set_property(TARGET readini
         PROPERTY IMPORTED_LOCATION ${readini})
     target_link_libraries(readini
         INTERFACE
+        config
         readgrid
     )
 ENDIF()

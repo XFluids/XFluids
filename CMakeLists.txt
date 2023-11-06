@@ -54,7 +54,7 @@ set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "L
 # # 2d-riemann(-shocks/-interruptions-reduce/-interruptions-plus/-shock-interruption) ## only XY DIR support
 # # 2d-shock-bubble, 2d-shock-bubble-without-fuel, 2d-mixing-layer, 2d-under-expanded-jet ## only XY DIR support
 # # 3d-shock-bubble, 3d-shock-bubble-without-fuel, 3d-under-expanded-jet
-set(INIT_SAMPLE "2d-riemann-interruptions-plus") # set INIT_SAMPLE for Initializing settings
+set(INIT_SAMPLE "1d-reactive-st") # set INIT_SAMPLE for Initializing settings
 set(COP_SPECIES "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
 set(REACTION_MODEL "H2O_18_reaction") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 

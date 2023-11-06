@@ -224,8 +224,8 @@ void Setup::ReadThermal()
 
     h_thermal.xi_in = middle::MallocHost<real_t>(h_thermal.xi_in, NUM_SPECIES, q);
     h_thermal.xi_out = middle::MallocHost<real_t>(h_thermal.xi_out, NUM_SPECIES, q);
-    middle::MemCpy<real_t>(h_thermal.xi_in, h_thermal.species_ratio_in, NUM_SPECIES, q);
-    middle::MemCpy<real_t>(h_thermal.xi_out, h_thermal.species_ratio_out, NUM_SPECIES, q);
+    std::memcpy(h_thermal.xi_in, h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
+    std::memcpy(h_thermal.xi_out, h_thermal.species_ratio_out, NUM_SPECIES * sizeof(real_t));
 
     // transfer mole fraction to mess fraction
     get_Yi(h_thermal.species_ratio_out);
@@ -1352,11 +1352,14 @@ void Setup::CpyToGPU()
     for (size_t j = 0; j < NUM_SPECIES; j++)
     {
         h_react.rns[j] = reaction_list[j].size();
-        h_react.reaction_list[j] = middle::MallocHost<int>(h_react.reaction_list[j], h_react.rns[j], q);                          // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rns[j], q));
-        middle::MemCpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j], q, middle::MemCpy_t::HtH); // q.memcpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j]);
+        if (h_react.rns[j] > 0)
+        {
+            h_react.reaction_list[j] = middle::MallocHost<int>(h_react.reaction_list[j], h_react.rns[j], q); // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rns[j], q));
+            memcpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j]);          // q.memcpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j]);
 
-        d_react.reaction_list[j] = middle::MallocDevice<int>(d_react.reaction_list[j], h_react.rns[j], q); // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rns[j], q));
-        middle::MemCpy<int>(d_react.reaction_list[j], h_react.reaction_list[j], h_react.rns[j], q);        // q.memcpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j]);
+            d_react.reaction_list[j] = middle::MallocDevice<int>(d_react.reaction_list[j], h_react.rns[j], q); // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rns[j], q));
+            middle::MemCpy<int>(d_react.reaction_list[j], h_react.reaction_list[j], h_react.rns[j], q);        // q.memcpy(h_react.reaction_list[j], &(reaction_list[j][0]), sizeof(int) * h_react.rns[j]);
+        }
     }
     h_react.rts = middle::MallocHost<int>(h_react.rts, NUM_REA, q); // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
     h_react.pls = middle::MallocHost<int>(h_react.pls, NUM_REA, q); // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
@@ -1369,9 +1372,9 @@ void Setup::CpyToGPU()
         h_react.reactant_list[i] = middle::MallocHost<int>(h_react.reactant_list[i], h_react.rts[i], q);                          // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rts[i], q));
         h_react.product_list[i] = middle::MallocHost<int>(h_react.product_list[i], h_react.pls[i], q);                            // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.pls[i], q));
         h_react.species_list[i] = middle::MallocHost<int>(h_react.species_list[i], h_react.sls[i], q);                            // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.sls[i], q));
-        middle::MemCpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i], q, middle::MemCpy_t::HtH); // q.memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);
-        middle::MemCpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i], q, middle::MemCpy_t::HtH);   // q.memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);
-        middle::MemCpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i], q, middle::MemCpy_t::HtH);   // q.memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);
+        std::memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);                              // q.memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);
+        std::memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);                                // q.memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);
+        std::memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);                                // q.memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);
 
         d_react.reactant_list[i] = middle::MallocDevice<int>(d_react.reactant_list[i], h_react.rts[i], q); // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.rts[i], q));
         d_react.product_list[i] = middle::MallocDevice<int>(d_react.product_list[i], h_react.pls[i], q);   // static_cast<int *>(sycl::malloc_host(sizeof(int) * h_react.pls[i], q));

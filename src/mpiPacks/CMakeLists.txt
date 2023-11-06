@@ -20,7 +20,7 @@ IF(USE_MPI)
 			add_sycl_to_target(TARGET mpiPacks)
 		ENDIF()
 	ELSE()
-		message(STATUS "${mpiPacks} is located at ${CMAKE_CURRENT_SOURCE_DIR}")
+		message(STATUS "${mpiPacks} is located at ${LIBRARY_OUTPUT_PATH}")
 		add_library(mpiPacks STATIC IMPORTED GLOBAL)
 		set_property(TARGET mpiPacks
 			PROPERTY IMPORTED_LOCATION ${mpiPacks})

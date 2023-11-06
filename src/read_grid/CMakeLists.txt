@@ -15,7 +15,7 @@ IF("${readgrid}" STREQUAL "readgrid-NOTFOUND")
     add_sycl_to_target(TARGET readgrid)
   ENDIF()
 ELSE()
-  message(STATUS "${readgrid} is located at ${CMAKE_CURRENT_SOURCE_DIR}")
+  message(STATUS "${readgrid} is located at ${LIBRARY_OUTPUT_PATH}")
   add_library(readgrid STATIC IMPORTED GLOBAL)
   set_property(TARGET readgrid
     PROPERTY IMPORTED_LOCATION ${readgrid})

@@ -27,7 +27,7 @@ IF("${libmpiUtils}" STREQUAL "libmpiUtils-NOTFOUND")
     ${MPI_CXX}
   )
 ELSE()
-  message(STATUS "${libmpiUtils} is located at ${CMAKE_CURRENT_SOURCE_DIR}")
+  message(STATUS "${libmpiUtils} is located at ${LIBRARY_OUTPUT_PATH}")
   add_library(mpiUtils STATIC IMPORTED GLOBAL)
   set_property(TARGET mpiUtils
     PROPERTY IMPORTED_LOCATION ${libmpiUtils})

@@ -1,0 +1,6 @@
+module load apps/OpenSYCL/23.10.0/dtk23.04/gnu-9.3.0
+module load compiler/cmake/3.22.0-rc1
+module load compiler/devtoolset/7.3.1
+module load mpi/hpcx/2.6.0/gcc-7.3.1
+export MPI_PATH=/public/software/mpi/hpcx/v2.6.0/gcc-7.3.1
+module list
