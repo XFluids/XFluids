@@ -8,20 +8,23 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	set(AdaptiveCpp_DIR "/home/ljl/Apps/OpenSYCL/lib/cmake/OpenSYCL")
 	find_package(AdaptiveCpp CONFIG REQUIRED)
 
-	IF(SelectDv STREQUAL "cuda")
+	IF(SelectDv STREQUAL "cuda-nvcxx")
 		set(ARCH "cc${ARCH}")
-		set(SelectDv "cuda-nvcxx")
-
-		# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system # /opt/nvidia/hpc_sdk/Linux_x86_64/22.11/compilers/bin/nvc++
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress=set_but_not_used,declared_but_not_referenced,used_before_set,code_is_unreachable,unsigned_compare_with_zero")
+	ELSEIF(SelectDv STREQUAL "cuda")
+		set(ARCH "sm_${ARCH}")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-cuda-version -Wno-format")
 	ELSEIF(SelectDv STREQUAL "hip")
 		set(ARCH "gfx${ARCH}")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format")
+	ELSE()
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format")
 	ENDIF()
 
 	add_compile_options(-DDEFINED_OPENSYCL)
 
 	# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
-	IF((${CMAKE_BUILD_TYPE} STREQUAL "Debug") OR(SelectDv STREQUAL "omp"))
+	IF((${CMAKE_BUILD_TYPE} STREQUAL "Debug") OR(SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
 	ELSE()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help

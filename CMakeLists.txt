@@ -2,11 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 PROJECT(LAMNSS LANGUAGES CXX)
 
 # // == Compile system =====================================
-# ####  1. oneAPI:       Intel oneAPI compiling system
-# ####  2. OpenSYCL:     OpenSYCL syclcc compiling system
-set(SYCL_COMPILE_SYSTEM "OpenSYCL") # # oneAPI or OpenSYCL
-set(SelectDv "cuda") # which platform for compile options: omp(for host), cuda(for nvidia), hip(for amd)
-set(ARCH "75") # omp: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
+# ####  1. oneAPI: Intel oneAPI compiling system  2. OpenSYCL: OpenSYCL syclcc compiling system
+set(SYCL_COMPILE_SYSTEM "OpenSYCL") # # oneAPI or OpenSYCL compile system,
+set(SelectDv "cuda") # which platform: host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
+set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
 option(USE_MPI "if enable mpi" OFF)
