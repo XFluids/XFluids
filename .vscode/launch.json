@@ -2,6 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "OpenSYCL-debug",
+            "type": "lldb",
+            "request": "launch",
+            "preLaunchTask": "",
+            "postDebugTask": "",
+            "program": "${workspaceFolder}/build/LAMNSS",
+            "args": [
+                "-dev=1,0,0"
+            ],
+        },
+        {
             "name": "util-debug",
             "type": "cppdbg",
             "request": "launch",

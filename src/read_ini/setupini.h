@@ -47,7 +47,7 @@ public:
 
 	//--for-Running--------------------------
 	real_t dt;
-	std::string OutputDir;
+	std::string OutputDir, WorkDir;
 	int OutTimeMethod, nOutTimeStamps;
 	real_t StartTime, EndTime, OutTimeStart, OutTimeStamp, *OutTimeStamps;
 	/**set output time with two methods below:

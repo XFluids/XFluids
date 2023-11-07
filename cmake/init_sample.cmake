@@ -22,23 +22,23 @@ ENDIF()
 # #### util sample
 # // =======================================================
 IF(INIT_SAMPLE MATCHES "read_grid/") # read grid
-    set(INIT_SAMPLE "${CMAKE_SOURCE_DIR}/src/${INIT_SAMPLE}")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/read-grid")
+    set(INIT_SAMPLE "src/${INIT_SAMPLE}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/read-grid")
     set(INI_FILE "${INIT_SAMPLE}.ini")
 
 ELSEIF(INIT_SAMPLE STREQUAL "not-compoent")
     set(COP "OFF")
     set(INIT_SAMPLE "not-compoent")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-not-compoent.ini")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/not-compoent")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/not-compoent")
+    set(INI_FILE "/settings/sa-not-compoent.ini")
 
 ELSEIF(INIT_SAMPLE STREQUAL "for-debug")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/for-debug")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-debug${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/for-debug")
+    set(INI_FILE "/settings/sa-debug${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "guass-wave")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/guass-wave")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-guass-wave${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/guass-wave")
+    set(INI_FILE "/settings/sa-guass-wave${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
     set(OUT_PLT "ON")
@@ -46,8 +46,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
     set(COP_CHEME "OFF")
     set(WENO_ORDER "6") # WENOCU6 has the larggest unrubost at Riemann separation
     set(COP_SPECIES "Insert-SBI")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/sharp-interface")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-shock-tube${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/sharp-interface")
+    set(INI_FILE "/settings/sa-1d-shock-tube${APPEND}")
 
 # // =======================================================
 # #### 1d sample
@@ -60,8 +60,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
         set(COP_SPECIES "1d-mc-insert-shock-tube")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/insert-st")
-        set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-shock-tube${APPEND}")
+        set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/insert-st")
+        set(INI_FILE "/settings/sa-1d-shock-tube${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -74,8 +74,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
         set(COP_CHEME_TEST "ON")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/reactive-st")
-        set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-reactive-st${APPEND}")
+        set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/reactive-st")
+        set(INI_FILE "/settings/sa-1d-reactive-st${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -90,8 +90,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
         set(COP_SPECIES "1d-mc-diffusion")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
-        set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-diffusion${APPEND}")
+        set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
+        set(INI_FILE "/settings/sa-1d-diffusion${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -107,8 +107,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
         set(POSITIVITY_PRESERVING "OFF")
         add_compile_options(-DDiffuReverse)
         set(COP_SPECIES "1d-mc-diffusion-reverse")
-        set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
-        set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-1d-diffusion${APPEND}")
+        set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
+        set(INI_FILE "/settings/sa-1d-diffusion${APPEND}")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -127,8 +127,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shocks") # 2d-riemann(-shocks/-shock-int
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/2D-Riemann/shocks-interaction")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-2d-riemann${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shocks-interaction")
+    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shock-interruption") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(DIM_X "ON")
@@ -141,8 +141,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shock-interruption") # 2d-riemann(-shock
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/2D-Riemann/shock-interruption")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-2d-riemann${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shock-interruption")
+    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-plus") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(DIM_X "ON")
@@ -155,8 +155,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-plus") # 2d-riemann(-shock
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/2D-Riemann/interruptions-plus")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-2d-riemann${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-plus")
+    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(DIM_X "ON")
@@ -169,8 +169,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-sho
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/2D-Riemann/interruptions-reduce")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-2d-riemann${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-reduce")
+    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     set(COP "ON")
@@ -187,8 +187,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     add_compile_options(-DSBI_WITHOUT_FUEL)
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(COP_SPECIES "Insert-SBI-without-fuel")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
+    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(COP "ON")
@@ -208,16 +208,16 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
         message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
     endif()
 
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
+    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
     set(COP "ON")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/under-expanded-jet")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-expanded-jet${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/under-expanded-jet")
+    set(INI_FILE "/settings/sa-expanded-jet${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(COP "ON")
@@ -227,8 +227,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(POSITIVITY_PRESERVING "OFF")
     set(REACTION_MODEL "H2O_21_reaction")
     set(COP_SPECIES "Reaction/H2O_21_reaction")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/mixing-layer")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-2d-mixing-layer${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/mixing-layer")
+    set(INI_FILE "/settings/sa-2d-mixing-layer${APPEND}")
 
 # // =======================================================
 # #### 3d sample
@@ -248,8 +248,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
     add_compile_options(-DSBI_WITHOUT_FUEL)
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(COP_SPECIES "Insert-SBI-without-fuel")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
+    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(COP "ON")
@@ -269,28 +269,28 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
         message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
     endif()
 
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-shock-bubble${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
+    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
 
 ELSEIF(INIT_SAMPLE STREQUAL "3d-under-expanded-jet")
     set(COP "ON")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "ON")
-    set(INI_SAMPLE_PATH "${CMAKE_SOURCE_DIR}/src/solver_Ini/sample/under-expanded-jet")
-    set(INI_FILE "${CMAKE_SOURCE_DIR}/settings/sa-expanded-jet${APPEND}")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/under-expanded-jet")
+    set(INI_FILE "/settings/sa-expanded-jet${APPEND}")
 ELSE()
     message(FATAL_ERROR "ini sample isn't given.")
 ENDIF()
 
-set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/${COP_SPECIES}") # Be invalid while option COP_CHEME "ON"
+set(COP_SPECIES "/runtime.dat/${COP_SPECIES}") # Be invalid while option COP_CHEME "ON"
 
 IF(COP)
     add_compile_options(-DCOP)
 
     IF(COP_CHEME)
         add_compile_options(-DCOP_CHEME)
-        set(COP_SPECIES "${CMAKE_SOURCE_DIR}/runtime.dat/Reaction/${REACTION_MODEL}") # where to read species including reactions
+        set(COP_SPECIES "/runtime.dat/Reaction/${REACTION_MODEL}") # where to read species including reactions
 
         IF(COP_CHEME_TEST)
             add_compile_options(-DODESolverTest)
@@ -356,16 +356,15 @@ message(STATUS "  Sample init sample path: ${INI_SAMPLE_PATH}")
 message(STATUS "  Sample COP  header path: ${COP_SPECIES}")
 message(STATUS "  Sample ini  file   path: ${INI_FILE}")
 
-set(COP_THERMAL_PATH "${CMAKE_SOURCE_DIR}/runtime.dat") # where to read .dat about charactersics of compoent gas
 add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
-add_compile_options(-DIniFile="${INI_FILE}")
 add_compile_options(-DRFile="${COP_SPECIES}")
-add_compile_options(-DRPath="${COP_THERMAL_PATH}")
+add_compile_options(-DIniFile="${INI_FILE}")
+add_compile_options(-DRPath="/runtime.dat") # where to read .dat about charactersics of compoent gas
 
 include_directories(
     BEFORE
-    "${COP_SPECIES}"
-    "${INI_SAMPLE_PATH}"
+    "${CMAKE_SOURCE_DIR}/${COP_SPECIES}"
+    "${CMAKE_SOURCE_DIR}/${INI_SAMPLE_PATH}"
     "${CMAKE_SOURCE_DIR}/src/solver_Reconstruction/viscosity/${VISCOSITY_ORDER}_Order"
 )
 
@@ -377,5 +376,14 @@ IF(${DISCRETIZATION_METHOD} STREQUAL "FDM")
     )
 ENDIF()
 
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/libs/${INIT_SAMPLE})
-set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/libs/${INIT_SAMPLE})
+IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lib${INIT_SAMPLE})
+    set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib${INIT_SAMPLE})
+ELSE()
+    file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/libs/${INIT_SAMPLE})
+    set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/libs/${INIT_SAMPLE})
+ENDIF()
+
+IF(INIT_SAMPLE MATCHES "read_grid/") # read grid
+    set(INIT_SAMPLE "read_grid")
+ENDIF()

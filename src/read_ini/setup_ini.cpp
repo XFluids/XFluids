@@ -3,6 +3,7 @@
  */
 #include <iomanip>
 #include <algorithm>
+#include <filesystem>
 #include "global_setup_function.hpp"
 
 // =======================================================
@@ -40,6 +41,27 @@ std::vector<std::string> AppendParas::match(std::string option)
 }
 
 // =======================================================
+// // // set work dir
+// =======================================================
+std::string getWorkDir(std::string exe_path, std::string exe_name)
+{
+    char cwd[1000];
+    getcwd(cwd, 1000);
+    exe_path = std::string(cwd) + "/" + exe_path;
+    do
+    {
+        int a = exe_path.find_last_of("/");
+        std::cout << exe_path.erase(a) + "/scripts" << std::endl;
+        if (std::filesystem::exists(exe_path.erase(a) + "/scripts"))
+            return exe_path;
+        if (a < 0)
+            break;
+    } while (1);
+    std::cout << "Error: cannot find WorkDir, run executable file under Program Directory." << std::endl;
+    exit(EXIT_FAILURE);
+    return "Error!!!";
+}
+// =======================================================
 // // // struct Setup Member function definitions
 // =======================================================
 Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks(nranks)
@@ -49,10 +71,11 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
 #endif // USE_MPI
 
+    WorkDir = getWorkDir(std::string(argv[0]), "LAMNSS");
     { // // for ini file read
         apa = AppendParas(argc, argv);
         std::vector<std::string> iniapa = apa.match("-ini");
-        std::string ini_path = ((argc < 2) || std::empty(iniapa)) ? std::string(IniFile) : iniapa[0];
+        std::string ini_path = ((argc < 2) || std::empty(iniapa)) ? WorkDir + std::string(IniFile) : iniapa[0];
         ReadIni(broadcast_parameters(ini_path));
     }
 
@@ -60,7 +83,7 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     // // sycl::queue construction
     q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[1]].get_devices()[DeviceSelect[2]]);
     // // NOTE: read_grid
-    grid = Gridread(q, BlSz, std::string(INI_SAMPLE), myRank, nRanks);
+    grid = Gridread(q, BlSz, WorkDir + "/" + std::string(INI_SAMPLE), myRank, nRanks);
 
     // /*begin runtime read , fluid && compoent characteristics set*/
     ReadSpecies(); // 化学反应的组分数太多不能直接放进.ini 文件，等以后实现在ini中读取数组
@@ -104,7 +127,7 @@ void Setup::ReadSpecies()
     h_thermal.species_ratio_in = middle::MallocHost<real_t>(h_thermal.species_ratio_in, NUM_SPECIES, q);   // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));  // real_t species_ratio[NUM_SPECIES]
     h_thermal.species_ratio_out = middle::MallocHost<real_t>(h_thermal.species_ratio_out, NUM_SPECIES, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q)); // real_t species_ratio[NUM_SPECIES]
 
-    std::string path = std::string(RFile) + "/species_list.dat";
+    std::string path = WorkDir + std::string(RFile) + "/species_list.dat";
     std::fstream fins(path);
     for (int n = 0; n < NUM_SPECIES; n++)
         fins >> species_name[n]; // name of the species
@@ -130,9 +153,9 @@ void Setup::ReadThermal()
 
     char Key_word[128];
 #if Thermo
-    std::string apath = std::string(RPath) + "/thermal_dynamics.dat";
+    std::string apath = WorkDir + std::string(RPath) + "/thermal_dynamics.dat";
 #else
-    std::string apath = std::string(RPath) + "/thermal_dynamics_janaf.dat";
+    std::string apath = WorkDir + std::string(RPath) + "/thermal_dynamics_janaf.dat";
 #endif
     std::fstream finc(apath);
     for (int n = 0; n < NUM_SPECIES; n++)
@@ -193,7 +216,7 @@ void Setup::ReadThermal()
     }
     finc.close();
 
-    std::string spath = std::string(RPath) + "/transport_data.dat";
+    std::string spath = WorkDir + std::string(RPath) + "/transport_data.dat";
     std::fstream fint(spath);
     for (size_t i = 0; i < NUM_SPECIES; i++)
     {
@@ -407,7 +430,7 @@ void Setup::ReadReactions()
     h_react.third_ind = middle::MallocHost<int>(h_react.third_ind, NUM_REA, q);                              // static_cast<int *>(sycl::malloc_host(NUM_REA * sizeof(int), q));
 
     char Key_word[128];
-    std::string rpath = std::string(RFile) + "/reaction_list.dat";
+    std::string rpath = WorkDir + std::string(RFile) + "/reaction_list.dat";
     std::ifstream fint(rpath);
     {
         fint.seekg(0);
@@ -597,7 +620,7 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
  */
 void Setup::ReadOmega_table()
 {
-    std::string fpath = std::string(RPath) + "/collision_integral.dat";
+    std::string fpath = WorkDir + std::string(RPath) + "/collision_integral.dat";
     std::ifstream fin(fpath);
     for (int n = 0; n < 8; n++)
         fin >> delta_star[n]; // reduced dipole moment;
