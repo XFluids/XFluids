@@ -92,7 +92,6 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     ReadReactions();
 #endif // end COP_CHEME
     /*end runtime read*/
-
 #ifdef Visc // read && caculate coffes for visicity
     GetFitCoefficient();
 #endif
@@ -644,17 +643,26 @@ void Setup::ReadOmega_table()
 void Setup::GetFitCoefficient()
 {
     ReadOmega_table(); // read Omega_table here for fitting
+    size_t count = NUM_SPECIES * order_polynominal_fitted;
+    real_t *Dkj_matrix = NULL, *fitted_coefficients_visc = NULL, *fitted_coefficients_therm = NULL;
+    Dkj_matrix = middle::MallocHost<real_t>(Dkj_matrix, NUM_SPECIES * NUM_SPECIES * order_polynominal_fitted, q);
+    h_thermal.Dkj_matrix = middle::MallocHost2D<real_t>(Dkj_matrix, NUM_SPECIES * NUM_SPECIES, order_polynominal_fitted, q);
+    fitted_coefficients_visc = middle::MallocHost<real_t>(fitted_coefficients_visc, NUM_SPECIES * order_polynominal_fitted, q);
+    h_thermal.fitted_coefficients_visc = middle::MallocHost2D<real_t>(fitted_coefficients_visc, NUM_SPECIES, order_polynominal_fitted, q);
+    fitted_coefficients_therm = middle::MallocHost<real_t>(fitted_coefficients_therm, NUM_SPECIES * order_polynominal_fitted, q);
+    h_thermal.fitted_coefficients_therm = middle::MallocHost2D<real_t>(fitted_coefficients_therm, NUM_SPECIES, order_polynominal_fitted, q);
+
     for (int k = 0; k < NUM_SPECIES; k++)
-    {                                                                                                                                             // Allocate Mem
-        h_thermal.fitted_coefficients_visc[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);   // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-        h_thermal.fitted_coefficients_therm[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
+    { // Allocate Mem
+        // h_thermal.fitted_coefficients_visc[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);
+        // h_thermal.fitted_coefficients_therm[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q);
 
         real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
         Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_visc[k], 0);  // Visc
         Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_therm[k], 1); // diffu
         for (int j = 0; j < NUM_SPECIES; j++)
-        {                                                                                                                                                   // Allocate Mem
-            h_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocHost<real_t>(h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
+        { // Allocate Mem
+            // h_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocHost<real_t>(h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q);
 
             real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
             if (k <= j)                                                                    // upper triangle
@@ -666,6 +674,17 @@ void Setup::GetFitCoefficient()
             }
         }
     }
+
+    real_t *d_Dkj_matrix, *d_fitted_coefficients_visc, *d_fitted_coefficients_therm;
+    d_Dkj_matrix = middle::MallocDevice<real_t>(d_Dkj_matrix, NUM_SPECIES * NUM_SPECIES * order_polynominal_fitted, q);
+    d_fitted_coefficients_visc = middle::MallocDevice<real_t>(d_fitted_coefficients_visc, NUM_SPECIES * order_polynominal_fitted, q);
+    d_fitted_coefficients_therm = middle::MallocDevice<real_t>(d_fitted_coefficients_therm, NUM_SPECIES * order_polynominal_fitted, q);
+    middle::MemCpy<real_t>(d_Dkj_matrix, Dkj_matrix, NUM_SPECIES * NUM_SPECIES * order_polynominal_fitted, q);
+    middle::MemCpy<real_t>(d_fitted_coefficients_visc, fitted_coefficients_visc, NUM_SPECIES * order_polynominal_fitted, q);
+    middle::MemCpy<real_t>(d_fitted_coefficients_therm, fitted_coefficients_therm, NUM_SPECIES * order_polynominal_fitted, q);
+    d_thermal.Dkj_matrix = middle::MallocDevice2D<real_t>(d_Dkj_matrix, NUM_SPECIES * NUM_SPECIES, order_polynominal_fitted, q);
+    d_thermal.fitted_coefficients_visc = middle::MallocDevice2D<real_t>(d_fitted_coefficients_visc, NUM_SPECIES, order_polynominal_fitted, q);
+    d_thermal.fitted_coefficients_therm = middle::MallocDevice2D<real_t>(d_fitted_coefficients_therm, NUM_SPECIES, order_polynominal_fitted, q);
 }
 
 /**
@@ -972,7 +991,7 @@ real_t Setup::Enthalpy(const real_t T0, const int n)
 /**
  * @brief calculate Hi of Mixture at given point	unit:J/kg/K
  */
-real_t Setup::get_Coph(const real_t yi[NUM_SPECIES], const real_t T)
+real_t Setup::get_Coph(const real_t *yi, const real_t T)
 {
     real_t h = _DF(0.0);
     for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -987,7 +1006,7 @@ real_t Setup::get_Coph(const real_t yi[NUM_SPECIES], const real_t T)
 /**
  * @brief calculate Gamma of the mixture at given point
  */
-real_t Setup::get_CopGamma(const real_t yi[NUM_SPECIES], const real_t T)
+real_t Setup::get_CopGamma(const real_t *yi, const real_t T)
 {
     real_t Cp = _DF(0.0);
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -1127,7 +1146,7 @@ void Setup::ReadIni(ConfigMap configMap)
     // material_properties: 0:fluid_kind; 1:phase_indicator; 2:gamma; 3:A; 4:B;
     // // 5:rho0; 6:R_0; 7:lambda_0; 8:a(rtificial)s(peed of)s(ound)
     fname = Stringsplit(configMap.getString("fluid", "Fluid_Names", ""));
-    for (size_t nn = 0; nn < NumFluid; nn++)
+    for (size_t nn = 0; nn < BlSz.num_fluids; nn++)
     {
         material_props.push_back(Stringsplit<real_t>(configMap.getString("fluid", "Fluid_" + std::to_string(nn) + "_Prop", "")));
 #if defined(COP) // component species and initial mass fraction read
@@ -1217,10 +1236,6 @@ void Setup::ReWrite()
 // =======================================================
 void Setup::init()
 { // set other parameters
-#ifndef MIDDLE_SYCL_ENABLED
-    BlSz.dim_blk = middle::range_t(BlSz.dim_block_x, BlSz.dim_block_y, BlSz.dim_block_z);
-    BlSz.dim_grid = middle::AllocThd(BlSz.X_inner, BlSz.Y_inner, BlSz.Z_inner, BlSz.dim_blk);
-#endif // end non def MIDDLE_SYCL_ENABLED
 
     BlSz.dx = DIM_X ? Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0); //
     BlSz.dy = DIM_Y ? Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
@@ -1341,20 +1356,6 @@ void Setup::CpyToGPU()
     middle::MemCpy<real_t>(d_thermal.xi_in, h_thermal.xi_in, NUM_SPECIES, q);
     middle::MemCpy<real_t>(d_thermal.xi_out, h_thermal.xi_out, NUM_SPECIES, q);
 
-#ifdef Visc
-    for (int k = 0; k < NUM_SPECIES; k++)
-    {                                                                                                                                               // Allocate Mem
-        d_thermal.fitted_coefficients_visc[k] = middle::MallocDevice<real_t>(d_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);   // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-        d_thermal.fitted_coefficients_therm[k] = middle::MallocDevice<real_t>(d_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-        middle::MemCpy<real_t>(d_thermal.fitted_coefficients_visc[k], h_thermal.fitted_coefficients_visc[k], order_polynominal_fitted, q);
-        middle::MemCpy<real_t>(d_thermal.fitted_coefficients_therm[k], h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q);
-        for (int j = 0; j < NUM_SPECIES; j++)
-        {                                                                                                                                                     // Allocate Mem
-            d_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocDevice<real_t>(d_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q); // static_cast<real_t *>(sycl::malloc_host(order_polynominal_fitted * sizeof(real_t), q));
-            middle::MemCpy<real_t>(d_thermal.Dkj_matrix[k * NUM_SPECIES + j], h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q);
-        }
-    }
-#endif // end Visc
 #ifdef COP_CHEME
     d_react.Nu_f_ = middle::MallocDevice<int>(d_react.Nu_f_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
     d_react.Nu_b_ = middle::MallocDevice<int>(d_react.Nu_b_, NUM_REA * NUM_SPECIES, q);                        // static_cast<int *>(sycl::malloc_host(NUM_REA * NUM_SPECIES * sizeof(int), q));
@@ -1529,7 +1530,7 @@ void Setup::print()
     printf("cells' volume less than this vule will be mixed          : %lf\n", mx_vlm);
     printf("cells' volume less than states updated based on mixed    : %lf\n", ext_vlm);
     printf("half-width of level set narrow band                      : %lf\n", BandforLevelset);
-    printf("Number of fluids                                         : %d\n", NumFluid);
+    printf("Number of fluids                                         : %d\n", BlSz.num_fluids);
 #endif // end NumFluid
 #if 2 == NumFluid
     printf("bubble_type: %d and bubble_radius: %lf.\n", ini.bubble_type, ini.bubbleSz);

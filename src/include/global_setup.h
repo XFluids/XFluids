@@ -149,6 +149,10 @@ enum MpiCpyType
 
 typedef struct
 {
+	//--for-Computational-dimensions---------
+	bool DimX, DimY, DimZ;
+	//--for-Solving-system-------------------
+	size_t num_fluids, num_species, num_cop, num_rea, num_eqn;
 	//--for-Thread---------------------------
 	int dim_block_x, dim_block_y, dim_block_z, BlockSize;
 	//--for-Mesh-----------------------------
@@ -172,10 +176,8 @@ typedef struct
 	int blast_type, cop_type; // blast_type: 0 for 1d shock , 1 for circular shock //cop_type: 0 for 1d set   , 1 for bubble of cop
 	real_t blast_center_x, blast_center_y, blast_center_z, blast_radius,
 		blast_density_in, blast_density_out, blast_pressure_in, blast_pressure_out,
-		blast_T_in, blast_T_out,
-		blast_u_in, blast_v_in, blast_w_in, blast_u_out, blast_v_out, blast_w_out;
-	real_t cop_center_x, cop_center_y, cop_center_z, cop_radius, cop_density_in,
-		cop_pressure_in, cop_T_in, cop_y1_in, cop_y1_out;
+		blast_T_in, blast_T_out, blast_u_in, blast_v_in, blast_w_in, blast_u_out, blast_v_out, blast_w_out;
+	real_t cop_center_x, cop_center_y, cop_center_z, cop_radius, cop_density_in, cop_pressure_in, cop_T_in, cop_y1_in, cop_y1_out;
 	real_t Ma, xa, yb, zc, C, _xa2, _yb2, _zc2, _xa2_in, _yb2_in, _zc2_in, _xa2_out, _yb2_out, _zc2_out; //  shock much number
 	real_t bubble_center_x, bubble_center_y, bubble_center_z, bubbleSz;									 //  Note: Domain_length may be the max value of the Domain size
 } IniShape;
@@ -183,8 +185,7 @@ typedef struct
 typedef struct
 {
 	real_t *species_chara, *Ri, *Wi, *_Wi, *Hia, *Hib, *species_ratio_in, *species_ratio_out, *xi_in, *xi_out; // Ri=Ru/Wi;
-	real_t *fitted_coefficients_visc[NUM_SPECIES], *fitted_coefficients_therm[NUM_SPECIES];					   // length: order_polynominal_fitted
-	real_t *Dkj_matrix[NUM_SPECIES * NUM_SPECIES];
+	real_t **Dkj_matrix, **fitted_coefficients_visc, **fitted_coefficients_therm;							   // length: order_polynominal_fitted
 } Thermal;
 
 typedef struct

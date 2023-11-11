@@ -73,6 +73,51 @@ namespace middle
         device.memcpy(dest, src, sizeof(T) * count).wait();
     }
 
+    /**
+     * @param ptr: 1d device memory pointer
+     * @param num_rows:
+     * @param num_cols:
+     */
+    template <typename T>
+    inline T **MallocHost2D(T *ptr, size_t num_rows, size_t num_cols, sycl::queue &queue)
+    {
+        T **return_ptr = static_cast<T **>(sycl::malloc_host(num_rows * sizeof(T **), queue));
+        // T **Bk_return_ptr = return_ptr;
+        // std::cout << Bk_return_ptr << " " << return_ptr << std::endl;
+        for (size_t i = 0; i < num_rows; i++)
+        {
+            return_ptr[i] = ptr + i * num_cols;
+            // std::cout << return_ptr[i] << " ";
+        }
+        // std::cout << std::endl;
+        // queue.memcpy(return_ptr[0], ptr, num_rows * num_cols * sizeof(T)).wait();
+        // sycl::free(Bk_return_ptr, queue);
+
+        return return_ptr;
+    }
+
+    /**
+     * @param ptr: 1d device memory pointer
+     * @param num_rows:
+     * @param num_cols:
+     */
+    template <typename T>
+    inline T **MallocDevice2D(T *ptr, size_t num_rows, size_t num_cols, sycl::queue &queue)
+    {
+        T **return_ptr = static_cast<T **>(sycl::malloc_device(num_rows * sizeof(T **), queue));
+        queue.submit([&](sycl::handler &h) {                                           // PARALLEL;
+                 h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+                     for (size_t i = 0; i < num_rows; i++)
+                     {
+                         return_ptr[i] = ptr + i * num_cols;
+                     }
+                 });
+             })
+            .wait();
+
+        return return_ptr;
+    }
+
     inline void MemCpy(void *dest, void *src, size_t size, device_t &device, MemCpy_t ctype)
     {
         device.memcpy(dest, src, size).wait();

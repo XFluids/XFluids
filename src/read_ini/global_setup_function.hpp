@@ -6,7 +6,7 @@
 /**
  *@brief calculate R for every cell
  */
-real_t get_MixtureR(real_t *species_chara, const real_t yi[NUM_SPECIES])
+real_t get_MixtureR(real_t *species_chara, const real_t *yi)
 {
     real_t R = _DF(0.0);
     for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -19,7 +19,7 @@ real_t get_MixtureR(real_t *species_chara, const real_t yi[NUM_SPECIES])
 /**
  * @brief calculate W of the mixture at given point
  */
-real_t get_MixtureW(Thermal thermal, const real_t yi[NUM_SPECIES])
+real_t get_MixtureW(Thermal thermal, const real_t *yi)
 {
     real_t _W = _DF(0.0);
     for (size_t ii = 0; ii < NUM_SPECIES; ii++)

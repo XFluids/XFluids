@@ -1,5 +1,5 @@
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-	set(SelectDv "omp") # define which platform and devices for compile options: host, nvidia, amd, intel
+	set(SelectDv "host") # define which platform and devices for compile options: host, nvidia, amd, intel
 ENDIF()
 
 # // =======================================================
@@ -24,7 +24,7 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	add_compile_options(-DDEFINED_OPENSYCL)
 
 	# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
-	IF((${CMAKE_BUILD_TYPE} STREQUAL "Debug") OR(SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
+	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
 	ELSE()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
