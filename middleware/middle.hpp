@@ -6,14 +6,10 @@
 // include headers
 // =======================================================
 
-#ifdef MIDDLE_CUDA_ENABLED // target middleware to CUDA backend
+#if defined(MIDDLE_CUDA_ENABLED) // target middleware to CUDA backend
 #include "cuda_backend/middle_cuda.cuh"
-#endif
-
-#ifdef MIDDLE_ROCM_ENABLED // target middleware to ROCm backend
+#elif defined(MIDDLE_ROCM_ENABLED) // target middleware to ROCm backend
 #include "rocm_backend/middle_rocm.hpp"
-#endif
-
-#ifdef MIDDLE_SYCL_ENABLED // target middleware to SYCL backend
+#else // target middleware to SYCL backend
 #include "sycl_backend/middle_sycl.hpp"
 #endif

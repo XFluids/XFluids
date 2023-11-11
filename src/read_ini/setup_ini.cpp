@@ -51,7 +51,7 @@ std::string getWorkDir(std::string exe_path, std::string exe_name)
     do
     {
         int a = exe_path.find_last_of("/");
-        std::cout << exe_path.erase(a) + "/scripts" << std::endl;
+        // std::cout << exe_path.erase(a) + "/scripts" << std::endl;
         if (std::filesystem::exists(exe_path.erase(a) + "/scripts"))
             return exe_path;
         if (a < 0)
@@ -61,6 +61,7 @@ std::string getWorkDir(std::string exe_path, std::string exe_name)
     exit(EXIT_FAILURE);
     return "Error!!!";
 }
+
 // =======================================================
 // // // struct Setup Member function definitions
 // =======================================================

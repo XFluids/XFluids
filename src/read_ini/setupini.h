@@ -1,10 +1,8 @@
 #pragma once
 
-#include <vector>
-#include <cstring>
-#include "global_setup.h"
-#include "config/ConfigMap.h" //use readini
+#include "config/ConfigMap.h"
 #include "marcos/marco_thermal.h"
+#include "../settings/read_json.h"
 #include "../read_grid/readgrid.h"
 #ifdef USE_MPI
 #include "../mpiPacks/mpiPacks.h"
