@@ -63,8 +63,7 @@ public:
 	bool mach_shock, Mach_Modified;
 	// Mach_Modified: if post-shock theroy in Ref0 used(rewrite the value from Devesh Ranjan's theroy in Ref1 used by default):
 	// // Ref0:https://doi.org/10.1016/j.combustflame.2015.10.016 Ref1:https://www.annualreviews.org/doi/10.1146/annurev-fluid-122109-160744
-	std::vector<std::string> fname;		   //, species_name // give a name to the fluid
-	std::string species_name[NUM_SPECIES]; // give a name to the species
+	std::vector<std::string> fname; //, species_name // give a name to the fluid
 	// material properties: 0:material_kind, 1:phase_indicator, 2:gamma, 3:A, 4:B, 5:rho0, 6:R_0, 7:lambda_0, 8:a(rtificial)s(peed of)s(ound)
 	// // material_kind: type of material, 0: gamma gas, 1: water, 2: stiff gas ;// fluid indicator and EOS Parameters
 	std::vector<std::vector<real_t>> material_props, species_ratio;
@@ -75,11 +74,9 @@ public:
 	real_t ext_vlm;			// For cells with volume fraction less than this value, their states are updated based on mixing
 	real_t BandforLevelset; // half-width of level set narrow band
 
-#ifdef COP_CHEME
 	//-----------------*backwardArrhenius------------------//
 	bool BackArre = false;
-	std::vector<int> reaction_list[NUM_SPECIES], reactant_list[NUM_REA], product_list[NUM_REA], species_list[NUM_REA]; // 数组的每一个元素都是一个vector
-#endif // COP_CHEME
+	std::vector<std::vector<int>> reaction_list{NUM_SPECIES}, reactant_list{NUM_REA}, product_list{NUM_REA}, species_list{NUM_REA};
 
 	Setup(int argc, char **argv, int rank = 0, int nranks = 1);
 	void ReadIni(ConfigMap configMap);
