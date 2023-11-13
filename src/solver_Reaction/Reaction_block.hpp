@@ -15,7 +15,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	std::ofstream out(file_name);
 	out << "variables= time, <i>T</i>[K]";
 	for (size_t n = 0; n < NUM_SPECIES; n++)
-		out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
+		out << ", <i>Y(" << species_name[n] << ")</i>[-]";
 	out << "\nzone t='" << outputPrefix << "'\n";
 	/* Solver loop */
 	while (run_time < t_end + dt)
@@ -24,7 +24,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 		h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
 		e = h - R * T;					   // enternal energy
 		// T = get_T(Ss.h_thermal, yi, e, T); // update temperature
-		get_xi(xi, yi, Ss.h_thermal._Wi, rho);
+		get_xi(xi, yi, Ss.h_thermal._Wi, rho, NUM_SPECIES);
 		out << run_time << " " << T;
 		for (int n = 0; n < NUM_SPECIES; n++)
 			out << " " << xi[n];

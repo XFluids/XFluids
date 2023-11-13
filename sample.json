@@ -28,6 +28,13 @@
         "blockSize_z": 8
     },
 
+    "fluid": {
+        "Fluid_Names": ""
+    },
+    "species": {
+        "NUM_SPECIES": 1,
+        "Fluid_Names": ""
+    },
     "init":{
         "Mach_modified": 0,
         "blast_mach": 0.0,
@@ -100,10 +107,13 @@
         "BoundaryBundle_x": [],
         "BoundaryBundle_y": [],
         "BoundaryBundle_z": [],
-        "Boundarys":[3, 3, 3, 3, 3, 3]
-    },
-
-    "fluid":{
-        "Fluid_Names": ""
+        "Boundarys": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+        ]
     }
 }

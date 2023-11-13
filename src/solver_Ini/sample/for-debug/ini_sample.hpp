@@ -55,8 +55,6 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
     // #endif // end COP
 
     //     // // Ini yi
-    //     // real_t yi[NUM_SPECIES];
-    //     // get_yi(_y, yi, id);
     //     real_t *yi = &(_y[NUM_SPECIES * id]);
 
     // //  1d debug set

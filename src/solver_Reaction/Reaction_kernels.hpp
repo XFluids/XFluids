@@ -24,7 +24,7 @@ extern void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal therma
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-	real_t Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP], *yi = &(y[NUM_SPECIES * id]);		   // yi[NUM_SPECIES],//get_yi(y, yi, id);
+	real_t Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP], *yi = &(y[NUM_SPECIES * id]);
 	get_KbKf(Kf, Kb, react.Rargus, thermal._Wi, thermal.Hia, thermal.Hib, react.Nu_d_, T[id]); // get_e
 	// for (size_t n = 0; n < Emax - NUM_COP; n++)
 	// {

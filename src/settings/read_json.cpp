@@ -7,7 +7,7 @@ using interfunc = std::function<int(int *, int)>;
 // // // for json file read
 // =======================================================
 
-std::string json_path = "sa-1d-diffusion-mpi.json";
+std::string json_path = "../sa-1d-diffusion-mpi.json";
 bool is_read_json_success = ReadJson(json_path, j_conf);
 
 // ===================read data from json=======================
@@ -48,8 +48,17 @@ const size_t dim_block_z_json = DIM_Z ? j_conf.at("run").value("blockSize_z", Bl
 const size_t mx_json = DIM_X ? j_conf.at("mpi").value("mx", 1) : 1;
 const size_t my_json = DIM_Y ? j_conf.at("mpi").value("my", 1) : 1;
 const size_t mz_json = DIM_Z ? j_conf.at("mpi").value("mz", 1) : 1;
-vector<size_t> DeviceSelect_json_fault = {1, 1, 0};
-vector<size_t> DeviceSelect_json = j_conf.at("mpi").value("DeviceSelect", DeviceSelect_json_fault);
+const std::vector<size_t> DeviceSelect_json = j_conf.at("mpi").value("DeviceSelect", std::vector<size_t>{1, 1, 0});
+
+// Equations setup
+const std::vector<std::string> species_name = j_conf.at("equations").value("Species_Name", std::vector<std::string>{});
+const size_t Equ_rho = j_conf.at("equations").value("Equ_rho", 1);
+const size_t Equ_energy = j_conf.at("equations").value("Equ_energy", 1);
+const std::vector<size_t> Equ_momentum = j_conf.at("equations").value("Equ_momentum", std::vector<size_t>{1, 1, 1});
+const bool if_overdetermined_eigen = j_conf.at("equations").value("if_overdetermined_eigen", 0) > 0;
+const size_t NUM_SPECIES = species_name.size();
+const size_t NUM_COP = species_name.size() + if_overdetermined_eigen - 1;
+const size_t Emax = species_name.size() + Equ_rho + Equ_momentum[0] + Equ_momentum[1] + Equ_momentum[2] + Equ_energy + if_overdetermined_eigen;
 
 // Mesh setup
 const real_t Domain_length_json = j_conf.at("mesh").value("DOMAIN_length", 1.0);
@@ -72,16 +81,11 @@ const real_t width_hlf_json = j_conf.at("mesh").value("width_hlf", 2.0);
 const real_t mx_vlm_json = j_conf.at("mesh").value("mx_vlm", 0.5);
 const real_t ext_vlm_json = j_conf.at("mesh").value("ext_vlm", 0.5);
 const real_t BandforLevelset_json = j_conf.at("mesh").value("BandforLevelset", 6.0);
-const vector<size_t> NBoundarys_json_fault = {2, 2, 2};
-const vector<size_t> Boundary_x_json_fault = {2, 0, 0, 0, 0, 0, 0, 1};
-const vector<size_t> Boundary_y_json_fault = {2, 0, 0, 0, 0, 0, 0, 1};
-const vector<size_t> Boundary_z_json_fault = {2, 0, 0, 0, 0, 0, 0, 1};
-const vector<size_t> Boundarys_json_fault = {3, 3, 3, 3, 3, 3};
-const vector<size_t> NBoundarys_json = j_conf.at("mesh").value("BoundaryBundles", NBoundarys_json_fault);
-const vector<size_t> Boundary_x_json = j_conf.at("mesh").value("BoundaryBundle_x", Boundary_x_json_fault);
-const vector<size_t> Boundary_y_json = j_conf.at("mesh").value("BoundaryBundle_y", Boundary_y_json_fault);
-const vector<size_t> Boundary_z_json = j_conf.at("mesh").value("BoundaryBundle_z", Boundary_z_json_fault);
-const vector<size_t> Boundarys_json = j_conf.at("mesh").value("Boundarys", Boundarys_json_fault);
+const vector<size_t> NBoundarys_json = j_conf.at("mesh").value("BoundaryBundles", std::vector<size_t>{2, 2, 2});
+const vector<size_t> Boundary_x_json = j_conf.at("mesh").value("BoundaryBundle_x", std::vector<size_t>{2, 0, 0, 0, 0, 0, 0, 1});
+const vector<size_t> Boundary_y_json = j_conf.at("mesh").value("BoundaryBundle_y", std::vector<size_t>{2, 0, 0, 0, 0, 0, 0, 1});
+const vector<size_t> Boundary_z_json = j_conf.at("mesh").value("BoundaryBundle_z", std::vector<size_t>{2, 0, 0, 0, 0, 0, 0, 1});
+const vector<size_t> Boundarys_json = j_conf.at("mesh").value("Boundarys", std::vector<size_t>{3, 3, 3, 3, 3, 3});
 
 // fluid setup
 const string fname_json = j_conf.at("fluid").value("Fluid_Names", "");

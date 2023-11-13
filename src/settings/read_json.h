@@ -21,8 +21,6 @@
 
 extern nlohmann::json j_conf;
 // ==============================read data from json================================
-// pwd
-extern const std::string WorkDir_json;
 // run
 extern const size_t OutTimeMethod_json;
 extern const size_t nOutTimeStamps_json;
@@ -55,7 +53,19 @@ extern const size_t dim_block_z_json;
 extern const size_t mx_json;
 extern const size_t my_json;
 extern const size_t mz_json;
-extern std::vector<size_t> DeviceSelect_json;
+extern const std::vector<size_t> DeviceSelect_json;
+
+// equations
+extern const std::string fname_json;				// Fluid_Names
+extern const std::vector<std::string> species_name; // Spiece_Names
+extern const size_t Equ_rho;
+extern const size_t Equ_energy;
+extern const std::vector<size_t> Equ_momentum;
+extern const bool if_overdetermined_eigen;
+extern const size_t NUM_COP;
+extern const size_t NUM_SPECIES;
+extern const size_t Emax;
+// extern const string
 
 // mesh
 extern const real_t Domain_length_json; // DOMAIN_length
@@ -83,10 +93,6 @@ extern const std::vector<size_t> Boundary_x_json; // BoundaryBundle_xyz
 extern const std::vector<size_t> Boundary_y_json;
 extern const std::vector<size_t> Boundary_z_json;
 extern const std::vector<size_t> Boundarys_json;
-
-// fluid
-extern const std::string fname_json; // Fluid_Names
-// extern const string
 
 // init
 extern const size_t Mach_Modified_json; // Mach_modified

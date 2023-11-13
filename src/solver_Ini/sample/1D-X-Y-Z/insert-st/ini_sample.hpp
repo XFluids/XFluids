@@ -55,10 +55,6 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
            //     _y[i][id] = thermal.species_ratio_out[i];
 #endif // end COP
 
-        // // Ini yi
-        // real_t yi[NUM_SPECIES];
-        // get_yi(_y, yi, id);
-
         // // 1D multicomponent insert shock tube
         // // x
 #if DIM_X

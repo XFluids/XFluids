@@ -124,13 +124,15 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
 // =======================================================
 void Setup::ReadSpecies()
 {                                                                                                          // compoent in or out bubble differs
-    h_thermal.species_ratio_in = middle::MallocHost<real_t>(h_thermal.species_ratio_in, NUM_SPECIES, q);   // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));  // real_t species_ratio[NUM_SPECIES]
-    h_thermal.species_ratio_out = middle::MallocHost<real_t>(h_thermal.species_ratio_out, NUM_SPECIES, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q)); // real_t species_ratio[NUM_SPECIES]
+    h_thermal.species_ratio_in = middle::MallocHost<real_t>(h_thermal.species_ratio_in, NUM_SPECIES, q);   // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+    h_thermal.species_ratio_out = middle::MallocHost<real_t>(h_thermal.species_ratio_out, NUM_SPECIES, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
 
     std::string path = WorkDir + std::string(RFile) + "/species_list.dat";
     std::fstream fins(path);
-    for (int n = 0; n < NUM_SPECIES; n++)
-        fins >> species_name[n]; // name of the species
+    std::string buffer;
+    getline(fins, buffer);
+    // for (int n = 0; n < NUM_SPECIES; n++)
+    //     fins >> species_name[n]; // name of the species
 #ifdef COP
     for (int n = 0; n < NUM_SPECIES; n++) // molar ratio
         fins >> h_thermal.species_ratio_out[n];
@@ -144,12 +146,12 @@ void Setup::ReadSpecies()
 // =======================================================
 void Setup::ReadThermal()
 {
-    h_thermal.species_chara = middle::MallocHost<real_t>(h_thermal.species_chara, NUM_SPECIES * SPCH_Sz, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * SPCH_Sz * sizeof(real_t), q)); // new real_t[NUM_SPECIES * SPCH_Sz];
-    h_thermal.Ri = middle::MallocHost<real_t>(h_thermal.Ri, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));                      // new real_t[NUM_SPECIES];
-    h_thermal.Wi = middle::MallocHost<real_t>(h_thermal.Wi, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));                      // new real_t[NUM_SPECIES];
-    h_thermal._Wi = middle::MallocHost<real_t>(h_thermal._Wi, NUM_SPECIES, q);                               // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));                      // new real_t[NUM_SPECIES];
-    h_thermal.Hia = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 7 * 3 * sizeof(real_t), q));             // Hia = new real_t[NUM_SPECIES * 7 * 3];
-    h_thermal.Hib = middle::MallocHost<real_t>(h_thermal.Hib, NUM_SPECIES * 2 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 2 * 3 * sizeof(real_t), q));             // Hib = new real_t[NUM_SPECIES * 2 * 3];
+    h_thermal.species_chara = middle::MallocHost<real_t>(h_thermal.species_chara, NUM_SPECIES * SPCH_Sz, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * SPCH_Sz * sizeof(real_t), q));
+    h_thermal.Ri = middle::MallocHost<real_t>(h_thermal.Ri, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+    h_thermal.Wi = middle::MallocHost<real_t>(h_thermal.Wi, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+    h_thermal._Wi = middle::MallocHost<real_t>(h_thermal._Wi, NUM_SPECIES, q);                               // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+    h_thermal.Hia = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 7 * 3 * sizeof(real_t), q));
+    h_thermal.Hib = middle::MallocHost<real_t>(h_thermal.Hib, NUM_SPECIES * 2 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 2 * 3 * sizeof(real_t), q));
 
     char Key_word[128];
 #if Thermo

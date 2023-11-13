@@ -1,5 +1,4 @@
 {
-    "pwd": "/home/ljl/Downloads/LAMNSS-JSON",
     "run":{
         "blockSize_x": 8,
         "blockSize_y": 8,    
@@ -25,6 +24,15 @@
         ]
     },
 
+    "equations": {
+        "Fluid_Names": [],
+        "Species_Name": [
+            "O2",
+            "N2",
+            "H2O",
+            "CH4"
+        ]
+    },
     "mesh":{
         "DOMAIN_length" : 0.05,
         "DOMAIN_width" : 0.05,

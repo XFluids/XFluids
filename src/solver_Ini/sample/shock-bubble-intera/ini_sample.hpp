@@ -32,7 +32,7 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
     real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
 #ifdef COP
-    real_t *xi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES] = {0.0};
+    real_t *xi = &(_y[NUM_SPECIES * id]);
     // for 2D/3D shock-bubble interactive
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
     // real_t dy_in = _DF(0.0), dy_out = _DF(0.0);
@@ -176,7 +176,7 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
     // // Ini yi
     // get_yi(_y, yi, id);
     // Get R of mixture
-    real_t *yi = &(_y[NUM_SPECIES * id]); //[NUM_SPECIES];
+    real_t *yi = &(_y[NUM_SPECIES * id]);
 
     real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id];

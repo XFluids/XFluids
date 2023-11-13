@@ -10,10 +10,10 @@
 // #include <dpct/dpct.hpp>
 //  use middleware targeting to multi-backends
 #include "compile_sycl.h"
-#ifdef COP
-#include "case_setup.h"
-#endif
-#include "Eigen_global_definition.h"
+// #ifdef COP
+// #include "case_setup.h"
+// #endif
+// #include "Eigen_global_definition.h"
 #include "../../middleware/middle.hpp"
 
 // =======================================================
