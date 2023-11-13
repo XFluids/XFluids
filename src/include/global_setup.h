@@ -190,13 +190,9 @@ typedef struct
 
 typedef struct
 {
-	int *Nu_b_, *Nu_f_, *Nu_d_, *react_type, *third_ind; // for forward && back reaction
 	real_t *React_ThirdCoef, *Rargus;					 // 从文件读的Reaction参数数据放在Rargus这个指针的空间里方便GPU调用，排布顺序是A,B,E,AA,BB,EE
-#ifdef COP_CHEME
-	int *reaction_list[NUM_SPECIES], *reactant_list[NUM_REA], *product_list[NUM_REA], *species_list[NUM_REA], *rns, *rts, *pls, *sls;
-#else
+	int *Nu_b_, *Nu_f_, *Nu_d_, *react_type, *third_ind; // for forward && back reaction
 	int **reaction_list, **reactant_list, **product_list, **species_list, *rns, *rts, *pls, *sls;
-#endif
 } Reaction;
 
 struct BoundaryRange

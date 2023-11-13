@@ -74,11 +74,9 @@ public:
 	real_t ext_vlm;			// For cells with volume fraction less than this value, their states are updated based on mixing
 	real_t BandforLevelset; // half-width of level set narrow band
 
-#ifdef COP_CHEME
 	//-----------------*backwardArrhenius------------------//
 	bool BackArre = false;
-	std::vector<int> reaction_list[NUM_SPECIES], reactant_list[NUM_REA], product_list[NUM_REA], species_list[NUM_REA]; // 数组的每一个元素都是一个vector
-#endif // COP_CHEME
+	std::vector<std::vector<int>> reaction_list{NUM_SPECIES}, reactant_list{NUM_REA}, product_list{NUM_REA}, species_list{NUM_REA};
 
 	Setup(int argc, char **argv, int rank = 0, int nranks = 1);
 	void ReadIni(ConfigMap configMap);

@@ -56,7 +56,7 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *_Wi, real_t *Hia, 
 /**
  * @brief QSSAFun
  */
-void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t yi[NUM_SPECIES], Thermal thermal, real_t *React_ThirdCoef,
+void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t *yi, Thermal thermal, real_t *React_ThirdCoef,
 			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
 {
