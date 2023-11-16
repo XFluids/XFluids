@@ -61,7 +61,7 @@ struct MpiTrans
 	MpiData *d_mpiData, *h_mpiData;
 #endif // end EXPLICIT_ALLOC
 	MpiTrans(Block &bl, BConditions const Boundarys[6]);
-	long double AllocMemory(middle::device_t &q, Block &bl, const int N); // might not need to allocate mem as in LAMNSS
+	long double AllocMemory(middle::device_t &q, Block &bl, const int N); // might not need to allocate mem as in XFLUIDS
 	void MpiTransBuf(middle::device_t &q, Direction Dir);
 	int MpiAllReduce(int &var, int Option);
 	real_t MpiAllReduce(real_t &var, int Option);

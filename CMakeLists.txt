@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-PROJECT(LAMNSS LANGUAGES CXX)
+PROJECT(XFLUIDS LANGUAGES CXX)
 
 # // == Compile system =====================================
 # ####  1. oneAPI: Intel oneAPI compiling system  2. OpenSYCL: OpenSYCL syclcc compiling system

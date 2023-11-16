@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------------------------------------------------
-//   This file is a main implemrntation of LAMNSS
+//   This file is a main implemrntation of XFLUIDS
 //-----------------------------------------------------------------------------------------------------------------------
 //
-//  LAMNSS is a parallelized C++ solver for multi-component reacting flow dynamics.
+//  XFLUIDS is a parallelized C++ solver for multi-component reacting flow dynamics.
 //  It allows for large-scale high-resolution sharp-interface modeling  of both incompressible
 //  and compressible multiphase flows.
 //
@@ -13,7 +13,7 @@
 //
 // LICENSE
 //
-// LAMNSS - Large-scale Architecture-independent Multi-component reacting Navier-Strokes equation Solver
+// XFLUIDS - Large-scale Architecture-independent Multi-component reacting Navier-Strokes equation Solver
 // Copyright (C) 2023 JinLing Li and contributors (see AUTHORS list)
 //
 // This program is free software: you can redistribute it and/or modify it under
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	// // Setup Initialize
 	Setup setup(argc, argv);
 	// // Solver Construction
-	LAMNSS solver(setup);
+	XFLUIDS solver(setup);
 	// // AllocateMemory
 	solver.AllocateMemory(setup.q);
 	// // Initialize original states

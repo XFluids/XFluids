@@ -9,7 +9,7 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   add_library(${INIT_SAMPLE}
     STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Fluids.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/LAMNSS.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/XFLUIDS.cpp
   )
 
   # # add program sub-solvers

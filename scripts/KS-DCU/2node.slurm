@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J MPI-LAMNSS			#指定作业名称
+#SBATCH -J MPI-XFLUIDS			#指定作业名称
 #SBATCH -p kshdnormal
 #SBATCH -N 2  	 		#指定节点数量
 #SBATCH --ntasks-per-node=4	#指定每节点的任务数量,默认每个任务一个 CPU 核心
@@ -23,7 +23,7 @@ srun hostname |sort |uniq -c |awk '{printf "%s slots=4\n",$2}' > $hostfile
 
 
 echo $SLURM_NTASKS
-mpirun -np $SLURM_NTASKS --allow-run-as-root --hostfile $hostfile --bind-to numa /public/home/ljlnwpu/LAMNSS-test/build/LAMNSS -mpi=$SLURM_NTASKS,1,1 -dev=4,0,0
+mpirun -np $SLURM_NTASKS --allow-run-as-root --hostfile $hostfile --bind-to numa ../../build/XFLUIDS -mpi=$SLURM_NTASKS,1,1 -dev=4,0,0
 
 rm -rf $hostfile
 

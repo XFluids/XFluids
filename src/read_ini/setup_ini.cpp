@@ -75,7 +75,7 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     // // sycl::queue construction
     q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[1]].get_devices()[DeviceSelect[2]]);
     // // get Work directory
-    WorkDir = getWorkDir(std::string(argv[0]), "LAMNSS");
+    WorkDir = getWorkDir(std::string(argv[0]), "XFLUIDS");
     // // NOTE: read_grid
     grid = Gridread(q, BlSz, WorkDir + "/" + std::string(INI_SAMPLE), myRank, nRanks);
 

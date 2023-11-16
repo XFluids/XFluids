@@ -18,7 +18,7 @@
 //								Pre-claimer
 //-------------------------------------------------------------------------------------------------
 class Fluid;
-class LAMNSS;
+class XFLUIDS;
 
 class Fluid
 {
@@ -56,7 +56,7 @@ public:
     void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
 };
 
-class LAMNSS
+class XFLUIDS
 {
     Setup Ss;
     OutSize VTI, PLT, CPT;
@@ -68,8 +68,8 @@ public:
     BConditions *d_BCs; // boundary condition indicators
     std::vector<Fluid *> fluids{NumFluid};
 
-    LAMNSS(Setup &setup);
-    virtual ~LAMNSS();
+    XFLUIDS(Setup &setup);
+    virtual ~XFLUIDS();
     // Memory manage
     void AllocateMemory(sycl::queue &q);
     void CopyDataFromDevice(sycl::queue &q, bool error);
