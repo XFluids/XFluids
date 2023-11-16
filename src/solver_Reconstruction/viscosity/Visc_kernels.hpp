@@ -242,13 +242,13 @@ extern void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal therm
 #endif // DIM_Z
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	// get mole fraction of each specie
-	real_t X[NUM_SPECIES] = {_DF(0.0)}; //, yi[NUM_SPECIES] = {_DF(0.0)};
+	real_t X[MAX_SPECIES] = {_DF(0.0)}; //, yi[NUM_SPECIES] = {_DF(0.0)};
 #ifdef Visc_Diffu
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
 		hi[ii + NUM_SPECIES * id] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id], thermal.Ri[ii], ii);
 #endif									 // end Visc_Diffu
 	real_t *yi = &(y[NUM_SPECIES * id]); // get_yi(y, yi, id);
-	real_t C_total = get_xi(X, yi, thermal._Wi, rho[id], NUM_SPECIES);
+	real_t C_total = get_xi(X, yi, thermal._Wi, rho[id]);
 	//  real_t *temp = &(Dkm_aver[NUM_SPECIES * id]);
 	//  real_t *temp = &(hi[NUM_SPECIES * id]);
 	Get_transport_coeff_aver(i, j, k, thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id],

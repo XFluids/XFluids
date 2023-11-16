@@ -33,6 +33,7 @@
 
 LAMNSS
 
+/settings/settings
 /obj
 /libs
 /outdata
@@ -46,6 +47,3 @@ build/*
 /ISBI-*
 /RSBI-*
 ~$*
-*/read_grid/*.dat
-*/read_grid/*.inp
-*/read_grid/*.xyz

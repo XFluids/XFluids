@@ -66,7 +66,7 @@ public:
     int Iteration, rank, nranks;
     float duration, duration_backup, MPI_trans_time, MPI_BCs_time;
     BConditions *d_BCs; // boundary condition indicators
-    Fluid *fluids[NumFluid];
+    std::vector<Fluid *> fluids{NumFluid};
 
     LAMNSS(Setup &setup);
     virtual ~LAMNSS();

@@ -7,17 +7,24 @@
 #include <cstring>
 // SYCL headers
 #include <sycl/sycl.hpp>
-// #include <dpct/dpct.hpp>
+
+#ifdef COP
+#include "case_setup.h"
+#endif
+#include "Eigen_global_definition.h"
 //  use middleware targeting to multi-backends
-#include "compile_sycl.h"
-// #ifdef COP
-// #include "case_setup.h"
-// #endif
-// #include "Eigen_global_definition.h"
 #include "../../middleware/middle.hpp"
 
+#include "global_undef.h"
+#include "compile_sycl.h"
+// #define Emax 13
+// #define NUM_COP 8
+// #define NUM_REA 18
+// #define NUM_SPECIES 9
+#define MAX_SPECIES NUM_SPECIES
+
 // =======================================================
-//    Global precision settings
+//    Global Precision settings
 #ifdef USE_DOUBLE
 using real_t = double; // #define real_t double;
 #define _DF(a) a
@@ -153,10 +160,7 @@ typedef struct
 	bool DimX, DimY, DimZ;
 	//--for-Solving-system-------------------
 	size_t num_fluids, num_species, num_cop, num_rea, num_eqn;
-	//--for-Thread---------------------------
-	int dim_block_x, dim_block_y, dim_block_z, BlockSize;
 	//--for-Mesh-----------------------------
-	bool OutBC;
 	int Bwidth_X, Bwidth_Y, Bwidth_Z; // Bounadry Width
 	int Xmax, Ymax, Zmax, X_inner, Y_inner, Z_inner;
 	//--for-Domain-size----------------------
@@ -173,13 +177,20 @@ typedef struct
 
 typedef struct
 {
-	int blast_type, cop_type; // blast_type: 0 for 1d shock , 1 for circular shock //cop_type: 0 for 1d set   , 1 for bubble of cop
+	// cop_type: 0 for 1d set, 1 for bubble of cop
+	// blast_type: 0 for 1d shock, 1 for circular shock
+	int cop_type, blast_type, bubble_type;
+	// blast position and states
 	real_t blast_center_x, blast_center_y, blast_center_z, blast_radius,
 		blast_density_in, blast_density_out, blast_pressure_in, blast_pressure_out,
 		blast_T_in, blast_T_out, blast_u_in, blast_v_in, blast_w_in, blast_u_out, blast_v_out, blast_w_out;
-	real_t cop_center_x, cop_center_y, cop_center_z, cop_radius, cop_density_in, cop_pressure_in, cop_T_in, cop_y1_in, cop_y1_out;
-	real_t Ma, xa, yb, zc, C, _xa2, _yb2, _zc2, _xa2_in, _yb2_in, _zc2_in, _xa2_out, _yb2_out, _zc2_out; //  shock much number
-	real_t bubble_center_x, bubble_center_y, bubble_center_z, bubbleSz;									 //  Note: Domain_length may be the max value of the Domain size
+	// bubble position
+	real_t cop_center_x, cop_center_y, cop_center_z, cop_radius, cop_density_in, cop_pressure_in, cop_T_in;
+	real_t Ma; // shock much number
+	// bubble position; NOTE: Domain_length may be the max value of the Domain size
+	real_t bubble_center_x, bubble_center_y, bubble_center_z, bubbleSz;
+	// bubble shape
+	real_t xa, yb, zc, C, _xa2, _yb2, _zc2, _xa2_in, _yb2_in, _zc2_in, _xa2_out, _yb2_out, _zc2_out;
 } IniShape;
 
 typedef struct

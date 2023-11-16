@@ -1,0 +1,110 @@
+{
+	"run": {
+		"blockSize_x": 8,
+		"blockSize_y": 8,
+		"blockSize_z": 8,
+		"DtBlockSize": 8,
+		"nStepMax": 100000000,
+		"nOutMax": 2500,
+		"CFLnumber": 0.4,
+		"OutBoundary": 0,
+		"OutInterval": 10000,
+		"OutTimeStamps": [
+			"0.000020",
+			"0.000046",
+			"0.000050",
+			"0.000066",
+			"0.000070",
+			"0.000092",
+			"0.000100",
+			"0.000136",
+			"0.000218",
+			"0.000244",
+			"0.000300",
+			"0.000360",
+			"0.000400",
+			"0.000450",
+			"0.000476",
+			"0.000500"
+		]
+	},
+	"mpi": {
+		"mx": 1,
+		"my": 1,
+		"mz": 1,
+		"DeviceSelect": [
+			1,
+			0,
+			0
+		]
+	},
+	"equations": {
+		"Fluid_Names": [],
+		"Species_Name": []
+	},
+	"sources": {},
+	"mesh": {
+		"DOMAIN_Size": [
+			0.4,
+			0.05,
+			0.05
+		],
+		"DOMAIN_Medg": [
+			-0.03,
+			0.0,
+			0.0
+		],
+		"Resolution": [
+			800,
+			400,
+			400
+		],
+		"Ghost_width": [
+			4,
+			4,
+			4
+		],
+		"Boundarys": [
+			0,
+			1,
+			2,
+			1,
+			2,
+			1
+		]
+	},
+	// Ini from https://doi.org/10.1016/j.combustflame.2015.10.016
+	"init": {
+		"blast_mach": 2.83,
+		"cop_type": 1,
+		"blast_type": 1,
+		"blast_center": [
+			-0.025,
+			0.0,
+			0.0
+		],
+		// ; pre-shock status 0.25atm=25331.25Pa  0.5atm=50662.5Pa  0.75atm=75993.75Pa  1atm=101325.0Pa
+		"blast_upstream": [
+			0.0,
+			0.0,
+			0.0,
+			0.0,
+			0.0,
+			0.0
+		],
+		"blast_downstream": [
+			0.0,
+			0.0,
+			0.0,
+			0.0,
+			0.0,
+			0.0
+		],
+		// give bubble_shape_ratioy=bubble_shape_x/bubble_shape_y =0.354, 0.650, 1.0, 1.837, 2.829
+		// or bubble_shape_ratioz=bubble_shape_x/bubble_shape_z=bubble_shape_ratioy
+		// or give bubble_shape_x, bubble_shape_y, bubble_shape_z directly
+		// // Ref: https://doi.org/10.1007/s10409-021-01132-9
+		"bubble_shape_x": 0.02,
+		"bubble_boundary_cells": 8 //;higher for sharper interface
+	}
+}

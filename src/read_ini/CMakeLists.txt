@@ -1,4 +1,4 @@
-add_subdirectory(config)
+add_subdirectory(settings)
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
@@ -17,8 +17,8 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
     # #add libs
     target_link_libraries(readini
         PUBLIC
-        config
         readgrid
+        settings
     )
 
     IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
@@ -31,7 +31,7 @@ ELSE()
         PROPERTY IMPORTED_LOCATION ${readini})
     target_link_libraries(readini
         INTERFACE
-        config
         readgrid
+        settings
     )
 ENDIF()

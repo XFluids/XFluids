@@ -28,18 +28,18 @@ void get_yi(real_t *xi, real_t const *Wi)
 /**
  *@brief calculate xi : mole fraction
  */
-real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real_t rho, const size_t NUM_SPECIES)
+real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real_t rho)
 {
-	real_t C[NUM_SPECIES] = {_DF(0.0)}, C_total = _DF(0.0);
+	real_t C_total = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
 	{
-		C[i] = yi[i] * _Wi[i] * _DF(1e-3) * rho;
-		C_total = C_total + C[i];
+		xi[i] = yi[i] * _Wi[i] * _DF(1e-3) * rho;
+		C_total = C_total + xi[i];
 	}
 	// get mole fraction of each specie
 	real_t _C_total = _DF(1.0) / C_total;
 	for (int i = 0; i < NUM_SPECIES; i++)
-		xi[i] = C[i] * _C_total;
+		xi[i] = xi[i] * _C_total;
 	return C_total;
 }
 

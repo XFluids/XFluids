@@ -45,12 +45,12 @@ bool Gridread::ReadGridBlock(Block &bl)
     if (fName.fail())
     {
         if (0 == rank)
-            cerr << "\nNOTE: plot3d.cpp:ReadP3dGrid(). Grid file \"<" << readName
-                 << ">\" did not open correctly, read_grid submodule closed\n\n";
+            cerr << "\nPlot3DGrid file \"<" << readName
+                 << ">\" did not open correctly, read_grid submodule closed.\n";
         return false;
     }
 
-    cout << "Reading grid file..." << endl;
+    cout << "Reading grid file: " << readName << "...";
     auto numBlks = 1;
     fName.read(reinterpret_cast<char *>(&numBlks), sizeof(numBlks)); // cout << "Block Number: " << ii << "     ";
 

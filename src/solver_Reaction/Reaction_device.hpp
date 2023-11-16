@@ -60,7 +60,7 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t *yi, The
 			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
 {
-	real_t C[NUM_SPECIES] = {_DF(0.0)}, _rho = _DF(1.0) / rho;
+	real_t C[MAX_SPECIES] = {_DF(0.0)}, _rho = _DF(1.0) / rho;
 	for (int n = 0; n < NUM_SPECIES; n++)
 		C[n] = rho * yi[n] * thermal._Wi[n] * _DF(1e-6);
 

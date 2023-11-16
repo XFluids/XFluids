@@ -15,8 +15,8 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 	int offset_x = DIM_X ? bl.Bwidth_X - 2 : 0; // NOTE: 这是计算第i(j/k)个点右边的那个半点，所以从=(+Bwidth-2) 开始到<(+inner+Bwidth+2)结束
 	int offset_y = DIM_Y ? bl.Bwidth_Y - 2 : 0;
 	int offset_z = DIM_Z ? bl.Bwidth_Z - 2 : 0;
-	auto local_ndrange_ck = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange_ck = range<3>(((range_x - 1) / bl.dim_block_x + 1) * bl.dim_block_x, ((range_y - 1) / bl.dim_block_y + 1) * bl.dim_block_y, ((range_z - 1) / bl.dim_block_z + 1) * bl.dim_block_z);
+	auto local_ndrange_ck = range<3>(dim_block_x, dim_block_y, dim_block_z);
+	auto global_ndrange_ck = range<3>(((range_x - 1) / dim_block_x + 1) * dim_block_x, ((range_y - 1) / dim_block_y + 1) * dim_block_y, ((range_z - 1) / dim_block_z + 1) * dim_block_z);
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_ck, local_ndrange_ck), [=](sycl::nd_item<3> index)
@@ -28,7 +28,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 		.wait();
 
 #if DIM_X
-	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto local_ndrange_x = range<3>(bl.Bwidth_X, dim_block_y, dim_block_z); // size of workgroup
 	auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);
 
 	BConditions BC0 = BC[0], BC1 = BC[1];
@@ -44,7 +44,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 #endif																													// DIM_X
 
 #if DIM_Y
-	auto local_ndrange_y = range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
+	auto local_ndrange_y = range<3>(dim_block_x, bl.Bwidth_Y, dim_block_z); // size of workgroup
 	auto global_ndrange_y = range<3>(bl.Xmax, bl.Bwidth_Y, bl.Zmax);
 
 	BConditions BC2 = BC[2], BC3 = BC[3];
@@ -61,7 +61,7 @@ void GetCellCenterDerivative(sycl::queue &q, Block bl, FlowData &fdata, BConditi
 #endif																													// DIM_Y
 
 #if DIM_Z
-	auto local_ndrange_z = range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
+	auto local_ndrange_z = range<3>(dim_block_x, dim_block_y, bl.Bwidth_Z); // size of workgroup
 	auto global_ndrange_z = range<3>(bl.Xmax, bl.Ymax, bl.Bwidth_Z);
 
 	BConditions BC4 = BC[4], BC5 = BC[5];

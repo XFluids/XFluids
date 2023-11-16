@@ -14,7 +14,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	real_t *yi = fdata.y;
 
 	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
-	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
+	auto local_ndrange = range<1>(BlockSize); // size of workgroup
 	auto global_ndrange = range<1>(meshSize);
 
 	real_t dtref = _DF(0.0);
@@ -68,7 +68,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	// real_t *hi = fdata.hi;
 
 	// auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
-	// auto local_ndrange_max = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	// auto local_ndrange_max = range<3>(dim_block_x, dim_block_y, dim_block_z);
 	// q.submit([&](sycl::handler &h)
 	// 		 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange_max), [=](sycl::nd_item<3> index)
 	// 						  {

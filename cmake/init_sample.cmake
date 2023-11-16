@@ -12,34 +12,21 @@ IF(DIM_Z)
     math(EXPR DIM_NUM "${DIM_NUM} + 1" OUTPUT_FORMAT DECIMAL)
 ENDIF(DIM_Z)
 
-IF(USE_MPI)
-    set(APPEND "-mpi.ini")
-ELSE()
-    set(APPEND ".ini")
-ENDIF()
-
 # // =======================================================
 # #### util sample
 # // =======================================================
 IF(INIT_SAMPLE MATCHES "read_grid/") # read grid
     set(INIT_SAMPLE "src/${INIT_SAMPLE}")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/read-grid")
-    set(INI_FILE "${INIT_SAMPLE}.ini")
-
-ELSEIF(INIT_SAMPLE STREQUAL "not-compoent")
-    set(COP "OFF")
-    set(INIT_SAMPLE "not-compoent")
-    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/not-compoent")
-    set(INI_FILE "/settings/sa-not-compoent.ini")
-
-ELSEIF(INIT_SAMPLE STREQUAL "for-debug")
-    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/for-debug")
-    set(INI_FILE "/settings/sa-debug${APPEND}")
+    set(INI_FILE "${INIT_SAMPLE}.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "guass-wave")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/guass-wave")
-    set(INI_FILE "/settings/sa-guass-wave${APPEND}")
+    set(INI_FILE "settings/guass-wave.json")
 
+# // =======================================================
+# #### 1d sample
+# // =======================================================
 ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
     set(OUT_PLT "ON")
     set(DIM_X "ON")
@@ -47,11 +34,8 @@ ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
     set(WENO_ORDER "6") # WENOCU6 has the larggest unrubost at Riemann separation
     set(COP_SPECIES "Insert-SBI")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/sharp-interface")
-    set(INI_FILE "/settings/sa-1d-shock-tube${APPEND}")
+    set(INI_FILE "settings/1d-shock-tube.json")
 
-# // =======================================================
-# #### 1d sample
-# // =======================================================
 ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
     IF(DIM_NUM STREQUAL "1")
         set(COP "ON")
@@ -61,7 +45,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
         set(POSITIVITY_PRESERVING "OFF")
         set(COP_SPECIES "1d-mc-insert-shock-tube")
         set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/insert-st")
-        set(INI_FILE "/settings/sa-1d-shock-tube${APPEND}")
+        set(INI_FILE "settings/1d-shock-tube.json")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -75,7 +59,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
         set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/reactive-st")
-        set(INI_FILE "/settings/sa-1d-reactive-st${APPEND}")
+        set(INI_FILE "settings/1d-reactive-st.json")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -91,7 +75,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
         set(POSITIVITY_PRESERVING "OFF")
         set(COP_SPECIES "1d-mc-diffusion")
         set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
-        set(INI_FILE "/settings/sa-1d-diffusion${APPEND}")
+        set(INI_FILE "settings/1d-diffusion.json")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -108,7 +92,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
         add_compile_options(-DDiffuReverse)
         set(COP_SPECIES "1d-mc-diffusion-reverse")
         set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
-        set(INI_FILE "/settings/sa-1d-diffusion${APPEND}")
+        set(INI_FILE "settings/1d-diffusion-reverse.json")
     ELSEIF()
         message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
     ENDIF()
@@ -128,7 +112,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shocks") # 2d-riemann(-shocks/-shock-int
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shocks-interaction")
-    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
+    set(INI_FILE "settings/2d-riemann.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shock-interruption") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(DIM_X "ON")
@@ -142,7 +126,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shock-interruption") # 2d-riemann(-shock
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shock-interruption")
-    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
+    set(INI_FILE "settings/2d-riemann.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-plus") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(DIM_X "ON")
@@ -156,7 +140,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-plus") # 2d-riemann(-shock
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-plus")
-    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
+    set(INI_FILE "settings/2d-riemann.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(DIM_X "ON")
@@ -170,7 +154,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-sho
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(COP_SPECIES "Reaction/Insert-Air")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-reduce")
-    set(INI_FILE "/settings/sa-2d-riemann${APPEND}")
+    set(INI_FILE "settings/2d-riemann.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     set(COP "ON")
@@ -188,7 +172,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(COP_SPECIES "Insert-SBI-without-fuel")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
+    set(INI_FILE "settings/shock-bubble.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(COP "ON")
@@ -209,7 +193,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     endif()
 
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
+    set(INI_FILE "settings/shock-bubble.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
     set(COP "ON")
@@ -217,7 +201,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/under-expanded-jet")
-    set(INI_FILE "/settings/sa-expanded-jet${APPEND}")
+    set(INI_FILE "settings/expanded-jet.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(COP "ON")
@@ -228,7 +212,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(REACTION_MODEL "H2O_21_reaction")
     set(COP_SPECIES "Reaction/H2O_21_reaction")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/mixing-layer")
-    set(INI_FILE "/settings/sa-2d-mixing-layer${APPEND}")
+    set(INI_FILE "settings/2d-mixing-layer.json")
 
 # // =======================================================
 # #### 3d sample
@@ -249,7 +233,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
     message(STATUS "  Only NASA fit for Xe used in RSBI sample.")
     set(COP_SPECIES "Insert-SBI-without-fuel")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
+    set(INI_FILE "settings/shock-bubble.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(COP "ON")
@@ -270,7 +254,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     endif()
 
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "/settings/sa-shock-bubble${APPEND}")
+    set(INI_FILE "settings/shock-bubble.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "3d-under-expanded-jet")
     set(COP "ON")
@@ -278,7 +262,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-under-expanded-jet")
     set(DIM_Y "ON")
     set(DIM_Z "ON")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/under-expanded-jet")
-    set(INI_FILE "/settings/sa-expanded-jet${APPEND}")
+    set(INI_FILE "settings/expanded-jet.json")
 ELSE()
     message(FATAL_ERROR "ini sample isn't given.")
 ENDIF()
@@ -358,7 +342,7 @@ message(STATUS "  Sample ini  file   path: ${INI_FILE}")
 
 add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
 add_compile_options(-DRFile="${COP_SPECIES}")
-add_compile_options(-DIniFile="${INI_FILE}")
+add_compile_options(-DIniFile="${CMAKE_SOURCE_DIR}/${INI_FILE}")
 add_compile_options(-DRPath="/runtime.dat") # where to read .dat about charactersics of compoent gas
 
 include_directories(

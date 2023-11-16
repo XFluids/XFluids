@@ -10,12 +10,11 @@ LAMNSS::LAMNSS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), n
 	for (int n = 0; n < NumFluid; n++)
 	{
 		fluids[n] = new Fluid(setup);
-#if 1 != NumFluid
-		fluids[n]->initialize(n);
-#endif
+		// if (1 < NumFluid)
+		// 	fluids[n]->initialize(n);
 	}
 
-	if (Ss.OutBoundary)
+	if (OutBoundary)
 	{
 		VTI.nbX = Ss.BlSz.Xmax;
 		VTI.minX = 0;
@@ -49,38 +48,38 @@ LAMNSS::LAMNSS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), n
 #ifdef USE_MPI
 #if DIM_X
 	if (Ss.mpiTrans->neighborsBC[XMIN] == BC_COPY)
-		if (Ss.OutDIRX)
+		if (OutDIRX)
 			PLT.nbX += 1;
 	if (Ss.mpiTrans->neighborsBC[XMAX] == BC_COPY)
-		if (Ss.OutDIRX)
+		if (OutDIRX)
 			PLT.nbX += 1;
 #endif
 
 #if DIM_Y
 	if (Ss.mpiTrans->neighborsBC[YMIN] == BC_COPY)
-		if (Ss.OutDIRY)
+		if (OutDIRY)
 			PLT.nbY += 1;
 	if (Ss.mpiTrans->neighborsBC[YMAX] == BC_COPY)
-		if (Ss.OutDIRY)
+		if (OutDIRY)
 			PLT.nbY += 1;
 #endif
 
 #if DIM_Z
 	if (Ss.mpiTrans->neighborsBC[ZMIN] == BC_COPY)
-		if (Ss.OutDIRZ)
+		if (OutDIRZ)
 			PLT.nbZ += 1;
 	if (Ss.mpiTrans->neighborsBC[ZMAX] == BC_COPY)
-		if (Ss.OutDIRZ)
+		if (OutDIRZ)
 			PLT.nbZ += 1;
 #endif
 #endif // use MPI
 
-	CPT.minX = Ss.BlSz.Bwidth_X + Ss.outpos_x;
-	CPT.minY = Ss.BlSz.Bwidth_Y + Ss.outpos_y;
-	CPT.minZ = Ss.BlSz.Bwidth_Z + Ss.outpos_z;
-	CPT.nbX = Ss.OutDIRX ? PLT.nbX : 1;
-	CPT.nbY = Ss.OutDIRY ? PLT.nbY : 1;
-	CPT.nbZ = Ss.OutDIRZ ? PLT.nbZ : 1;
+	CPT.minX = Ss.BlSz.Bwidth_X + outpos_x;
+	CPT.minY = Ss.BlSz.Bwidth_Y + outpos_y;
+	CPT.minZ = Ss.BlSz.Bwidth_Z + outpos_z;
+	CPT.nbX = OutDIRX ? PLT.nbX : 1;
+	CPT.nbY = OutDIRY ? PLT.nbY : 1;
+	CPT.nbZ = OutDIRZ ? PLT.nbZ : 1;
 	CPT.maxX = CPT.minX + CPT.nbX;
 	CPT.maxY = CPT.minY + CPT.nbY;
 	CPT.maxZ = CPT.minZ + CPT.nbZ;
@@ -108,14 +107,14 @@ void LAMNSS::Evolution(sycl::queue &q)
 	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
 
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
-	while (TimeLoop < Ss.nOutTimeStamps)
+	while (TimeLoop < OutTimeStamps.size())
 	{
-		real_t target_t = physicalTime < Ss.OutTimeStamps[TimeLoop] ? Ss.OutTimeStamps[TimeLoop] : Ss.OutTimeStamps[TimeLoop++]; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
+		real_t target_t = physicalTime < OutTimeStamps[TimeLoop] ? OutTimeStamps[TimeLoop] : OutTimeStamps[TimeLoop++]; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
 		// TimeLoop++;
 		while (physicalTime < target_t)
 		{
 			CopyToUbak(q);
-			if (Iteration % Ss.OutInterval == 0 && OutNum <= Ss.nOutput || TimeLoopOut)
+			if (Iteration % OutInterval == 0 && OutNum <= nOutput || TimeLoopOut)
 			{
 				Output(q, rank, std::to_string(Iteration), physicalTime);
 				Output_Ubak(rank, Iteration, physicalTime, duration, true);
@@ -168,7 +167,7 @@ void LAMNSS::Evolution(sycl::queue &q)
 				goto flag_ernd;
 #endif
 
-			Stepstop = Ss.nStepmax <= Iteration ? true : false;
+			Stepstop = nStepmax <= Iteration ? true : false;
 			if (Stepstop)
 				goto flag_end;
 			duration = OutThisTime(start_time) + duration_backup;
@@ -368,13 +367,7 @@ bool LAMNSS::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, in
 real_t LAMNSS::ComputeTimeStep(sycl::queue &q)
 {
 	real_t dt_ref = _DF(1.0e-10);
-#if NumFluid == 1
 	dt_ref = fluids[0]->GetFluidDt(q, Iteration, physicalTime);
-#elif NumFluid == 2
-	dt_ref = fluids[0]->GetFluidDt(levelset, Iteration, physicalTime);
-	for (size_t n = 1; n < NumFluid; n++)
-		dt_ref = min(dt_ref, fluids[1]->GetFluidDt(levelset, Iteration, physicalTime));
-#endif
 
 	return dt_ref;
 }
@@ -398,8 +391,8 @@ void LAMNSS::BoundaryCondition(sycl::queue &q, int flag)
 
 bool LAMNSS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep)
 {
-
-	bool error[NumFluid] = {false}, error_t = false;
+	bool error_t = false;
+	std::vector<bool> error(NumFluid);
 	for (int n = 0; n < NumFluid; n++)
 	{
 		error[n] = fluids[n]->UpdateFluidStates(q, flag);
@@ -414,7 +407,7 @@ bool LAMNSS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const int
 		if (error_t)
 		{
 			Output(q, rank, "PErs_" + Stepstr + RkStep, Time, true);
-			std::cout << "Output DIR(X, Y, Z = " << Ss.OutDIRX << ", " << Ss.OutDIRY << ", " << Ss.OutDIRZ << ") has been done at Step = PErs_" << Stepstr << RkStep << std::endl;
+			std::cout << "Output DIR(X, Y, Z = " << OutDIRX << ", " << OutDIRY << ", " << OutDIRZ << ") has been done at Step = PErs_" << Stepstr << RkStep << std::endl;
 		}
 #ifdef USE_MPI
 		int root, maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
@@ -488,9 +481,9 @@ void LAMNSS::Output_Ubak(const int rank, const int Step, const real_t Time, cons
 {
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	if (solution)
-		file_name = Ss.OutputDir + "/cal/" + outputPrefix + "_ReCal";
+		file_name = OutputDir + "/cal/" + outputPrefix + "_ReCal";
 	else
-		file_name = Ss.OutputDir + "/" + outputPrefix + "_ReCal";
+		file_name = OutputDir + "/" + outputPrefix + "_ReCal";
 #ifdef USE_MPI
 	file_name += "_rank_" + std::to_string(rank);
 #endif
@@ -515,7 +508,7 @@ bool LAMNSS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time, 
 {
 	int size = Ss.cellbytes, all_read = 1;
 	std::string file_name, outputPrefix = INI_SAMPLE;
-	file_name = Ss.OutputDir + "/" + outputPrefix + "_ReCal";
+	file_name = OutputDir + "/" + outputPrefix + "_ReCal";
 #ifdef USE_MPI
 	file_name += "_rank_" + std::to_string(rank);
 #endif
@@ -648,7 +641,7 @@ void LAMNSS::CopyDataFromDevice(sycl::queue &q, bool error)
 // 	{
 // 		real_t rho0 = Ss.ini.blast_density_in;
 // 		std::string outputPrefix = INI_SAMPLE;
-// 		std::string file_name = Ss.OutputDir + "/AllCounts_" + outputPrefix + "_rho0_" + std::to_string(Ss.ini.blast_density_in) + "_" + std::to_string(Ss.ini.cop_density_in) + "_" + std::to_string(Ss.ini.blast_density_out) + ".dat";
+// 		std::string file_name = OutputDir + "/AllCounts_" + outputPrefix + "_rho0_" + std::to_string(Ss.ini.blast_density_in) + "_" + std::to_string(Ss.ini.cop_density_in) + "_" + std::to_string(Ss.ini.blast_density_out) + ".dat";
 // 		std::ofstream out(file_name);
 // 		// // defining header for tecplot(plot software)
 // 		out.setf(std::ios::right);
@@ -761,23 +754,23 @@ void LAMNSS::Output(sycl::queue &q, int rank, std::string interation, real_t Tim
 	{ // only out pvti and vti error files
 		Output_vti(rank, timeFormat, stepFormat, rankFormat, true);
 	}
-	else if (!(Ss.OutDIRX && Ss.OutDIRY && Ss.OutDIRZ))
+	else if (!(OutDIRX && OutDIRY && OutDIRZ))
 	{
-		if (Ss.OutDAT)
+		if (OutDAT)
 			Output_cplt(rank, timeFormat, stepFormat, rankFormat);
-		if (Ss.OutVTI)
+		if (OutVTI)
 			Output_cvti(rank, timeFormat, stepFormat, rankFormat);
 	}
 	else
 	{
-		if (Ss.OutDAT)
+		if (OutDAT)
 			Output_plt(rank, timeFormat, stepFormat, rankFormat, error);
-		if (Ss.OutVTI)
+		if (OutVTI)
 			Output_vti(rank, timeFormat, stepFormat, rankFormat, error);
 	}
 
 	if (rank == 0)
-		std::cout << "Output DIR(X, Y, Z = " << (Ss.OutDIRX && DIM_X) << ", " << (Ss.OutDIRY && DIM_Y) << ", " << (Ss.OutDIRZ && DIM_Z) << ") has been done at Step = " << interation << std::endl;
+		std::cout << "Output DIR(X, Y, Z = " << (OutDIRX && DIM_X) << ", " << (OutDIRY && DIM_Y) << ", " << (OutDIRZ && DIM_Z) << ") has been done at Step = " << interation << std::endl;
 }
 
 void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
@@ -999,10 +992,10 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	std::string temp_name = "./VTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
-	file_name = Ss.OutputDir + "/" + temp_name;
+	file_name = OutputDir + "/" + temp_name;
 #ifdef USE_MPI
 	file_name = file_name + "_rank_" + rankFormat.str();
-	std::string headerfile_name = Ss.OutputDir + "/VTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
+	std::string headerfile_name = OutputDir + "/VTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
 #endif
 	file_name += ".vti";
 
@@ -1147,11 +1140,11 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
+			// #if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.u[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.u[id] : fluids[1]->h_fstate.u[id];
-#endif
+			// #elif 2 == NumFluid
+			// 			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.u[id] : fluids[1]->h_fstate.u[id];
+			// #endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i	  // for j		  // for k
 #endif	  // end DIM_X
@@ -1166,11 +1159,7 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.v[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.v[id] : fluids[1]->h_fstate.v[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 #endif	  // end DIM_Y
@@ -1185,11 +1174,7 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.w[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.w[id] : fluids[1]->h_fstate.w[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 #endif	  // end DIM_Z
@@ -1497,66 +1482,42 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.c[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.c[id] : fluids[1]->h_fstate.c[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		//[6]rho
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.rho[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.rho[id] : fluids[1]->h_fstate.rho[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		//[7]P
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.p[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.p[id] : fluids[1]->h_fstate.p[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		  //[8]Gamma
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.gamma[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.gamma[id] : fluids[1]->h_fstate.gamma[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		//[9]T
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.T[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.T[id] : fluids[1]->h_fstate.T[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 		//[10]e
 		MARCO_OUTLOOP
 		{
 			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
-#if 1 == NumFluid
 			real_t tmp = fluids[0]->h_fstate.e[id];
-#elif 2 == NumFluid
-			real_t tmp = (levelset->h_phi[id] >= 0.0) ? fluids[0]->h_fstate.e[id] : fluids[1]->h_fstate.e[id];
-#endif
 			outFile.write((char *)&tmp, sizeof(real_t));
 		} // for i
 
@@ -1607,7 +1568,7 @@ void LAMNSS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringst
 void LAMNSS::Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
 {
 	std::string outputPrefix = INI_SAMPLE;
-	std::string file_name = Ss.OutputDir + "/PLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
+	std::string file_name = OutputDir + "/PLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
 #ifdef USE_MPI
 	file_name += "_rank_" + rankFormat.str();
 #endif
@@ -1743,11 +1704,11 @@ void LAMNSS::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 	for (int k = VTI.minZ; k < VTI.maxZ; k++)
 		for (int j = VTI.minY; j < VTI.maxY; j++)
 			for (int i = VTI.minX; i < VTI.maxX; i++)
-			{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
+			{ //&& OutDIRX//&& OutDIRY//&& OutDIRZ
 				int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
-				Out1 = ((!Ss.OutDIRX) && (pos_x == Ss.outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
-				Out2 = ((!Ss.OutDIRY) && (pos_y == Ss.outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
-				Out3 = ((!Ss.OutDIRZ) && (pos_z == Ss.outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
+				Out1 = ((!OutDIRX) && (pos_x == outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
+				Out2 = ((!OutDIRY) && (pos_y == outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
+				Out3 = ((!OutDIRZ) && (pos_z == outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
 				if (Out1 || Out2 || Out3)
 				{
 					if_outrank = rank;
@@ -1823,7 +1784,7 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
 	real_t dx = 0.0, dy = 0.0, dz = 0.0;
 #if DIM_X
-	if (Ss.OutDIRX)
+	if (OutDIRX)
 	{
 		xmin = Ss.BlSz.myMpiPos_x * VTI.nbX;
 		xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX;
@@ -1831,7 +1792,7 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 	}
 #endif // DIM_X
 #if DIM_Y
-	if (Ss.OutDIRY)
+	if (OutDIRY)
 	{
 		ymin = Ss.BlSz.myMpiPos_y * VTI.nbY;
 		ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY;
@@ -1839,7 +1800,7 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 	}
 #endif // DIM_Y
 #if DIM_Z
-	if (Ss.OutDIRZ)
+	if (OutDIRZ)
 	{
 		zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ);
 		zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ);
@@ -1849,17 +1810,17 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	std::string temp_name = "./CVTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
-	file_name = Ss.OutputDir + "/" + temp_name;
+	file_name = OutputDir + "/" + temp_name;
 #ifdef USE_MPI
 	file_name = file_name + "_rank_" + rankFormat.str();
-	std::string headerfile_name = Ss.OutputDir + "/CVTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
+	std::string headerfile_name = OutputDir + "/CVTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
 #endif
 	file_name += ".vti";
 
 #ifdef USE_MPI
-	mx = (Ss.OutDIRX) ? Ss.BlSz.mx : 0;
-	my = (Ss.OutDIRY) ? Ss.BlSz.my : 0;
-	mz = (Ss.OutDIRZ) ? Ss.BlSz.mz : 0;
+	mx = (OutDIRX) ? Ss.BlSz.mx : 0;
+	my = (OutDIRY) ? Ss.BlSz.my : 0;
+	mz = (OutDIRZ) ? Ss.BlSz.mz : 0;
 	if (0 == rank) // write header
 	{
 		std::fstream outHeader;
@@ -1906,7 +1867,7 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 				// #else
 				// 			int coords[2];
 				// #endif
-				int coords[3], OnbX = (Ss.OutDIRX) ? VTI.nbX : 0, OnbY = (Ss.OutDIRY) ? VTI.nbY : 0, OnbZ = (Ss.OutDIRZ) ? VTI.nbZ : 0;
+				int coords[3], OnbX = (OutDIRX) ? VTI.nbX : 0, OnbY = (OutDIRY) ? VTI.nbY : 0, OnbZ = (OutDIRZ) ? VTI.nbZ : 0;
 				Ss.mpiTrans->communicator->getCoords(iPiece, DIM_X + DIM_Y + DIM_Z, coords);
 				outHeader << " <Piece Extent=\"";
 				// pieces in first line of column are different (due to the special
@@ -1945,7 +1906,7 @@ void LAMNSS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostrings
 	} // end writing pvti header
 #endif
 	int minX = CPT.minX, minY = CPT.minY, minZ = CPT.minZ;
-	int nbX = (Ss.OutDIRX) ? VTI.nbX : 1, nbY = (Ss.OutDIRY) ? VTI.nbY : 1, nbZ = (Ss.OutDIRZ) ? VTI.nbZ : 1;
+	int nbX = (OutDIRX) ? VTI.nbX : 1, nbY = (OutDIRY) ? VTI.nbY : 1, nbZ = (OutDIRZ) ? VTI.nbZ : 1;
 	int maxX = minX + nbX, maxY = minY + nbY, maxZ = minZ + nbZ;
 
 	if (OutRanks[rank] >= 0)
@@ -2149,7 +2110,7 @@ void LAMNSS::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostrings
 	{
 		real_t *OutPoint = new real_t[Cnbvar]; // OutPoint: each point;
 		std::string outputPrefix = INI_SAMPLE;
-		std::string file_name = Ss.OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".dat";
+		std::string file_name = OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str() + "_" + rankFormat.str() + ".dat";
 		std::ofstream out(file_name);
 		// // defining header for tecplot(plot software)
 		out << "title='" << outputPrefix << "'\nvariables=";
@@ -2188,7 +2149,7 @@ void LAMNSS::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostrings
 		for (int k = CPT.minZ; k < CPT.maxZ; k++)
 			for (int j = CPT.minY; j < CPT.maxY; j++)
 				for (int i = CPT.minX; i < CPT.maxX; i++)
-				{ //&& Ss.OutDIRX//&& Ss.OutDIRY//&& Ss.OutDIRZ
+				{ //&& OutDIRX//&& OutDIRY//&& OutDIRZ
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 					int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
 					OutPoint[0] = (DIM_X) ? (pos_x)*Ss.BlSz.dx + temx : 0.0;

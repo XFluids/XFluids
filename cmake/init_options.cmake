@@ -8,8 +8,6 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/cal)
 # // =======================================================
 # #### about compile definitions
 # // =======================================================
-add_compile_options(-DNumFluid=1)
-add_compile_options(-DMIDDLE_SYCL_ENABLED)
 add_compile_options(-DSCHEME_ORDER=${WENO_ORDER})
 
 IF(EIGEN_ALLOC STREQUAL "OROC")

@@ -223,9 +223,6 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
     }
 #endif // end COP
 
-#if NumFluid != 1
-    real_t fraction = material.Rgn_ind > _DF(0.5) ? vof[id] : _DF(1.0) - vof[id];
-#endif
     // give intial value for the interval matrixes
     for (int n = 0; n < Emax; n++)
     {
@@ -234,9 +231,5 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
         FluxFw[Emax * id + n] = _DF(0.0);     // numerical flux F
         FluxGw[Emax * id + n] = _DF(0.0);     // numerical flux G
         FluxHw[Emax * id + n] = _DF(0.0);     // numerical flux H
-#if NumFluid != 1
-        CnsrvU[Emax * id + n] = U[Emax * id + n] * fraction;
-        CnsrvU1[Emax * id + n] = CnsrvU[Emax * id + n];
-#endif // NumFluid
     }
 }

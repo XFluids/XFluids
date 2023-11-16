@@ -7,14 +7,14 @@
 
 // =======================================================
 //    Global sycL_reduction
-#if defined(DEFINED_OPENSYCL)
-#define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<real_t>())
-#define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<real_t>())
-#define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
-#else
+#if defined(DEFINED_ONEAPI)
 #define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<>())
 #define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<>())
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<>())
+#else
+#define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<real_t>())
+#define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<real_t>())
+#define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
 #endif
 
 // =======================================================
@@ -66,7 +66,7 @@
 // =======================================================
 //    get c2 #ifdef COP inside Reconstructflux
 #define MARCO_COPC2()                                                                                                                                                                                                                              \
-    real_t _yi[NUM_SPECIES], hi_l[NUM_SPECIES], hi_r[NUM_SPECIES], z[NUM_COP] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0); /*yi_l[NUM_SPECIES], yi_r[NUM_SPECIES],_hi[NUM_SPECIES],*/                                                               \
+    real_t _yi[MAX_SPECIES], hi_l[MAX_SPECIES], hi_r[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0); /*yi_l[NUM_SPECIES], yi_r[NUM_SPECIES],_hi[NUM_SPECIES],*/                                                           \
     for (size_t n = 0; n < NUM_SPECIES; n++)                                                                                                                                                                                                       \
     {                                                                                                                                                                                                                                              \
         hi_l[n] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id_l], thermal.Ri[n], n);                                                                                                                                                               \

@@ -11,7 +11,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	// chemeq2 solver
 	real_t t_start = _DF(0.0), t_end = _DF(5e-4), dt = _DF(2.0e-7), run_time = t_start;
 	std::string outputPrefix = INI_SAMPLE;
-	std::string file_name = Ss.OutputDir + "/" + outputPrefix + "-with_0DFreelyFlameTest_Rank_" + std::to_string(rank) + ".dat";
+	std::string file_name = OutputDir + "/" + outputPrefix + "-with_0DFreelyFlameTest_Rank_" + std::to_string(rank) + ".dat";
 	std::ofstream out(file_name);
 	out << "variables= time, <i>T</i>[K]";
 	for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -24,7 +24,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 		h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
 		e = h - R * T;					   // enternal energy
 		// T = get_T(Ss.h_thermal, yi, e, T); // update temperature
-		get_xi(xi, yi, Ss.h_thermal._Wi, rho, NUM_SPECIES);
+		get_xi(xi, yi, Ss.h_thermal._Wi, rho);
 		out << run_time << " " << T;
 		for (int n = 0; n < NUM_SPECIES; n++)
 			out << " " << xi[n];
@@ -42,7 +42,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 
 void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)
 {
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 	real_t *rho = fdata.rho;

@@ -22,7 +22,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 
 	bool is_3d = DIM_X * DIM_Y * DIM_Z ? true : false;
 
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z);
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 
 #if DIM_X

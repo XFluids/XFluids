@@ -1,0 +1,84 @@
+Start time: Mon Nov 13 21:04:57 CST 2023
+SLURM_JOB_ID: 46840303
+SLURM_NNODES: 2
+SLURM_TASKS_PER_NODE: 4(x2)
+SLURM_NTASKS: 8
+SLURM_JOB_PARTITION: kshdnormal
+8
+--> Modified the shock's status by Ref0:https://doi.org/10.1016/j.combustflame.2022.112085
+blast_type: 0 and blast_center(x = -0.025000 , y = 0.000000 , z = 0.000000).
+ Use Mach number = 2.830000 to reinitialize fluid states upstream the shock
+  States of   upstream:     (P = 929759.233776, T = 732.460382, rho = 4.276766, u = 722.609465, v = 0.000000, w = 0.000000).
+  States of downstream:     (P = 101325.000000, T = 295.000000, rho = 1.157241, u = 0.000000, v = 0.000000, w = 0.000000).
+cop_type:   0 and cop_radius: 0.000000.
+  cop_center: (x = 0.000000, y = 0.000000, z = 0.000000).
+compoent[0]: H2, characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): 
+  1.000000,   38.000000,   2.920000,   0.000000,   0.790000,   280.000000,   0.002016
+compoent[1]: O2, characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): 
+  1.000000,   107.400000,   3.458000,   0.000000,   1.600000,   3.800000,   0.031999
+compoent[2]: Xe, characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): 
+  0.000000,   282.290000,   3.892000,   0.000000,   0.000000,   0.000000,   0.131293
+compoent[3]: N2, characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): 
+  1.000000,   97.530000,   3.621000,   0.000000,   1.760000,   4.000000,   0.028013
+<---------------------------------------------------> 
+Start time: 0.000000 and End time: 0.000500                        
+   XYZ dir Domain size:                  0.400 x 0.050 x 0.050
+MPI rank mesh setup as below: 
+   Global resolution of MPI World: 5888 x 1472 x 1
+   Local  resolution of one Rank : 736 x 1472 x 1
+   MPI Cartesian topology        : 8 x 1 x 1
+   Difference steps: dx, dy, dz:         0.000068, 0.000034, 1.000000
+<---------------------------------------------------> 
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 0
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 2
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 1
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 3
+<---------------------------------------------------> 
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 4
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 6
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 5
+Selected Device: Device 66a1 based Driver Version: gfx906:sramecc-:xnack-  of rank: 7
+Setup_ini is copying buffers into Device .  . Done 
+<---------------------------------------------------> 
+Device Memory Usage: 1.78452 GB
+MPI trans Memory Size: 0.00212097 GB
+ReCal-file not exist or open failed, ReCal closed.
+Additional calculating file of Step = 0 has been output.
+N=      1  beginning physicalTime:              0  mpi communicated dt: 1.1524813e-08 to do, runtime: 0.44763979
+N=      2  beginning physicalTime:  1.1524813e-08  mpi communicated dt: 1.1524799e-08 to do, runtime: 0.89422214
+N=      3  beginning physicalTime:  2.3049613e-08  mpi communicated dt: 1.1524785e-08 to do, runtime:  1.3408045
+N=      4  beginning physicalTime:  3.4574397e-08  mpi communicated dt: 1.1524758e-08 to do, runtime:  1.7870055
+N=      5  beginning physicalTime:  4.6099155e-08  mpi communicated dt: 1.152314e-08 to do, runtime:  2.2401004
+N=      6  beginning physicalTime:  5.7622295e-08  mpi communicated dt: 1.1521387e-08 to do, runtime:  2.6888394
+N=      7  beginning physicalTime:  6.9143682e-08  mpi communicated dt: 1.1517272e-08 to do, runtime:  3.1359723
+N=      8  beginning physicalTime:  8.0660954e-08  mpi communicated dt: 1.1500719e-08 to do, runtime:  3.5821514
+N=      9  beginning physicalTime:  9.2161673e-08  mpi communicated dt: 1.148386e-08 to do, runtime:  4.0294018
+N=     10  beginning physicalTime:  1.0364553e-07  mpi communicated dt: 1.1441094e-08 to do, runtime:  4.4761004
+N=     11  beginning physicalTime:  1.1508663e-07  mpi communicated dt: 1.1428929e-08 to do, runtime:  4.9214358
+N=     12  beginning physicalTime:  1.2651556e-07  mpi communicated dt: 1.143165e-08 to do, runtime:  5.3683605
+N=     13  beginning physicalTime:  1.3794721e-07  mpi communicated dt: 1.1439888e-08 to do, runtime:  5.8139338
+N=     14  beginning physicalTime:  1.4938709e-07  mpi communicated dt: 1.1426681e-08 to do, runtime:  6.2596412
+N=     15  beginning physicalTime:  1.6081378e-07  mpi communicated dt: 1.1417697e-08 to do, runtime:  6.7075753
+N=     16  beginning physicalTime:  1.7223147e-07  mpi communicated dt: 1.1416057e-08 to do, runtime:  7.1536131
+N=     17  beginning physicalTime:  1.8364753e-07  mpi communicated dt: 1.1419928e-08 to do, runtime:   7.600894
+N=     18  beginning physicalTime:  1.9506746e-07  mpi communicated dt: 1.1421065e-08 to do, runtime:  8.0473051
+N=     19  beginning physicalTime:  2.0648852e-07  mpi communicated dt: 1.1423907e-08 to do, runtime:  8.4947958
+N=     20  beginning physicalTime:  2.1791243e-07  mpi communicated dt: 1.1431839e-08 to do, runtime:   8.940093
+N=     21  beginning physicalTime:  2.2934427e-07  mpi communicated dt: 1.1427314e-08 to do, runtime:  9.3855104
+N=     22  beginning physicalTime:  2.4077158e-07  mpi communicated dt: 1.1419713e-08 to do, runtime:  9.8310919
+N=     23  beginning physicalTime:  2.5219129e-07  mpi communicated dt: 1.1418253e-08 to do, runtime:   10.27819
+N=     24  beginning physicalTime:  2.6360955e-07  mpi communicated dt: 1.1420431e-08 to do, runtime:  10.724275
+N=     25  beginning physicalTime:  2.7502998e-07  mpi communicated dt: 1.142437e-08 to do, runtime:  11.169865
+N=     26  beginning physicalTime:  2.8645435e-07  mpi communicated dt: 1.1429366e-08 to do, runtime:  11.616294
+N=     27  beginning physicalTime:  2.9788371e-07  mpi communicated dt: 1.1434222e-08 to do, runtime:  12.062464
+N=     28  beginning physicalTime:  3.0931794e-07  mpi communicated dt: 1.1438085e-08 to do, runtime:  12.508879
+N=     29  beginning physicalTime:  3.2075602e-07  mpi communicated dt: 1.1433415e-08 to do, runtime:  12.955399
+N=     30  beginning physicalTime:  3.3218944e-07  mpi communicated dt: 1.1432374e-08 to do, runtime:  13.401908
+MPI averaged of 8 ranks without AWARE_MPI hip runtime(s):   13.4002
+Device Memory Usage(GB)   :  1.78452
+MPI trans Memory Size(GB) :  0.00212097
+Fluids do BCs time(s)     :  0.262329
+MPI buffers Trans time(s) :  0.251083
+Times of error patched: 0
+Output DIR(X, Y, Z = 1, 1, 0) has been done at Step = 30
+End time: Mon Nov 13 21:05:22 CST 2023

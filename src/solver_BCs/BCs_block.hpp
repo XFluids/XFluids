@@ -54,7 +54,7 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 	float duration_x = 0.0f, duration_y = 0.0f, duration_z = 0.0f;
 #if DIM_X
-	auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto local_ndrange_x = range<3>(bl.Bwidth_X, dim_block_y, dim_block_z); // size of workgroup
 	auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);
 
 #if USE_MPI
@@ -105,7 +105,7 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 #endif // end DIM_X
 
 #if DIM_Y
-	auto local_ndrange_y = range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
+	auto local_ndrange_y = range<3>(dim_block_x, bl.Bwidth_Y, dim_block_z); // size of workgroup
 	auto global_ndrange_y = range<3>(bl.Xmax, bl.Bwidth_Y, bl.Zmax);
 
 #if USE_MPI
@@ -157,7 +157,7 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 #endif // end DIM_Y
 
 #if DIM_Z
-	auto local_ndrange_z = range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
+	auto local_ndrange_z = range<3>(dim_block_x, dim_block_y, bl.Bwidth_Z); // size of workgroup
 	auto global_ndrange_z = range<3>(bl.Xmax, bl.Ymax, bl.Bwidth_Z);
 
 #if USE_MPI

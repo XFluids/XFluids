@@ -1,5 +1,4 @@
 # # add external submodule
-add_subdirectory(settings)
 add_subdirectory(read_ini)
 add_subdirectory(mpiPacks)
 add_subdirectory(read_grid)
@@ -57,7 +56,6 @@ ENDIF()
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
   readini
-  settings
   ${INIT_SAMPLE}
 )
 
