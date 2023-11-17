@@ -154,12 +154,13 @@ Fluid::~Fluid()
 	sycl::free(d_wallFluxF, q);
 	sycl::free(d_wallFluxG, q);
 	sycl::free(d_wallFluxH, q);
+	sycl::free(uvw_c_max, q);
+#ifdef SBICounts
 	sycl::free(theta, q);
 	sycl::free(sigma, q);
 	sycl::free(pVar_max, q);
-	sycl::free(uvw_c_max, q);
 	sycl::free(interface_point, q);
-
+#endif // end SBICounts
 #ifdef ESTIM_NAN
 	sycl::free(h_U, q);
 	sycl::free(h_U1, q);
