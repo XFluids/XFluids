@@ -10,7 +10,8 @@
             "program": "${workspaceFolder}/build/XFLUIDS",
             "args": [
                 // "-dev=1,1,0",
-                "-dev=1,0,0"
+                "-dev=1,0,0",
+                "-run=200,200,200,20"
             ],
         },
         {

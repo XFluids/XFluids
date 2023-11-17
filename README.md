@@ -34,7 +34,7 @@
   ````
 - #### Device discovery: exec "acpp-info" in cmd for device counting
 
-## 2. select target device in SYCL project
+## 2. Select target device in SYCL project
 
 - set integer platform_id and device_id for targetting different backends
 
@@ -64,7 +64,7 @@
 
 - XFLUIDS automatically read <${workspaceFolder}/settings/*.json> file depending on INIT_SAMPLE setting in ${workspaceFolder}/CMakeLists.txt
 
-#### 3.3.1. local machine running
+#### 3.3.1. Local machine running
 
   ````bash
     $./XFLUIDS
@@ -76,7 +76,7 @@
     $ mpirun -n mx*my*mz ./XFLUIDS -mpi=mx,my,mz -dev=1,0,0
   ````
 
-#### 3.3.2. slurm sbatch running on Hygon(KunShan) supercompute center
+#### 3.3.2. Slurm sbatch running on Hygon(KunShan) supercompute center
 
   ````bash
     $ cd ./XFLUIDS/scripts/KS-DCU
@@ -86,7 +86,7 @@
 
 ## 4. MPI libs
 
-### 4.1. set MPI_PATH browsed by cmake before build
+### 4.1. Set MPI_PATH browsed by cmake before build
 
 - cmake system of this project browse libmpi.so automatically in path of ${MPI_PATH}/lib, please export MPI_PATH to the mpi you want:
 
@@ -94,7 +94,7 @@
   export MPI_PATH=/home/ompi
   ````
 
-### 4.2. the value of MPI_HOME, MPI_INC, path of MPI_CXX(libmpi.so) output on screen while libmpi.so is found
+### 4.2. The value of MPI_HOME, MPI_INC, path of MPI_CXX(libmpi.so) output on screen while libmpi.so is found
 
 ````cmake
     -- MPI settings:
@@ -107,23 +107,24 @@
 
 - reading commits in src file: ${workspaceFolder}/src/read_ini/settings/read_json.h
 
-## 6. executable file options
+## 6. Executable file options
 
-- #### set "OutDAT", "OutVTI" as 1 in .ini file
+- #### Set "OutDAT", "OutVTI" as 1 in .ini file
 
-  | name of options  |                         function                                     | type | default value |
-  | :--------------- | :----------------------------------------------------------: | :---: | :-----------------   |
-  | -mpi             |  mpi cartesian size: mx,my,mz                                        |  int | 1,1,1 |
-  | -dev             |  device counting and selecting: device munber,platform,device        |  int | 1,0,0 |
+  | name of options  |                         function                                                        | type  |
+  | :--------------- | :-------------------------------------------------------------------------------------: | :---: |
+  | -mpi             |  mpi cartesian size: mx,my,mz                                                           |  int  |
+  | -dev             |  device counting and selecting: device munber,platform,device                           |  int  |
+  | -run             |  domain resolution and running steps: X_inner,Y_inner,Z_inner,nStepmax                  |  int  |
 
-## 7. output data format
+## 7. Uutput data format
 
-- #### set "OutDAT", "OutVTI" as 1 in .ini file
+- #### Set "OutDAT", "OutVTI" as 1 in .ini file
 
-### 7.1. tecplot file
+### 7.1. Tecplot file
 
 - import .dat files of all ranks of one Step for visualization, points overlapped between boundarys of ranks(3D parallel tecplot format file visualization is not supportted, using tecplot for 1D visualization is recommended)
 
-### 7.2. vtk file
+### 7.2. VTK file
 
 - use `paraview` to open `*.pvti` files for MPI visualization(1D visualization is not allowed, using paraview for 2/3D visualization is recommended);

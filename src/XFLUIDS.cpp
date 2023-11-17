@@ -121,7 +121,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				OutNum++;
 				TimeLoopOut = false;
 			}
-			if (RcalOut % 300 == 0)
+			if (RcalOut % RcalInterval == 0)
 				Output_Ubak(rank, Iteration, physicalTime, duration);
 			RcalOut++;
 			// get minmum dt, if MPI used, get the minimum of all ranks
@@ -167,7 +167,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				goto flag_ernd;
 #endif
 
-			Stepstop = nStepmax <= Iteration ? true : false;
+			Stepstop = Ss.nStepmax <= Iteration ? true : false;
 			if (Stepstop)
 				goto flag_end;
 			duration = OutThisTime(start_time) + duration_backup;

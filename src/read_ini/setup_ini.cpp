@@ -1006,6 +1006,8 @@ real_t Setup::get_CopGamma(const real_t *yi, const real_t T)
 // =======================================================
 void Setup::ReadIni()
 {
+    /* initialize RUN parameters */
+    nStepmax = nStepmax_json;
     /* initialize MPI parameters */
     BlSz.mx = mx_json, BlSz.my = my_json, BlSz.mz = mz_json;
     // initial rank postion to zero, will be changed in MpiTrans
@@ -1016,21 +1018,22 @@ void Setup::ReadIni()
     /* initialize MESH parameters */
     // // initialize reference parameters, for calulate coordinate while readgrid
     BlSz.LRef = Refs[0]; // reference length
-    BlSz.Domain_xmin = Domain_medg[0], BlSz.Domain_ymin = Domain_medg[1], BlSz.Domain_zmin = Domain_medg[2];
-    BlSz.Domain_length = DIM_X ? DOMAIN_Size[0] : 1.0, BlSz.Domain_width = DIM_Y ? DOMAIN_Size[1] : 1.0, BlSz.Domain_height = DIM_Z ? DOMAIN_Size[2] : 1.0;
-
-    // // read block size set from .ini
     BlSz.CFLnumber = CFLnumber_json;
-    BlSz.X_inner = DIM_X ? Inner[0] : 1, BlSz.Y_inner = DIM_Y ? Inner[1] : 1, BlSz.Z_inner = DIM_Z ? Inner[2] : 1;
-    BlSz.Bwidth_X = DIM_X ? Bwidth[0] : 0, BlSz.Bwidth_Y = DIM_Y ? Bwidth[1] : 0, BlSz.Bwidth_Z = DIM_Z ? Bwidth[2] : 0;
 
-    /* Simple Boundary settings */
-    // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
+    // // read block size settings
+    BlSz.X_inner = Inner[0], BlSz.Y_inner = Inner[1], BlSz.Z_inner = Inner[2];
+    BlSz.Bwidth_X = Bwidth[0], BlSz.Bwidth_Y = Bwidth[1], BlSz.Bwidth_Z = Bwidth[2];
+    BlSz.Domain_xmin = Domain_medg[0], BlSz.Domain_ymin = Domain_medg[1], BlSz.Domain_zmin = Domain_medg[2];
+    BlSz.Domain_length = DOMAIN_Size[0], BlSz.Domain_width = DOMAIN_Size[1], BlSz.Domain_height = DOMAIN_Size[2];
+
+    // // Simple Boundary settings
+    // // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
     Boundarys[0] = static_cast<BConditions>(Boundarys_json[0]), Boundarys[1] = static_cast<BConditions>(Boundarys_json[1]);
     Boundarys[2] = static_cast<BConditions>(Boundarys_json[2]), Boundarys[3] = static_cast<BConditions>(Boundarys_json[3]);
     Boundarys[4] = static_cast<BConditions>(Boundarys_json[4]), Boundarys[5] = static_cast<BConditions>(Boundarys_json[5]);
 
-    /* initialize fluid flow parameters */ // Ini Flow Field dynamic states
+    /* initialize fluid flow parameters */
+    // // Ini Flow Field dynamic states
     ini.Ma = Ma_json;
     ini.blast_type = blast_type;
     ini.blast_radius = blast_radius;
@@ -1043,8 +1046,8 @@ void Setup::ReadIni()
     // // downstream of blast
     ini.blast_density_out = blast_downstates[0], ini.blast_pressure_out = blast_downstates[1];
     ini.blast_T_out = blast_downstates[2], ini.blast_u_out = blast_downstates[3], ini.blast_v_out = blast_downstates[4], ini.blast_w_out = blast_downstates[5];
-    // // states inside mixture bubble
 #ifdef COP
+    // // states inside mixture bubble
     ini.cop_type = cop_type;
     ini.cop_center_x = cop_pos[0], ini.cop_center_y = cop_pos[1], ini.cop_center_z = cop_pos[2];
     ini.cop_density_in = cop_instates[0], ini.cop_pressure_in = cop_instates[1], ini.cop_T_in = cop_instates[2];
@@ -1060,12 +1063,19 @@ void Setup::ReWrite()
     // =======================================================
     // // // for json file read
     ReadIni(); // Initialize parameters from json
+
     // // rewrite mx, my, mz for MPI
     std::vector<int> mpiapa = apa.match<int>("-mpi");
     if (!std::empty(mpiapa))
         BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
-
-    // // accelerator_selector device;
+    // // rewrite X_inner, Y_inner, Z_inner, nStpeMax
+    std::vector<int> Inner_size = apa.match<int>("-run");
+    if (!std::empty(Inner_size))
+    {
+        BlSz.X_inner = Inner_size[0], BlSz.Y_inner = Inner_size[1], BlSz.Z_inner = Inner_size[2];
+        if (4 == Inner_size.size())
+            nStepmax = Inner_size[3];
+    } // // accelerator_selector device;
     std::vector<int> devapa = apa.match<int>("-dev");
     if (!std::empty(devapa))
         DeviceSelect = devapa;
@@ -1079,6 +1089,10 @@ void Setup::ReWrite()
 // =======================================================
 void Setup::init()
 { // set other parameters
+    BlSz.X_inner = DIM_X ? BlSz.X_inner : 1, BlSz.Y_inner = DIM_Y ? BlSz.Y_inner : 1, BlSz.Z_inner = DIM_Z ? BlSz.Z_inner : 1;
+    BlSz.Bwidth_X = DIM_X ? BlSz.Bwidth_X : 0, BlSz.Bwidth_Y = DIM_Y ? BlSz.Bwidth_Y : 0, BlSz.Bwidth_Z = DIM_Z ? BlSz.Bwidth_Z : 0;
+    BlSz.Domain_length = DIM_X ? BlSz.Domain_length : 1.0, BlSz.Domain_width = DIM_Y ? BlSz.Domain_width : 1.0, BlSz.Domain_height = DIM_Z ? BlSz.Domain_height : 1.0;
+
     BlSz.dx = DIM_X ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
     BlSz.dy = DIM_Y ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
     BlSz.dz = DIM_Z ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);

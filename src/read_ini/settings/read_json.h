@@ -20,8 +20,8 @@ extern const real_t StartTime, EndTime; // NOTE: ignore
 extern const size_t OutDAT, OutVTI, OutSTL;
 extern const size_t outpos_x, outpos_y, outpos_z;
 extern const size_t OutBoundary, OutDIRX, OutDIRY, OutDIRZ;
-extern const size_t nStepmax, nOutput;		   // nOutMax
-extern const size_t OutInterval, POutInterval; // PushInterval
+extern const size_t nStepmax_json, nOutput;	   // nOutMax
+extern const size_t OutInterval, POutInterval, RcalInterval; // PushInterval
 //--for-Thread---------------------------
 extern const size_t BlockSize, dim_block_x, dim_block_y, dim_block_z;
 

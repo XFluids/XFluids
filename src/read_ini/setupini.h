@@ -40,7 +40,7 @@ public:
 	//--for-Running--------------------------
 	std::string WorkDir;
 	int bytes, cellbytes;  // memory allocate
-	int nStepmax, nOutput; // nOutpu: Number of output files
+	int nStepmax;		   // nOutpu: Number of output files
 
 	//--for-Mesh-----------------------------
 	BConditions Boundarys[6];
