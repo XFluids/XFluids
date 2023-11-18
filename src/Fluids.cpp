@@ -706,8 +706,8 @@ real_t Fluid::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTi
 	uvw_c_max[0] = lambda_x0, uvw_c_max[1] = lambda_y0, uvw_c_max[2] = lambda_z0, uvw_c_max[3] = miu_max, uvw_c_max[4] = rho_min;
 
 	dt_ref = uvw_c_max[0] * Fs.BlSz._dx + uvw_c_max[1] * Fs.BlSz._dy + uvw_c_max[2] * Fs.BlSz._dz;
-	real_t temp_vis = _DF(14.0 / 3.0) * miu_max / rho_min * uvw_c_max[5];
-	dt_ref = sycl::max(dt_ref, temp_vis);
+	// real_t temp_vis = _DF(14.0 / 3.0) * miu_max / rho_min * uvw_c_max[5];
+	// dt_ref = sycl::max(dt_ref, temp_vis);
 	dt_ref = Fs.BlSz.CFLnumber / dt_ref;
 #endif // end USE_MPI
 

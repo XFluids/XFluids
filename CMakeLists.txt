@@ -8,7 +8,7 @@ set(SelectDv "cuda") # which platform: host(for cpu), cuda(for llvm-cuda), cuda-
 set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
-option(USE_MPI "if enable mpi" OFF)
+option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # # EXPLICIT_ALLOC: 1. ON: allocate each device buffer and transfer. 2. OFF: allocate struct ptr in device
 
@@ -54,7 +54,7 @@ set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "L
 # # 2d-riemann(-shocks/-interruptions-reduce/-interruptions-plus/-shock-interruption) ## only XY DIR support
 # # 2d-shock-bubble, 2d-shock-bubble-without-fuel, 2d-mixing-layer, 2d-under-expanded-jet ## only XY DIR support
 # # 3d-shock-bubble, 3d-shock-bubble-without-fuel, 3d-under-expanded-jet
-set(INIT_SAMPLE "1d-reactive-st") # set INIT_SAMPLE for Initializing settings
+set(INIT_SAMPLE "2d-shock-bubble") # set INIT_SAMPLE for Initializing settings
 set(COP_SPECIES "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
 set(REACTION_MODEL "H2O_18_reaction") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
 

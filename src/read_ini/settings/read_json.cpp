@@ -126,7 +126,7 @@ const real_t C_json = xa_json * j_conf.at("init").value("bubble_boundary_width",
 
 bool ReadJson(std::string filename, nlohmann::json &j)
 {
-	std::cout << "Read json configure: " << filename << std::endl;
+	// std::cout << "Read json configure: " << filename << std::endl;
 	std::ifstream in(filename.c_str());
 	if (!in)
 	{

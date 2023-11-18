@@ -381,7 +381,7 @@ bool Setup::Mach_Shock()
         if (myRank == 0)
 #endif
         {
-            std::cout << "--> Modified the shock's status by Ref0:https://doi.org/10.1016/j.combustflame.2022.112085" << std::endl;
+            std::cout << "\n--> Modified the shock's status by Ref0:https://doi.org/10.1016/j.combustflame.2022.112085" << std::endl;
         }
 
         rho1 = rho2 * (Gamma_m2 + _DF(1.0)) * Ma_1 / (_DF(2.0) + (Gamma_m2 - _DF(1.0)) * Ma_1);
@@ -1359,34 +1359,50 @@ void Setup::CpyToGPU()
 void Setup::print()
 {
     if (mach_shock)
-    {
-        // States initializing
+    { // States initializing
         printf("blast_type: %d and blast_center(x = %.6lf , y = %.6lf , z = %.6lf).\n", ini.blast_type, ini.blast_center_x, ini.blast_center_y, ini.blast_center_z);
         printf(" Use Mach number = %lf to reinitialize fluid states upstream the shock\n", ini.Ma);
         printf("  States of   upstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_in, ini.blast_T_in, ini.blast_density_in, ini.blast_u_in, ini.blast_v_in, ini.blast_w_in);
         printf("  States of downstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_out, ini.blast_T_out, ini.blast_density_out, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
-#ifdef COP
-        printf("cop_type:   %d and cop_radius: %lf.\n", ini.cop_type, ini.cop_radius);
-        printf("  cop_center: (x = %.6lf, y = %.6lf, z = %.6lf).\n", ini.cop_center_x, ini.cop_center_y, ini.cop_center_z);
-        // printf("  States inside cop bubble: (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.cop_pressure_in, ini.cop_T_in, ini.cop_density_in, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
-#endif // end COP
     }
 // 后接流体状态输出
+    if (1 < NumFluid)
+    {
+        std::cout << "<---------------------------------------------------> \n";
+        printf("Extending width: width_xt                                : %lf\n", width_xt);
+        printf("Ghost-fluid update width: width_hlf                      : %lf\n", width_hlf);
+        printf("cells' volume less than this vule will be mixed          : %lf\n", mx_vlm);
+        printf("cells' volume less than states updated based on mixed    : %lf\n", ext_vlm);
+        printf("half-width of level set narrow band                      : %lf\n", BandforLevelset);
+        printf("Number of fluids                                         : %d\n", BlSz.num_fluids);
+        printf("bubble_type: %d and bubble_radius: %lf.\n", ini.bubble_type, ini.bubbleSz);
+        printf("  bubble_center: (x =%.6lf,y =%.6lf,z =%.6lf).\n", ini.bubble_center_x, ini.bubble_center_y, ini.bubble_center_z);
+        printf("  States inside multiphase bubble:(P =%.6lf,T =%.6lf,rho =%.6lf,u =%.6lf,v =%.6lf,w =%.6lf,).\n", ini.cop_pressure_in, ini.cop_T_in, ini.cop_density_in, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
+        for (size_t n = 0; n < NumFluid; n++)
+        { // 0: phase_indicator, 1: gamma, 2: A, 3: B, 4: rho0, 5: R_0, 6: lambda_0, 7: a(rtificial)s(peed of)s(ound)
+            printf("fluid[%d]: %s, characteristics(Material, Phase_indicator, Gamma, A, B, Rho0, R_0, Lambda_0, artificial speed of sound): \n", n, Fluids_name[n].c_str());
+            printf("  %d,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f\n", material_props[n][0],
+                   material_props[n][1], material_props[n][2], material_props[n][3], material_props[n][4],
+                   material_props[n][5], material_props[n][6], material_props[n][7], material_props[n][8]);
+        }
+    }
 #ifdef COP
-    std::cout << "\n"
-              << species_name.size() << " species mole/mass fraction: " << std::endl;
+    std::cout << "<---------------------------------------------------> \n";
+    std::cout << species_name.size() << " species mole/mass fraction: " << std::endl;
     for (int n = 0; n < NUM_SPECIES; n++)
     {
-        std::cout << "species[" << n << "]=" << std::setw(5) << species_name[n]
-                  << std::setw(10) << h_thermal.xi_in[n] << std::setw(10) << h_thermal.xi_out[n]
-                  << std::setw(10) << h_thermal.species_ratio_in[n] << std::setw(10) << h_thermal.species_ratio_out[n] << std::endl;
+        std::cout << "species[" << n << "]=" << species_name[n] << ": "
+                  << std::setw(5) << h_thermal.xi_in[n] << std::setw(5) << h_thermal.xi_out[n]
+                  << std::setw(15) << h_thermal.species_ratio_in[n] << std::setw(15) << h_thermal.species_ratio_out[n] << std::endl;
     }
 
 #if Visc
+    std::cout << "<---------------------------------------------------> \n";
+    printf("Viscisity characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): \n");
     for (size_t n = 0; n < NUM_SPECIES; n++)
     {
-        printf("compoent[%zd]: %s, characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): \n", n, species_name[n].c_str());
-        printf("  %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf\n", h_thermal.species_chara[n * SPCH_Sz + 0],
+        printf("species[%zd]: %s,    %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf\n", n,
+               species_name[n].c_str(), h_thermal.species_chara[n * SPCH_Sz + 0],
                h_thermal.species_chara[n * SPCH_Sz + 1], h_thermal.species_chara[n * SPCH_Sz + 2],
                h_thermal.species_chara[n * SPCH_Sz + 3], h_thermal.species_chara[n * SPCH_Sz + 4],
                h_thermal.species_chara[n * SPCH_Sz + 5], h_thermal.species_chara[n * SPCH_Sz + 6]);
@@ -1459,26 +1475,6 @@ void Setup::print()
 
 #endif // COP
 
-    if (1 < NumFluid)
-    {
-        printf("Extending width: width_xt                                : %lf\n", width_xt);
-        printf("Ghost-fluid update width: width_hlf                      : %lf\n", width_hlf);
-        printf("cells' volume less than this vule will be mixed          : %lf\n", mx_vlm);
-        printf("cells' volume less than states updated based on mixed    : %lf\n", ext_vlm);
-        printf("half-width of level set narrow band                      : %lf\n", BandforLevelset);
-        printf("Number of fluids                                         : %d\n", BlSz.num_fluids);
-        printf("bubble_type: %d and bubble_radius: %lf.\n", ini.bubble_type, ini.bubbleSz);
-        printf("  bubble_center: (x =%.6lf,y =%.6lf,z =%.6lf).\n", ini.bubble_center_x, ini.bubble_center_y, ini.bubble_center_z);
-        printf("  States inside multiphase bubble:(P =%.6lf,T =%.6lf,rho =%.6lf,u =%.6lf,v =%.6lf,w =%.6lf,).\n", ini.cop_pressure_in, ini.cop_T_in, ini.cop_density_in, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
-        for (size_t n = 0; n < NumFluid; n++)
-        { // 0: phase_indicator, 1: gamma, 2: A, 3: B, 4: rho0, 5: R_0, 6: lambda_0, 7: a(rtificial)s(peed of)s(ound)
-            printf("fluid[%d]: %s, characteristics(Material, Phase_indicator, Gamma, A, B, Rho0, R_0, Lambda_0, artificial speed of sound): \n", n, Fluids_name[n].c_str());
-            printf("  %d,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f\n", material_props[n][0],
-                   material_props[n][1], material_props[n][2], material_props[n][3], material_props[n][4],
-                   material_props[n][5], material_props[n][6], material_props[n][7], material_props[n][8]);
-        }
-    }
-
     std::cout << "<---------------------------------------------------> \n";
     printf("Start time: %.6lf and End time: %.6lf                        \n", StartTime, EndTime);
     printf("   XYZ dir Domain size:                  %1.3lf x %1.3lf x %1.3lf\n", BlSz.Domain_length, BlSz.Domain_width, BlSz.Domain_height);
@@ -1488,7 +1484,6 @@ void Setup::print()
         std::cout << "   Global resolution of MPI World: " << BlSz.X_inner * BlSz.mx << " x " << BlSz.Y_inner * BlSz.my << " x " << BlSz.Z_inner * BlSz.mz << "\n";
         std::cout << "   Local  resolution of one Rank : " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
         std::cout << "   MPI Cartesian topology        : " << BlSz.mx << " x " << BlSz.my << " x " << BlSz.mz << std::endl;
-        // std::cout << "<---------------------------------------------------> \n";
     }
 #else
     std::cout << "   Resolution of Domain:                 " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";

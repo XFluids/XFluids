@@ -10,22 +10,22 @@
 		"OutBoundary": 0,
 		"OutInterval": 10000,
 		"OutTimeStamps": [
-			"0.000020",
-			"0.000046",
-			"0.000050",
-			"0.000066",
-			"0.000070",
-			"0.000092",
-			"0.000100",
-			"0.000136",
-			"0.000218",
-			"0.000244",
-			"0.000300",
-			"0.000360",
-			"0.000400",
-			"0.000450",
-			"0.000476",
-			"0.000500"
+			0.000020,
+			0.000046,
+			0.000050,
+			0.000066,
+			0.000070,
+			0.000092,
+			0.000100,
+			0.000136,
+			0.000218,
+			0.000244,
+			0.000300,
+			0.000360,
+			0.000400,
+			0.000450,
+			0.000476,
+			0.000500
 		]
 	},
 	"mpi": {
@@ -40,7 +40,26 @@
 	},
 	"equations": {
 		"Fluid_Names": [],
-		"Species_Name": []
+		// Insert
+		"Species_Name": [
+			"H2",
+			"O2",
+			"Xe",
+			"N2"
+		]
+		// Reacting
+		// "Species_Name": [
+		// 	"H2",
+		// 	"O2",
+		// 	"O",
+		// 	"H",
+		// 	"OH",
+		// 	"HO2",
+		// 	"H2O2",
+		// 	"H2O",
+		// 	"Xe",
+		// 	"N2"
+		// ]
 	},
 	"sources": {},
 	"mesh": {
@@ -58,11 +77,6 @@
 			800,
 			400,
 			400
-		],
-		"Ghost_width": [
-			4,
-			4,
-			4
 		],
 		"Boundarys": [
 			0,
@@ -83,7 +97,6 @@
 			0.0,
 			0.0
 		],
-		// ; pre-shock status 0.25atm=25331.25Pa  0.5atm=50662.5Pa  0.75atm=75993.75Pa  1atm=101325.0Pa
 		"blast_upstream": [
 			0.0,
 			0.0,
@@ -92,19 +105,20 @@
 			0.0,
 			0.0
 		],
+		// pre-shock status 0.25atm=25331.25Pa  0.5atm=50662.5Pa  0.75atm=75993.75Pa  1atm=101325.0Pa
 		"blast_downstream": [
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0
+			0.0, // Density
+			101325.0, // Pressure
+			295, // Tempreture
+			0.0, // Velocity_u
+			0.0, // Velocity_v
+			0.0 // Volecity_w
 		],
 		// give bubble_shape_ratioy=bubble_shape_x/bubble_shape_y =0.354, 0.650, 1.0, 1.837, 2.829
-		// or bubble_shape_ratioz=bubble_shape_x/bubble_shape_z=bubble_shape_ratioy
-		// or give bubble_shape_x, bubble_shape_y, bubble_shape_z directly
+		// // or bubble_shape_ratioz=bubble_shape_x/bubble_shape_z=bubble_shape_ratioy
+		// // or give bubble_shape_x, bubble_shape_y, bubble_shape_z directly
 		// // Ref: https://doi.org/10.1007/s10409-021-01132-9
 		"bubble_shape_x": 0.02,
-		"bubble_boundary_cells": 8 //;higher for sharper interface
+		"bubble_boundary_cells": 8 // higher for sharper interface
 	}
 }
