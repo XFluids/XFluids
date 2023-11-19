@@ -59,7 +59,7 @@ const size_t dim_block_z = DIM_Z ? j_conf.at("run").value("blockSize_z", BlockSi
 const size_t mx_json = j_conf.at("mpi").value("mx", 1);
 const size_t my_json = j_conf.at("mpi").value("my", 1);
 const size_t mz_json = j_conf.at("mpi").value("mz", 1);
-const std::vector<int> DeviceSelect_json = j_conf.at("mpi").value("DeviceSelect", std::vector<int>{1, 1, 0});
+const std::vector<int> DeviceSelect_json = j_conf.at("mpi").value("DeviceSelect", std::vector<int>{1, 0, 0});
 
 // Equations setup
 const std::vector<std::string> Fluids_name = j_conf.at("equations").value("Fluids_Name", std::vector<std::string>{"DeF"}); // Fluid_Names

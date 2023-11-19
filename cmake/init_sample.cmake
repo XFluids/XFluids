@@ -110,7 +110,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shocks") # 2d-riemann(-shocks/-shock-int
     set(ERROR_PATCH_YII "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "Reaction/Insert-Air")
+    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shocks-interaction")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -124,7 +124,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shock-interruption") # 2d-riemann(-shock
     set(ERROR_PATCH_YII "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "Reaction/Insert-Air")
+    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shock-interruption")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -138,7 +138,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-plus") # 2d-riemann(-shock
     set(ERROR_PATCH_YII "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "Reaction/Insert-Air")
+    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-plus")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -152,7 +152,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-sho
     set(ERROR_PATCH_YII "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "Reaction/Insert-Air")
+    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-reduce")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -298,10 +298,10 @@ IF(COP)
 
 ELSE(COP)
     set(Gamma "1.4")
+    set(COP_SPECIES "NO-COP")
+    add_compile_options(-DNUM_REA=0)
     add_compile_options(-DNUM_SPECIES=1)
     add_compile_options(-DNCOP_Gamma=${Gamma})
-    add_compile_options(-DNUM_REA=0)
-    set(COP_SPECIES "Only none species actived and set Gamma to ${Gamma}") # Be invalid while option COP_CHEME "ON"
 ENDIF(COP)
 
 message(STATUS "Solvers' settings: ")

@@ -4,11 +4,11 @@
 		"blockSize_y": 8,
 		"blockSize_z": 8,
 		"DtBlockSize": 8,
-		"nStepMax": 1000,
+		"nStepMax": 100000,
 		"nOutMax": 100,
 		"CFLnumber": 0.4,
 		"OutBoundary": 0,
-		"OutInterval": 200,
+		"OutInterval": 1000,
 		"OutTimeStamps": [
 			0.4
 		]
@@ -25,15 +25,12 @@
 	},
 	"equations": {
 		"Fluid_Names": [],
-		"Species_Name": []
+		"Species_Name": [
+			"NCOP"
+		]
 	},
 	"sources": {},
 	"mesh": {
-		"DOMAIN_Size": [
-			1.0,
-			1.0,
-			1.0
-		],
 		"Resolution": [
 			400,
 			400,
