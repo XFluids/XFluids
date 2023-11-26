@@ -3,7 +3,7 @@
  */
 #include <iomanip>
 #include <algorithm>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include "global_setup_function.hpp"
 
 // =======================================================
@@ -51,8 +51,8 @@ std::string getWorkDir(std::string exe_path, std::string exe_name)
     do
     {
         int a = exe_path.find_last_of("/");
-        // std::cout << exe_path.erase(a) + "/scripts" << std::endl;
-        if (std::filesystem::exists(exe_path.erase(a) + "/scripts"))
+        // std::cout << exe_path.erase(a) + "/middleware" << std::endl;
+        if (boost::filesystem::exists(exe_path.erase(a) + "/middleware"))
             return exe_path;
         if (a < 0)
             break;

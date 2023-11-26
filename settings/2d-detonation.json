@@ -1,0 +1,74 @@
+{
+    "run": {
+        "blockSize_x": 8,
+        "blockSize_y": 4,
+        "blockSize_z": 8,
+        "DtBlockSize": 8,
+        "nStepMax": 100000,
+        "nOutMax": 100,
+        "OutVTI": 1,
+        "CFLnumber": 0.4,
+        "OutBoundary": 0,
+        "OutInterval": 3000,
+        "OutTimeStamps": [
+            1.0e-5,
+            2.0e-5,
+            3.0e-5,
+            4.0e-5,
+            5.0e-5,
+            6.0e-5,
+            7.0e-5,
+            8.0e-5,
+            9.0e-5,
+            10.0e-5
+        ]
+    },
+    "mpi": {
+        "mx": 1,
+        "my": 1,
+        "mz": 1,
+        "DeviceSelect": [
+            1,
+            0,
+            0
+        ]
+    },
+    "equations": {
+        "Fluid_Names": [],
+        "Species_Name": [
+            "H2",
+            "O2",
+            "O",
+            "H",
+            "OH",
+            "HO2",
+            "H2O2",
+            "H2O",
+            "N2"
+        ],
+        "if_overdetermined_eigen": 0
+    },
+    "sources": {},
+    "mesh": {
+        "DOMAIN_Size": [
+            0.2,
+            0.01,
+            0.1
+        ],
+        "Resolution": [
+            2000,
+            100,
+            1000
+        ],
+        // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
+        "Boundarys": [
+            2,
+            2,
+            3,
+            3,
+            3,
+            3
+        ]
+    },
+    "init": {}
+}

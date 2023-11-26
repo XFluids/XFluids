@@ -5,7 +5,7 @@ ENDIF()
 # // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	# // =======================================================
-	set(AdaptiveCpp_DIR "/home/ljl/Apps/OpenSYCL/lib/cmake/OpenSYCL")
+	set(AdaptiveCpp_DIR "/home/ljl/Apps/OpenSYCL/lib/cmake/AdaptiveCpp")
 	find_package(AdaptiveCpp CONFIG REQUIRED)
 
 	IF(SelectDv STREQUAL "cuda-nvcxx")

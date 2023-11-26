@@ -28,7 +28,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "guass-wave")
 # #### 1d sample
 # // =======================================================
 ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
-    set(OUT_PLT "ON")
     set(DIM_X "ON")
     set(COP_CHEME "OFF")
     set(WENO_ORDER "6") # WENOCU6 has the larggest unrubost at Riemann separation
@@ -155,6 +154,22 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-sho
     set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-reduce")
     set(INI_FILE "settings/2d-riemann.json")
+
+ELSEIF(INIT_SAMPLE STREQUAL "2d-detonation")
+    set(COP "ON")
+    set(Visc "OFF")
+    set(DIM_X "ON")
+    set(DIM_Y "ON")
+    set(DIM_Z "OFF")
+    set(COP_CHEME "ON")
+    set(ESTIM_NAN "ON")
+    set(THERMAL "NASA") # NASA fit of Xe
+    set(ERROR_PATCH_YI "OFF")
+    set(ERROR_PATCH_YII "OFF")
+    set(POSITIVITY_PRESERVING "ON")
+    set(ARTIFICIAL_VISC_TYPE "GLF")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-detonation")
+    set(INI_FILE "settings/2d-detonation.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     set(COP "ON")

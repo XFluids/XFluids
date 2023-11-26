@@ -1,4 +1,5 @@
 add_subdirectory(settings)
+find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
@@ -19,6 +20,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         PUBLIC
         readgrid
         settings
+        boost_filesystem
     )
 
     IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
@@ -33,5 +35,6 @@ ELSE()
         INTERFACE
         readgrid
         settings
+        boost_filesystem
     )
 ENDIF()

@@ -117,7 +117,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			if (Iteration % OutInterval == 0 && OutNum <= nOutput || TimeLoopOut)
 			{
 				Output(q, rank, std::to_string(Iteration), physicalTime);
-				if (Iteration)
+				if (Iteration > 0)
 					Output_Ubak(rank, Iteration, physicalTime, duration, true);
 				OutNum++;
 				TimeLoopOut = false;
