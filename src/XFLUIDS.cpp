@@ -104,7 +104,7 @@ float XFLUIDS::OutThisTime(std::chrono::high_resolution_clock::time_point start_
 void XFLUIDS::Evolution(sycl::queue &q)
 {
 	bool TimeLoopOut = false, Stepstop = false;
-	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
+	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 1;
 
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 	while (TimeLoop < OutTimeStamps.size())
