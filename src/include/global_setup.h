@@ -49,10 +49,10 @@ const real_t Ru = _DF(8.314510);						  // Ru
 const real_t universal_gas_const = _DF(8.314510);		  // J/(K mol), "R0", p V = n R0 T
 const real_t p_atm = _DF(1.01325e5);					  // unit: Pa = kg m^-1 s^-2
 const real_t Tref = _DF(1.0);							  // reference T
-#ifdef Visc
+// =======================================================
+//    viscosity constant
 const real_t kB = _DF(1.3806549 * 1.0e-16); // Boltzmann constant,unit:erg/K=10e-7 J/K
 const real_t NA = _DF(6.02214129 * 1.0e23); // Avogadro constant
-#endif
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
 // for flux Reconstruction order
@@ -174,24 +174,6 @@ typedef struct
 	// reference parameters, for calulate coordinate while readgrid
 	real_t LRef;
 } Block;
-
-typedef struct
-{
-	// cop_type: 0 for 1d set, 1 for bubble of cop
-	// blast_type: 0 for 1d shock, 1 for circular shock
-	int cop_type, blast_type, bubble_type;
-	// blast position and states
-	real_t blast_center_x, blast_center_y, blast_center_z, blast_radius,
-		blast_density_in, blast_density_out, blast_pressure_in, blast_pressure_out,
-		blast_T_in, blast_T_out, blast_u_in, blast_v_in, blast_w_in, blast_u_out, blast_v_out, blast_w_out;
-	// bubble position
-	real_t cop_center_x, cop_center_y, cop_center_z, cop_radius, cop_density_in, cop_pressure_in, cop_T_in;
-	real_t Ma; // shock much number
-	// bubble position; NOTE: Domain_length may be the max value of the Domain size
-	real_t bubble_center_x, bubble_center_y, bubble_center_z, bubbleSz;
-	// bubble shape
-	real_t xa, yb, zc, C, _xa2, _yb2, _zc2, _xa2_in, _yb2_in, _zc2_in, _xa2_out, _yb2_out, _zc2_out;
-} IniShape;
 
 typedef struct
 {

@@ -1,8 +1,9 @@
 # # add external submodule
+add_subdirectory(read_grid)
 add_subdirectory(read_ini)
 add_subdirectory(mpiPacks)
-add_subdirectory(read_grid)
 
+# # add sample lib
 find_library(${INIT_SAMPLE} NAMES lib${INIT_SAMPLE}.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")

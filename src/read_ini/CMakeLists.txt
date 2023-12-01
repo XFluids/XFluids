@@ -1,14 +1,17 @@
+add_subdirectory(inishape)
 add_subdirectory(settings)
-find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
+
+# # add readini lib
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
+find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
     target_sources(readini
-        PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/setup_ini.cpp
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/setupini.h
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/setup_ini.cpp
     )
     target_include_directories(readini
         PUBLIC
@@ -18,6 +21,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
     # #add libs
     target_link_libraries(readini
         PUBLIC
+        inishape
         readgrid
         settings
         boost_filesystem
@@ -33,6 +37,7 @@ ELSE()
         PROPERTY IMPORTED_LOCATION ${readini})
     target_link_libraries(readini
         INTERFACE
+        inishape
         readgrid
         settings
         boost_filesystem

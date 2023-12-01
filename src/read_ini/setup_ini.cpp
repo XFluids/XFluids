@@ -1,66 +1,11 @@
-/****************************************
- * 目标是全部使用setup.ini文件控制流体参数，初始化状态，MPI设置，输出设置等尽可能多的设置
- */
+#include <cmath>
 #include <iomanip>
 #include <algorithm>
-#include <boost/filesystem.hpp>
-#include "global_setup_function.hpp"
 
-// =======================================================
-// // // struct AppendParas Member function definitions
-// =======================================================
-template <typename T>
-std::vector<T> AppendParas::match(std::string option)
-{
-    size_t i = 0;
-    option += "=";
-    for (i = 0; i < argc; i++)
-    {
-        if (std::string(argv[i]).find(option) != std::string::npos)
-        {
-            return Stringsplit<T>(std::string(argv[i]).erase(0, option.length()));
-            break;
-        }
-    }
-    return std::vector<T>();
-}
-
-std::vector<std::string> AppendParas::match(std::string option)
-{
-    size_t i = 0;
-    option += "=";
-    for (i = 0; i < argc; i++)
-    {
-        if (std::string(argv[i]).find(option) != std::string::npos)
-        {
-            return Stringsplit(std::string(argv[i]).erase(0, option.length()));
-            break;
-        }
-    }
-    return std::vector<std::string>();
-}
-
-// =======================================================
-// // // set work dir
-// =======================================================
-std::string getWorkDir(std::string exe_path, std::string exe_name)
-{
-    char cwd[1000];
-    getcwd(cwd, 1000);
-    exe_path = std::string(cwd) + "/" + exe_path;
-    do
-    {
-        int a = exe_path.find_last_of("/");
-        // std::cout << exe_path.erase(a) + "/middleware" << std::endl;
-        if (boost::filesystem::exists(exe_path.erase(a) + "/middleware"))
-            return exe_path;
-        if (a < 0)
-            break;
-    } while (1);
-    std::cout << "Error: cannot find WorkDir, run executable file under Program Directory." << std::endl;
-    exit(EXIT_FAILURE);
-    return "Error!!!";
-}
+#include "setupini.h"
+#include "mixture.hpp"
+#include "fworkdir.hpp"
+#include "rangeset.hpp"
 
 // =======================================================
 // // // struct Setup Member function definitions
@@ -98,6 +43,150 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
 
     CpyToGPU();
 } // Setup::Setup end
+
+// =======================================================
+// // // Initialize struct member using json value
+// =======================================================
+void Setup::ReadIni()
+{
+    /* initialize RUN parameters */
+    nStepmax = nStepmax_json;
+    /* initialize MPI parameters */
+    BlSz.mx = mx_json, BlSz.my = my_json, BlSz.mz = mz_json;
+    // initial rank postion to zero, will be changed in MpiTrans
+    BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
+    // for sycl::queue construction and device select
+    DeviceSelect = DeviceSelect_json; // [0]:number of alternative devices [1]:platform_id [2]:device_id.
+
+    /* initialize MESH parameters */
+    // // initialize reference parameters, for calulate coordinate while readgrid
+    BlSz.LRef = Refs[0]; // reference length
+    BlSz.CFLnumber = CFLnumber_json;
+
+    // // read block size settings
+    BlSz.X_inner = Inner[0], BlSz.Y_inner = Inner[1], BlSz.Z_inner = Inner[2];
+    BlSz.Bwidth_X = Bwidth[0], BlSz.Bwidth_Y = Bwidth[1], BlSz.Bwidth_Z = Bwidth[2];
+    BlSz.Domain_xmin = Domain_medg[0], BlSz.Domain_ymin = Domain_medg[1], BlSz.Domain_zmin = Domain_medg[2];
+    BlSz.Domain_length = DOMAIN_Size[0], BlSz.Domain_width = DOMAIN_Size[1], BlSz.Domain_height = DOMAIN_Size[2];
+
+    // // Simple Boundary settings
+    // // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
+    Boundarys[0] = static_cast<BConditions>(Boundarys_json[0]), Boundarys[1] = static_cast<BConditions>(Boundarys_json[1]);
+    Boundarys[2] = static_cast<BConditions>(Boundarys_json[2]), Boundarys[3] = static_cast<BConditions>(Boundarys_json[3]);
+    Boundarys[4] = static_cast<BConditions>(Boundarys_json[4]), Boundarys[5] = static_cast<BConditions>(Boundarys_json[5]);
+
+    /* initialize fluid flow parameters */
+    // // Ini Flow Field dynamic states
+    ini.Ma = Ma_json;
+    ini.blast_type = blast_type;
+    ini.blast_radius = blast_radius;
+    ini.blast_center_x = blast_pos[0], ini.blast_center_y = blast_pos[1], ini.blast_center_z = blast_pos[2];
+    // // Bubble size and shape
+    ini.xa = xa_json, ini.yb = yb_json, ini.zc = zc_json, ini.C = C_json;
+    // // upstream of blast
+    ini.blast_density_in = blast_upstates[0], ini.blast_pressure_in = blast_upstates[1];
+    ini.blast_T_in = blast_upstates[2], ini.blast_u_in = blast_upstates[3], ini.blast_v_in = blast_upstates[4], ini.blast_w_in = blast_upstates[5];
+    // // downstream of blast
+    ini.blast_density_out = blast_downstates[0], ini.blast_pressure_out = blast_downstates[1];
+    ini.blast_T_out = blast_downstates[2], ini.blast_u_out = blast_downstates[3], ini.blast_v_out = blast_downstates[4], ini.blast_w_out = blast_downstates[5];
+#ifdef COP
+    // // states inside mixture bubble
+    ini.cop_type = cop_type;
+    ini.cop_center_x = cop_pos[0], ini.cop_center_y = cop_pos[1], ini.cop_center_z = cop_pos[2];
+    ini.cop_density_in = cop_instates[0], ini.cop_pressure_in = cop_instates[1], ini.cop_T_in = cop_instates[2];
+#else  // no COP
+#endif // end COP
+}
+
+// =======================================================
+// // // Using option parameters appended executable file
+// =======================================================
+void Setup::ReWrite()
+{
+    // =======================================================
+    // // // for json file read
+    ReadIni(); // Initialize parameters from json
+
+    // // rewrite mx, my, mz for MPI
+    std::vector<int> mpiapa = apa.match<int>("-mpi");
+    if (!std::empty(mpiapa))
+        BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
+    // // rewrite X_inner, Y_inner, Z_inner, nStpeMax
+    std::vector<int> Inner_size = apa.match<int>("-run");
+    if (!std::empty(Inner_size))
+    {
+        BlSz.X_inner = Inner_size[0], BlSz.Y_inner = Inner_size[1], BlSz.Z_inner = Inner_size[2];
+        if (4 == Inner_size.size())
+            nStepmax = Inner_size[3];
+    } // // accelerator_selector device;
+    std::vector<int> devapa = apa.match<int>("-dev");
+    if (!std::empty(devapa))
+        DeviceSelect = devapa;
+#if defined(DEFINED_OPENSYCL)
+    DeviceSelect[2] += myRank % DeviceSelect[0];
+#else  // for oneAPI
+    DeviceSelect[1] += myRank % DeviceSelect[0];
+#endif // end
+}
+
+// =======================================================
+// =======================================================
+void Setup::init()
+{ // set other parameters
+    BlSz.X_inner = DIM_X ? BlSz.X_inner : 1, BlSz.Y_inner = DIM_Y ? BlSz.Y_inner : 1, BlSz.Z_inner = DIM_Z ? BlSz.Z_inner : 1;
+    BlSz.Bwidth_X = DIM_X ? BlSz.Bwidth_X : 0, BlSz.Bwidth_Y = DIM_Y ? BlSz.Bwidth_Y : 0, BlSz.Bwidth_Z = DIM_Z ? BlSz.Bwidth_Z : 0;
+    BlSz.Domain_length = DIM_X ? BlSz.Domain_length : 1.0, BlSz.Domain_width = DIM_Y ? BlSz.Domain_width : 1.0, BlSz.Domain_height = DIM_Z ? BlSz.Domain_height : 1.0;
+
+    BlSz.dx = DIM_X ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
+    BlSz.dy = DIM_Y ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
+    BlSz.dz = DIM_Z ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
+
+    BlSz.Domain_xmax = BlSz.Domain_xmin + BlSz.Domain_length;
+    BlSz.Domain_ymax = BlSz.Domain_ymin + BlSz.Domain_width;
+    BlSz.Domain_zmax = BlSz.Domain_zmin + BlSz.Domain_height;
+
+    // maximum number of total cells
+    BlSz.Xmax = DIM_X ? (BlSz.X_inner + 2 * BlSz.Bwidth_X) : 1;
+    BlSz.Ymax = DIM_Y ? (BlSz.Y_inner + 2 * BlSz.Bwidth_Y) : 1;
+    BlSz.Zmax = DIM_Z ? (BlSz.Z_inner + 2 * BlSz.Bwidth_Z) : 1;
+    BlSz.dl = BlSz.dx + BlSz.dy + BlSz.dz;
+    if (DIM_X)
+        BlSz.dl = std::min(BlSz.dl, BlSz.dx);
+    if (DIM_Y)
+        BlSz.dl = std::min(BlSz.dl, BlSz.dy);
+    if (DIM_Z)
+        BlSz.dl = std::min(BlSz.dl, BlSz.dz);
+
+    BlSz.offx = (_DF(0.5) - BlSz.Bwidth_X + BlSz.myMpiPos_x * BlSz.X_inner) * BlSz.dx + BlSz.Domain_xmin;
+    BlSz.offy = (_DF(0.5) - BlSz.Bwidth_Y + BlSz.myMpiPos_y * BlSz.Y_inner) * BlSz.dy + BlSz.Domain_ymin;
+    BlSz.offz = (_DF(0.5) - BlSz.Bwidth_Z + BlSz.myMpiPos_z * BlSz.Z_inner) * BlSz.dz + BlSz.Domain_zmin;
+
+    BlSz._dx = _DF(1.0) / BlSz.dx, BlSz._dy = _DF(1.0) / BlSz.dy, BlSz._dz = _DF(1.0) / BlSz.dz, BlSz._dl = _DF(1.0) / BlSz.dl;
+
+    // bubble size: two cell boundary
+    ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
+    ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
+    ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
+    real_t xa_in = int(ini.xa / BlSz.dx) * BlSz.dx;
+    real_t yb_in = int(ini.yb / BlSz.dy) * BlSz.dy;
+    real_t zc_in = int(ini.zc / BlSz.dz) * BlSz.dz;
+    real_t xa_out = xa_in + bubble_boundary * BlSz.dx;
+    real_t yb_out = yb_in + bubble_boundary * BlSz.dy;
+    real_t zc_out = zc_in + bubble_boundary * BlSz.dz;
+    ini._xa2_in = _DF(1.0) / (xa_in * xa_in);
+    ini._yb2_in = _DF(1.0) / (yb_in * yb_in);
+    ini._zc2_in = _DF(1.0) / (zc_in * zc_in);
+    ini._xa2_out = _DF(1.0) / (xa_out * xa_out);
+    ini._yb2_out = _DF(1.0) / (yb_out * yb_out);
+    ini._zc2_out = _DF(1.0) / (zc_out * zc_out);
+
+    // DataBytes set
+    bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
+
+    if (0 == myRank)
+        print();
+} // Setup::init
+
 // =======================================================
 // =======================================================
 void Setup::ReadSpecies()
@@ -120,6 +209,7 @@ void Setup::ReadSpecies()
 #endif // end COP
     ReadThermal();
 }
+
 // =======================================================
 // =======================================================
 void Setup::ReadThermal()
@@ -235,6 +325,7 @@ void Setup::ReadThermal()
     get_Yi(h_thermal.species_ratio_in);
     mach_shock = Mach_Shock();
 }
+
 // =======================================================
 // =======================================================
 void Setup::get_Yi(real_t *yi)
@@ -245,6 +336,7 @@ void Setup::get_Yi(real_t *yi)
     for (size_t n = 0; n < NUM_SPECIES; n++) // Ri=Ru/Wi
         yi[n] = yi[n] * h_thermal.Wi[n] / W_mix;
 }
+
 // =======================================================
 // =======================================================
 bool Setup::Mach_Shock()
@@ -306,9 +398,7 @@ bool Setup::Mach_Shock()
 
     if (!Mach_Modified)
     {
-#ifdef USE_MPI
         if (myRank == 0)
-#endif
         {
             std::cout << " --> Iter post-shock states by Mach number: " << Ma << std::endl;
         }
@@ -345,9 +435,7 @@ bool Setup::Mach_Shock()
             }
             if (iter > 1000)
             {
-#ifdef USE_MPI
                 if (myRank == 0)
-#endif
                 {
                     std::cout << "   Mach number Iteration failed: Over 1000 steps has been done." << std::endl;
                 }
@@ -364,9 +452,7 @@ bool Setup::Mach_Shock()
             residual = rho2 * (u2 - Si) * E2 - rho1 * (u1 - Si) * E1 + p2 * u2 - p1 * u1;
             iter++;
 #ifdef DEBUG
-#ifdef USE_MPI
             if (myRank == 0)
-#endif
             {
                 std::cout << "   The " << iter << "th iterations, residual : " << residual << std::endl;
             }
@@ -377,9 +463,7 @@ bool Setup::Mach_Shock()
     // Ref0: https://doi.org/10.1016/j.combustflame.2022.112085 theroy
     if (Mach_Modified)
     {
-#ifdef USE_MPI
         if (myRank == 0)
-#endif
         {
             std::cout << "\n--> Modified the shock's status by Ref0:https://doi.org/10.1016/j.combustflame.2022.112085" << std::endl;
         }
@@ -396,9 +480,9 @@ bool Setup::Mach_Shock()
 
     return true;
 }
+
 // =======================================================
 // =======================================================
-#ifdef COP_CHEME
 void Setup::ReadReactions()
 {
     h_react.Nu_f_ = middle::MallocHost<int>(h_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
@@ -457,6 +541,7 @@ void Setup::ReadReactions()
     fint.close();
     IniSpeciesReactions();
 }
+
 // =======================================================
 // =======================================================
 void Setup::IniSpeciesReactions()
@@ -494,6 +579,7 @@ void Setup::IniSpeciesReactions()
         ReactionType(1, i, h_react.Nu_b_, h_react.Nu_f_);
     }
 }
+
 // =======================================================
 // =======================================================
 void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
@@ -584,17 +670,14 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
         break;
     }
     if (h_react.react_type[i * 2 + flag] == 0)
-#ifdef USE_MPI
         if (myRank == 0)
-#endif
         {
             std::cout << "reaction type error for i = " << i << "\n";
         }
 }
-#endif // end COP_CHEME
+
 // =======================================================
 // =======================================================
-#ifdef Visc
 /**
  * @brief read collision integral table from "collision_integral.dat"
  */
@@ -888,7 +971,7 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
     real_t Dkj = _DF(3.0) * std::sqrt(_DF(2.0) * pi * std::pow(T * kB, _DF(3.0)) / W_jk) / (_DF(16.0) * PPP * pi * d_jk * d_jk * Omega1) * _DF(1.0e16); // equation5-4 //unit:cm*cm/s
     return Dkj;
 }
-#endif // Visc
+
 // =======================================================
 // =======================================================
 /**
@@ -928,6 +1011,7 @@ real_t Setup::HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const 
 
     return Cpi;
 }
+
 // =======================================================
 // =======================================================
 /**
@@ -965,6 +1049,7 @@ real_t Setup::Enthalpy(const real_t T0, const int n)
 
     return hi;
 }
+
 // =======================================================
 // =======================================================
 /**
@@ -980,6 +1065,7 @@ real_t Setup::get_Coph(const real_t *yi, const real_t T)
     }
     return h;
 }
+
 // =======================================================
 // =======================================================
 /**
@@ -1002,154 +1088,15 @@ real_t Setup::get_CopGamma(const real_t *yi, const real_t T)
         exit(EXIT_FAILURE);
     }
 }
-// =======================================================
-// =======================================================
-void Setup::ReadIni()
-{
-    /* initialize RUN parameters */
-    nStepmax = nStepmax_json;
-    /* initialize MPI parameters */
-    BlSz.mx = mx_json, BlSz.my = my_json, BlSz.mz = mz_json;
-    // initial rank postion to zero, will be changed in MpiTrans
-    BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
-    // for sycl::queue construction and device select
-    DeviceSelect = DeviceSelect_json; // [0]:number of alternative devices [1]:platform_id [2]:device_id.
 
-    /* initialize MESH parameters */
-    // // initialize reference parameters, for calulate coordinate while readgrid
-    BlSz.LRef = Refs[0]; // reference length
-    BlSz.CFLnumber = CFLnumber_json;
-
-    // // read block size settings
-    BlSz.X_inner = Inner[0], BlSz.Y_inner = Inner[1], BlSz.Z_inner = Inner[2];
-    BlSz.Bwidth_X = Bwidth[0], BlSz.Bwidth_Y = Bwidth[1], BlSz.Bwidth_Z = Bwidth[2];
-    BlSz.Domain_xmin = Domain_medg[0], BlSz.Domain_ymin = Domain_medg[1], BlSz.Domain_zmin = Domain_medg[2];
-    BlSz.Domain_length = DOMAIN_Size[0], BlSz.Domain_width = DOMAIN_Size[1], BlSz.Domain_height = DOMAIN_Size[2];
-
-    // // Simple Boundary settings
-    // // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
-    Boundarys[0] = static_cast<BConditions>(Boundarys_json[0]), Boundarys[1] = static_cast<BConditions>(Boundarys_json[1]);
-    Boundarys[2] = static_cast<BConditions>(Boundarys_json[2]), Boundarys[3] = static_cast<BConditions>(Boundarys_json[3]);
-    Boundarys[4] = static_cast<BConditions>(Boundarys_json[4]), Boundarys[5] = static_cast<BConditions>(Boundarys_json[5]);
-
-    /* initialize fluid flow parameters */
-    // // Ini Flow Field dynamic states
-    ini.Ma = Ma_json;
-    ini.blast_type = blast_type;
-    ini.blast_radius = blast_radius;
-    ini.blast_center_x = blast_pos[0], ini.blast_center_y = blast_pos[1], ini.blast_center_z = blast_pos[2];
-    // // Bubble size and shape
-    ini.xa = xa_json, ini.yb = yb_json, ini.zc = zc_json, ini.C = C_json;
-    // // upstream of blast
-    ini.blast_density_in = blast_upstates[0], ini.blast_pressure_in = blast_upstates[1];
-    ini.blast_T_in = blast_upstates[2], ini.blast_u_in = blast_upstates[3], ini.blast_v_in = blast_upstates[4], ini.blast_w_in = blast_upstates[5];
-    // // downstream of blast
-    ini.blast_density_out = blast_downstates[0], ini.blast_pressure_out = blast_downstates[1];
-    ini.blast_T_out = blast_downstates[2], ini.blast_u_out = blast_downstates[3], ini.blast_v_out = blast_downstates[4], ini.blast_w_out = blast_downstates[5];
-#ifdef COP
-    // // states inside mixture bubble
-    ini.cop_type = cop_type;
-    ini.cop_center_x = cop_pos[0], ini.cop_center_y = cop_pos[1], ini.cop_center_z = cop_pos[2];
-    ini.cop_density_in = cop_instates[0], ini.cop_pressure_in = cop_instates[1], ini.cop_T_in = cop_instates[2];
-#else  // no COP
-#endif // end COP
-}
-
-// =======================================================
-// // // Using option parameters appended executable file
-// =======================================================
-void Setup::ReWrite()
-{
-    // =======================================================
-    // // // for json file read
-    ReadIni(); // Initialize parameters from json
-
-    // // rewrite mx, my, mz for MPI
-    std::vector<int> mpiapa = apa.match<int>("-mpi");
-    if (!std::empty(mpiapa))
-        BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
-    // // rewrite X_inner, Y_inner, Z_inner, nStpeMax
-    std::vector<int> Inner_size = apa.match<int>("-run");
-    if (!std::empty(Inner_size))
-    {
-        BlSz.X_inner = Inner_size[0], BlSz.Y_inner = Inner_size[1], BlSz.Z_inner = Inner_size[2];
-        if (4 == Inner_size.size())
-            nStepmax = Inner_size[3];
-    } // // accelerator_selector device;
-    std::vector<int> devapa = apa.match<int>("-dev");
-    if (!std::empty(devapa))
-        DeviceSelect = devapa;
-#if defined(DEFINED_OPENSYCL)
-    DeviceSelect[2] += myRank % DeviceSelect[0];
-#else  // for oneAPI
-    DeviceSelect[1] += myRank % DeviceSelect[0];
-#endif // end
-}
-// =======================================================
-// =======================================================
-void Setup::init()
-{ // set other parameters
-    BlSz.X_inner = DIM_X ? BlSz.X_inner : 1, BlSz.Y_inner = DIM_Y ? BlSz.Y_inner : 1, BlSz.Z_inner = DIM_Z ? BlSz.Z_inner : 1;
-    BlSz.Bwidth_X = DIM_X ? BlSz.Bwidth_X : 0, BlSz.Bwidth_Y = DIM_Y ? BlSz.Bwidth_Y : 0, BlSz.Bwidth_Z = DIM_Z ? BlSz.Bwidth_Z : 0;
-    BlSz.Domain_length = DIM_X ? BlSz.Domain_length : 1.0, BlSz.Domain_width = DIM_Y ? BlSz.Domain_width : 1.0, BlSz.Domain_height = DIM_Z ? BlSz.Domain_height : 1.0;
-
-    BlSz.dx = DIM_X ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
-    BlSz.dy = DIM_Y ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
-    BlSz.dz = DIM_Z ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
-
-    BlSz.Domain_xmax = BlSz.Domain_xmin + BlSz.Domain_length;
-    BlSz.Domain_ymax = BlSz.Domain_ymin + BlSz.Domain_width;
-    BlSz.Domain_zmax = BlSz.Domain_zmin + BlSz.Domain_height;
-
-    // maximum number of total cells
-    BlSz.Xmax = DIM_X ? (BlSz.X_inner + 2 * BlSz.Bwidth_X) : 1;
-    BlSz.Ymax = DIM_Y ? (BlSz.Y_inner + 2 * BlSz.Bwidth_Y) : 1;
-    BlSz.Zmax = DIM_Z ? (BlSz.Z_inner + 2 * BlSz.Bwidth_Z) : 1;
-    BlSz.dl = BlSz.dx + BlSz.dy + BlSz.dz;
-    if (DIM_X)
-        BlSz.dl = std::min(BlSz.dl, BlSz.dx);
-    if (DIM_Y)
-        BlSz.dl = std::min(BlSz.dl, BlSz.dy);
-    if (DIM_Z)
-        BlSz.dl = std::min(BlSz.dl, BlSz.dz);
-
-    BlSz.offx = (_DF(0.5) - BlSz.Bwidth_X + BlSz.myMpiPos_x * BlSz.X_inner) * BlSz.dx + BlSz.Domain_xmin;
-    BlSz.offy = (_DF(0.5) - BlSz.Bwidth_Y + BlSz.myMpiPos_y * BlSz.Y_inner) * BlSz.dy + BlSz.Domain_ymin;
-    BlSz.offz = (_DF(0.5) - BlSz.Bwidth_Z + BlSz.myMpiPos_z * BlSz.Z_inner) * BlSz.dz + BlSz.Domain_zmin;
-
-    BlSz._dx = _DF(1.0) / BlSz.dx, BlSz._dy = _DF(1.0) / BlSz.dy, BlSz._dz = _DF(1.0) / BlSz.dz, BlSz._dl = _DF(1.0) / BlSz.dl;
-
-    // bubble size: two cell boundary
-    ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
-    ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
-    ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
-    real_t xa_in = int(ini.xa / BlSz.dx) * BlSz.dx;
-    real_t yb_in = int(ini.yb / BlSz.dy) * BlSz.dy;
-    real_t zc_in = int(ini.zc / BlSz.dz) * BlSz.dz;
-    real_t xa_out = xa_in + bubble_boundary * BlSz.dx;
-    real_t yb_out = yb_in + bubble_boundary * BlSz.dy;
-    real_t zc_out = zc_in + bubble_boundary * BlSz.dz;
-    ini._xa2_in = _DF(1.0) / (xa_in * xa_in);
-    ini._yb2_in = _DF(1.0) / (yb_in * yb_in);
-    ini._zc2_in = _DF(1.0) / (zc_in * zc_in);
-    ini._xa2_out = _DF(1.0) / (xa_out * xa_out);
-    ini._yb2_out = _DF(1.0) / (yb_out * yb_out);
-    ini._zc2_out = _DF(1.0) / (zc_out * zc_out);
-
-    // DataBytes set
-    bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
-
-    if (0 == myRank)
-        print();
-} // Setup::init
 // =======================================================
 // =======================================================
 void Setup::CpyToGPU()
 {
 #ifdef USE_MPI
     mpiTrans->communicator->synchronize();
-    if (0 == mpiTrans->myRank)
 #endif // end USE_MPI
+    if (0 == myRank)
     {
         std::cout << "<---------------------------------------------------> \n";
         std::cout << "Setup_ini is copying buffers into Device . ";
@@ -1347,13 +1294,14 @@ void Setup::CpyToGPU()
 
 #ifdef USE_MPI
     mpiTrans->communicator->synchronize();
-    if (0 == mpiTrans->myRank)
 #endif // end USE_MPI
+    if (0 == myRank)
     {
         std::cout << " . Done \n";
         std::cout << "<---------------------------------------------------> \n";
     }
 }
+
 // =======================================================
 // =======================================================
 void Setup::print()
@@ -1365,7 +1313,7 @@ void Setup::print()
         printf("  States of   upstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_in, ini.blast_T_in, ini.blast_density_in, ini.blast_u_in, ini.blast_v_in, ini.blast_w_in);
         printf("  States of downstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_out, ini.blast_T_out, ini.blast_density_out, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
     }
-// 后接流体状态输出
+    // 后接流体状态输出
     if (1 < NumFluid)
     {
         std::cout << "<---------------------------------------------------> \n";
