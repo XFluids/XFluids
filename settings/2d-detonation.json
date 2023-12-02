@@ -35,17 +35,7 @@
     },
     "equations": {
         "Fluid_Names": [],
-        "Species_Name": [
-            "H2",
-            "O2",
-            "O",
-            "H",
-            "OH",
-            "HO2",
-            "H2O2",
-            "H2O",
-            "N2"
-        ],
+        "Species_Name": [],
         "if_overdetermined_eigen": 0
     },
     "sources": {},

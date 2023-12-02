@@ -970,7 +970,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 	index++;
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
-		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + species_name[ii - Onbvar + NUM_SPECIES] + ")";
+		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
 #endif // COP
 
 	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
@@ -1619,7 +1619,7 @@ void XFLUIDS::Output_plt(int rank, std::ostringstream &timeFormat, std::ostrings
 	index++;
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
-		variables_names[ii] = "<i>Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + species_name[ii - Onbvar + NUM_SPECIES] + ")</i>[-]";
+		variables_names[ii] = "<i>Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")</i>[-]";
 #endif // COP
 
 	real_t posx = -Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner);
@@ -1774,7 +1774,7 @@ void XFLUIDS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostring
 	index++;
 #ifdef COP
 	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
-		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + species_name[ii - Onbvar + NUM_SPECIES] + ")";
+		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
 #endif // COP
 
 	int *OutRanks = new int[nranks]{0};
@@ -2138,7 +2138,7 @@ void XFLUIDS::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostring
 		out << ", <i><greek>w</greek></i><sub>x</sub>[s<sup>-1</sup>], <i><greek>w</greek></i><sub>y</sub>[s<sup>-1</sup>], <i><greek>w</greek></i><sub>z</sub>[s<sup>-1</sup>]";
 #ifdef COP
 		for (size_t n = 0; n < NUM_SPECIES; n++)
-			out << ", <i>Y(" << species_name[n] << ")</i>[-]";
+			out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
 #endif
 		out << "\n";
 		out << "zone t='" << outputPrefix << "_" << timeFormat.str();

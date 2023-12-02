@@ -6,6 +6,8 @@
 		"DtBlockSize": 8,
 		"nStepMax": 100000000,
 		"nOutMax": 2500,
+		"OutDAT": 0,
+		"OutVTI": 1,
 		"CFLnumber": 0.4,
 		"OutBoundary": 0,
 		"OutInterval": 10000,
@@ -40,26 +42,7 @@
 	},
 	"equations": {
 		"Fluid_Names": [],
-		// Insert
-		"Species_Name": [
-			"H2",
-			"O2",
-			"Xe",
-			"N2"
-		]
-		// Reacting
-		// "Species_Name": [
-		// 	"H2",
-		// 	"O2",
-		// 	"O",
-		// 	"H",
-		// 	"OH",
-		// 	"HO2",
-		// 	"H2O2",
-		// 	"H2O",
-		// 	"Xe",
-		// 	"N2"
-		// ]
+		"Species_Name": []
 	},
 	"sources": {},
 	"mesh": {

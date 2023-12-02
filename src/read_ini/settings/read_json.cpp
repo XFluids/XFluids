@@ -64,7 +64,7 @@ const std::vector<int> DeviceSelect_json = j_conf.at("mpi").value("DeviceSelect"
 // Equations setup
 const std::vector<std::string> Fluids_name = j_conf.at("equations").value("Fluids_Name", std::vector<std::string>{"DeF"}); // Fluid_Names
 const size_t NumFluid = Fluids_name.size();
-const std::vector<std::string> species_name = j_conf.at("equations").value("Species_Name", std::vector<std::string>{});
+// const std::vector<std::string> species_name = j_conf.at("equations").value("Species_Name", std::vector<std::string>{});
 const size_t Equ_rho = j_conf.at("equations").value("Equ_rho", 1);
 const size_t Equ_energy = j_conf.at("equations").value("Equ_energy", 1);
 const std::vector<size_t> Equ_momentum = j_conf.at("equations").value("Equ_momentum", std::vector<size_t>{1, 1, 1});

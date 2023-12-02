@@ -39,8 +39,8 @@ extern void YDirThetaItegralKernel(int i, int k, Block bl, real_t *y, real_t *Th
 	{
 		int id = Xmax * Ymax * k + Xmax * j + i;
 		real_t *yi = &(y[NUM_SPECIES * id]);
-		ThetaXe[X_inner * kk + ii] += yi[NUM_COP - 1];
-		ThetaN2[X_inner * kk + ii] += yi[NUM_COP];
-		ThetaXN[X_inner * kk + ii] += yi[NUM_COP] * yi[NUM_COP - 1];
+		ThetaXe[X_inner * kk + ii] += yi[bl.Xe_id];
+		ThetaN2[X_inner * kk + ii] += yi[bl.N2_id];
+		ThetaXN[X_inner * kk + ii] += yi[bl.Xe_id] * yi[bl.N2_id];
 	}
 }

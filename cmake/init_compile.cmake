@@ -26,7 +26,7 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
 	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
-		set(ARCH "")
+		set(ARCH "host")
 	ELSE()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
 	ENDIF()

@@ -49,8 +49,9 @@ extern void PositivityPreservingKernel(int i, int j, int k, int id_l, int id_r, 
 
 	// // correct for yi // need Ini of yi > 0(1.0e-10 set)
 	real_t yi_q[NUM_SPECIES], yi_u[NUM_SPECIES], yi_qp[NUM_SPECIES], yi_up[NUM_SPECIES], _rhoq, _rhou, _rhoqp, _rhoup;
-	_rhoq = _DF(1.0) / (UU[0] - FF[0]), _rhou = _DF(1.0) / (UU[0] - FF_LF[0]), yi_q[NUM_COP] = _DF(1.0), yi_u[NUM_COP] = _DF(1.0);
-	_rhoqp = _DF(1.0) / (UP[0] + FF[0]), _rhoup = _DF(1.0) / (UP[0] + FF_LF[0]), yi_qp[NUM_COP] = _DF(1.0), yi_up[NUM_COP] = _DF(1.0);
+	_rhoq = _DF(1.0) / (UU[0] - FF[0]), _rhou = _DF(1.0) / (UU[0] - FF_LF[0]);
+	_rhoqp = _DF(1.0) / (UP[0] + FF[0]), _rhoup = _DF(1.0) / (UP[0] + FF_LF[0]);
+	yi_q[NUM_COP] = _DF(1.0), yi_u[NUM_COP] = _DF(1.0), yi_qp[NUM_COP] = _DF(1.0), yi_up[NUM_COP] = _DF(1.0);
 	for (size_t n = 0; n < NUM_COP; n++)
 	{
 		int tid = n + 5;

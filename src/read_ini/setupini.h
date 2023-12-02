@@ -40,6 +40,7 @@ public:
 	//--for-Fluids-----------------------------
 	bool mach_shock;
 	Thermal d_thermal, h_thermal;
+	std::vector<std::string> species_name{NumFluid};
 	std::vector<std::vector<real_t>> material_props{NumFluid};
 	// material properties: 0:material_kind, 1:phase_indicator, 2:gamma, 3:A, 4:B, 5:rho0, 6:R_0, 7:lambda_0, 8:a(rtificial)s(peed of)s(ound)
 	// // material_kind: type of material, 0: gamma gas, 1: water, 2: stiff gas ;// fluid indicator and EOS Parameters

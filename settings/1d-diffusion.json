@@ -29,14 +29,7 @@
             0
         ]
     },
-    "equations": {
-        "Species_Name": [
-            "O2",
-            "N2",
-            "H2O",
-            "CH4"
-        ]
-    },
+    "equations": {},
     "sources": {},
     "mesh": {
         "DOMAIN_Size": [

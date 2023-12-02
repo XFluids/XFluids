@@ -196,10 +196,13 @@ void Setup::ReadSpecies()
 
     std::string path = WorkDir + std::string(RFile) + "/species_list.dat";
     std::fstream fins(path);
-    std::string buffer;
-    getline(fins, buffer);
-    // for (int n = 0; n < NUM_SPECIES; n++)
-    //     fins >> species_name[n]; // name of the species
+    std::string buffer, sname;
+    // getline(fins, buffer);
+    species_name.clear();
+    for (int n = 0; n < NUM_SPECIES; n++)
+        fins >> sname, species_name.push_back(sname); // name list of the species
+    // NOTE: Xe_id and N2_id depends on species_list
+    BlSz.Xe_id = NUM_SPECIES - 3, BlSz.N2_id = NUM_SPECIES - 2;
 #ifdef COP
     for (int n = 0; n < NUM_SPECIES; n++) // molar ratio
         fins >> h_thermal.species_ratio_out[n];

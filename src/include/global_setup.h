@@ -175,6 +175,8 @@ typedef struct
 	int mx, my, mz, myMpiPos_x, myMpiPos_y, myMpiPos_z;
 	// reference parameters, for calulate coordinate while readgrid
 	real_t LRef;
+	// for theta count
+	size_t Xe_id, N2_id;
 } Block;
 
 typedef struct

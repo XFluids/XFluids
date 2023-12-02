@@ -15,7 +15,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	std::ofstream out(file_name);
 	out << "variables= time, <i>T</i>[K]";
 	for (size_t n = 0; n < NUM_SPECIES; n++)
-		out << ", <i>Y(" << species_name[n] << ")</i>[-]";
+		out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
 	out << "\nzone t='" << outputPrefix << "'\n";
 	/* Solver loop */
 	while (run_time < t_end + dt)

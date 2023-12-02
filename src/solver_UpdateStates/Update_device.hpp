@@ -8,21 +8,23 @@ void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
 {
 	rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
-	yi[NUM_COP] = _DF(1.0);
 #ifdef COP
-	for (size_t ii = 5; ii < Emax; ii++) // calculate yi
-		yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
-
-		// /** ceil(m): get an real_t value >= m and < m+1
-		//  * step(a,b): return 1 while  a <= b
-		//  */
-		// real_t posy = sycl::step(sycl::ceil(yi[NUM_COP]), _DF(1.0e-20)), sum = _DF(0.0);
-		// for (size_t ii = 0; ii < NUM_COP; ii++)
-		// 	sum += yi[ii];
-		// sum = _DF(1.0) / sum;
-		// for (size_t ii = 0; ii < NUM_COP; ii++)
-		// 	yi[ii] += yi[ii] * sum * yi[NUM_COP] * posy;
-		// yi[NUM_COP] = yi[NUM_COP] * (1 - posy);
+	// /** ceil(m): get an real_t value >= m and < m+1
+	//  * step(a,b): return 1 while  a <= b
+	//  */
+#if defined(SBICounts)
+	yi[NUM_COP] = _DF(0.0);
+	real_t sum_yi = _DF(0.0);
+	for (size_t ii = 0; ii < NUM_COP; ii++) // calculate yi
+		yi[ii] = UI[ii + 5] * rho1, sum_yi += yi[ii];
+	sum_yi = _DF(1.0) / sum_yi;
+	for (size_t ii = 0; ii < NUM_COP; ii++)
+		yi[ii] = yi[ii] * sum_yi;
+#else
+	// yi[NUM_COP] = _DF(1.0);
+	// for (size_t ii = 5; ii < Emax; ii++) // calculate yi
+	// 	yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
+#endif // end SBICounts
 #endif // end COP
 }
 /**

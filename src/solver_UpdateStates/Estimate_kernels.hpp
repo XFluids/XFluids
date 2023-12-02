@@ -66,7 +66,7 @@ extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool
 
 #ifdef ERROR_PATCH_YII
 			yi[n2] = _DF(1.0e-20);
-#endif // end ERROR_PATCH_YI
+#endif // end ERROR_PATCH_YII
 		}
 	}
 	if (spc || spcnan)

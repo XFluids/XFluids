@@ -29,9 +29,10 @@ option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # # EXPLICIT_A
 # # 2species             # # CJ_mechanism     # # inert_2species
 # # H2O_18_new_reaction  # # H2O_18_reaction  # # H2O_19_reaction     # # H2O_21_reaction     # # H2O_23_reaction
 # # RSBI-18REA           # # RSBI-19REA  for shock-bubble-interaction sample
-set(INIT_SAMPLE "1d-insert-st") # set INIT_SAMPLE for Initializing settings
+set(INIT_SAMPLE "2d-shock-bubble") # set INIT_SAMPLE for Initializing settings
 set(COP_SPECIES "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
-set(REACTION_MODEL "H2O_21_reaction") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
+set(REACTION_MODEL "RSBI-18REA") # Be valid depending on COP_CHEME "ON", will rewrite ${COP_SPECIES} in /cmake/init_options.cmake
+
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)
 option(DIM_X "if enable dim_x" ON)
@@ -48,11 +49,13 @@ option(ERROR_PATCH_PRI "if patch rho/T/P errors capured" OFF)
 option(ERROR_PATCH_YI "if patch negative yi based Roe-Solver" OFF)
 option(ERROR_PATCH_YII "if patch negative yi assigning a specific value" OFF)
 option(POSITIVITY_PRESERVING "if enable positive preserving based Dr.Hu" OFF)
+
 # # // // == Viscosity Term =================================
-option(Visc "if add physic viscidity flux" OFF)
+option(Visc "if add physic viscidity flux" ON)
 option(Visc_Heat "if add heat transfer term" ON)
 option(Visc_Diffu "if add mass diffusion term" ON) # depends on COP=ON
 set(VISCOSITY_ORDER "Second") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
+
 # # // // == Reaction Kitnetics =============================
 option(COP_CHEME "if enable chemical reaction" OFF)
 option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)

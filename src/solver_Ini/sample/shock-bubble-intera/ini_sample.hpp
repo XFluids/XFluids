@@ -60,20 +60,23 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
     // // Ini bubble
     dy_ = sycl::sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
     real_t xrest = _DF(1.0), ff = _DF(1.0e-4), dd = _DF(0.5) * (xrest - _DF(2.0) * ff);
-    xi[NUM_SPECIES - 1] = dd * (sycl::tanh(dy_ * ini.C)) + _DF(0.5); // increase ini.C for a sharper boundary //[-1,1]--0.5(1-ff)*[-1,1]+0.5-->[ff,1-ff]
 #if defined(SBI_WITHOUT_FUEL)
-    xi[0] = _DF(0.51) * (xrest - xi[NUM_SPECIES - 1]);               // O2
-    xi[NUM_SPECIES - 2] = _DF(0.49) * (xrest - xi[NUM_SPECIES - 1]); // Xe
+    xi[NUM_SPECIES - 1] = _DF(0.0);
+    xi[NUM_SPECIES - 2] = dd * (sycl::tanh(dy_ * ini.C)) + _DF(0.5); // increase ini.C for a sharper boundary //[-1,1]--0.5(1-ff)*[-1,1]+0.5-->[ff,1-ff]
+    xi[0] = _DF(0.51) * (xrest - xi[NUM_SPECIES - 2]);               // O2
+    xi[NUM_SPECIES - 3] = _DF(0.49) * (xrest - xi[NUM_SPECIES - 2]); // Xe
 #else
-    xi[0] = _DF(0.3) * (xrest - xi[NUM_SPECIES - 1]);                // H2
-    xi[1] = _DF(0.15) * (xrest - xi[NUM_SPECIES - 1]);               // O2
-    xi[NUM_SPECIES - 2] = _DF(0.55) * (xrest - xi[NUM_SPECIES - 1]); // Xe
+    xi[NUM_SPECIES - 1] = _DF(0.0);
+    xi[NUM_SPECIES - 2] = dd * (sycl::tanh(dy_ * ini.C)) + _DF(0.5); // increase ini.C for a sharper boundary //[-1,1]--0.5(1-ff)*[-1,1]+0.5-->[ff,1-ff]
+    xi[0] = _DF(0.3) * (xrest - xi[NUM_SPECIES - 2]);                // H2
+    xi[1] = _DF(0.15) * (xrest - xi[NUM_SPECIES - 2]);               // O2
+    xi[NUM_SPECIES - 3] = _DF(0.55) * (xrest - xi[NUM_SPECIES - 2]); // Xe
 #endif
     get_yi(xi, thermal.Wi);
 
 #ifdef COP_CHEME
     real_t xre = _DF(1.0e-15), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
-    for (size_t n1 = 0; n1 < NUM_SPECIES; n1++)
+    for (size_t n1 = 0; n1 < NUM_COP; n1++)
         xi[n1] -= ratios;
     for (size_t nn = 2; nn < NUM_COP - 1; nn++)
         xi[nn] = xre;
