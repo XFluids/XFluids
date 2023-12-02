@@ -51,12 +51,12 @@
 
 // =======================================================
 // //    Get c2
-#ifdef COP
-#define MARCO_GETC2() MARCO_COPC2()
-// MARCO_COPC2() //MARCO_COPC2_ROB()
-#else
-#define MARCO_GETC2() MARCO_NOCOPC2()
-#endif // end COP
+// // #ifdef COP
+// // #define MARCO_GETC2() MARCO_COPC2()
+// // // MARCO_COPC2() //MARCO_COPC2_ROB()
+// // #else
+// // #define MARCO_GETC2() MARCO_NOCOPC2()
+// // #endif // end COP
 
 // //    Get error out of c2 arguments
 #ifdef ESTIM_NAN

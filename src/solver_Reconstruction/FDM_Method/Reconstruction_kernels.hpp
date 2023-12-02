@@ -1,13 +1,14 @@
 #pragma once
 
-#include "global_setup.h"
-#include "marcos/marco_global.h"
-#include "../read_ini/setupini.h"
-#include "../include/sycl_devices.hpp"
+// #include "global_setup.h"
+// #include "marcos/marco_global.h"
+// #include "../read_ini/setupini.h"
+// #include "../include/sycl_devices.hpp"
 
-#include "../Recon_device.hpp"
 #include "Eigen_matrix.hpp"
 #include "Utils_device.hpp"
+#include "../Recon_device.hpp"
+#include "../schemes/schemes_device.hpp"
 
 extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
@@ -30,9 +31,10 @@ extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, rea
 
 	// // MARCO_GETC2();
 	// /_hi[NUM_SPECIES],*/
-	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), Gamma0 = _DF(1.4);
+	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), _k = _DF(0.0), _ht = _DF(0.0), Gamma0 = _DF(1.4);
 	real_t c2 = ReconstructSoundSpeed(thermal, id_l, id_r, D, D1, _rho, _P, rho, u, v, w, y, p, T, H,
-									  _yi, z, b1, b3, Gamma0);
+									  _yi, z, b1, b3, _k, _ht, Gamma0);
+	real_t _c = sycl::sqrt(c2);
 	MARCO_ERROR_OUT();
 
 #if 1 == EIGEN_ALLOC
@@ -180,11 +182,12 @@ extern void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, rea
 	// preparing some interval value for roe average
 	MARCO_ROE();
 
-	// MARCO_GETC2();
+	// // MARCO_GETC2();
 	// /_hi[NUM_SPECIES],*/
-	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), Gamma0 = _DF(1.4);
+	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), _k = _DF(0.0), _ht = _DF(0.0), Gamma0 = _DF(1.4);
 	real_t c2 = ReconstructSoundSpeed(thermal, id_l, id_r, D, D1, _rho, _P, rho, u, v, w, y, p, T, H,
-									  _yi, z, b1, b3, Gamma0);
+									  _yi, z, b1, b3, _k, _ht, Gamma0);
+	real_t _c = sycl::sqrt(c2);
 	MARCO_ERROR_OUT();
 
 #if 1 == EIGEN_ALLOC
@@ -245,9 +248,10 @@ extern void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, rea
 
 	// // MARCO_GETC2();
 	// /_hi[NUM_SPECIES],*/
-	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), Gamma0 = _DF(1.4);
+	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), _k = _DF(0.0), _ht = _DF(0.0), Gamma0 = _DF(1.4);
 	real_t c2 = ReconstructSoundSpeed(thermal, id_l, id_r, D, D1, _rho, _P, rho, u, v, w, y, p, T, H,
-									  _yi, z, b1, b3, Gamma0);
+									  _yi, z, b1, b3, _k, _ht, Gamma0);
+	real_t _c = sycl::sqrt(c2);
 	MARCO_ERROR_OUT();
 
 #if 1 == EIGEN_ALLOC

@@ -6,8 +6,8 @@
 #include "../include/sycl_devices.hpp"
 
 #include "Reconstruction_kernels.hpp"
+#include "PositivityPreserving_kernels.hpp"
 #include "../viscosity/Visc_block.hpp"
-#include "../PositivityPreserving_kernels.hpp"
 #include "../../solver_UpdateStates/UpdateStates_block.hpp"
 
 void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal thermal, real_t *UI, real_t *LU,

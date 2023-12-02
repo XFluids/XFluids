@@ -28,8 +28,8 @@ void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
 /**
  * @brief Obtain state at a grid point
  */
-void GetStates(real_t UI[Emax], real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
-			   real_t &gamma, real_t &T, real_t &e, Thermal thermal, real_t yi[NUM_SPECIES])
+void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
+			   real_t &gamma, real_t &T, real_t &e, Thermal thermal, real_t *yi)
 {
 	// rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
@@ -80,7 +80,7 @@ void ReGetStates(Thermal thermal, real_t *yi, real_t *U, real_t &rho, real_t &u,
 /**
  * @brief  Obtain fluxes at a grid point
  */
-void GetPhysFlux(real_t UI[Emax], real_t const yi[NUM_COP], real_t *FluxF, real_t *FluxG, real_t *FluxH,
+void GetPhysFlux(real_t *UI, real_t const *yi, real_t *FluxF, real_t *FluxG, real_t *FluxH,
 				 real_t const rho, real_t const u, real_t const v, real_t const w, real_t const p, real_t const H, real_t const c)
 {
 	FluxF[0] = UI[1];

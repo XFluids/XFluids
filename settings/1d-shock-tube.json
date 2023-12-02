@@ -8,7 +8,7 @@
 		"nOutMax": 100,
 		"CFLnumber": 0.4,
 		"OutBoundary": 0,
-		"OutInterval": 100,
+		"OutInterval": 1000,
 		"OutTimeStamps": [
 			0.00004
 		]

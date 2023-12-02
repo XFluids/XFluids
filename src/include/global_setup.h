@@ -5,14 +5,16 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
-// SYCL headers
+// // SYCL headers
 #include <sycl/sycl.hpp>
 
+// //  using sample settings and
 #ifdef COP
 #include "case_setup.h"
-#endif
 #include "Eigen_global_definition.h"
-//  use middleware targeting to multi-backends
+#endif
+
+// //  use middleware targeting to multi-backends
 #include "../../middleware/middle.hpp"
 
 #include "global_undef.h"
@@ -24,7 +26,7 @@
 #define MAX_SPECIES NUM_SPECIES
 
 // =======================================================
-//    Global Precision settings
+// //    Global Precision settings
 #ifdef USE_DOUBLE
 using real_t = double; // #define real_t double;
 #define _DF(a) a
@@ -37,7 +39,7 @@ using real_t = float; // #define real_t float;
 #define Interface_line _DF(0.01)
 
 // =======================================================
-//    Global __device__ constant
+// //    Global __device__ constant
 const real_t _OT = (_DF(1.0) / _DF(3.0));
 const real_t _sxtn = _DF(1.0) / _DF(16.0);
 const real_t _twfr = _DF(1.0) / _DF(24.0);
@@ -55,7 +57,7 @@ const real_t kB = _DF(1.3806549 * 1.0e-16); // Boltzmann constant,unit:erg/K=10e
 const real_t NA = _DF(6.02214129 * 1.0e23); // Avogadro constant
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
-// for flux Reconstruction order
+// // for flux Reconstruction order
 // #define PositivityPreserving // #ifdef used, use Lax-Friedrichs(one-order) instead high-order schemes avoiding NAN.
 #define FLUX_method 2 //  0: local LF; 1: global LF, 2: Roe
 #if SCHEME_ORDER > 6

@@ -1,8 +1,14 @@
 include(init_sample)
+set(THERMAL "NASA") # NASA or JANAF Thermal Fit
+set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
 
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
+# # OROC: calculate one row and column once in registers "for" loop(eigen_lr[Emax])
+# # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
+# # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l, Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t))) with low performance
+
+# file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
+# file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output/cal)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output/cal)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/cal)
 
 # // =======================================================
@@ -87,3 +93,10 @@ IF(Visc)
     add_compile_options(-DVisc_Diffu)
   ENDIF(Visc_Diffu)
 ENDIF(Visc)
+
+# MPI libs
+IF(USE_MPI)
+  include(init_mpi)
+  include_directories(AFTER ${CMAKE_SOURCE_DIR})
+  add_subdirectory(mpiUtils)
+ENDIF() # sources

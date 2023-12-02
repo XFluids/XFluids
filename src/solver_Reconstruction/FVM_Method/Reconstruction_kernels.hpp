@@ -4,6 +4,7 @@
 #include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 #include "../include/sycl_devices.hpp"
+#include "../schemes/schemes_device.hpp"
 
 /**
  * @param left_id is the array for right high-order primitive variables reconstruction.
