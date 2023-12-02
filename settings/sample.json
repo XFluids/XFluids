@@ -89,8 +89,6 @@
         "blast_mach": 0.0,
         "blast_type": 1,
         "cop_type": 1,
-        "blast_radius": 0.0,
-        "cop_radius": 0.0,
         "cop_center": [
             0.0,
             0.0,

@@ -44,7 +44,7 @@ Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIt
 			std::ofstream out(file_name, std::fstream::out);
 			out.setf(std::ios::right);
 			// // defining header for tecplot(plot software)
-			out << "title='Time_Theta_Lambda_Sigma_NSigma";
+			out << "title='Time_NormalizedTime_Theta_Lambda_Sigma_NSigma";
 			//" << outputPrefix << "'\n"
 			// Sigma: Sum(Omega^2), NSigma(Nromalized Sigma): Sum(rho[id]*Omega^2)
 #ifdef COP_CHEME
@@ -59,7 +59,7 @@ Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIt
 			// #if DIM_Z
 			// 			out << "_Zmin_Zmax_Lambdaz";
 			// #endif // end DIM_Z
-			out << "'\nvariables=Time[s], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], ";
+			out << "'\nvariables=Time[s], Time[-], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], ";
 			out << "<greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], ";
 			out << "<greek>e</greek><sub><greek>r</greek>n</sub>[m<sup>2</sup>/s<sup>2</sup>], ";
 			// Time[s]: Time in tecplot x-Axis variable
@@ -584,8 +584,8 @@ void Fluid::GetTheta(sycl::queue &q)
 	// 	// 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 	// 	// 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 	// 	// 					real_t x = i * bl.dx + bl.offx;
-	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-	// 	// 					if (yi[id * NUM_SPECIES - 2] > Interface_line)
+	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+	// 	// 					if (yi[id * NUM_SPECIES  + bl.Xe_id] > Interface_line)
 	// 	// 						temp_Xmin.combine(x), temp_Xmax.combine(x); }); });
 	// 	// #endif	  // end DIM_X
 
@@ -598,8 +598,8 @@ void Fluid::GetTheta(sycl::queue &q)
 						int j = index.get_global_id(1) + bl.Bwidth_Y;
 						int k = index.get_global_id(2) + bl.Bwidth_Z;
 						real_t y = j * bl.dy + bl.offy;
-						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-						if (yi[id * NUM_SPECIES - 2] > Interface_line)
+						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+						if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
 							temp_Ymin.combine(y), temp_Ymax.combine(y); }); });
 
 	// 	// #if DIM_Z // ZDIR
@@ -612,8 +612,8 @@ void Fluid::GetTheta(sycl::queue &q)
 	// 	// 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 	// 	// 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 	// 	// 					real_t z = k * bl.dz + bl.offz;
-	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
-	// 	// 					if (yi[id * NUM_SPECIES - 2] > Interface_line)
+	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+	// 	// 					if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
 	// 	// 						temp_Zmin.combine(z), temp_Zmax.combine(z); }); });
 	// 	// #endif // end DIM_Z
 
@@ -724,7 +724,7 @@ real_t Fluid::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTi
 			out.open(file_name, std::ios::out | std::ios::app);
 			out.setf(std::ios::right);
 
-			out << std::setw(11) << physicalTime << " "; // physical time
+			out << std::setw(11) << physicalTime << " " << std::setw(11) << physicalTime / Fs.ini.tau_H << " "; // physical time
 			/**Theta(XN/(Xe*N2))
 			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(35)
 			 */

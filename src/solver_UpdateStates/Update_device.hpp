@@ -21,9 +21,9 @@ void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
 	for (size_t ii = 0; ii < NUM_COP; ii++)
 		yi[ii] = yi[ii] * sum_yi;
 #else
-	// yi[NUM_COP] = _DF(1.0);
-	// for (size_t ii = 5; ii < Emax; ii++) // calculate yi
-	// 	yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
+	yi[NUM_COP] = _DF(1.0);
+	for (size_t ii = 5; ii < Emax; ii++) // calculate yi
+		yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
 #endif // end SBICounts
 #endif // end COP
 }

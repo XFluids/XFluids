@@ -77,9 +77,8 @@ void Setup::ReadIni()
 
     /* initialize fluid flow parameters */
     // // Ini Flow Field dynamic states
-    ini.Ma = Ma_json;
+    ini.Ma = Ma_json; // shock Mach number
     ini.blast_type = blast_type;
-    ini.blast_radius = blast_radius;
     ini.blast_center_x = blast_pos[0], ini.blast_center_y = blast_pos[1], ini.blast_center_z = blast_pos[2];
     // // Bubble size and shape
     ini.xa = xa_json, ini.yb = yb_json, ini.zc = zc_json, ini.C = C_json;
@@ -167,18 +166,18 @@ void Setup::init()
     ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
     ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
     ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
-    real_t xa_in = int(ini.xa / BlSz.dx) * BlSz.dx;
-    real_t yb_in = int(ini.yb / BlSz.dy) * BlSz.dy;
-    real_t zc_in = int(ini.zc / BlSz.dz) * BlSz.dz;
-    real_t xa_out = xa_in + bubble_boundary * BlSz.dx;
-    real_t yb_out = yb_in + bubble_boundary * BlSz.dy;
-    real_t zc_out = zc_in + bubble_boundary * BlSz.dz;
-    ini._xa2_in = _DF(1.0) / (xa_in * xa_in);
-    ini._yb2_in = _DF(1.0) / (yb_in * yb_in);
-    ini._zc2_in = _DF(1.0) / (zc_in * zc_in);
-    ini._xa2_out = _DF(1.0) / (xa_out * xa_out);
-    ini._yb2_out = _DF(1.0) / (yb_out * yb_out);
-    ini._zc2_out = _DF(1.0) / (zc_out * zc_out);
+    // real_t xa_in = int(ini.xa / BlSz.dx) * BlSz.dx;
+    // real_t yb_in = int(ini.yb / BlSz.dy) * BlSz.dy;
+    // real_t zc_in = int(ini.zc / BlSz.dz) * BlSz.dz;
+    // real_t xa_out = xa_in + bubble_boundary * BlSz.dx;
+    // real_t yb_out = yb_in + bubble_boundary * BlSz.dy;
+    // real_t zc_out = zc_in + bubble_boundary * BlSz.dz;
+    // ini._xa2_in = _DF(1.0) / (xa_in * xa_in);
+    // ini._yb2_in = _DF(1.0) / (yb_in * yb_in);
+    // ini._zc2_in = _DF(1.0) / (zc_in * zc_in);
+    // ini._xa2_out = _DF(1.0) / (xa_out * xa_out);
+    // ini._yb2_out = _DF(1.0) / (yb_out * yb_out);
+    // ini._zc2_out = _DF(1.0) / (zc_out * zc_out);
 
     // DataBytes set
     bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
@@ -369,6 +368,7 @@ bool Setup::Mach_Shock()
     Gamma_m2 = get_CopGamma(h_thermal.species_ratio_out, T2);
     // #endif                                        // end DEBUG
     real_t c2 = std::sqrt(Gamma_m2 * R * T2); // sound speed downstream the shock
+    ini.blast_c_out = c2, ini.blast_gamma_out = Gamma_m2, ini.tau_H = _DF(2.0) * ini.xa / (ini.Ma * ini.blast_c_out);
     ini.blast_density_out = p2 / R / T2;      // rho2
     real_t rho2 = ini.blast_density_out;      // rho2
 
@@ -1312,9 +1312,10 @@ void Setup::print()
     if (mach_shock)
     { // States initializing
         printf("blast_type: %d and blast_center(x = %.6lf , y = %.6lf , z = %.6lf).\n", ini.blast_type, ini.blast_center_x, ini.blast_center_y, ini.blast_center_z);
-        printf(" Use Mach number = %lf to reinitialize fluid states upstream the shock\n", ini.Ma);
-        printf("  States of   upstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_in, ini.blast_T_in, ini.blast_density_in, ini.blast_u_in, ini.blast_v_in, ini.blast_w_in);
-        printf("  States of downstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_out, ini.blast_T_out, ini.blast_density_out, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
+        printf(" shock Mach number = %lf to reinitialize fluid states upstream the shock.\n", ini.Ma);
+        printf("  propagation speed of shock = %lf, normalized time tau_H(bubble_diameter/shock_propagation_speed)= %lf.\n", ini.Ma * ini.blast_c_out, ini.tau_H);
+        printf("  states of   upstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_in, ini.blast_T_in, ini.blast_density_in, ini.blast_u_in, ini.blast_v_in, ini.blast_w_in);
+        printf("  states of downstream:     (P = %.6lf, T = %.6lf, rho = %.6lf, u = %.6lf, v = %.6lf, w = %.6lf).\n", ini.blast_pressure_out, ini.blast_T_out, ini.blast_density_out, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
     }
     // 后接流体状态输出
     if (1 < NumFluid)
@@ -1326,9 +1327,6 @@ void Setup::print()
         printf("cells' volume less than states updated based on mixed    : %lf\n", ext_vlm);
         printf("half-width of level set narrow band                      : %lf\n", BandforLevelset);
         printf("Number of fluids                                         : %d\n", BlSz.num_fluids);
-        printf("bubble_type: %d and bubble_radius: %lf.\n", ini.bubble_type, ini.bubbleSz);
-        printf("  bubble_center: (x =%.6lf,y =%.6lf,z =%.6lf).\n", ini.bubble_center_x, ini.bubble_center_y, ini.bubble_center_z);
-        printf("  States inside multiphase bubble:(P =%.6lf,T =%.6lf,rho =%.6lf,u =%.6lf,v =%.6lf,w =%.6lf,).\n", ini.cop_pressure_in, ini.cop_T_in, ini.cop_density_in, ini.blast_u_out, ini.blast_v_out, ini.blast_w_out);
         for (size_t n = 0; n < NumFluid; n++)
         { // 0: phase_indicator, 1: gamma, 2: A, 3: B, 4: rho0, 5: R_0, 6: lambda_0, 7: a(rtificial)s(peed of)s(ound)
             printf("fluid[%d]: %s, characteristics(Material, Phase_indicator, Gamma, A, B, Rho0, R_0, Lambda_0, artificial speed of sound): \n", n, Fluids_name[n].c_str());

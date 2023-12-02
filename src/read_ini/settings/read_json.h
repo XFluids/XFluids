@@ -59,6 +59,6 @@ extern const bool Mach_Modified; // NOTE: ignore
 // Mach_Modified: if post-shock theroy in Ref0 used(rewrite the value from Devesh Ranjan's theroy in Ref1 used by default):
 // // Ref0:https://doi.org/10.1016/j.combustflame.2015.10.016 Ref1:https://www.annualreviews.org/doi/10.1146/annurev-fluid-122109-160744
 extern const size_t cop_type, blast_type;
-extern const real_t blast_radius, bubble_boundary, C_json;							   // bubble_boundary_cells;
+extern const real_t bubble_boundary, C_json;										   // bubble_boundary_cells;
 extern const real_t xa_json, yb_first_json, zc_first_json, yb_json, zc_json;		   // bubble_shape
 extern const std::vector<real_t> blast_pos, cop_pos, cop_instates, blast_upstates, blast_downstates; // states

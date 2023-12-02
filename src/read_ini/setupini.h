@@ -32,12 +32,12 @@ public:
 
 	//--for-Mesh-----------------------------
 	Block BlSz;
-	IniShape ini;
 	Gridread grid;
 	BConditions Boundarys[6];
 	std::vector<BoundaryRange> Boundary_x, Boundary_y, Boundary_z;
 
 	//--for-Fluids-----------------------------
+	IniShape ini;
 	bool mach_shock;
 	Thermal d_thermal, h_thermal;
 	std::vector<std::string> species_name{NumFluid};

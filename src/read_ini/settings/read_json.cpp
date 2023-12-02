@@ -108,8 +108,6 @@ const real_t Ma_json = j_conf.at("init").value("blast_mach", 0.0);
 const bool Mach_Modified = Ma_json > 1;
 const size_t cop_type = j_conf.at("init").value("cop_type", 0);
 const size_t blast_type = j_conf.at("init").value("blast_type", 1);
-const real_t cop_radius = j_conf.at("init").value("cop_radius", 1.0);
-const real_t blast_radius = j_conf.at("init").value("blast_radius", 0.0);
 const std::vector<real_t> cop_pos = j_conf.at("init").value("cop_center", std::vector<real_t>{0.0, 0.0, 0.0});
 const std::vector<real_t> blast_pos = j_conf.at("init").value("blast_center", std::vector<real_t>{0.5, 0.5, 0.5});
 // states: density, pressure, tempreture, velocity_u, velocity_v, velocity_w
