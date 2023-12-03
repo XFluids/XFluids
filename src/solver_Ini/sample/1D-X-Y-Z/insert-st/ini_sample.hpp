@@ -61,7 +61,7 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
     T[id] = x < 0.05 ? 400 : 1200;
     p[id] = x < 0.05 ? 8000 : 80000;
 #endif // end DIM_X
-    /// // y
+       // // y
 #if DIM_Y
     T[id] = y < 0.05 ? 400 : 1200;
     p[id] = y < 0.05 ? 8000 : 80000;

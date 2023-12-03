@@ -2,7 +2,7 @@
 
 #include "Eigen_callback.h"
 
-inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+inline void RoeAverageLeft_x(int const n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
 							 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							 real_t const b1, real_t const b3, real_t Gamma)
 {
@@ -81,7 +81,7 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	}
 }
 
-inline void RoeAverageRight_x(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+inline void RoeAverageRight_x(int const n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							  real_t const b1, real_t const b3, real_t Gamma)
 {
@@ -152,7 +152,7 @@ inline void RoeAverageRight_x(int n, real_t *eigen_r, real_t *z, const real_t *y
 	}
 }
 
-inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+inline void RoeAverageLeft_y(int const n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
 							 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							 real_t const b1, real_t const b3, real_t Gamma)
 {
@@ -202,7 +202,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 		eigen_l[3] = -_DF(1.0);
 		eigen_l[4] = _DF(0.0);
 		eigen_value = sycl::fabs(_v);
-		for (int m = 0; m < NUM_COP; n++)
+		for (int m = 0; m < NUM_COP; m++)
 			eigen_l[m + Emax - NUM_COP] = _DF(0.0);
 	}
 	else if (Emax - 1 == n)
@@ -231,7 +231,7 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	}
 }
 
-inline void RoeAverageRight_y(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+inline void RoeAverageRight_y(int const n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							  real_t const b1, real_t const b3, real_t Gamma)
 {
@@ -302,7 +302,7 @@ inline void RoeAverageRight_y(int n, real_t *eigen_r, real_t *z, const real_t *y
 	}
 }
 
-inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
+inline void RoeAverageLeft_z(int const n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
 							 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							 real_t const b1, real_t const b3, real_t Gamma)
 {
@@ -381,7 +381,7 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	}
 }
 
-inline void RoeAverageRight_z(int n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
+inline void RoeAverageRight_z(int const n, real_t *eigen_r, real_t *z, const real_t *yi, real_t const c2,
 							  real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							  real_t const b1, real_t const b3, real_t Gamma)
 {
