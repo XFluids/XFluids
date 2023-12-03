@@ -48,8 +48,7 @@
 ### 3.1. Read $/CMakeLists.txt
 
 - CMAKE_BUILD_TYPE is set to "Release" by default, SYCL code would target to host while ${CMAKE_BUILD_TYPE}==Debug
-- set INIT_SAMPLE as the problem being tested, path to "species_list.dat" should be given to COP_SPECIES
-- if COP_CHEME is set to "ON", path to "species_list.dat" and "reaction_list.dat" would be rewriten by the given value of REACTION_MODEL
+- set INIT_SAMPLE as the problem being tested, path to "species_list.dat" should be given to MIXTURE_MODEL
 - MPI and AWARE-MPI support added in project, AWARE_MPI need specific GPU-ENABLED mpi version, details referenced in [4-mpi-libs]("4. MPI libs")
 - tempreture(T) approximately beside and below 200 may cause NAN errors: T must be enough high
 

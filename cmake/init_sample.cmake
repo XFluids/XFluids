@@ -31,24 +31,24 @@ ELSEIF(INIT_SAMPLE STREQUAL "sharp-interface")
     set(DIM_X "ON")
     set(COP_CHEME "OFF")
     set(WENO_ORDER "6") # WENOCU6 has the larggest unrubost at Riemann separation
-    set(COP_SPECIES "Insert-SBI")
+    set(MIXTURE_MODEL "Insert-SBI")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/sharp-interface")
     set(INI_FILE "settings/1d-shock-tube.json")
 
 ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
-    IF(DIM_NUM STREQUAL "1")
-        set(COP "ON")
-        set(Visc "OFF")
-        set(COP_CHEME "OFF")
-        set(ESTIM_NAN "OFF")
-        set(POSITIVITY_PRESERVING "OFF")
-        set(COP_SPECIES "1d-mc-insert-shock-tube")
-        set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/insert-st")
-        set(INI_FILE "settings/1d-shock-tube.json")
-    ELSE()
-        message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
-    ENDIF()
+    # IF(DIM_NUM STREQUAL "1")
+    set(COP "ON")
+    set(Visc "OFF")
+    set(COP_CHEME "OFF")
+    set(ESTIM_NAN "OFF")
+    set(POSITIVITY_PRESERVING "OFF")
+    set(MIXTURE_MODEL "1d-mc-insert-shock-tube")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/insert-st")
+    set(INI_FILE "settings/1d-shock-tube.json")
 
+# ELSE()
+# message(FATAL_ERROR "More DIM opened than needed: checkout option DIM_X, DIM_Y, DIM_Z")
+# ENDIF()
 ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
     IF(DIM_NUM STREQUAL "1")
         set(COP "ON")
@@ -72,7 +72,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
         set(COP_CHEME "OFF")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
-        set(COP_SPECIES "1d-mc-diffusion")
+        set(MIXTURE_MODEL "1d-mc-diffusion")
         set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
         set(INI_FILE "settings/1d-diffusion.json")
     ELSE()
@@ -89,7 +89,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
         set(ESTIM_NAN "OFF")
         set(POSITIVITY_PRESERVING "OFF")
         add_compile_options(-DDiffuReverse)
-        set(COP_SPECIES "1d-mc-diffusion-reverse")
+        set(MIXTURE_MODEL "1d-mc-diffusion-reverse")
         set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
         set(INI_FILE "settings/1d-diffusion.json")
     ELSE()
@@ -108,7 +108,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shocks") # 2d-riemann(-shocks/-shock-int
     set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shocks-interaction")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -121,7 +120,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shock-interruption") # 2d-riemann(-shock
     set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shock-interruption")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -134,7 +132,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-plus") # 2d-riemann(-shock
     set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-plus")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -147,7 +144,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-sho
     set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(COP_SPECIES "NO-COP")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-reduce")
     set(INI_FILE "settings/2d-riemann.json")
 
@@ -182,7 +178,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     add_compile_options(-DSBICounts)
     add_compile_options(-DSBI_WITHOUT_FUEL)
-    set(COP_SPECIES "Insert-SBI-without-fuel")
+    set(MIXTURE_MODEL "Insert-SBI-without-fuel")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
     set(INI_FILE "settings/shock-bubble.json")
 
@@ -203,12 +199,12 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     add_compile_options(-DSBICounts)
 
     if(${COP_CHEME})
-        if((REACTION_MODEL STREQUAL "RSBI-18REA") OR(REACTION_MODEL STREQUAL "RSBI-19REA"))
+        if((MIXTURE_MODEL STREQUAL "RSBI-18REA") OR(MIXTURE_MODEL STREQUAL "RSBI-19REA"))
         else()
-            message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
+            message(FATAL_ERROR " Not suitable MIXTURE_MODEL opened: checkout option MIXTURE_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
         endif()
     else()
-        set(COP_SPECIES "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
+        set(MIXTURE_MODEL "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
     endif()
 
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
@@ -228,8 +224,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
     set(POSITIVITY_PRESERVING "ON")
-    set(REACTION_MODEL "H2O_21_reaction")
-    set(COP_SPECIES "Reaction/H2O_21_reaction")
+    set(MIXTURE_MODEL "Reaction/H2O_21_reaction")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/mixing-layer")
     set(INI_FILE "settings/2d-mixing-layer.json")
 
@@ -253,7 +248,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     add_compile_options(-DSBICounts)
     add_compile_options(-DSBI_WITHOUT_FUEL)
-    set(COP_SPECIES "Insert-SBI-without-fuel")
+    set(MIXTURE_MODEL "Insert-SBI-without-fuel")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
     set(INI_FILE "settings/shock-bubble.json")
 
@@ -274,12 +269,12 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     add_compile_options(-DSBICounts)
 
     if(${COP_CHEME})
-        if((REACTION_MODEL STREQUAL "RSBI-18REA") OR(REACTION_MODEL STREQUAL "RSBI-19REA"))
+        if((MIXTURE_MODEL STREQUAL "RSBI-18REA") OR(MIXTURE_MODEL STREQUAL "RSBI-19REA"))
         else()
-            message(FATAL_ERROR " Not suitable REACTION_MODEL opened: checkout option REACTION_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
+            message(FATAL_ERROR " Not suitable MIXTURE_MODEL opened: checkout option MIXTURE_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
         endif()
     else()
-        set(COP_SPECIES "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
+        set(MIXTURE_MODEL "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
     endif()
 
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
@@ -296,14 +291,13 @@ ELSE()
     message(FATAL_ERROR "ini sample isn't given.")
 ENDIF()
 
-set(COP_SPECIES "/runtime.dat/${COP_SPECIES}") # Be invalid while option COP_CHEME "ON"
-
 IF(COP)
     add_compile_options(-DCOP)
+    set(MIXTURE_MODEL "/runtime.dat/${MIXTURE_MODEL}") # Be invalid while option COP_CHEME "ON"
 
     IF(COP_CHEME)
         add_compile_options(-DCOP_CHEME)
-        set(COP_SPECIES "/runtime.dat/Reaction/${REACTION_MODEL}") # where to read species including reactions
+        set(MIXTURE_MODEL "/runtime.dat/Reaction/${MIXTURE_MODEL}") # where to read species including reactions
 
         IF(COP_CHEME_TEST)
             add_compile_options(-DODESolverTest)
@@ -327,7 +321,7 @@ IF(COP)
 
 ELSE(COP)
     set(Gamma "1.4")
-    set(COP_SPECIES "NO-COP")
+    set(MIXTURE_MODEL "NO-COP")
     add_compile_options(-DNUM_REA=0)
     add_compile_options(-DNUM_SPECIES=1)
     add_compile_options(-DNCOP_Gamma=${Gamma})
@@ -340,6 +334,7 @@ if(USE_DOUBLE)
 else()
     message(STATUS "  Float Precision on: ${SYCL_COMPILE_SYSTEM}: ${ARCH}")
 endif()
+
 message(STATUS "  Multi-Component: ${COP}")
 message(STATUS "  Species' Thermo Fit: ${THERMAL}")
 message(STATUS "  DIM_X: ${DIM_X}, DIM_Y: ${DIM_Y}, DIM_Z: ${DIM_Z}")
@@ -348,6 +343,7 @@ message(STATUS "    Convention discretization method: ${DISCRETIZATION_METHOD}")
 message(STATUS "    Reconstruction artificial viscosity type: ${ARTIFICIAL_VISC_TYPE}")
 message(STATUS "  Positivity_Preserving: ${POSITIVITY_PRESERVING}")
 message(STATUS "    Capture unexpected errors: ${ESTIM_NAN}")
+
 # message(STATUS "    Fix nan primitive variables(rho,p,T): ${ERROR_PATCH_PRI}")
 # message(STATUS "    Fix negative mass fraction(Roe_Yi/SetValue_Yii): ${ERROR_PATCH_YI}/${ERROR_PATCH_YII}, Not damage equations but decrease the accuracy of solution")
 message(STATUS "  Viscous Flux term: ${Visc}")
@@ -366,18 +362,18 @@ IF(COP_CHEME)
 ENDIF()
 
 message(STATUS "Sample select: ${INIT_SAMPLE}")
-message(STATUS "  Sample COP  header path: ${COP_SPECIES}")
+message(STATUS "  Sample COP  header path: ${MIXTURE_MODEL}")
 message(STATUS "  Sample init sample path: ${INI_SAMPLE_PATH}")
 message(STATUS "  Sample ini  file   path: ${CMAKE_SOURCE_DIR}/${INI_FILE}")
 
 add_compile_options(-DINI_SAMPLE="${INIT_SAMPLE}")
-add_compile_options(-DRFile="${COP_SPECIES}")
+add_compile_options(-DRFile="${MIXTURE_MODEL}")
 add_compile_options(-DIniFile="${CMAKE_SOURCE_DIR}/${INI_FILE}")
 add_compile_options(-DRPath="/runtime.dat") # where to read .dat about charactersics of compoent gas
 
 include_directories(
     BEFORE
-    "${CMAKE_SOURCE_DIR}/${COP_SPECIES}"
+    "${CMAKE_SOURCE_DIR}/${MIXTURE_MODEL}"
     "${CMAKE_SOURCE_DIR}/${INI_SAMPLE_PATH}"
     "${CMAKE_SOURCE_DIR}/src/solver_Reconstruction/viscosity/${VISCOSITY_ORDER}_Order"
 )

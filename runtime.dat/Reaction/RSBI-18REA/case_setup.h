@@ -2,6 +2,7 @@
 
 #define NUM_SPECIES 11
 #define NUM_REA 18
+#define GhostSpecies
 /**
  * modified from H2O_18_reaction:
  * replace AR with Xe

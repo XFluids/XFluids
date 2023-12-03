@@ -4,15 +4,15 @@
 #include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 
-void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
+void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
 {
 	rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
-#ifdef COP
 	// /** ceil(m): get an real_t value >= m and < m+1
 	//  * step(a,b): return 1 while  a <= b
 	//  */
-#if defined(SBICounts)
+#ifdef COP
+#if defined(GhostSpecies)
 	yi[NUM_COP] = _DF(0.0);
 	real_t sum_yi = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_COP; ii++) // calculate yi
@@ -24,7 +24,7 @@ void Getrhoyi(real_t UI[Emax], real_t &rho, real_t yi[NUM_SPECIES])
 	yi[NUM_COP] = _DF(1.0);
 	for (size_t ii = 5; ii < Emax; ii++) // calculate yi
 		yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
-#endif // end SBICounts
+#endif // end GhostSpecies
 #endif // end COP
 }
 /**
@@ -40,10 +40,7 @@ void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t &w, real_t 
 	w = UI[3] * rho1;
 	real_t tme = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 
-	// yi[NUM_COP] = _DF(1.0);
 #ifdef COP
-	// for (size_t ii = 5; ii < Emax; ii++) // calculate yi
-	// 	yi[ii - 5] = UI[ii] * rho1, yi[NUM_COP] += -yi[ii - 5];
 	real_t R = get_CopR(thermal._Wi, yi);
 	T = get_T(thermal, yi, tme, T);
 	p = rho * R * T; // 对所有气体都适用

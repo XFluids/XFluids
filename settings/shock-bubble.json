@@ -57,9 +57,9 @@
 			0.0
 		],
 		"Resolution": [
-			800,
 			400,
-			400
+			50,
+			50
 		],
 		"Boundarys": [
 			0,
@@ -102,6 +102,6 @@
 		// // or give bubble_shape_x, bubble_shape_y, bubble_shape_z directly
 		// // Ref: https://doi.org/10.1007/s10409-021-01132-9
 		"bubble_shape_x": 0.02,
-		"bubble_boundary_cells": 8 // higher for sharper interface
+		"bubble_boundary_cells": 2 // higher for sharper interface
 	}
 }
