@@ -9,18 +9,12 @@
 extern void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
 {
 	MARCO_DOMAIN();
-#ifdef DIM_X
 	if (i >= Xmax - bl.Bwidth_X)
 		return;
-#endif // DIM_X
-#ifdef DIM_Y
 	if (j >= Ymax - bl.Bwidth_Y)
 		return;
-#endif // DIM_Y
-#ifdef DIM_Z
 	if (k >= Zmax - bl.Bwidth_Z)
 		return;
-#endif // DIM_Z
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 

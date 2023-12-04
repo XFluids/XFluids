@@ -10,52 +10,32 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
                                               real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T)
 {
     MARCO_DOMAIN_GHOST();
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-#if DIM_X
     if (i >= Xmax)
         return;
-#endif
-#if DIM_Y
     if (j >= Ymax)
         return;
-#endif
-#if DIM_Z
     if (k >= Zmax)
         return;
-#endif
-    int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
+    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
 #ifdef COP
     real_t *xi = &(_y[NUM_SPECIES * id]);
     // for 2D/3D shock-bubble interactive
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
-    // real_t dy_in = _DF(0.0), dy_out = _DF(0.0);
-    // real_t dy_in = -_DF(1.0), dy_out = -_DF(1.0);
-#if DIM_X
-    tmp = (x - ini.cop_center_x) * (x - ini.cop_center_x);
-    dy_ += tmp * ini._xa2;
-    // dy_in += tmp * ini._xa2_in;
-    // dy_out += tmp * ini._xa2_out;
-#endif // end DIM_X
-#if DIM_Y
-    tmp = (y - ini.cop_center_y) * (y - ini.cop_center_y);
-    dy_ += tmp * ini._yb2;
-    // dy_in += tmp * ini._yb2_in;
-    // dy_out += tmp * ini._yb2_out;
-#endif // end DIM_Y
-    // for 3D shock-bubble interactive
-#if DIM_Z
-    tmp = (z - ini.cop_center_z) * (z - ini.cop_center_z);
-    dy_ += tmp * ini._zc2;
-    // dy_in += tmp * ini._zc2_in;
-    // dy_out += tmp * ini._zc2_out;
-#endif // end DIM_Z
+
+    if (bl.DimX)
+        tmp = (x - ini.cop_center_x) * (x - ini.cop_center_x), dy_ += tmp * ini._xa2;
+
+    if (bl.DimY)
+        tmp = (y - ini.cop_center_y) * (y - ini.cop_center_y), dy_ += tmp * ini._yb2;
+
+    if (bl.DimZ) // for 3D shock-bubble interactive
+        tmp = (z - ini.cop_center_z) * (z - ini.cop_center_z), dy_ += tmp * ini._zc2;
 
     // // Ini bubble
     dy_ = sycl::sqrt(dy_) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085
@@ -72,13 +52,14 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
 #endif
     get_yi(xi, thermal.Wi);
 
-#ifdef COP_CHEME
-    real_t xre = _DF(1.0e-15), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
-    for (size_t n1 = 0; n1 < NUM_COP; n1++)
-        xi[n1] -= ratios;
-    for (size_t nn = 2; nn < NUM_COP - 1; nn++)
-        xi[nn] = xre;
-#endif // end COP_CHEME
+    if (bl.RSources)
+    {
+        real_t xre = _DF(1.0e-15), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
+        for (size_t n1 = 0; n1 < NUM_COP; n1++)
+            xi[n1] -= ratios;
+        for (size_t nn = 2; nn < NUM_COP - 1; nn++)
+            xi[nn] = xre;
+    }
 
 #endif // end COP
 
@@ -153,26 +134,18 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
                                           real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-#if DIM_X
     if (i >= Xmax)
         return;
-#endif
-#if DIM_Y
     if (j >= Ymax)
         return;
-#endif
-#if DIM_Z
     if (k >= Zmax)
         return;
-#endif
-    int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
+    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     // // Ini yi
     // get_yi(_y, yi, id);

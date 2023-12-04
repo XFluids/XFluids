@@ -14,8 +14,8 @@ std::string getWorkDir(std::string exe_path, std::string exe_name)
 	do
 	{
 		int a = exe_path.find_last_of("/");
-		// std::cout << exe_path.erase(a) + "/middleware" << std::endl;
-		if (boost::filesystem::exists(exe_path.erase(a) + "/middleware"))
+		// std::cout << exe_path.erase(a) + "/runtime.dat" << std::endl;
+		if (boost::filesystem::exists(exe_path.erase(a) + "/runtime.dat"))
 			return exe_path;
 		if (a < 0)
 			break;

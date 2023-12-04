@@ -25,10 +25,11 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z);
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 
-#if DIM_X
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+	if (bl.DimX)
+	{
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
+								  {
 	    		int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -36,11 +37,13 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 				int left_idx[5] = {id - 3, id - 2, id - 1, id, id + 1};
 				int right_idx[5] = {id + 2, id + 1, id, id - 1, id - 2};
 				ReconstructFlux(left_idx, right_idx, id, 2, bl, thermal, FluxFw, p, rho, u, v, w, fdata.y, T, face_vector); }); });
-#endif
-#if DIM_Y
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+	}
+	if (bl.DimY)
+	{
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(
+					   sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
+					   {
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -48,11 +51,13 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 				int left_idy[5] = {id - 3 * Xmax, id - 2 * Xmax, id - 1 * Xmax, id, id + 1 * Xmax};
 				int right_idy[5] = {id + 2 * Xmax, id + 1 * Xmax, id, id - 1 * Xmax, id - 2 * Xmax};
 				ReconstructFlux(left_idy, right_idy, id, 3, bl, thermal, FluxGw, p, rho, u, v, w, fdata.y, T, face_vector); }); });
-#endif
-#if DIM_Z
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+	}
+	if (bl.DimZ)
+	{
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(
+					   sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
+					   {
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
@@ -60,20 +65,14 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 				int left_idz[5] = {id - 3 * Xmax * Ymax, id - 2 * Xmax * Ymax, id - 1 * Xmax * Ymax, id, id + 1 * Xmax * Ymax};
 				int right_idz[5] = {id + 2 * Xmax * Ymax, id + 1 * Xmax * Ymax, id, id - 1 * Xmax * Ymax, id - 2 * Xmax * Ymax};
 				ReconstructFlux(left_idz, right_idz, id, 4, bl, thermal, FluxHw, p, rho, u, v, w, fdata.y, T, face_vector); }); });
-#endif
+	}
 
 	q.wait();
 
 	// 	// 	// 	int cellsize = bl.Xmax * bl.Ymax * bl.Zmax * sizeof(real_t) * NUM_SPECIES;
-	// 	// 	// #if DIM_X
 	// 	// 	// 	q.memcpy(fdata.preFwx, FluxFw, cellsize);
-	// 	// 	// #endif
-	// 	// 	// #if DIM_Y
 	// 	// 	// 	q.memcpy(fdata.preFwy, FluxGw, cellsize);
-	// 	// 	// #endif
-	// 	// 	// #if DIM_Z
 	// 	// 	// 	q.memcpy(fdata.preFwz, FluxHw, cellsize);
-	// 	// 	// #endif
 	// 	// 	// 	q.wait();
 
 	// 	// NOTE: positive preserving
@@ -87,7 +86,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	// 		epsilon[ii] = _DF(0.0);						// Ini epsilon for y1-yN(N species)
 
 	// #ifdef PositivityPreserving
-	// #if DIM_X // sycl::stream error_out(1024 * 1024, 1024, h);
+	// sycl::stream error_out(1024 * 1024, 1024, h);
 	// 	q.submit([&](sycl::handler &h)
 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
 	// 							  {
@@ -97,8 +96,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	// 					int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
 	// 					int id_r = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1);
 	// 					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxF, FluxFw, T, lambda_x0, lambda_x, epsilon); }); });
-	// #endif	  // DIM_X
-	// #if DIM_Y // sycl::stream error_out(1024 * 1024, 1024, h);
+	// sycl::stream error_out(1024 * 1024, 1024, h);
 	// 	q.submit([&](sycl::handler &h)
 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
 	// 							  {
@@ -108,8 +106,6 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	// 	   				int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
 	// 	   				int id_r = (bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i);
 	// 	   				PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxG, FluxGw, T, lambda_y0, lambda_y, epsilon); }); });
-	// #endif // end DIM_Y
-	// #if DIM_Z
 	// 	q.submit([&](sycl::handler &h)
 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
 	// 							  {
@@ -119,21 +115,14 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	// 	   				int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
 	// 	   				int id_r = (bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i);
 	// 	   				PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxH, FluxHw, T, lambda_z0, lambda_z, epsilon); }); });
-	// #endif // end DIM_Z
 	// #endif // end posti
 
 	// 	// 	// 	q.wait();
 
 	// 	// 	// 	int cellsize = bl.Xmax * bl.Ymax * bl.Zmax * sizeof(real_t) * NUM_SPECIES;
-	// 	// 	// #if DIM_X
 	// 	// 	// 	q.memcpy(fdata.preFwx, FluxFw, cellsize);
-	// 	// 	// #endif
-	// 	// 	// #if DIM_Y
 	// 	// 	// 	q.memcpy(fdata.preFwy, FluxGw, cellsize);
-	// 	// 	// #endif
-	// 	// 	// #if DIM_Z
 	// 	// 	// 	q.memcpy(fdata.preFwz, FluxHw, cellsize);
-	// 	// 	// #endif
 	// 	// 	// 	q.wait();
 
 	GetCellCenterDerivative(q, bl, fdata, BCs); // get Vortex
@@ -157,42 +146,41 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 					Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2); }); })
 		.wait();
 
-#if DIM_X
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+	if (bl.DimX)
+	{
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
+								  {
 					int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwx, fdata.Dim_wallx, fdata.hi_wallx, fdata.Yi_wallx, fdata.Yil_wallx); }); }); //.wait()
-#endif																												  // end DIM_X
-
-#if DIM_Y
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+	}
+	if (bl.DimY)
+	{
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
+								  {
 					int i = index.get_global_id(0) + bl.Bwidth_X;
 					int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwy, fdata.Dim_wally, fdata.hi_wally, fdata.Yi_wally, fdata.Yil_wally); }); }); //.wait()
-#endif																												  // end DIM_Y
-
-#if DIM_Z
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+	}
+	if (bl.DimZ)
+	{
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
+								  {
 					int i = index.get_global_id(0) + bl.Bwidth_X;
 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 					int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
 					GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwz, fdata.Dim_wallz, fdata.hi_wallz, fdata.Yi_wallz, fdata.Yil_wallz); }); }); //.wait()
-#endif																												  // end DIM_Z
+	}
 
 #endif // end Visc
 	q.wait();
 
 	// NOTE: update LU from cell-face fluxes
-#if NumFluid == 2
-#else
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
@@ -201,7 +189,6 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					UpdateFluidLU(i, j, k, bl, LU, FluxFw, FluxGw, FluxHw); }); })
 		.wait();
-#endif
 
 	// // // free
 	// // {

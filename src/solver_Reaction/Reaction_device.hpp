@@ -129,7 +129,7 @@ real_t frsign(real_t a, real_t b)
  */
 void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
 			 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
-			 real_t y[NUM_SPECIES], const real_t dtg, real_t &TT, const real_t rho, const real_t e)
+			 real_t *y, const real_t dtg, real_t &TT, const real_t rho, const real_t e)
 {
 	/**NOTE: q represents the production rate , d represents the los rate , di = pi*yi in RefP408 eq(2)
 	 * Ref.A Quasi-Steady-State Solver for the Stiff Ordinary Differential Equations of Reaction Kinetics

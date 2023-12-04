@@ -18,26 +18,18 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
                                           real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-#if DIM_X
     if (i >= Xmax)
         return;
-#endif
-#if DIM_Y
     if (j >= Ymax)
         return;
-#endif
-#if DIM_Z
     if (k >= Zmax)
         return;
-#endif
-    int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
+    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     rho[id] = _DF(0.0);
     p[id] = _DF(0.0);
@@ -53,13 +45,14 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
 
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
     // a circular bubble
-    dy_ = (x - _DF(0.02)) * (x - _DF(0.02));
-#if DIM_Y
-    dy_ += (y - _DF(0.0)) * (y - _DF(0.0));
-#endif // end DIM_Y
-#if DIM_Z
-    dy_ += (z - _DF(0.0)) * (z - _DF(0.0));
-#endif // end DIM_Z
+    if (bl.DimX)
+        dy_ += (x - _DF(0.02)) * (x - _DF(0.02));
+
+    if (bl.DimY)
+        dy_ += (y - _DF(0.0)) * (y - _DF(0.0));
+
+    if (bl.DimZ)
+        dy_ += (z - _DF(0.0)) * (z - _DF(0.0));
 
     // // Ini interface
     dy_ = sycl::sqrt(dy_) / _DF(0.01) - _DF(1.0); // not actually the same as that in Ref: https://doi.org/10.1016/j.combustflame.2022.112085

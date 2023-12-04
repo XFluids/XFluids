@@ -10,26 +10,18 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
                                 real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T)
 {
     MARCO_DOMAIN_GHOST();
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-#if DIM_X
     if (i >= Xmax)
         return;
-#endif
-#if DIM_Y
     if (j >= Ymax)
         return;
-#endif
-#if DIM_Z
     if (k >= Zmax)
         return;
-#endif
-    int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
+    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     rho[id] = _DF(0.0);
     p[id] = _DF(0.0);
@@ -55,26 +47,18 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
                             real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
-    real_t dx = bl.dx;
-    real_t dy = bl.dy;
-    real_t dz = bl.dz;
-#if DIM_X
     if (i >= Xmax)
         return;
-#endif
-#if DIM_Y
     if (j >= Ymax)
         return;
-#endif
-#if DIM_Z
     if (k >= Zmax)
         return;
-#endif
-    int id = Xmax * Ymax * k + Xmax * j + i;
 
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
+    int id = Xmax * Ymax * k + Xmax * j + i;
+    real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
+    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     rho[id] = _DF(0.0);
     p[id] = _DF(0.0);
@@ -86,15 +70,16 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
     // // GUASS-WAVE
     p[id] = _DF(101325.0);
     real_t tmt = _DF(0.0);
-#if DIM_X
-    tmt += -(x - _DF(0.025)) / _DF(0.0025) * (x - _DF(0.025)) / _DF(0.0025);
-#endif // end DIM_X
-#if DIM_Y
-    tmt += -(y - _DF(0.025)) / _DF(0.0025) * (y - _DF(0.025)) / _DF(0.0025);
-#endif // end DIM_Y
-#if DIM_Z
-    tmt += -(z - _DF(0.025)) / _DF(0.0025) * (z - _DF(0.025)) / _DF(0.0025);
-#endif // end DIM_Y
+
+    if (bl.DimX)
+        tmt += -(x - _DF(0.025)) / _DF(0.0025) * (x - _DF(0.025)) / _DF(0.0025);
+
+    if (bl.DimY)
+        tmt += -(y - _DF(0.025)) / _DF(0.0025) * (y - _DF(0.025)) / _DF(0.0025);
+
+    if (bl.DimZ)
+        tmt += -(z - _DF(0.025)) / _DF(0.0025) * (z - _DF(0.025)) / _DF(0.0025);
+
     real_t fx = _DF(1.0) - _DF(0.5) * sycl::exp(tmt);
     real_t *yi = &(_y[NUM_SPECIES * id]), Yif[4] = {_DF(0.195), _DF(0.591), _DF(0.0), _DF(0.214)}, Yio[4] = {_DF(0.142), _DF(0.758), _DF(0.1), _DF(0.0)};
 

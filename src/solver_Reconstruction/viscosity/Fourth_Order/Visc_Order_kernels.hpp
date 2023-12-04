@@ -14,18 +14,13 @@
  */
 extern void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, real_t *u, real_t *v, real_t *w, real_t *const *Vde, real_t *const *Voxs, real_t *Vox)
 {
-#if DIM_X
 	if (i > bl.Xmax - bl.Bwidth_X + 1)
 		return;
-#endif // DIM_X
-#if DIM_Y
 	if (j > bl.Ymax - bl.Bwidth_Y + 1)
 		return;
-#endif // DIM_Y
-#if DIM_Z
 	if (k > bl.Zmax - bl.Bwidth_Z + 1)
 		return;
-#endif // DIM_Z
+
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	real_t Dmp[9] = {_DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0)};
 #if DIM_X
@@ -98,18 +93,13 @@ extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
 { // compute Physical、Visc_Heat、Visc_Diffu viscity in this function
-#ifdef DIM_X
 	if (i >= bl.X_inner + bl.Bwidth_X)
 		return;
-#endif // DIM_X
-#ifdef DIM_Y
 	if (j >= bl.Y_inner + bl.Bwidth_Y)
 		return;
-#endif // DIM_Y
-#ifdef DIM_Z
 	if (k >= bl.Z_inner + bl.Bwidth_Z)
 		return;
-#endif // DIM_Z
+
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	int id_m1 = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
 	int id_m2 = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
@@ -208,18 +198,13 @@ extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
 { // compute Physical、Visc_Heat、Visc_Diffu viscity in this function
-#ifdef DIM_X
 	if (i >= bl.X_inner + bl.Bwidth_X)
 		return;
-#endif // DIM_X
-#ifdef DIM_Y
 	if (j >= bl.Y_inner + bl.Bwidth_Y)
 		return;
-#endif // DIM_Y
-#ifdef DIM_Z
 	if (k >= bl.Z_inner + bl.Bwidth_Z)
 		return;
-#endif // DIM_Z
+
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	int id_m1 = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 1) + i;
 	int id_m2 = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 2) + i;
@@ -318,18 +303,13 @@ extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
 { // compute Physical、Visc_Heat、Visc_Diffu viscity in this function
-#ifdef DIM_X
 	if (i >= bl.X_inner + bl.Bwidth_X)
 		return;
-#endif // DIM_X
-#ifdef DIM_Y
 	if (j >= bl.Y_inner + bl.Bwidth_Y)
 		return;
-#endif // DIM_Y
-#ifdef DIM_Z
 	if (k >= bl.Z_inner + bl.Bwidth_Z)
 		return;
-#endif // DIM_Z
+
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	int id_m1 = bl.Xmax * bl.Ymax * (k - 1) + bl.Xmax * j + i;
 	int id_m2 = bl.Xmax * bl.Ymax * (k - 2) + bl.Xmax * j + i;

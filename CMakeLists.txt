@@ -27,8 +27,8 @@ option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # # EXPLICIT_A
 # # 3d-shock-bubble, 3d-shock-bubble-without-fuel, 3d-under-expanded-jet
 # # // // == MIXTURE_MODEL settings =========================================
 # # // // // == insert MIXURE_MODEL settings ================================
-# #	NO-COP					# # 1d-mc-insert-shock-tube	
-# # 1d-mc-diffusion			# # 1d-mc-diffusion-reverse # # 2d-under-expanded-jet	
+# #	NO-COP					# # 1d-mc-insert-shock-tube
+# # 1d-mc-diffusion			# # 1d-mc-diffusion-reverse # # 2d-under-expanded-jet
 # # Insert-SBI 				# # Insert-SBI-without-fuel
 # # // // // == reacting MIXURE_MODEL settings ==============================
 # # 2species				# # CJ_mechanism			# # inert_2species
@@ -40,8 +40,8 @@ set(MIXTURE_MODEL "Insert-SBI") # location of species_list.dat read in project l
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)
 option(DIM_X "if enable dim_x" ON)
-option(DIM_Y "if enable dim_y" OFF)
-option(DIM_Z "if enable dim_z" ON)
+option(DIM_Y "if enable dim_y" ON)
+option(DIM_Z "if enable dim_z" OFF)
 option(COP "if enable compoent" ON)
 set(DISCRETIZATION_METHOD "FDM") # FVM or FDM ME FluxWall reconstruction
 set(WENO_ORDER "5") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
@@ -62,7 +62,6 @@ set(VISCOSITY_ORDER "Second") # Fourth, Second order viscosity discretization me
 
 # # // // == Reaction Kitnetics =============================
 option(COP_CHEME "if enable chemical reaction" OFF)
-option(COP_CHEME_TEST "if enable 0D reaction solver test" OFF)
 set(CHEME_SOLVER "Q2") # "Q2", only Q2 now, depends on COP_CHEME "ON"
 set(CHEME_SPLITTING "Strang") # "Strang": React(dt/2)->Flow(dt)->React(dt/2); "Lie": Flow(dt)->React(dt)
 

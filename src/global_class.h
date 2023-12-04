@@ -48,7 +48,9 @@ public:
     void BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag);
     bool UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime);
+    void AllCountsHeader();
     void GetTheta(sycl::queue &q);
+    void AllCountsPush(sycl::queue &q, const size_t Iter, const real_t time);
     void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void ComputeFluidLU(sycl::queue &q, int flag);
     bool EstimateFluidNAN(sycl::queue &q, int flag);

@@ -9,16 +9,13 @@
 extern void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
-	int id = Xmax * Ymax * k + Xmax * j + i;
-	real_t *Vde_x[] = {Vde[ducy], Vde[ducz], Vde[dvcy], Vde[dwcz]};
-#if DIM_Y
 	if (j >= Ymax)
 		return;
-#endif
-#if DIM_Z
 	if (k >= Zmax)
 		return;
-#endif
+
+	int id = Xmax * Ymax * k + Xmax * j + i;
+	real_t *Vde_x[] = {Vde[ducy], Vde[ducz], Vde[dvcy], Vde[dwcz]};
 
 	switch (BC)
 	{
@@ -82,16 +79,13 @@ extern void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions
 extern void CenterDerivativeBCKernelY(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
-	int id = Xmax * Ymax * k + Xmax * j + i;
-	real_t *Vde_y[4] = {Vde[dvcx], Vde[dvcz], Vde[ducx], Vde[dwcz]};
-#if DIM_X
 	if (i >= Xmax)
 		return;
-#endif
-#if DIM_Z
 	if (k >= Zmax)
 		return;
-#endif
+
+	int id = Xmax * Ymax * k + Xmax * j + i;
+	real_t *Vde_y[4] = {Vde[dvcx], Vde[dvcz], Vde[ducx], Vde[dwcz]};
 
 	switch (BC)
 	{
@@ -155,16 +149,13 @@ extern void CenterDerivativeBCKernelY(int i, int j, int k, Block bl, BConditions
 extern void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {
 	MARCO_DOMAIN_GHOST();
-	int id = Xmax * Ymax * k + Xmax * j + i;
-	real_t *Vde_z[4] = {Vde[dwcx], Vde[dwcy], Vde[ducx], Vde[dvcy]};
-#if DIM_X
 	if (i >= Xmax)
 		return;
-#endif
-#if DIM_Y
 	if (j >= Ymax)
 		return;
-#endif
+
+	int id = Xmax * Ymax * k + Xmax * j + i;
+	real_t *Vde_z[4] = {Vde[dwcx], Vde[dwcy], Vde[ducx], Vde[dvcy]};
 
 	switch (BC)
 	{
@@ -228,18 +219,13 @@ extern void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions
 extern void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
 												  real_t *Dkm_aver, real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T, real_t *Ertemp1, real_t *Ertemp2)
 {
-#ifdef DIM_X
 	if (i >= bl.Xmax)
 		return;
-#endif // DIM_X
-#ifdef DIM_Y
 	if (j >= bl.Ymax)
 		return;
-#endif // DIM_Y
-#ifdef DIM_Z
 	if (k >= bl.Zmax)
 		return;
-#endif // DIM_Z
+
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	// get mole fraction of each specie
 	real_t X[MAX_SPECIES] = {_DF(0.0)}; //, yi[NUM_SPECIES] = {_DF(0.0)};

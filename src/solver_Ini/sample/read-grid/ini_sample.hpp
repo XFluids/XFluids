@@ -10,24 +10,18 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
                                 real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T)
 {
     MARCO_DOMAIN_GHOST();
-    real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
-#if DIM_X
     if (i >= Xmax)
         return;
-#endif
-#if DIM_Y
     if (j >= Ymax)
         return;
-#endif
-#if DIM_Z
     if (k >= Zmax)
         return;
-#endif
 
     int id = Xmax * Ymax * k + Xmax * j + i;
-    real_t x = DIM_X ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
-    real_t y = DIM_Y ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
-    real_t z = DIM_Z ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
+    real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
+    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+    real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     rho[id] = _DF(0.0);
     p[id] = _DF(0.0);
@@ -55,18 +49,13 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
                             real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
-#if DIM_X
     if (i >= Xmax)
         return;
-#endif
-#if DIM_Y
     if (j >= Ymax)
         return;
-#endif
-#if DIM_Z
     if (k >= Zmax)
         return;
-#endif
+
     int id = Xmax * Ymax * k + Xmax * j + i;
 
     real_t *yi = &(_y[NUM_SPECIES * id]);

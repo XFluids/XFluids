@@ -13,14 +13,10 @@ extern void FluidBCKernelX(int i, int j, int k, Block bl, BConditions const BC, 
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-#if DIM_Y
 	if (j >= Ymax)
 		return;
-#endif
-#if DIM_Z
 	if (k >= Zmax)
 		return;
-#endif
 
 	switch (BC)
 	{
@@ -118,14 +114,10 @@ extern void FluidBCKernelY(int i, int j, int k, Block bl, BConditions const BC, 
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-#if DIM_X
 	if (i >= Xmax)
 		return;
-#endif
-#if DIM_Z
 	if (k >= Zmax)
 		return;
-#endif
 
 	switch (BC)
 	{
@@ -197,14 +189,10 @@ extern void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, 
 	MARCO_DOMAIN_GHOST();
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-#if DIM_X
 	if (i >= Xmax)
 		return;
-#endif
-#if DIM_Y
 	if (j >= Ymax)
 		return;
-#endif
 
 	switch (BC)
 	{
@@ -274,21 +262,16 @@ extern void FluidBCKernelZ(int i, int j, int k, Block bl, BConditions const BC, 
 extern void FluidMpiCopyKernelX(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
 											  const int Bwidth_Xset, const MpiCpyType Cpytype)
 {
-	int Xmax = bl.Xmax;
-	int Ymax = bl.Ymax;
+	int Xmax = bl.Xmax, Ymax = bl.Ymax;
+	if (j >= Ymax)
+		return;
+	if (k >= bl.Zmax)
+		return;
+
 	int id = Xmax * Ymax * k + Xmax * j + i;
 	int tid = sycl::abs(Bwidth_Xset) * Ymax * k + sycl::abs(Bwidth_Xset) * j + (i - index_offset);
 	int fid = Xmax * Ymax * k + Xmax * j + (i - Bwidth_Xset);
 
-#if DIM_Y
-	if (j >= Ymax)
-		return;
-#endif
-#if DIM_Z
-	int Zmax = bl.Zmax;
-	if (k >= Zmax)
-		return;
-#endif
 	for (size_t n = 0; n < Emax; n++)
 	{
 		if (BorToBuf == Cpytype)
@@ -301,21 +284,16 @@ extern void FluidMpiCopyKernelX(int i, int j, int k, Block bl, real_t *d_TransBu
 extern void FluidMpiCopyKernelY(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
 											  const int Bwidth_Yset, const MpiCpyType Cpytype)
 {
-	int Xmax = bl.Xmax;
-	int Ymax = bl.Ymax;
+	int Xmax = bl.Xmax, Ymax = bl.Ymax;
+	if (j >= Ymax)
+		return;
+	if (k >= bl.Zmax)
+		return;
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 	int tid = Xmax * sycl::abs(Bwidth_Yset) * k + Xmax * (j - index_offset) + i;
 	int fid = Xmax * Ymax * k + Xmax * (j - Bwidth_Yset) + i;
 
-#if DIM_Y
-	if (j >= Ymax)
-		return;
-#endif
-#if DIM_Z
-	if (k >= bl.Zmax)
-		return;
-#endif
 	for (size_t n = 0; n < Emax; n++)
 	{
 		if (BorToBuf == Cpytype)
@@ -328,21 +306,16 @@ extern void FluidMpiCopyKernelY(int i, int j, int k, Block bl, real_t *d_TransBu
 extern void FluidMpiCopyKernelZ(int i, int j, int k, Block bl, real_t *d_TransBuf, real_t *d_UI, const int index_offset,
 											  const int Bwidth_Zset, const MpiCpyType Cpytype)
 {
-	int Xmax = bl.Xmax;
-	int Ymax = bl.Ymax;
+	int Xmax = bl.Xmax, Ymax = bl.Ymax;
+	if (j >= Ymax)
+		return;
+	if (k >= bl.Zmax)
+		return;
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 	int tid = Xmax * Ymax * (k - index_offset) + Xmax * j + i;
 	int fid = Xmax * Ymax * (k - Bwidth_Zset) + Xmax * j + i;
 
-#if DIM_Y
-	if (j >= Ymax)
-		return;
-#endif
-#if DIM_Z
-	if (k >= bl.Zmax)
-		return;
-#endif
 	for (size_t n = 0; n < Emax; n++)
 	{
 		if (BorToBuf == Cpytype)

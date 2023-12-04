@@ -17,7 +17,7 @@ extern const std::string OutputDir;
 extern const std::vector<real_t> OutTimeStamps;
 extern const real_t CFLnumber_json;
 extern const real_t StartTime, EndTime; // NOTE: ignore
-extern const size_t OutDAT, OutVTI, OutSTL;
+extern const size_t OutDAT, OutVTI, OutSTL, OutOverTime;
 extern const size_t outpos_x, outpos_y, outpos_z;
 extern const size_t OutBoundary, OutDIRX, OutDIRY, OutDIRZ;
 extern const size_t nStepmax_json, nOutput;	   // nOutMax
@@ -36,7 +36,8 @@ extern const size_t NumFluid;									 // NOTE: ignore
 extern const std::vector<std::string> Fluids_name;				 //, species_name; // Fluid_Names, Spiece_Names
 extern const size_t Equ_rho, Equ_energy;
 extern const std::vector<size_t> Equ_momentum;
-extern const bool if_overdetermined_eigen;
+extern const bool if_overdetermined_eigen, ReactSources;
+extern const std::string SlipOrder, ODESolver;
 // extern const size_t Emax;
 // extern const size_t NUM_COP;
 // extern const size_t NUM_SPECIES;
@@ -49,7 +50,8 @@ extern const bool if_overdetermined_eigen;
 extern const size_t NUM_BISD;
 extern const real_t width_xt, width_hlf, mx_vlm, ext_vlm, BandforLevelset; // for multiphase
 extern const std::vector<real_t> Refs, DOMAIN_Size, Domain_medg;
-extern const std::vector<size_t> Inner, Bwidth;									  // XYZ
+extern const std::vector<bool> Dimensions;										  // XYZ Dir
+extern const std::vector<size_t> Inner, Bwidth;									  // XYZ Resolution
 extern const std::vector<size_t> NBoundarys, Boundarys_json;					  // BoundaryBundles
 extern const std::vector<std::vector<size_t>> Boundary_x, Boundary_y, Boundary_z; // BoundaryBundle_xyz
 

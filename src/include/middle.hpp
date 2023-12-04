@@ -1,25 +1,26 @@
+/**
+ * This file is a simple part of early and original Umidware, a SYCL implementation.
+ *
+ * Copyright (c) 2023 JinLong Li
+ * All rights reserved.
+ *
+ * some features and API functions may be deprecated or repackaged in UMidWare releases version
+ */
 #pragma once
 
 #include <sycl/sycl.hpp>
 #include <string>
-#include "../utils/utils.h"
-
 namespace middle
 {
     using device_t = sycl::queue;
     using stream_t = int; // stream in sycl need to be added
-                          // TODO: unify dim3.x/y/z and sycl::range[], may needn't if their member not referenced
     using range_t = sycl::range<3>;
-    // typedef struct
-    // {
-    //     size_t x, y, z;
-    //     void operator=(sycl::range<3> range_)
-    //     {
-    //         x = range_[0];
-    //         y = range_[1];
-    //         z = range_[2];
-    //     }
-    // } range_t;
+
+    enum sync_t
+    {
+        device = 0, /**DeviceSynchronize */
+        block = 1   /**__syncthreads in a block */
+    };
 
     enum MemCpy_t
     {
@@ -33,7 +34,6 @@ namespace middle
     // =======================================================
     // Sync API
     // =======================================================
-
     inline std::string DevInfo(device_t &device)
     {
         return device.get_device().get_info<sycl::info::device::name>() + " based Driver Version: " + device.get_device().get_info<sycl::info::device::version>();
@@ -42,7 +42,6 @@ namespace middle
     // =======================================================
     // Memory API
     // =======================================================
-
     template <typename T>
     inline T *MallocHost(T *ptr, size_t count, device_t &device)
     {
@@ -227,7 +226,6 @@ namespace middle
     // =======================================================
     // Thread API
     // =======================================================
-
     inline range_t AllocThd(const size_t global_range_x, const size_t global_range_y, const size_t global_range_z, range_t &block_size)
     {
         range_t grid_size{((global_range_x - 1) / block_size[0] + 1) * block_size[0],
@@ -239,7 +237,6 @@ namespace middle
     // =======================================================
     // Sync API
     // =======================================================
-
     inline void Synchronize(sync_t stype, device_t &device)
     {
         switch (stype)

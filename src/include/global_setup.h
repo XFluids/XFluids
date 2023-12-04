@@ -14,11 +14,12 @@
 #include "Eigen_global_definition.h"
 #endif
 
-// //  use middleware targeting to multi-backends
-#include "../../middleware/middle.hpp"
+// //  use middleware
+#include "middle.hpp"
 
 #include "global_undef.h"
 #include "compile_sycl.h"
+
 // #define Emax 13
 // #define NUM_COP 8
 // #define NUM_REA 18
@@ -162,6 +163,8 @@ typedef struct
 	bool DimX, DimY, DimZ;
 	//--for-Solving-system-------------------
 	size_t num_fluids, num_species, num_cop, num_rea, num_eqn;
+	//--for-Chemical-sources-----------------
+	bool RSources;
 	//--for-Mesh-----------------------------
 	int Bwidth_X, Bwidth_Y, Bwidth_Z; // Bounadry Width
 	int Xmax, Ymax, Zmax, X_inner, Y_inner, Z_inner;

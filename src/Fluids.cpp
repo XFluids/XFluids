@@ -4,9 +4,7 @@
 #include "solver_Ini/Ini_block.hpp"
 #include "solver_BCs/BCs_block.hpp"
 #include "solver_GetDt/GlobalDt_block.hpp"
-#if defined(COP_CHEME)
 #include "solver_Reaction/Reaction_block.hpp"
-#endif
 #include "solver_Reconstruction/Reconstruction_block.hpp"
 
 Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
@@ -18,75 +16,10 @@ Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIt
 	rank = Fs.mpiTrans->myRank;
 	nranks = Fs.mpiTrans->nProcs;
 #endif
-	// for (size_t i = 0; i < 3; i++)
-	// 	thetas[i].clear();
-	// for (size_t i = 0; i < NUM_SPECIES - 3; i++)
-	// 	Var_max[i].clear();
-	// for (size_t j = 0; j < 6; j++)
-	// 	Interface_points[j].clear();
-	// pTime.clear(), Theta.clear(), Sigma.clear();
 
-#ifdef ODESolverTest
-	if (0 == rank)
-		ZeroDimensionalFreelyFlame();
-#endif // end ODESolverTest
-
-		// Counts file
-#ifdef SBICounts
-	outputPrefix = INI_SAMPLE;
-	file_name = OutputDir + "/AllSBICounts_" + outputPrefix + ".dat";
-	if (Fs.myRank == 0)
-	{
-		std::fstream if_exist;
-		if_exist.open(file_name, std::ios::in);
-		if (!if_exist)
-		{
-			std::ofstream out(file_name, std::fstream::out);
-			out.setf(std::ios::right);
-			// // defining header for tecplot(plot software)
-			out << "title='Time_NormalizedTime_Theta_Lambda_Sigma_NSigma";
-			//" << outputPrefix << "'\n"
-			// Sigma: Sum(Omega^2), NSigma(Nromalized Sigma): Sum(rho[id]*Omega^2)
-#ifdef COP_CHEME
-			out << "_T";
-			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-				out << "_Yi" << Fs.species_name[n + 1];
-#endif // end COP_CHEME
-			out << "_Step_teXN_teXeN2_teXe_Ymin_Ymax";
-			// #if DIM_X
-			// 			out << "_Xmin_Xmax_Lambdax";
-			// #endif // end DIM_X
-			// #if DIM_Z
-			// 			out << "_Zmin_Zmax_Lambdaz";
-			// #endif // end DIM_Z
-			out << "'\nvariables=Time[s], Time[-], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], ";
-			out << "<greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], ";
-			out << "<greek>e</greek><sub><greek>r</greek>n</sub>[m<sup>2</sup>/s<sup>2</sup>], ";
-			// Time[s]: Time in tecplot x-Axis variable
-			//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
-			//<greek>L</greek><sub>y</sub>[-]: Lambday in tecplot
-			//<greek>e</greek><sub><greek>r</greek></sub>: sigma in tecplot
-			//<sub>max</sub>: T_max in tecplot sub{max} added
-			//<i>Y(HO2)</i><sub>max</sub>[-]: Yi(HO2)_max
-
-#ifdef COP_CHEME
-			out << "<i>T</i><sub>max</sub>[K], ";
-			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-				out << "<i>Y(" << Fs.species_name[n + 1] << ")</i><sub>max</sub>[-], ";
-#endif // end COP_CHEME
-			out << "Step, Theta(XN), Theta(Xe*N2), Theta(Xe), ";
-			out << "Ymin, Ymax";
-			// #if DIM_X
-			// 			out << ", Xmin, Xmax, <greek>L</greek><sub>x</sub>[-]";
-			// #endif
-			// #if DIM_Z
-			// 			out << ", Zmin, Zmax, <greek>L</greek><sub>z</sub>[-]";
-			// #endif
-			out << "\nzone t='" << outputPrefix << "'\n";
-			out.close();
-		}
-	}
-#endif // end SBICounts
+	ZeroDimensionalFreelyFlame();
+	// Creat Counts file
+	AllCountsHeader();
 }
 
 Fluid::~Fluid()
@@ -126,9 +59,9 @@ Fluid::~Fluid()
 	sycl::free(h_fstate.y, q);
 	sycl::free(h_fstate.e, q);
 	sycl::free(h_fstate.gamma, q);
+
 #if 2 == EIGEN_ALLOC
-	sycl::free(d_eigen_l, q);
-	sycl::free(d_eigen_r, q);
+	sycl::free(d_eigen_l, q), sycl::free(d_eigen_r, q);
 #endif // end EIGEN_ALLOC
 
 	sycl::free(d_fstate.vx, q), sycl::free(h_fstate.vx, q);
@@ -143,84 +76,65 @@ Fluid::~Fluid()
 	sycl::free(d_fstate.thermal_conduct_aver, q);
 #endif // end Visc_Heat
 #ifdef Visc_Diffu
-	sycl::free(d_fstate.hi, q);
-	sycl::free(d_fstate.Dkm_aver, q);
+	sycl::free(d_fstate.hi, q), sycl::free(d_fstate.Dkm_aver, q);
 #endif // end Visc_Diffu
 #endif // end Visc
 
-	sycl::free(d_FluxF, q);
-	sycl::free(d_FluxG, q);
-	sycl::free(d_FluxH, q);
-	sycl::free(d_wallFluxF, q);
-	sycl::free(d_wallFluxG, q);
-	sycl::free(d_wallFluxH, q);
 	sycl::free(uvw_c_max, q);
-#ifdef SBICounts
-	sycl::free(theta, q);
-	sycl::free(sigma, q);
-	sycl::free(pVar_max, q);
-	sycl::free(interface_point, q);
-#endif // end SBICounts
+	sycl::free(d_FluxF, q), sycl::free(d_FluxG, q), sycl::free(d_FluxH, q);
+	sycl::free(d_wallFluxF, q), sycl::free(d_wallFluxG, q), sycl::free(d_wallFluxH, q);
+
+	if (OutOverTime)
+	{
+		sycl::free(theta, q), sycl::free(sigma, q);
+		sycl::free(pVar_max, q), sycl::free(interface_point, q);
+	}
 #ifdef ESTIM_NAN
-	sycl::free(h_U, q);
-	sycl::free(h_U1, q);
-	sycl::free(h_LU, q);
-#if DIM_X
-	sycl::free(h_fstate.b1x, q);
-	sycl::free(h_fstate.b3x, q);
-	sycl::free(h_fstate.c2x, q);
-	sycl::free(h_fstate.zix, q);
-	sycl::free(d_fstate.b1x, q);
-	sycl::free(d_fstate.b3x, q);
-	sycl::free(d_fstate.c2x, q);
-	sycl::free(d_fstate.zix, q);
-
-	sycl::free(h_fstate.preFwx, q);
-	sycl::free(h_fstate.pstFwx, q);
-	sycl::free(d_fstate.preFwx, q);
-#endif
-#if DIM_Y
-	sycl::free(h_fstate.b1y, q);
-	sycl::free(h_fstate.b3y, q);
-	sycl::free(h_fstate.c2y, q);
-	sycl::free(h_fstate.ziy, q);
-	sycl::free(d_fstate.b1y, q);
-	sycl::free(d_fstate.b3y, q);
-	sycl::free(d_fstate.c2y, q);
-	sycl::free(d_fstate.ziy, q);
-
-	sycl::free(h_fstate.preFwy, q);
-	sycl::free(h_fstate.pstFwy, q);
-	sycl::free(d_fstate.preFwy, q);
-#endif
-#if DIM_Z
-	sycl::free(h_fstate.b1z, q);
-	sycl::free(h_fstate.b3z, q);
-	sycl::free(h_fstate.c2z, q);
-	sycl::free(h_fstate.ziz, q);
-	sycl::free(d_fstate.b1z, q);
-	sycl::free(d_fstate.b3z, q);
-	sycl::free(d_fstate.c2z, q);
-	sycl::free(d_fstate.ziz, q);
-
-	sycl::free(h_fstate.preFwz, q);
-	sycl::free(h_fstate.pstFwz, q);
-	sycl::free(d_fstate.preFwz, q);
-#endif
+	sycl::free(h_U, q), sycl::free(h_U1, q), sycl::free(h_LU, q);
+	if (Fs.BlSz.DimX)
+	{
+		sycl::free(h_fstate.b1x, q), sycl::free(h_fstate.b3x, q);
+		sycl::free(h_fstate.c2x, q), sycl::free(h_fstate.zix, q);
+		sycl::free(d_fstate.b1x, q), sycl::free(d_fstate.b3x, q);
+		sycl::free(d_fstate.c2x, q), sycl::free(d_fstate.zix, q);
+		sycl::free(h_fstate.preFwx, q), sycl::free(h_fstate.pstFwx, q);
+		sycl::free(d_fstate.preFwx, q);
+	}
+	if (Fs.BlSz.DimY)
+	{
+		sycl::free(h_fstate.b1y, q), sycl::free(h_fstate.b3y, q);
+		sycl::free(h_fstate.c2y, q), sycl::free(h_fstate.ziy, q);
+		sycl::free(d_fstate.b1y, q), sycl::free(d_fstate.b3y, q);
+		sycl::free(d_fstate.c2y, q), sycl::free(d_fstate.ziy, q);
+		sycl::free(h_fstate.preFwy, q), sycl::free(h_fstate.pstFwy, q);
+		sycl::free(d_fstate.preFwy, q);
+	}
+	if (Fs.BlSz.DimZ)
+	{
+		sycl::free(h_fstate.b1z, q), sycl::free(h_fstate.b3z, q);
+		sycl::free(h_fstate.c2z, q), sycl::free(h_fstate.ziz, q);
+		sycl::free(d_fstate.b1z, q), sycl::free(d_fstate.b3z, q);
+		sycl::free(d_fstate.c2z, q), sycl::free(d_fstate.ziz, q);
+		sycl::free(h_fstate.preFwz, q), sycl::free(h_fstate.pstFwz, q);
+		sycl::free(d_fstate.preFwz, q);
+	}
 
 #ifdef Visc // free viscous estimate Vars
-#if DIM_X
-	sycl::free(h_fstate.visFwx, q);
-	sycl::free(d_fstate.visFwx, q);
-#endif // end DIM_X
-#if DIM_Y
-	sycl::free(h_fstate.visFwy, q);
-	sycl::free(d_fstate.visFwy, q);
-#endif // end DIM_Y
-#if DIM_Z
-	sycl::free(h_fstate.visFwz, q);
-	sycl::free(d_fstate.visFwz, q);
-#endif // end DIM_Z
+	if (Ss.BlSz.DimX)
+	{
+		sycl::free(h_fstate.visFwx, q);
+		sycl::free(d_fstate.visFwx, q);
+	}
+	if (Ss.BlSz.DimY)
+	{
+		sycl::free(h_fstate.visFwy, q);
+		sycl::free(d_fstate.visFwy, q);
+	}
+	if (Ss.BlSz.DimZ)
+	{
+		sycl::free(h_fstate.visFwz, q);
+		sycl::free(d_fstate.visFwz, q);
+	}
 #ifdef Visc_Diffu
 	sycl::free(h_fstate.Ertemp1, q);
 	sycl::free(h_fstate.Ertemp2, q);
@@ -228,50 +142,30 @@ Fluid::~Fluid()
 	sycl::free(d_fstate.Ertemp1, q);
 	sycl::free(d_fstate.Ertemp2, q);
 
-#if DIM_X
-	sycl::free(h_fstate.Dim_wallx, q);
-	sycl::free(h_fstate.hi_wallx, q);
-	sycl::free(h_fstate.Yi_wallx, q);
-	sycl::free(h_fstate.Yil_wallx, q);
-	sycl::free(d_fstate.Dim_wallx, q);
-	sycl::free(d_fstate.hi_wallx, q);
-	sycl::free(d_fstate.Yi_wallx, q);
-	sycl::free(d_fstate.Yil_wallx, q);
-#endif
-#if DIM_Y
-	sycl::free(h_fstate.Dim_wally, q);
-	sycl::free(h_fstate.hi_wally, q);
-	sycl::free(h_fstate.Yi_wally, q);
-	sycl::free(h_fstate.Yil_wally, q);
-	sycl::free(d_fstate.Dim_wally, q);
-	sycl::free(d_fstate.hi_wally, q);
-	sycl::free(d_fstate.Yi_wally, q);
-	sycl::free(d_fstate.Yil_wally, q);
-#endif
-#if DIM_Z
-	sycl::free(h_fstate.Dim_wallz, q);
-	sycl::free(h_fstate.hi_wallz, q);
-	sycl::free(h_fstate.Yi_wallz, q);
-	sycl::free(h_fstate.Yil_wallz, q);
-	sycl::free(d_fstate.Dim_wallz, q);
-	sycl::free(d_fstate.hi_wallz, q);
-	sycl::free(d_fstate.Yi_wallz, q);
-	sycl::free(d_fstate.Yil_wallz, q);
-#endif
-
+	if (Ss.BlSz.DimX)
+	{
+		sycl::free(h_fstate.Dim_wallx, q), sycl::free(h_fstate.hi_wallx, q);
+		sycl::free(h_fstate.Yi_wallx, q), sycl::free(h_fstate.Yil_wallx, q);
+		sycl::free(d_fstate.Dim_wallx, q), sycl::free(d_fstate.hi_wallx, q);
+		sycl::free(d_fstate.Yi_wallx, q), sycl::free(d_fstate.Yil_wallx, q);
+	}
+	if (Ss.BlSz.DimY)
+	{
+		sycl::free(h_fstate.Dim_wally, q), sycl::free(h_fstate.hi_wally, q);
+		sycl::free(h_fstate.Yi_wally, q), sycl::free(h_fstate.Yil_wally, q);
+		sycl::free(d_fstate.Dim_wally, q), sycl::free(d_fstate.hi_wally, q);
+		sycl::free(d_fstate.Yi_wally, q), sycl::free(d_fstate.Yil_wally, q);
+	}
+	if (Ss.BlSz.DimZ)
+	{
+		sycl::free(h_fstate.Dim_wallz, q), sycl::free(h_fstate.hi_wallz, q);
+		sycl::free(h_fstate.Yi_wallz, q), sycl::free(h_fstate.Yil_wallz, q);
+		sycl::free(d_fstate.Dim_wallz, q), sycl::free(d_fstate.hi_wallz, q);
+		sycl::free(d_fstate.Yi_wallz, q), sycl::free(d_fstate.Yil_wallz, q);
+	}
 #endif // end Visc_Diffu
 #endif // end Visc
 #endif // ESTIM_NAN
-
-	// for (size_t i = 0; i < 3; i++)
-	// 	thetas[i].clear(), std::vector<real_t>().swap(thetas[i]);
-	// for (size_t i = 0; i < NUM_SPECIES - 3; i++)
-	// 	Var_max[i].clear(), std::vector<real_t>().swap(Var_max[i]);
-	// for (size_t j = 0; j < 6; j++)
-	// 	Interface_points[j].clear(), std::vector<real_t>().swap(Interface_points[j]);
-	// pTime.clear(), std::vector<real_t>().swap(pTime);
-	// Theta.clear(), std::vector<real_t>().swap(Theta);
-	// Sigma.clear(), std::vector<real_t>().swap(Sigma);
 }
 
 void Fluid::initialize(int n)
@@ -374,76 +268,87 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	eigen_block_y = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
 	eigen_block_z = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
 
-#ifdef SBICounts
-	pVar_max = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 1 - 4) * sizeof(real_t), q)); // calculate Tmax, YiH2O2max, YiHO2max
-	sigma = static_cast<real_t *>(sycl::malloc_shared(2 * sizeof(real_t), q));						  // Ref:https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq(34)
-	theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));						  // Yi(Xe),Yi(N2),Yi(Xe*N2)// Ref.eq(35)
-	interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
-#endif // end SBICounts
+	if (OutOverTime)
+	{
+		// calculate Tmax, YiH2O2max, YiHO2max
+		pVar_max = static_cast<real_t *>(sycl::malloc_shared((NUM_SPECIES + 1 - 4) * sizeof(real_t), q));
+		// Ref:https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq(34)
+		sigma = static_cast<real_t *>(sycl::malloc_shared(2 * sizeof(real_t), q));
+		// Yi(Xe),Yi(N2),Yi(Xe*N2)// Ref.eq(35)
+		theta = static_cast<real_t *>(sycl::malloc_shared(3 * sizeof(real_t), q));
+		// bubble size for transverse bubble diameter
+		interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
+	}
 
 #ifdef ESTIM_NAN
 	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-#if DIM_X
-	h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+	if (Ss.BlSz.DimX)
+	{
+		h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.c2x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.zix = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+		d_fstate.b1x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.b3x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.c2x = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.zix = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
 
-	h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif
-#if DIM_Y
-	h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+		h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	}
+	if (Ss.BlSz.DimY)
+	{
+		h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.c2y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.ziy = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+		d_fstate.b1y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.b3y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.c2y = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.ziy = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
 
-	h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif
-#if DIM_Z
-	h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
-	h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
-	d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-	d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
+		h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	}
+	if (Ss.BlSz.DimZ)
+	{
+		h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.c2z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
+		h_fstate.ziz = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_COP, q));
+		d_fstate.b1z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.b3z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.c2z = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.ziz = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_COP, q));
 
-	h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.preFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif
-	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z));
-	// MemMbSize += ((double(bytes) / 1024.0)) / 1024.0 * double((DIM_X + DIM_Y + DIM_Z) * (NUM_COP + 3));
+		h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		d_fstate.preFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	}
+	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double((Fs.BlSz.DimX + Fs.BlSz.DimY + Fs.BlSz.DimZ));
+	// MemMbSize += ((double(bytes) / 1024.0)) / 1024.0 * double((Fs.BlSz.DimX + Fs.BlSz.DimY + Fs.BlSz.DimZ) * (NUM_COP + 3));
 
 #ifdef Visc // allocate viscous estimating Vars
-#if DIM_X
-	h_fstate.visFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.visFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif // end DIM_X
-#if DIM_Y
-	h_fstate.visFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.visFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif // end DIM_Y
-#if DIM_Z
-	h_fstate.visFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	d_fstate.visFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-#endif // end DIM_Z
-	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double(DIM_X + DIM_Y + DIM_Z);
+	if (Fs.BlSz.DimX)
+	{
+		h_fstate.visFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		d_fstate.visFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	}
+	if (Fs.BlSz.DimY)
+	{
+		h_fstate.visFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		d_fstate.visFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	}
+	if (Fs.BlSz.DimZ)
+	{
+		h_fstate.visFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		d_fstate.visFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+	}
+	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double(Fs.BlSz.DimX + Fs.BlSz.DimY + Fs.BlSz.DimZ);
 #ifdef Visc_Diffu
 	h_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
 	h_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
@@ -451,37 +356,40 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	d_fstate.Ertemp1 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.Ertemp2 = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#if DIM_X
-	h_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	d_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#endif
-#if DIM_Y
-	h_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	d_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#endif
-#if DIM_Z
-	h_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	h_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
-	d_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-	d_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
-#endif
-	MemMbSize += ((double(bytes) / 1024.0) * (3.0 + 4.0 * double(DIM_X + DIM_Y + DIM_Z))) / 1024.0 * double(NUM_SPECIES);
+	if (Fs.BlSz.DimX)
+	{
+		h_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		d_fstate.Dim_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.hi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.Yi_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.Yil_wallx = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	}
+	if (Fs.BlSz.DimY)
+	{
+		h_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		d_fstate.Dim_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.hi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.Yi_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.Yil_wally = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	}
+	if (Fs.BlSz.DimZ)
+	{
+		h_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		h_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * bytes, q));
+		d_fstate.Dim_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.hi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.Yi_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		d_fstate.Yil_wallz = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+	}
+	MemMbSize += ((double(bytes) / 1024.0 / 1024.0) * (3.0 + 4.0 * double(Fs.BlSz.DimX + Fs.BlSz.DimY + Fs.BlSz.DimZ))) * double(NUM_SPECIES);
 #endif // end Visc_Diffu
 #endif // end Visc
 #endif // ESTIM_NAN
@@ -505,6 +413,116 @@ void Fluid::InitialU(sycl::queue &q)
 {
 	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
 	GetCellCenterDerivative(q, Fs.BlSz, d_fstate, Fs.Boundarys);
+}
+
+void Fluid::AllCountsHeader()
+{
+	if (OutOverTime)
+	{
+		outputPrefix = INI_SAMPLE;
+		file_name = OutputDir + "/AllCounts_" + outputPrefix + ".dat";
+		if (Fs.myRank == 0)
+		{
+			std::fstream if_exist;
+			if_exist.open(file_name, std::ios::in);
+			if (!if_exist)
+			{
+				std::ofstream out(file_name, std::fstream::out);
+				out.setf(std::ios::right);
+				// // defining header for tecplot(plot software)
+				out << "title='Time_NormalizedTime_Theta_Lambda_Sigma_NSigma";
+				//" << outputPrefix << "'\n"
+				// Sigma: Sum(Omega^2), NSigma(Nromalized Sigma): Sum(rho[id]*Omega^2)
+				if (ReactSources)
+				{
+					out << "_T";
+					for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+						out << "_Yi" << Fs.species_name[n + 1];
+				}
+				out << "_Step_teXN_teXeN2_teXe_Ymin_Ymax";
+				// 			out << "_Xmin_Xmax_Lambdax";
+				// 			out << "_Zmin_Zmax_Lambdaz";
+				out << "'\nvariables=Time[s], Time[-], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], ";
+				out << "<greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], ";
+				out << "<greek>e</greek><sub><greek>r</greek>n</sub>[m<sup>2</sup>/s<sup>2</sup>], ";
+				// Time[s]: Time in tecplot x-Axis variable
+				//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
+				//<greek>L</greek><sub>y</sub>[-]: Lambday in tecplot
+				//<greek>e</greek><sub><greek>r</greek></sub>: sigma in tecplot
+				//<sub>max</sub>: T_max in tecplot sub{max} added
+				//<i>Y(HO2)</i><sub>max</sub>[-]: Yi(HO2)_max
+
+				if (ReactSources)
+				{
+					out << "<i>T</i><sub>max</sub>[K], ";
+					for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+						out << "<i>Y(" << Fs.species_name[n + 1] << ")</i><sub>max</sub>[-], ";
+				}
+				out << "Step, Theta(XN), Theta(Xe*N2), Theta(Xe), ";
+				out << "Ymin, Ymax";
+				// 			out << ", Xmin, Xmax, <greek>L</greek><sub>x</sub>[-]";
+				// 			out << ", Zmin, Zmax, <greek>L</greek><sub>z</sub>[-]";
+				out << "\nzone t='" << outputPrefix << "'\n";
+				out.close();
+			}
+		}
+	}
+}
+
+void Fluid::AllCountsPush(sycl::queue &q, const size_t Iter, const real_t Time)
+{
+	if ((Iter % POutInterval == 0) && (OutOverTime)) // append once to the counts file avoiding
+	{
+		GetTheta(q);
+
+		// Output
+		if (Fs.myRank == 0)
+		{
+			std::ofstream out;
+			out.open(file_name, std::ios::out | std::ios::app);
+			out.setf(std::ios::right);
+
+			out << std::setw(11) << Time << " " << std::setw(11) << Time / Fs.ini.tau_H << " "; // physical time
+			/**Theta(XN/(Xe*N2))
+			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(35)
+			 */
+			out << std::setw(11) << theta[0] / theta[1] * real_t(Fs.BlSz.Y_inner * Fs.BlSz.my) << " ";
+			/**Lambday diameter of the bubble
+			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.
+			 */
+			real_t offsety = (Fs.Boundarys[2] == 2 && Fs.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+			out << std::setw(7) << (interface_point[3] - interface_point[2]) * offsety / Fs.ini.yb << " ";
+			/**sigma[0]: sum(Omega^2) sigma[1]: sum(rho*Omega^2)/rho_0
+			 * (no rho0 exact definition found) in Ref
+			 * there three initial rho in the Domain: pre-shcok rho, post-shock rho(used, higher than the pre one), bubble rho
+			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(34)
+			 */
+			real_t rho0 = Fs.ini.blast_density_in;
+			out << std::setw(11) << sigma[0] << " " << std::setw(11) << sigma[1] / rho0 << " ";
+
+			if (ReactSources)
+			{
+				out << std::setw(7) << pVar_max[0] << " "; // Tmax
+				for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+					out << std::setw(11) << pVar_max[n] << " ";
+			}
+			out << std::setw(7) << ++SBIOutIter << " ";		  // Step
+			out << std::setw(11) << theta[0] << " ";		  // [0]XN
+			out << std::setw(11) << theta[1] << " ";		  // [1]Xe*N2
+			out << std::setw(11) << theta[2] << " ";		  // [2]Xe
+			out << std::setw(8) << interface_point[2] << " "; // Ymin
+			out << std::setw(8) << interface_point[3] << " "; // Ymax
+			// 		out << std::setw(8) << interface_point[0] << " ";												 // Xmin
+			// 		out << std::setw(8) << interface_point[1] << " ";												 // Xmax
+			// 		out << std::setw(6) << (interface_point[1] - interface_point[0]) * _DF(0.5) / Fs.ini.xa << " ";	 // Lambdax
+			// 		out << std::setw(8) << interface_point[4] << " "; // Zmin
+			// 		out << std::setw(8) << interface_point[5] << " "; // Zmax
+			// 		real_t offsetz = (Fs.Boundarys[4] == 2 && Fs.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
+			// 		out << std::setw(7) << (interface_point[5] - interface_point[4]) * offsetz / Fs.ini.zc << " "; // Lambdaz
+			out << "\n";
+			out.close();
+		}
+	}
 }
 
 void Fluid::GetTheta(sycl::queue &q)
@@ -574,7 +592,6 @@ void Fluid::GetTheta(sycl::queue &q)
 	for (size_t i = 0; i < 6; i++)
 		interface_point[i] = _DF(0.0);
 
-	// 	// #if DIM_X // XDIR
 	// 	// 	auto Rdif_Xmin = reduction(&(interface_point[0]), sycl::minimum<real_t>());
 	// 	// 	auto Rdif_Xmax = reduction(&(interface_point[1]), sycl::maximum<real_t>());
 	// 	// 	q.submit([&](sycl::handler &h)
@@ -587,7 +604,6 @@ void Fluid::GetTheta(sycl::queue &q)
 	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	// 	// 					if (yi[id * NUM_SPECIES  + bl.Xe_id] > Interface_line)
 	// 	// 						temp_Xmin.combine(x), temp_Xmax.combine(x); }); });
-	// 	// #endif	  // end DIM_X
 
 	auto Rdif_Ymin = sycl_reduction_min(interface_point[2]); // reduction(&(interface_point[2]), sycl::minimum<real_t>());
 	auto Rdif_Ymax = sycl_reduction_max(interface_point[3]); // reduction(&(interface_point[3]), sycl::maximum<real_t>());
@@ -602,7 +618,6 @@ void Fluid::GetTheta(sycl::queue &q)
 						if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
 							temp_Ymin.combine(y), temp_Ymax.combine(y); }); });
 
-	// 	// #if DIM_Z // ZDIR
 	// 	// 	auto Rdif_Zmin = reduction(&(interface_point[4]), sycl::minimum<real_t>());
 	// 	// 	auto Rdif_Zmax = reduction(&(interface_point[5]), sycl::maximum<real_t>());
 	// 	// 	q.submit([&](sycl::handler &h)
@@ -615,31 +630,31 @@ void Fluid::GetTheta(sycl::queue &q)
 	// 	// 					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	// 	// 					if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
 	// 	// 						temp_Zmin.combine(z), temp_Zmax.combine(z); }); });
-	// 	// #endif // end DIM_Z
 
-#ifdef COP_CHEME
-	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
-	auto local_ndrange = range<1>(BlockSize); // size of workgroup
-	auto global_ndrange = range<1>(meshSize);
-	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
-		pVar_max[n] = _DF(0.0);
-	// Tmax
-	real_t *T = d_fstate.T;
-	q.submit([&](sycl::handler &h)
-			 {	auto reduction_max_T = sycl_reduction_max(pVar_max[0]);//reduction(&(pVar_max[0]), sycl::maximum<real_t>());
+	if (ReactSources)
+	{
+		int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
+		auto local_ndrange = range<1>(BlockSize); // size of workgroup
+		auto global_ndrange = range<1>(meshSize);
+		for (size_t n = 0; n < NUM_SPECIES - 3; n++)
+			pVar_max[n] = _DF(0.0);
+		// Tmax
+		real_t *T = d_fstate.T;
+		q.submit([&](sycl::handler &h)
+				 {	auto reduction_max_T = sycl_reduction_max(pVar_max[0]);//reduction(&(pVar_max[0]), sycl::maximum<real_t>());
 				h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
 								   auto id = index.get_global_id();
 								   temp_max_T.combine(T[id]);}); });
-	//	reactants
-	for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-	{
-		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_Yi = sycl_reduction_max(pVar_max[n]);//reduction(&(pVar_max[n]), sycl::maximum<real_t>());
+		//	reactants
+		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
+		{
+			q.submit([&](sycl::handler &h)
+					 {	auto reduction_max_Yi = sycl_reduction_max(pVar_max[n]);//reduction(&(pVar_max[n]), sycl::maximum<real_t>());
 					h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
 									   auto id = index.get_global_id();
 									   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
+		}
 	}
-#endif // end COP_CHEME
 
 	sigma[0] = _DF(0.0), sigma[1] = _DF(0.0);
 	auto Sum_Sigma = sycl_reduction_plus(sigma[0]);	 // sycl::reduction(&(sigma[0]), sycl::plus<real_t>());
@@ -674,14 +689,15 @@ void Fluid::GetTheta(sycl::queue &q)
 	Fs.mpiTrans->communicator->allReduce(&(theta[1]), &thetaYXeN2, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 	Fs.mpiTrans->communicator->allReduce(&(theta[2]), &thetaYXe, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::SUM);
 
-#ifdef COP_CHEME
-	real_t pVar[NUM_SPECIES - 3];
-	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
-		Fs.mpiTrans->communicator->allReduce(&(pVar_max[n]), &pVar[n], 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-	Fs.mpiTrans->communicator->synchronize();
-	for (size_t n = 0; n < NUM_SPECIES - 3; n++)
-		pVar_max[n] = pVar[n];
-#endif // end COP_CHEME
+	if (ReactSources)
+	{
+		real_t pVar[NUM_SPECIES - 3];
+		for (size_t n = 0; n < NUM_SPECIES - 3; n++)
+			Fs.mpiTrans->communicator->allReduce(&(pVar_max[n]), &pVar[n], 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+		Fs.mpiTrans->communicator->synchronize();
+		for (size_t n = 0; n < NUM_SPECIES - 3; n++)
+			pVar_max[n] = pVar[n];
+	}
 
 	// synchronize
 	Fs.mpiTrans->communicator->synchronize();
@@ -711,63 +727,8 @@ real_t Fluid::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTi
 	dt_ref = Fs.BlSz.CFLnumber / dt_ref;
 #endif // end USE_MPI
 
-#ifdef SBICounts
-	// bool push = Iter % POutInterval == 0 ? true : false;
-	if (Iter % POutInterval == 0) // append once to the counts file avoiding
-	{
-		GetTheta(q);
-
-		// Output
-		if (Fs.myRank == 0)
-		{
-			std::ofstream out;
-			out.open(file_name, std::ios::out | std::ios::app);
-			out.setf(std::ios::right);
-
-			out << std::setw(11) << physicalTime << " " << std::setw(11) << physicalTime / Fs.ini.tau_H << " "; // physical time
-			/**Theta(XN/(Xe*N2))
-			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(35)
-			 */
-			out << std::setw(11) << theta[0] / theta[1] * real_t(Fs.BlSz.Y_inner * Fs.BlSz.my) << " ";
-			/**Lambday diameter of the bubble
-			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.
-			 */
-			real_t offsety = (Fs.Boundarys[2] == 2 && Fs.ini.cop_center_y <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-			out << std::setw(7) << (interface_point[3] - interface_point[2]) * offsety / Fs.ini.yb << " ";
-			/**sigma[0]: sum(Omega^2) sigma[1]: sum(rho*Omega^2)/rho_0
-			 * (no rho0 exact definition found) in Ref
-			 * there three initial rho in the Domain: pre-shcok rho, post-shock rho(used, higher than the pre one), bubble rho
-			 * Ref: https://linkinghub.elsevier.com/retrieve/pii/S0010218015003648.eq.(34)
-			 */
-			real_t rho0 = Fs.ini.blast_density_in;
-			out << std::setw(11) << sigma[0] << " " << std::setw(11) << sigma[1] / rho0 << " ";
-#ifdef COP_CHEME
-			out << std::setw(7) << pVar_max[0] << " "; // Tmax
-			for (size_t n = 1; n < NUM_SPECIES - 3; n++)
-				out << std::setw(11) << pVar_max[n] << " ";
-#endif														  // end COP_CHEME
-			out << std::setw(7) << ++SBIOutIter << " ";		  // Step
-			out << std::setw(11) << theta[0] << " ";		  // [0]XN
-			out << std::setw(11) << theta[1] << " ";		  // [1]Xe*N2
-			out << std::setw(11) << theta[2] << " ";		  // [2]Xe
-			out << std::setw(8) << interface_point[2] << " "; // Ymin
-			out << std::setw(8) << interface_point[3] << " "; // Ymax
-			// #if DIM_X
-			// 		out << std::setw(8) << interface_point[0] << " ";												 // Xmin
-			// 		out << std::setw(8) << interface_point[1] << " ";												 // Xmax
-			// 		out << std::setw(6) << (interface_point[1] - interface_point[0]) * _DF(0.5) / Fs.ini.xa << " ";	 // Lambdax
-			// #endif
-			// #if DIM_Z
-			// 		out << std::setw(8) << interface_point[4] << " "; // Zmin
-			// 		out << std::setw(8) << interface_point[5] << " "; // Zmax
-			// 		real_t offsetz = (Fs.Boundarys[4] == 2 && Fs.ini.cop_center_z <= 1.0e-10) ? _DF(1.0) : _DF(0.5);
-			// 		out << std::setw(7) << (interface_point[5] - interface_point[4]) * offsetz / Fs.ini.zc << " "; // Lambdaz
-			// #endif
-			out << "\n";
-			out.close();
-		}
-	}
-#endif // end SBICounts
+	// Push a count
+	AllCountsPush(q, Iter, physicalTime);
 
 	return dt_ref;
 }
@@ -890,19 +851,16 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 
 void Fluid::ZeroDimensionalFreelyFlame()
 {
-#ifdef ODESolverTest
 	std::cout << "0D H2-O2 freely flame testing";
-	ZeroDimensionalFreelyFlameBlock(Fs);
+	if (0 == rank)
+		ZeroDimensionalFreelyFlameBlock(Fs);
 	std::cout << " done.\n";
-#endif // end ODESolverTest
 }
 
 void Fluid::ODESolver(sycl::queue &q, real_t Time)
 {
-#ifdef COP_CHEME
-#if 0 == CHEME_SOLVER
+	// // #if 0 == CHEME_SOLVER
 	ChemeODEQ2Solver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
-//#else 1 == CHEME_SOLVER // CVODE from LLNL to SYCL only support Intel GPUs
-#endif // end CHEME_SOLVER
-#endif // end COP_CHEME
+	// // #else 1 == CHEME_SOLVER // CVODE from LLNL to SYCL only support Intel GPUs
+	// // #endif // end CHEME_SOLVER
 }

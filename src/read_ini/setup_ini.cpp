@@ -26,10 +26,9 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
 
     // /*begin runtime read , fluid && compoent characteristics set*/
     ReadSpecies();
-#ifdef COP_CHEME
-    ReadReactions();
-#endif // end COP_CHEME
-    /*end runtime read*/
+    if (ReactSources)
+        ReadReactions();
+        /*end runtime read*/
 #ifdef Visc // read && caculate coffes for visicity
     GetFitCoefficient();
 #endif
@@ -51,8 +50,11 @@ void Setup::ReadIni()
 {
     /* initialize RUN parameters */
     nStepmax = nStepmax_json;
+    /* initialize React sources  */
+    BlSz.RSources = ReactSources;
     /* initialize MPI parameters */
-    BlSz.mx = mx_json, BlSz.my = my_json, BlSz.mz = mz_json;
+    BlSz.mx = mx_json,
+    BlSz.my = my_json, BlSz.mz = mz_json;
     // initial rank postion to zero, will be changed in MpiTrans
     BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
     // for sycl::queue construction and device select
@@ -132,28 +134,29 @@ void Setup::ReWrite()
 // =======================================================
 void Setup::init()
 { // set other parameters
-    BlSz.X_inner = DIM_X ? BlSz.X_inner : 1, BlSz.Y_inner = DIM_Y ? BlSz.Y_inner : 1, BlSz.Z_inner = DIM_Z ? BlSz.Z_inner : 1;
-    BlSz.Bwidth_X = DIM_X ? BlSz.Bwidth_X : 0, BlSz.Bwidth_Y = DIM_Y ? BlSz.Bwidth_Y : 0, BlSz.Bwidth_Z = DIM_Z ? BlSz.Bwidth_Z : 0;
-    BlSz.Domain_length = DIM_X ? BlSz.Domain_length : 1.0, BlSz.Domain_width = DIM_Y ? BlSz.Domain_width : 1.0, BlSz.Domain_height = DIM_Z ? BlSz.Domain_height : 1.0;
+    BlSz.DimX = Dimensions[0], BlSz.DimY = Dimensions[1], BlSz.DimZ = Dimensions[2];
+    BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1, BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1, BlSz.Z_inner = BlSz.DimZ ? BlSz.Z_inner : 1;
+    BlSz.Bwidth_X = BlSz.DimX ? BlSz.Bwidth_X : 0, BlSz.Bwidth_Y = BlSz.DimY ? BlSz.Bwidth_Y : 0, BlSz.Bwidth_Z = BlSz.DimZ ? BlSz.Bwidth_Z : 0;
+    BlSz.Domain_length = BlSz.DimX ? BlSz.Domain_length : 1.0, BlSz.Domain_width = BlSz.DimY ? BlSz.Domain_width : 1.0, BlSz.Domain_height = BlSz.DimZ ? BlSz.Domain_height : 1.0;
 
-    BlSz.dx = DIM_X ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
-    BlSz.dy = DIM_Y ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
-    BlSz.dz = DIM_Z ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
+    BlSz.dx = BlSz.DimX ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
+    BlSz.dy = BlSz.DimY ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
+    BlSz.dz = BlSz.DimZ ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
 
     BlSz.Domain_xmax = BlSz.Domain_xmin + BlSz.Domain_length;
     BlSz.Domain_ymax = BlSz.Domain_ymin + BlSz.Domain_width;
     BlSz.Domain_zmax = BlSz.Domain_zmin + BlSz.Domain_height;
 
     // maximum number of total cells
-    BlSz.Xmax = DIM_X ? (BlSz.X_inner + 2 * BlSz.Bwidth_X) : 1;
-    BlSz.Ymax = DIM_Y ? (BlSz.Y_inner + 2 * BlSz.Bwidth_Y) : 1;
-    BlSz.Zmax = DIM_Z ? (BlSz.Z_inner + 2 * BlSz.Bwidth_Z) : 1;
+    BlSz.Xmax = BlSz.DimX ? (BlSz.X_inner + 2 * BlSz.Bwidth_X) : 1;
+    BlSz.Ymax = BlSz.DimY ? (BlSz.Y_inner + 2 * BlSz.Bwidth_Y) : 1;
+    BlSz.Zmax = BlSz.DimZ ? (BlSz.Z_inner + 2 * BlSz.Bwidth_Z) : 1;
     BlSz.dl = BlSz.dx + BlSz.dy + BlSz.dz;
-    if (DIM_X)
+    if (BlSz.DimX)
         BlSz.dl = std::min(BlSz.dl, BlSz.dx);
-    if (DIM_Y)
+    if (BlSz.DimY)
         BlSz.dl = std::min(BlSz.dl, BlSz.dy);
-    if (DIM_Z)
+    if (BlSz.DimZ)
         BlSz.dl = std::min(BlSz.dl, BlSz.dz);
 
     BlSz.offx = (_DF(0.5) - BlSz.Bwidth_X + BlSz.myMpiPos_x * BlSz.X_inner) * BlSz.dx + BlSz.Domain_xmin;
@@ -166,18 +169,6 @@ void Setup::init()
     ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
     ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
     ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
-    // real_t xa_in = int(ini.xa / BlSz.dx) * BlSz.dx;
-    // real_t yb_in = int(ini.yb / BlSz.dy) * BlSz.dy;
-    // real_t zc_in = int(ini.zc / BlSz.dz) * BlSz.dz;
-    // real_t xa_out = xa_in + bubble_boundary * BlSz.dx;
-    // real_t yb_out = yb_in + bubble_boundary * BlSz.dy;
-    // real_t zc_out = zc_in + bubble_boundary * BlSz.dz;
-    // ini._xa2_in = _DF(1.0) / (xa_in * xa_in);
-    // ini._yb2_in = _DF(1.0) / (yb_in * yb_in);
-    // ini._zc2_in = _DF(1.0) / (zc_in * zc_in);
-    // ini._xa2_out = _DF(1.0) / (xa_out * xa_out);
-    // ini._yb2_out = _DF(1.0) / (yb_out * yb_out);
-    // ini._zc2_out = _DF(1.0) / (zc_out * zc_out);
 
     // DataBytes set
     bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
@@ -1126,174 +1117,174 @@ void Setup::CpyToGPU()
     middle::MemCpy<real_t>(d_thermal.xi_in, h_thermal.xi_in, NUM_SPECIES, q);
     middle::MemCpy<real_t>(d_thermal.xi_out, h_thermal.xi_out, NUM_SPECIES, q);
 
-#ifdef COP_CHEME
-    d_react.Nu_f_ = middle::MallocDevice<int>(d_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
-    d_react.Nu_b_ = middle::MallocDevice<int>(d_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
-    d_react.Nu_d_ = middle::MallocDevice<int>(d_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
-    d_react.react_type = middle::MallocDevice<int>(d_react.react_type, NUM_REA * 2, q);
-    d_react.third_ind = middle::MallocDevice<int>(d_react.third_ind, NUM_REA, q);
-    d_react.React_ThirdCoef = middle::MallocDevice<real_t>(d_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
-    d_react.Rargus = middle::MallocDevice<real_t>(d_react.Rargus, NUM_REA * 6, q);
-
-    middle::MemCpy<int>(d_react.Nu_f_, h_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.Nu_b_, h_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.Nu_d_, h_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.react_type, h_react.react_type, NUM_REA * 2, q);
-    middle::MemCpy<int>(d_react.third_ind, h_react.third_ind, NUM_REA, q);
-    middle::MemCpy<real_t>(d_react.React_ThirdCoef, h_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
-    middle::MemCpy<real_t>(d_react.Rargus, h_react.Rargus, NUM_REA * 6, q);
-
-    int reaction_list_size = 0;
-    h_react.rns = middle::MallocHost<int>(h_react.rns, NUM_SPECIES, q);
-    for (size_t i = 0; i < NUM_SPECIES; i++)
-        h_react.rns[i] = reaction_list[i].size(), reaction_list_size += h_react.rns[i];
-
-    int *h_reaction_list, *d_reaction_list;
-    h_reaction_list = middle::MallocHost<int>(h_reaction_list, reaction_list_size, q);
-    h_react.reaction_list = middle::MallocHost2D<int>(h_reaction_list, NUM_SPECIES, h_react.rns, q);
-    for (size_t i = 0; i < NUM_SPECIES; i++)
-        if (h_react.rns[i] > 0)
-            std::memcpy(h_react.reaction_list[i], &(reaction_list[i][0]), sizeof(int) * h_react.rns[i]);
-    d_reaction_list = middle::MallocDevice<int>(d_reaction_list, reaction_list_size, q);
-    middle::MemCpy<int>(d_reaction_list, h_reaction_list, reaction_list_size, q);
-    d_react.reaction_list = middle::MallocDevice2D<int>(d_reaction_list, NUM_SPECIES, h_react.rns, q);
-
-    h_react.rts = middle::MallocHost<int>(h_react.rts, NUM_REA, q);
-    h_react.pls = middle::MallocHost<int>(h_react.pls, NUM_REA, q);
-    h_react.sls = middle::MallocHost<int>(h_react.sls, NUM_REA, q);
-    int rts_size = 0, pls_size = 0, sls_size = 0;
-    for (size_t i = 0; i < NUM_REA; i++)
+    if (ReactSources)
     {
-        h_react.rts[i] = reactant_list[i].size(), rts_size += h_react.rts[i];
-        h_react.pls[i] = product_list[i].size(), pls_size += h_react.pls[i];
-        h_react.sls[i] = species_list[i].size(), sls_size += h_react.sls[i];
+        d_react.Nu_f_ = middle::MallocDevice<int>(d_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
+        d_react.Nu_b_ = middle::MallocDevice<int>(d_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
+        d_react.Nu_d_ = middle::MallocDevice<int>(d_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
+        d_react.react_type = middle::MallocDevice<int>(d_react.react_type, NUM_REA * 2, q);
+        d_react.third_ind = middle::MallocDevice<int>(d_react.third_ind, NUM_REA, q);
+        d_react.React_ThirdCoef = middle::MallocDevice<real_t>(d_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
+        d_react.Rargus = middle::MallocDevice<real_t>(d_react.Rargus, NUM_REA * 6, q);
+
+        middle::MemCpy<int>(d_react.Nu_f_, h_react.Nu_f_, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.Nu_b_, h_react.Nu_b_, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.Nu_d_, h_react.Nu_d_, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.react_type, h_react.react_type, NUM_REA * 2, q);
+        middle::MemCpy<int>(d_react.third_ind, h_react.third_ind, NUM_REA, q);
+        middle::MemCpy<real_t>(d_react.React_ThirdCoef, h_react.React_ThirdCoef, NUM_REA * NUM_SPECIES, q);
+        middle::MemCpy<real_t>(d_react.Rargus, h_react.Rargus, NUM_REA * 6, q);
+
+        int reaction_list_size = 0;
+        h_react.rns = middle::MallocHost<int>(h_react.rns, NUM_SPECIES, q);
+        for (size_t i = 0; i < NUM_SPECIES; i++)
+            h_react.rns[i] = reaction_list[i].size(), reaction_list_size += h_react.rns[i];
+
+        int *h_reaction_list, *d_reaction_list;
+        h_reaction_list = middle::MallocHost<int>(h_reaction_list, reaction_list_size, q);
+        h_react.reaction_list = middle::MallocHost2D<int>(h_reaction_list, NUM_SPECIES, h_react.rns, q);
+        for (size_t i = 0; i < NUM_SPECIES; i++)
+            if (h_react.rns[i] > 0)
+                std::memcpy(h_react.reaction_list[i], &(reaction_list[i][0]), sizeof(int) * h_react.rns[i]);
+        d_reaction_list = middle::MallocDevice<int>(d_reaction_list, reaction_list_size, q);
+        middle::MemCpy<int>(d_reaction_list, h_reaction_list, reaction_list_size, q);
+        d_react.reaction_list = middle::MallocDevice2D<int>(d_reaction_list, NUM_SPECIES, h_react.rns, q);
+
+        h_react.rts = middle::MallocHost<int>(h_react.rts, NUM_REA, q);
+        h_react.pls = middle::MallocHost<int>(h_react.pls, NUM_REA, q);
+        h_react.sls = middle::MallocHost<int>(h_react.sls, NUM_REA, q);
+        int rts_size = 0, pls_size = 0, sls_size = 0;
+        for (size_t i = 0; i < NUM_REA; i++)
+        {
+            h_react.rts[i] = reactant_list[i].size(), rts_size += h_react.rts[i];
+            h_react.pls[i] = product_list[i].size(), pls_size += h_react.pls[i];
+            h_react.sls[i] = species_list[i].size(), sls_size += h_react.sls[i];
+        }
+        d_react.rns = middle::MallocDevice<int>(d_react.rns, NUM_SPECIES, q);
+        d_react.rts = middle::MallocDevice<int>(d_react.rts, NUM_REA, q);
+        d_react.pls = middle::MallocDevice<int>(d_react.pls, NUM_REA, q);
+        d_react.sls = middle::MallocDevice<int>(d_react.sls, NUM_REA, q);
+        middle::MemCpy<int>(d_react.rns, h_react.rns, NUM_SPECIES, q);
+        middle::MemCpy<int>(d_react.rts, h_react.rts, NUM_REA, q);
+        middle::MemCpy<int>(d_react.pls, h_react.pls, NUM_REA, q);
+        middle::MemCpy<int>(d_react.sls, h_react.sls, NUM_REA, q);
+
+        int *h_reactant_list, *h_product_list, *h_species_list, *d_reactant_list, *d_product_list, *d_species_list;
+        h_reactant_list = middle::MallocHost<int>(h_reactant_list, rts_size, q);
+        h_product_list = middle::MallocHost<int>(h_product_list, pls_size, q);
+        h_species_list = middle::MallocHost<int>(h_species_list, sls_size, q);
+        h_react.reactant_list = middle::MallocHost2D<int>(h_reactant_list, NUM_REA, h_react.rts, q);
+        h_react.product_list = middle::MallocHost2D<int>(h_product_list, NUM_REA, h_react.pls, q);
+        h_react.species_list = middle::MallocHost2D<int>(h_species_list, NUM_REA, h_react.sls, q);
+
+        for (size_t i = 0; i < NUM_REA; i++)
+        {
+            std::memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);
+            std::memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);
+            std::memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);
+        }
+
+        d_reactant_list = middle::MallocDevice<int>(d_reactant_list, rts_size, q);
+        d_product_list = middle::MallocDevice<int>(d_product_list, pls_size, q);
+        d_species_list = middle::MallocDevice<int>(d_species_list, sls_size, q);
+        middle::MemCpy<int>(d_reactant_list, h_reactant_list, rts_size, q);
+        middle::MemCpy<int>(d_product_list, h_product_list, pls_size, q);
+        middle::MemCpy<int>(d_species_list, h_species_list, sls_size, q);
+        d_react.reactant_list = middle::MallocDevice2D<int>(d_reactant_list, NUM_REA, h_react.rts, q);
+        d_react.product_list = middle::MallocDevice2D<int>(d_product_list, NUM_REA, h_react.pls, q);
+        d_react.species_list = middle::MallocDevice2D<int>(d_species_list, NUM_REA, h_react.sls, q);
+
+        // std::cout << "\n";
+        // for (size_t i = 0; i < NUM_SPECIES; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.rns[i]; j++)
+        //         std::cout << h_react.reaction_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_SPECIES; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.rns[i]; j++)
+        //              {
+        //                  stream_ct1 << d_react.reaction_list[i][j] << " ";
+        //              }
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
+
+        // for (size_t i = 0; i < NUM_REA; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.rts[i]; j++)
+        //         std::cout << h_react.reactant_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_REA; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.rts[i]; j++)
+        //                  stream_ct1 << d_react.reactant_list[i][j] << " ";
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
+
+        // for (size_t i = 0; i < NUM_REA; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.pls[i]; j++)
+        //         std::cout << h_react.product_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_REA; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.pls[i]; j++)
+        //                  stream_ct1 << d_react.product_list[i][j] << " ";
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
+
+        // for (size_t i = 0; i < NUM_REA; i++)
+        // {
+        //     for (size_t j = 0; j < h_react.sls[i]; j++)
+        //         std::cout << h_react.species_list[i][j] << " ";
+        //     std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        // q.submit([&](sycl::handler &h) { // PARALLEL;
+        //      sycl::stream stream_ct1(64 * 1024, 80, h);
+        //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
+        //          for (size_t i = 0; i < NUM_REA; i++)
+        //          {
+        //              for (size_t j = 0; j < d_react.sls[i]; j++)
+        //                  stream_ct1 << d_react.species_list[i][j] << " ";
+        //              stream_ct1 << ", ";
+        //          }
+        //          stream_ct1 << "\n";
+        //      });
+        //  })
+        //     .wait();
     }
-    d_react.rns = middle::MallocDevice<int>(d_react.rns, NUM_SPECIES, q);
-    d_react.rts = middle::MallocDevice<int>(d_react.rts, NUM_REA, q);
-    d_react.pls = middle::MallocDevice<int>(d_react.pls, NUM_REA, q);
-    d_react.sls = middle::MallocDevice<int>(d_react.sls, NUM_REA, q);
-    middle::MemCpy<int>(d_react.rns, h_react.rns, NUM_SPECIES, q);
-    middle::MemCpy<int>(d_react.rts, h_react.rts, NUM_REA, q);
-    middle::MemCpy<int>(d_react.pls, h_react.pls, NUM_REA, q);
-    middle::MemCpy<int>(d_react.sls, h_react.sls, NUM_REA, q);
-
-    int *h_reactant_list, *h_product_list, *h_species_list, *d_reactant_list, *d_product_list, *d_species_list;
-    h_reactant_list = middle::MallocHost<int>(h_reactant_list, rts_size, q);
-    h_product_list = middle::MallocHost<int>(h_product_list, pls_size, q);
-    h_species_list = middle::MallocHost<int>(h_species_list, sls_size, q);
-    h_react.reactant_list = middle::MallocHost2D<int>(h_reactant_list, NUM_REA, h_react.rts, q);
-    h_react.product_list = middle::MallocHost2D<int>(h_product_list, NUM_REA, h_react.pls, q);
-    h_react.species_list = middle::MallocHost2D<int>(h_species_list, NUM_REA, h_react.sls, q);
-
-    for (size_t i = 0; i < NUM_REA; i++)
-    {
-        std::memcpy(h_react.reactant_list[i], &(reactant_list[i][0]), sizeof(int) * h_react.rts[i]);
-        std::memcpy(h_react.product_list[i], &(product_list[i][0]), sizeof(int) * h_react.pls[i]);
-        std::memcpy(h_react.species_list[i], &(species_list[i][0]), sizeof(int) * h_react.sls[i]);
-    }
-
-    d_reactant_list = middle::MallocDevice<int>(d_reactant_list, rts_size, q);
-    d_product_list = middle::MallocDevice<int>(d_product_list, pls_size, q);
-    d_species_list = middle::MallocDevice<int>(d_species_list, sls_size, q);
-    middle::MemCpy<int>(d_reactant_list, h_reactant_list, rts_size, q);
-    middle::MemCpy<int>(d_product_list, h_product_list, pls_size, q);
-    middle::MemCpy<int>(d_species_list, h_species_list, sls_size, q);
-    d_react.reactant_list = middle::MallocDevice2D<int>(d_reactant_list, NUM_REA, h_react.rts, q);
-    d_react.product_list = middle::MallocDevice2D<int>(d_product_list, NUM_REA, h_react.pls, q);
-    d_react.species_list = middle::MallocDevice2D<int>(d_species_list, NUM_REA, h_react.sls, q);
-
-    // std::cout << "\n";
-    // for (size_t i = 0; i < NUM_SPECIES; i++)
-    // {
-    //     for (size_t j = 0; j < h_react.rns[i]; j++)
-    //         std::cout << h_react.reaction_list[i][j] << " ";
-    //     std::cout << ", ";
-    // }
-    // std::cout << "\n";
-
-    // q.submit([&](sycl::handler &h) { // PARALLEL;
-    //      sycl::stream stream_ct1(64 * 1024, 80, h);
-    //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
-    //          for (size_t i = 0; i < NUM_SPECIES; i++)
-    //          {
-    //              for (size_t j = 0; j < d_react.rns[i]; j++)
-    //              {
-    //                  stream_ct1 << d_react.reaction_list[i][j] << " ";
-    //              }
-    //              stream_ct1 << ", ";
-    //          }
-    //          stream_ct1 << "\n";
-    //      });
-    //  })
-    //     .wait();
-
-    // for (size_t i = 0; i < NUM_REA; i++)
-    // {
-    //     for (size_t j = 0; j < h_react.rts[i]; j++)
-    //         std::cout << h_react.reactant_list[i][j] << " ";
-    //     std::cout << ", ";
-    // }
-    // std::cout << "\n";
-
-    // q.submit([&](sycl::handler &h) { // PARALLEL;
-    //      sycl::stream stream_ct1(64 * 1024, 80, h);
-    //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
-    //          for (size_t i = 0; i < NUM_REA; i++)
-    //          {
-    //              for (size_t j = 0; j < d_react.rts[i]; j++)
-    //                  stream_ct1 << d_react.reactant_list[i][j] << " ";
-    //              stream_ct1 << ", ";
-    //          }
-    //          stream_ct1 << "\n";
-    //      });
-    //  })
-    //     .wait();
-
-    // for (size_t i = 0; i < NUM_REA; i++)
-    // {
-    //     for (size_t j = 0; j < h_react.pls[i]; j++)
-    //         std::cout << h_react.product_list[i][j] << " ";
-    //     std::cout << ", ";
-    // }
-    // std::cout << "\n";
-
-    // q.submit([&](sycl::handler &h) { // PARALLEL;
-    //      sycl::stream stream_ct1(64 * 1024, 80, h);
-    //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
-    //          for (size_t i = 0; i < NUM_REA; i++)
-    //          {
-    //              for (size_t j = 0; j < d_react.pls[i]; j++)
-    //                  stream_ct1 << d_react.product_list[i][j] << " ";
-    //              stream_ct1 << ", ";
-    //          }
-    //          stream_ct1 << "\n";
-    //      });
-    //  })
-    //     .wait();
-
-    // for (size_t i = 0; i < NUM_REA; i++)
-    // {
-    //     for (size_t j = 0; j < h_react.sls[i]; j++)
-    //         std::cout << h_react.species_list[i][j] << " ";
-    //     std::cout << ", ";
-    // }
-    // std::cout << "\n";
-
-    // q.submit([&](sycl::handler &h) { // PARALLEL;
-    //      sycl::stream stream_ct1(64 * 1024, 80, h);
-    //      h.parallel_for(sycl::nd_range<1>(1, 1), [=](sycl::nd_item<1> index) { // BODY;
-    //          for (size_t i = 0; i < NUM_REA; i++)
-    //          {
-    //              for (size_t j = 0; j < d_react.sls[i]; j++)
-    //                  stream_ct1 << d_react.species_list[i][j] << " ";
-    //              stream_ct1 << ", ";
-    //          }
-    //          stream_ct1 << "\n";
-    //      });
-    //  })
-    //     .wait();
-
-#endif // COP_CHEME
 
 #ifdef USE_MPI
     mpiTrans->communicator->synchronize();
@@ -1335,6 +1326,7 @@ void Setup::print()
                    material_props[n][5], material_props[n][6], material_props[n][7], material_props[n][8]);
         }
     }
+
 #ifdef COP
     std::cout << "<---------------------------------------------------> \n";
     std::cout << species_name.size() << " species mole/mass fraction: " << std::endl;
@@ -1358,70 +1350,70 @@ void Setup::print()
     }
 #endif // Visc
 
-#ifdef COP_CHEME
-    printf("\n%d Reactions been actived                                     \n", NUM_REA);
-    for (size_t id = 0; id < NUM_REA; id++)
+    if (ReactSources)
     {
-        if (id + 1 < 10)
-            std::cout << "Reaction:" << id + 1 << "  ";
-        else
-            std::cout << "Reaction:" << id + 1 << " ";
-        int numreactant = 0, numproduct = 0;
-        // output reactant
-        for (int j = 0; j < NUM_SPECIES; ++j)
-            numreactant += h_react.Nu_f_[id * NUM_SPECIES + j];
+        printf("\n%d Reactions been actived                                     \n", NUM_REA);
+        for (size_t id = 0; id < NUM_REA; id++)
+        {
+            if (id + 1 < 10)
+                std::cout << "Reaction:" << id + 1 << "  ";
+            else
+                std::cout << "Reaction:" << id + 1 << " ";
+            int numreactant = 0, numproduct = 0;
+            // output reactant
+            for (int j = 0; j < NUM_SPECIES; ++j)
+                numreactant += h_react.Nu_f_[id * NUM_SPECIES + j];
 
-        if (numreactant == 0)
-            std::cout << "0	"
-                      << "  <-->  ";
-        else
-        {
-            for (int j = 0; j < NUM_SPECIES; j++)
+            if (numreactant == 0)
+                std::cout << "0	"
+                          << "  <-->  ";
+            else
             {
-                if (j != NUM_COP)
+                for (int j = 0; j < NUM_SPECIES; j++)
                 {
-                    if (h_react.Nu_f_[id * NUM_SPECIES + j] > 0)
-                        std::cout << h_react.Nu_f_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
-                }
-                else
-                {
-                    if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
-                        std::cout << " M ";
-                    std::cout << "  <-->  ";
+                    if (j != NUM_COP)
+                    {
+                        if (h_react.Nu_f_[id * NUM_SPECIES + j] > 0)
+                            std::cout << h_react.Nu_f_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
+                    }
+                    else
+                    {
+                        if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
+                            std::cout << " M ";
+                        std::cout << "  <-->  ";
+                    }
                 }
             }
-        }
-        // output product
-        for (int j = 0; j < NUM_SPECIES; ++j)
-            numproduct += h_react.Nu_b_[id * NUM_SPECIES + j];
-        if (numproduct == 0)
-            std::cout << "0	";
-        else
-        {
-            for (int j = 0; j < NUM_SPECIES; j++)
+            // output product
+            for (int j = 0; j < NUM_SPECIES; ++j)
+                numproduct += h_react.Nu_b_[id * NUM_SPECIES + j];
+            if (numproduct == 0)
+                std::cout << "0	";
+            else
             {
-                if (j != NUM_COP)
+                for (int j = 0; j < NUM_SPECIES; j++)
                 {
-                    if (h_react.Nu_b_[id * NUM_SPECIES + j] > 0)
-                        std::cout << h_react.Nu_b_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
-                }
-                else
-                {
-                    if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
-                        std::cout << " M ";
+                    if (j != NUM_COP)
+                    {
+                        if (h_react.Nu_b_[id * NUM_SPECIES + j] > 0)
+                            std::cout << h_react.Nu_b_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
+                    }
+                    else
+                    {
+                        if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
+                            std::cout << " M ";
+                    }
                 }
             }
+            std::cout << " with rate: " << h_react.Rargus[id * 6 + 0] << " " << h_react.Rargus[id * 6 + 1] << " " << h_react.Rargus[id * 6 + 2] << std::endl;
+            //-----------------*backwardArrhenius------------------//
+            if (BackArre)
+            {
+                std::cout << " with back rate: " << h_react.Rargus[id * 6 + 3] << " " << h_react.Rargus[id * 6 + 4] << " " << h_react.Rargus[id * 6 + 5] << std::endl;
+            }
+            //-----------------*backwardArrhenius------------------//
         }
-        std::cout << " with rate: " << h_react.Rargus[id * 6 + 0] << " " << h_react.Rargus[id * 6 + 1] << " " << h_react.Rargus[id * 6 + 2] << std::endl;
-        //-----------------*backwardArrhenius------------------//
-        if (BackArre)
-        {
-            std::cout << " with back rate: " << h_react.Rargus[id * 6 + 3] << " " << h_react.Rargus[id * 6 + 4] << " " << h_react.Rargus[id * 6 + 5] << std::endl;
-        }
-        //-----------------*backwardArrhenius------------------//
     }
-#endif // end COP_CHEME
-
 #endif // COP
 
     std::cout << "<---------------------------------------------------> \n";

@@ -19,7 +19,7 @@ void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
 		yi[ii] = UI[ii + 5] * rho1, sum_yi += yi[ii];
 	sum_yi = _DF(1.0) / sum_yi;
 	for (size_t ii = 0; ii < NUM_COP; ii++)
-		yi[ii] = yi[ii] * sum_yi;
+		yi[ii] *= sum_yi, UI[ii + 5] = rho * yi[ii];
 #else
 	yi[NUM_COP] = _DF(1.0);
 	for (size_t ii = 5; ii < Emax; ii++) // calculate yi

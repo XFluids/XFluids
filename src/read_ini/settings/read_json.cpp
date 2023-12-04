@@ -29,6 +29,8 @@ using interfunc = std::function<int(int *, int)>;
 // // // // for json file read
 bool is_read_json_success = ReadJson(std::string(IniFile), j_conf);
 
+// Set XYZ dimensions before used
+const std::vector<bool> Dimensions = j_conf.at("mesh").value("DOMAIN_Dirs", std::vector<bool>{DIM_X, DIM_Y, DIM_Z});
 // Run setup
 const std::string OutputDir = j_conf.at("run").value("OutputDir", "output");
 const std::vector<real_t> OutTimeStamps = j_conf.at("run").value("OutTimeStamps", std::vector<real_t>{0.0, 0.0});
@@ -38,22 +40,23 @@ const real_t EndTime = j_conf.at("run").value("EndTime", OutTimeStamps.back());
 const size_t OutDAT = j_conf.at("run").value("OutDAT", 1);
 const size_t OutVTI = j_conf.at("run").value("OutVTI", 0);
 const size_t OutSTL = j_conf.at("run").value("OutSTL", 0);
+const size_t OutOverTime = j_conf.at("run").value("OutOverTime", SBICounts);
 const size_t outpos_x = j_conf.at("run").value("outpos_x", 0);
 const size_t outpos_y = j_conf.at("run").value("outpos_y", 0);
 const size_t outpos_z = j_conf.at("run").value("outpos_z", 0);
 const size_t OutBoundary = j_conf.at("run").value("OutBoundary", 0);
-const size_t OutDIRX = j_conf.at("run").value("OutDIRX", DIM_X);
-const size_t OutDIRY = j_conf.at("run").value("OutDIRY", DIM_Y);
-const size_t OutDIRZ = j_conf.at("run").value("OutDIRZ", DIM_Z);
+const size_t OutDIRX = j_conf.at("run").value("OutDIRX", Dimensions[0]);
+const size_t OutDIRY = j_conf.at("run").value("OutDIRY", Dimensions[1]);
+const size_t OutDIRZ = j_conf.at("run").value("OutDIRZ", Dimensions[2]);
 const size_t nStepmax_json = j_conf.at("run").value("nStepMax", 10);
 const size_t nOutput = j_conf.at("run").value("nOutMax", 0);
 const size_t OutInterval = j_conf.at("run").value("OutInterval", nStepmax_json);
 const size_t POutInterval = j_conf.at("run").value("PushInterval", 5);
 const size_t RcalInterval = j_conf.at("run").value("RcalInterval", 200);
 const size_t BlockSize = j_conf.at("run").value("DtBlockSize", 4);
-const size_t dim_block_x = DIM_X ? j_conf.at("run").value("blockSize_x", BlockSize) : 1;
-const size_t dim_block_y = DIM_Y ? j_conf.at("run").value("blockSize_y", BlockSize) : 1;
-const size_t dim_block_z = DIM_Z ? j_conf.at("run").value("blockSize_z", BlockSize) : 1;
+const size_t dim_block_x = Dimensions[0] ? j_conf.at("run").value("blockSize_x", BlockSize) : 1;
+const size_t dim_block_y = Dimensions[1] ? j_conf.at("run").value("blockSize_y", BlockSize) : 1;
+const size_t dim_block_z = Dimensions[2] ? j_conf.at("run").value("blockSize_z", BlockSize) : 1;
 
 // MPI setup
 const size_t mx_json = j_conf.at("mpi").value("mx", 1);
@@ -68,7 +71,11 @@ const size_t NumFluid = Fluids_name.size();
 const size_t Equ_rho = j_conf.at("equations").value("Equ_rho", 1);
 const size_t Equ_energy = j_conf.at("equations").value("Equ_energy", 1);
 const std::vector<size_t> Equ_momentum = j_conf.at("equations").value("Equ_momentum", std::vector<size_t>{1, 1, 1});
+const bool ReactSources = j_conf.at("equations").value("Sources_React", COP_CHEME);
 const bool if_overdetermined_eigen = j_conf.at("equations").value("if_overdetermined_eigen", 0) > 0;
+const std::string SlipOrder = j_conf.at("equations").value("SlipOrder", CHEME_SPLITTING);
+const std::string ODESolver = j_conf.at("equations").value("ODESolver", "Q2");
+
 // const size_t NUM_SPECIES = species_name.size();
 // const size_t NUM_COP = species_name.size() + size_t(if_overdetermined_eigen) - 1;
 // const size_t Emax = species_name.size() + Equ_rho + Equ_momentum[0] + Equ_momentum[1] + Equ_momentum[2] + Equ_energy + if_overdetermined_eigen;
@@ -89,10 +96,10 @@ const std::vector<real_t> Domain_medg = j_conf.at("mesh").value("DOMAIN_Medg", s
 const std::vector<size_t> Inner = j_conf.at("mesh").value("Resolution", std::vector<size_t>{1, 1, 1});				// XYZ
 const std::vector<size_t> Bwidth = j_conf.at("mesh").value("Ghost_width", std::vector<size_t>{4, 4, 4});			// XYZ
 /* Simple Boundary settings */
-const std::vector<size_t> NBoundarys = j_conf.at("mesh").value("BoundaryBundles", std::vector<size_t>{2, 2, 2});								  // BoundaryBundles
-const std::vector<size_t> Boundarys_json = j_conf.at("mesh").value("Boundarys", std::vector<size_t>{2, 2, 2, 2, 2, 2});							  // simple Boundarys settings
-// TODO
-// const std::vector<std::vector<size_t>> Boundary_x = j_conf.at("mesh").value("BoundaryBundle_x", std::vector<std::vector<size_t>>{NBoundarys[0]}); // BoundaryBundle_xyz
+const std::vector<size_t> NBoundarys = j_conf.at("mesh").value("BoundaryBundles", std::vector<size_t>{2, 2, 2});		// BoundaryBundles
+const std::vector<size_t> Boundarys_json = j_conf.at("mesh").value("Boundarys", std::vector<size_t>{2, 2, 2, 2, 2, 2}); // simple Boundarys settings
+// TODO  // BoundaryBundle_xyz
+// const std::vector<std::vector<size_t>> Boundary_x = j_conf.at("mesh").value("BoundaryBundle_x", std::vector<std::vector<size_t>>{NBoundarys[0]});
 // const std::vector<std::vector<size_t>> Boundary_y = j_conf.at("mesh").value("BoundaryBundle_y", std::vector<std::vector<size_t>>{NBoundarys[1]});
 // const std::vector<std::vector<size_t>> Boundary_z = j_conf.at("mesh").value("BoundaryBundle_z", std::vector<std::vector<size_t>>{NBoundarys[2]});
 // std::vector<int> NBoundarys = Stringsplit<int>(configMap.getString("mesh", "BoundaryBundles", "2,2,2"));
@@ -155,15 +162,13 @@ bool ReadJson(std::string filename, nlohmann::json &j)
 real_t ComputeDminJson()
 {
 	real_t Dmin = DOMAIN_Size[0] + DOMAIN_Size[1] + DOMAIN_Size[2];
-#if DIM_X
-	Dmin = std::min(DOMAIN_Size[0], Dmin);
-#endif
-#if DIM_Y
-	Dmin = std::min(DOMAIN_Size[1], Dmin);
-#endif
-#if DIM_Z
-	Dmin = std::min(DOMAIN_Size[2], Dmin);
-#endif
+
+	if (Dimensions[0])
+		Dmin = std::min(DOMAIN_Size[0], Dmin);
+	if (Dimensions[1])
+		Dmin = std::min(DOMAIN_Size[1], Dmin);
+	if (Dimensions[2])
+		Dmin = std::min(DOMAIN_Size[2], Dmin);
 
 	return Dmin;
 }

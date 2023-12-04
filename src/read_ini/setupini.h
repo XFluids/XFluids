@@ -8,10 +8,10 @@
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
 // // external header
-#include "../read_grid/readgrid.h"
 #ifdef USE_MPI
 #include "../mpiPacks/mpiPacks.h"
 #endif
+#include "../read_grid/readgrid.h"
 
 struct Setup
 {
@@ -19,10 +19,10 @@ public:
 	//--for-MPI&Device-----------------------
 	int myRank, nRanks;
 	middle::device_t q;
-	std::vector<int> DeviceSelect; // for Device counting and selecting
 #ifdef USE_MPI
 	MpiTrans *mpiTrans;
-#endif // end USE_MPI
+#endif
+	std::vector<int> DeviceSelect; // for Device counting and selecting
 
 	//--for-Running--------------------------
 	AppendParas apa;
