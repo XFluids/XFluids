@@ -1,13 +1,17 @@
 set(THERMAL "NASA") # NASA or JANAF Thermal Fit
 set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
-
-# # add cmake files
-include(init_sample)
-
 # # OROC: calculate one row and column once in registers "for" loop(eigen_lr[Emax])
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
 # # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l, Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t))) with low performance
+option(COP "if enable compoent" ON)
+option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
+# # EXPLICIT_ALLOC: 1. ON: allocate each device buffer and transfer. 2. OFF: allocate struct ptr in device
+option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
+option(ERROR_PATCH_PRI "if patch rho/T/P errors capured" OFF)
 
+# # add cmake files
+set(ESTIM_NAN "ON")
+include(init_sample)
 # file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 # file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output/cal)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
@@ -31,24 +35,23 @@ IF(USE_DOUBLE)
 ENDIF(USE_DOUBLE)
 
 IF(ESTIM_NAN)
-  add_compile_options(-DESTIM_NAN)
+  add_compile_options(-DESTIM_NAN=1)
 
   IF(ERROR_PATCH_PRI)
     add_compile_options(-DERROR_PATCH)
   ENDIF()
 
-  IF(ERROR_PATCH_YII)
-    add_compile_options(-DERROR_PATCH_YII)
-  ENDIF()
-
   IF(ERROR_PATCH_YI)
     add_compile_options(-DERROR_PATCH_YI)
   ENDIF()
-ENDIF(ESTIM_NAN)
 
-IF(POSITIVITY_PRESERVING)
-  add_compile_options(-DPositivityPreserving)
-ENDIF(POSITIVITY_PRESERVING)
+  IF(ERROR_PATCH_YII)
+    add_compile_options(-DERROR_PATCH_YII)
+  ENDIF()
+ELSE()
+  add_compile_options(-DESTIM_NAN=0)
+
+ENDIF(ESTIM_NAN)
 
 # define Thermo 1				  // 1 for NASA and 0 for JANAF
 IF(THERMAL STREQUAL "NASA")

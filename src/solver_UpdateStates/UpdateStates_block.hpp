@@ -25,7 +25,7 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 					Updaterhoyi(i, j, k, bl, UI, rho, fdata.y); }); })
 		.wait();
 
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 	int *error_posyi;
 	bool *error_org, *error_nan;
 	error_posyi = middle::MallocShared<int>(error_posyi, 4 + NUM_SPECIES, q);
@@ -79,7 +79,7 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 					UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma, T, fdata.e, Gamma); }); }) //, stream_ct1
 		.wait();
 
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 	int *error_pos;
 	bool *error_yi, *error_nga;
 	error_pos = middle::MallocShared<int>(error_pos, 6 + NUM_SPECIES, q);

@@ -59,7 +59,6 @@ const real_t NA = _DF(6.02214129 * 1.0e23); // Avogadro constant
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
 // // for flux Reconstruction order
-// #define PositivityPreserving // #ifdef used, use Lax-Friedrichs(one-order) instead high-order schemes avoiding NAN.
 #define FLUX_method 2 //  0: local LF; 1: global LF, 2: Roe
 #if SCHEME_ORDER > 6
 const int stencil_P = 3;	// "2" for <=6 order, "3"" for >6 order

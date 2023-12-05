@@ -154,7 +154,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			error_out = error_out || SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
 			error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
 
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 #ifdef USE_MPI
 			int root, maybe_root = (error_out ? rank : 0);
 			Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
@@ -162,7 +162,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 #endif
 			if (error_out)
 				goto flag_ernd;
-#endif
+#endif // end ESTIM_NAN
 
 			Stepstop = Ss.nStepmax <= Iteration ? true : false;
 			if (Stepstop)
@@ -320,7 +320,7 @@ bool XFLUIDS::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, i
 			return true;
 
 		ComputeLU(q, 0);
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 		if (EstimateNAN(q, Time, Step, rank, flag))
 			return true;
 #endif // end ESTIM_NAN
@@ -335,7 +335,7 @@ bool XFLUIDS::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, i
 			return true;
 
 		ComputeLU(q, 1);
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 		if (EstimateNAN(q, Time, Step, rank, flag))
 			return true;
 #endif // end ESTIM_NAN
@@ -350,7 +350,7 @@ bool XFLUIDS::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, i
 			return true;
 
 		ComputeLU(q, 1);
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 		if (EstimateNAN(q, Time, Step, rank, flag))
 			return true;
 #endif // end ESTIM_NAN
@@ -400,7 +400,7 @@ bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const in
 	}
 	// if (Step)
 	{
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 		std::string Stepstr = std::to_string(Step);
 		if (error_t)
 		{
@@ -564,7 +564,8 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 #ifdef COP
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
-#ifdef ESTIM_NAN
+
+#if ESTIM_NAN
 		if (error)
 		{
 #ifdef Visc // copy vosicous estimating Vars
@@ -698,7 +699,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 	if (Ss.BlSz.DimZ)
 		variables_names[index] = "DIR-Z", index++, variables_names[index] = "OV-w", index++;
 
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 	if (error)
 	{
 #ifdef Visc // Out name of viscous out estimating Vars
@@ -811,6 +812,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 		}
 	}
 #endif // ESTIM_NAN
+
 	variables_names[index] = "OV-c", index++;
 	variables_names[index] = "O-rho", index++;
 	variables_names[index] = "O-p", index++;
@@ -1032,7 +1034,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 			} // for k
 		}
 
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 		if (error)
 		{
 #ifdef Visc // Out content of viscous out estimating Vars

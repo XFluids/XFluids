@@ -45,8 +45,9 @@ bool Gridread::ReadGridBlock(Block &bl)
     if (fName.fail())
     {
         if (0 == rank)
-            cerr << "\nPlot3DGrid file \"<" << readName
-                 << ">\" did not open correctly, read_grid submodule closed.\n";
+            std::cout << "Read_grid submodule closed:\n"
+                      << "  Plot3DGrid file \"<" << readName
+                      << ">\" did not open correctly.\n";
         return false;
     }
 

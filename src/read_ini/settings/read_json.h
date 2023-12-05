@@ -36,8 +36,8 @@ extern const size_t NumFluid;									 // NOTE: ignore
 extern const std::vector<std::string> Fluids_name;				 //, species_name; // Fluid_Names, Spiece_Names
 extern const size_t Equ_rho, Equ_energy;
 extern const std::vector<size_t> Equ_momentum;
-extern const bool if_overdetermined_eigen, ReactSources;
 extern const std::string SlipOrder, ODESolver;
+extern const bool if_overdetermined_eigen, ReactSources, PositivityPreserving;
 // extern const size_t Emax;
 // extern const size_t NUM_COP;
 // extern const size_t NUM_SPECIES;

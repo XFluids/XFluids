@@ -89,7 +89,7 @@ Fluid::~Fluid()
 		sycl::free(theta, q), sycl::free(sigma, q);
 		sycl::free(pVar_max, q), sycl::free(interface_point, q);
 	}
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 	sycl::free(h_U, q), sycl::free(h_U1, q), sycl::free(h_LU, q);
 	if (Fs.BlSz.DimX)
 	{
@@ -280,11 +280,11 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
 	}
 
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	if (Ss.BlSz.DimX)
+	if (Fs.BlSz.DimX)
 	{
 		h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 		h_fstate.b3x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
@@ -299,7 +299,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	}
-	if (Ss.BlSz.DimY)
+	if (Fs.BlSz.DimY)
 	{
 		h_fstate.b1y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 		h_fstate.b3y = static_cast<real_t *>(sycl::malloc_host(bytes, q));
@@ -314,7 +314,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 	}
-	if (Ss.BlSz.DimZ)
+	if (Fs.BlSz.DimZ)
 	{
 		h_fstate.b1z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 		h_fstate.b3z = static_cast<real_t *>(sycl::malloc_host(bytes, q));
@@ -859,8 +859,5 @@ void Fluid::ZeroDimensionalFreelyFlame()
 
 void Fluid::ODESolver(sycl::queue &q, real_t Time)
 {
-	// // #if 0 == CHEME_SOLVER
 	ChemeODEQ2Solver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
-	// // #else 1 == CHEME_SOLVER // CVODE from LLNL to SYCL only support Intel GPUs
-	// // #endif // end CHEME_SOLVER
 }

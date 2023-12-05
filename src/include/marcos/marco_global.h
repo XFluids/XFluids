@@ -59,7 +59,7 @@
 // // #endif // end COP
 
 // //    Get error out of c2 arguments
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
 #define MARCO_ERROR_OUT()                   \
     eb1[id_l] = b1;                         \
     eb3[id_l] = b3;                         \
@@ -70,7 +70,7 @@
     }
 #else
 #define MARCO_ERROR_OUT() ;
-#endif
+#endif // end ESTIM_NAN
 
 // =======================================================
 //    Loop in Output

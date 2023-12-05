@@ -25,7 +25,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
     set(COP "ON")
     set(Visc "OFF")
     set(COP_CHEME "OFF")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(MIXTURE_MODEL "1d-mc-insert-shock-tube")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/insert-st")
@@ -36,7 +35,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
     set(Visc "OFF")
     set(COP_CHEME "ON")
     set(COP_CHEME_TEST "ON")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/reactive-st")
     set(INI_FILE "settings/1d-reactive-st.json")
@@ -47,7 +45,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
     set(Visc_Heat "ON")
     set(Visc_Diffu "ON")
     set(COP_CHEME "OFF")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(MIXTURE_MODEL "1d-mc-diffusion")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
@@ -59,7 +56,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
     set(Visc_Heat "ON")
     set(Visc_Diffu "ON")
     set(COP_CHEME "OFF")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     add_compile_options(-DDiffuReverse)
     set(MIXTURE_MODEL "1d-mc-diffusion-reverse")
@@ -75,7 +71,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shocks") # 2d-riemann(-shocks/-shock-int
     set(DIM_Z "OFF")
     set(COP "OFF")
     set(Visc "OFF")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shocks-interaction")
@@ -87,7 +82,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shock-interruption") # 2d-riemann(-shock
     set(DIM_Z "OFF")
     set(COP "OFF")
     set(Visc "OFF")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/shock-interruption")
@@ -99,7 +93,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-plus") # 2d-riemann(-shock
     set(DIM_Z "OFF")
     set(COP "OFF")
     set(Visc "OFF")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-plus")
@@ -111,7 +104,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-interruptions-reduce") # 2d-riemann(-sho
     set(DIM_Z "OFF")
     set(COP "OFF")
     set(Visc "OFF")
-    set(ESTIM_NAN "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-Riemann/interruptions-reduce")
@@ -124,7 +116,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-detonation")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
     set(COP_CHEME "ON")
-    set(ESTIM_NAN "ON")
     set(THERMAL "NASA") # NASA fit of Xe
     set(POSITIVITY_PRESERVING "ON")
     set(ARTIFICIAL_VISC_TYPE "GLF")
@@ -141,7 +132,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
     set(Visc_Diffu "ON") # depends on COP=ON
     set(THERMAL "NASA") # NASA fit of Xe
     set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
-    set(ESTIM_NAN "ON")
     set(COP_CHEME "OFF")
     set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
     set(POSITIVITY_PRESERVING "ON")
@@ -162,7 +152,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(Visc_Diffu "ON") # depends on COP=ON
     set(THERMAL "NASA") # NASA fit of Xe
     set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
-    set(ESTIM_NAN "ON")
     set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
     set(POSITIVITY_PRESERVING "ON")
     set(ARTIFICIAL_VISC_TYPE "GLF")
@@ -211,7 +200,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
     set(Visc_Diffu "ON") # depends on COP=ON
     set(THERMAL "NASA") # NASA fit of Xe
     set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
-    set(ESTIM_NAN "ON")
     set(COP_CHEME "OFF")
     set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
     set(POSITIVITY_PRESERVING "ON")
@@ -232,7 +220,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(Visc_Diffu "ON") # depends on COP=ON
     set(THERMAL "NASA") # NASA fit of Xe
     set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
-    set(ESTIM_NAN "ON")
     set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
     set(POSITIVITY_PRESERVING "ON")
     set(ARTIFICIAL_VISC_TYPE "GLF")
@@ -267,15 +254,6 @@ IF(COP)
     IF(COP_CHEME)
         add_compile_options(-DCOP_CHEME=1)
         set(MIXTURE_MODEL "Reaction/${MIXTURE_MODEL}") # where to read species including reactions
-
-        IF(${CHEME_SOLVER} MATCHES "Q2")
-            add_compile_options(-DCHEME_SOLVER=0)
-        ELSEIF(${CHEME_SOLVER} MATCHES "CVODE")
-            add_compile_options(-DCHEME_SOLVER=1)
-        ELSE()
-        ENDIF()
-
-        add_compile_options(-DCHEME_SPLITTING="${CHEME_SPLITTING}")
     ENDIF(COP_CHEME)
 
 ELSE(COP)
@@ -297,29 +275,21 @@ else()
 endif()
 
 message(STATUS "  Multi-Component: ${COP}")
-message(STATUS "  Species' Thermo Fit: ${THERMAL}")
-message(STATUS "  DIM_X: ${DIM_X}, DIM_Y: ${DIM_Y}, DIM_Z: ${DIM_Z}")
+message(STATUS "    Species' Thermo Fit: ${THERMAL}")
+message(STATUS "  Capture unexpected errors: ${ESTIM_NAN}")
 message(STATUS "  Convention term scheme: WENO${WENO_ORDER}")
-message(STATUS "    Convention discretization method: ${DISCRETIZATION_METHOD}")
-message(STATUS "    Reconstruction artificial viscosity type: ${ARTIFICIAL_VISC_TYPE}")
-message(STATUS "  Positivity_Preserving: ${POSITIVITY_PRESERVING}")
-message(STATUS "    Capture unexpected errors: ${ESTIM_NAN}")
-
+message(STATUS "    Discretization method: ${DISCRETIZATION_METHOD}")
+message(STATUS "    Artificial  viscosity: ${ARTIFICIAL_VISC_TYPE}")
+message(STATUS "    Positivity Preserving: ${POSITIVITY_PRESERVING}")
 # message(STATUS "    Fix nan primitive variables(rho,p,T): ${ERROR_PATCH_PRI}")
-# message(STATUS "    Fix negative mass fraction(Roe_Yi/SetValue_Yii): ${ERROR_PATCH_YI}/${ERROR_PATCH_YII}, Not damage equations but decrease the accuracy of solution")
+# message(STATUS "    Fix negative mass fraction(Roe_Yi/SetValue_Yii): ${ERROR_PATCH_YI}/${ERROR_PATCH_YII})
+# #Not damage equations but decrease the accuracy of solution")
 message(STATUS "  Viscous Flux term: ${Visc}")
 
 IF(Visc)
     message(STATUS "    Viscous Visc_Heat term: ${Visc_Heat}")
     message(STATUS "    Viscous Diffusion term: ${Visc_Diffu}")
     message(STATUS "    Viscous Flux discretization order: ${VISCOSITY_ORDER}")
-ENDIF()
-
-message(STATUS "  Reaction term: ${COP_CHEME}")
-
-IF(COP_CHEME)
-    message(STATUS "    Reaction term Solver: ${CHEME_SOLVER}:${CHEME_SPLITTING}")
-    message(STATUS "    Reacting ZeroDimensional TEST: ${COP_CHEME_TEST}")
 ENDIF()
 
 message(STATUS "Sample select: ${INIT_SAMPLE}")

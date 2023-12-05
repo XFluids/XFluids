@@ -17,13 +17,17 @@
 #endif
 
 #ifndef COP_CHEME
-#define COP_CHEME 0
+#define COP_CHEME 1
 #endif
 #ifndef NUM_REA
 #define NUM_REA 0
 #endif
 #ifndef CHEME_SPLITTING
 #define CHEME_SPLITTING "Strang"
+#endif
+
+#ifndef ESTIM_NAN
+#define ESTIM_NAN 1
 #endif
 
 #ifndef IniFile

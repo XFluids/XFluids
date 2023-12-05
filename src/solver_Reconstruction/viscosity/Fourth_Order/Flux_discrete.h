@@ -21,7 +21,8 @@
 #endif // COP
 
 // for error out of Vis
-#ifdef ESTIM_NAN
+#if ESTIM_NAN
+
 #define MARCO_Err_Dffu()        \
 	ErDimw[g_id] = Dim_wall[l]; \
 	Erhiw[g_id] = hi_wall[l];   \
@@ -32,9 +33,11 @@
 	ErvisFw[n + Emax * id] = F_wall_v[n];
 
 #else
+
 #define MARCO_Err_Dffu() ;
 #define MARCO_Err_VisFw() ;
-#endif
+
+#endif // end ESTIM_NAN
 
 #ifdef Visc_Diffu
 #define MARCO_VIS_Diffu()                                                                                                                           \

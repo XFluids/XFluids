@@ -173,6 +173,7 @@ void Setup::init()
     // DataBytes set
     bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
 
+    mach_shock = Mach_Shock();
     if (0 == myRank)
         print();
 } // Setup::init
@@ -316,7 +317,6 @@ void Setup::ReadThermal()
     // transfer mole fraction to mess fraction
     get_Yi(h_thermal.species_ratio_out);
     get_Yi(h_thermal.species_ratio_in);
-    mach_shock = Mach_Shock();
 }
 
 // =======================================================
@@ -336,15 +336,7 @@ bool Setup::Mach_Shock()
 { // called after Setup::get_Yi();, only support X dir shock
     real_t Ma_1 = ini.Ma * ini.Ma;
     if (Ma_1 < 1.0)
-    {
-#ifdef USE_MPI
-        if (myRank == 0)
-#endif
-        {
-            std::cout << "\nMach number < 1, shock is not initialized by it." << std::endl;
-        }
         return false;
-    } //
 
     real_t p2 = ini.blast_pressure_out; // P2
     real_t T2 = ini.blast_T_out;        // T2
@@ -490,6 +482,7 @@ void Setup::ReadReactions()
     char Key_word[128];
     std::string rpath = WorkDir + std::string(RFile) + "/reaction_list.dat";
     std::ifstream fint(rpath);
+    if (fint.good())
     {
         fint.seekg(0);
         while (!fint.eof())
@@ -533,6 +526,8 @@ void Setup::ReadReactions()
         }
     }
     fint.close();
+
+    printf("\n%d Reactions been actived                                     \n", NUM_REA);
     IniSpeciesReactions();
 }
 
@@ -1352,7 +1347,6 @@ void Setup::print()
 
     if (ReactSources)
     {
-        printf("\n%d Reactions been actived                                     \n", NUM_REA);
         for (size_t id = 0; id < NUM_REA; id++)
         {
             if (id + 1 < 10)

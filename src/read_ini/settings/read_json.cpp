@@ -73,6 +73,7 @@ const size_t Equ_energy = j_conf.at("equations").value("Equ_energy", 1);
 const std::vector<size_t> Equ_momentum = j_conf.at("equations").value("Equ_momentum", std::vector<size_t>{1, 1, 1});
 const bool ReactSources = j_conf.at("equations").value("Sources_React", COP_CHEME);
 const bool if_overdetermined_eigen = j_conf.at("equations").value("if_overdetermined_eigen", 0) > 0;
+const bool PositivityPreserving = j_conf.at("equations").value("PositivityPreserving", 0);
 const std::string SlipOrder = j_conf.at("equations").value("SlipOrder", CHEME_SPLITTING);
 const std::string ODESolver = j_conf.at("equations").value("ODESolver", "Q2");
 

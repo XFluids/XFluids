@@ -85,7 +85,6 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	// 	for (size_t ii = 2; ii < NUM_SPECIES + 2; ii++) // for Yi
 	// 		epsilon[ii] = _DF(0.0);						// Ini epsilon for y1-yN(N species)
 
-	// #ifdef PositivityPreserving
 	// sycl::stream error_out(1024 * 1024, 1024, h);
 	// 	q.submit([&](sycl::handler &h)
 	// 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
@@ -115,7 +114,6 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	// 	   				int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
 	// 	   				int id_r = (bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i);
 	// 	   				PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxH, FluxHw, T, lambda_z0, lambda_z, epsilon); }); });
-	// #endif // end posti
 
 	// 	// 	// 	q.wait();
 
