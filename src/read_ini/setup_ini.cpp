@@ -64,12 +64,15 @@ void Setup::ReadIni()
     // // initialize reference parameters, for calulate coordinate while readgrid
     BlSz.LRef = Refs[0]; // reference length
     BlSz.CFLnumber = CFLnumber_json;
+    BlSz.DimX = Dimensions[0], BlSz.DimY = Dimensions[1], BlSz.DimZ = Dimensions[2];
 
     // // read block size settings
     BlSz.X_inner = Inner[0], BlSz.Y_inner = Inner[1], BlSz.Z_inner = Inner[2];
     BlSz.Bwidth_X = Bwidth[0], BlSz.Bwidth_Y = Bwidth[1], BlSz.Bwidth_Z = Bwidth[2];
     BlSz.Domain_xmin = Domain_medg[0], BlSz.Domain_ymin = Domain_medg[1], BlSz.Domain_zmin = Domain_medg[2];
     BlSz.Domain_length = DOMAIN_Size[0], BlSz.Domain_width = DOMAIN_Size[1], BlSz.Domain_height = DOMAIN_Size[2];
+    BlSz.BlockSize = BlockSize_json;
+    BlSz.dim_block_x = dim_block_x_json, BlSz.dim_block_y = dim_block_y_json, BlSz.dim_block_z = dim_block_z_json;
 
     // // Simple Boundary settings
     // // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
@@ -105,21 +108,35 @@ void Setup::ReadIni()
 void Setup::ReWrite()
 {
     // =======================================================
-    // // // for json file read
+    // // for json file read
     ReadIni(); // Initialize parameters from json
+
+    // // rewrite X_inner, Y_inner, Z_inner, nStpeMax(if given)
+    std::vector<int> Inner_size = apa.match<int>("-run");
+    if (!std::empty(Inner_size))
+    {
+        BlSz.X_inner = Inner_size[0], BlSz.Y_inner = Inner_size[1], BlSz.Z_inner = Inner_size[2];
+        // // rewrite DimX, DimY, DimZ for computational dimensions
+        BlSz.DimX = bool(Inner_size[0]), BlSz.DimY = bool(Inner_size[1]), BlSz.DimZ = bool(Inner_size[2]);
+        if (4 == Inner_size.size())
+            nStepmax = Inner_size[3];
+    }
+
+    // // rewrite dim_block_x, dim_block_y, dim_block_z
+    std::vector<int> blkapa = apa.match<int>("-blk");
+    if (!std::empty(blkapa))
+    {
+        BlSz.dim_block_x = blkapa[0], BlSz.dim_block_y = blkapa[1], BlSz.dim_block_z = blkapa[2];
+        if (4 == blkapa.size())
+            BlSz.BlockSize = blkapa[3];
+    }
 
     // // rewrite mx, my, mz for MPI
     std::vector<int> mpiapa = apa.match<int>("-mpi");
     if (!std::empty(mpiapa))
         BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
-    // // rewrite X_inner, Y_inner, Z_inner, nStpeMax
-    std::vector<int> Inner_size = apa.match<int>("-run");
-    if (!std::empty(Inner_size))
-    {
-        BlSz.X_inner = Inner_size[0], BlSz.Y_inner = Inner_size[1], BlSz.Z_inner = Inner_size[2];
-        if (4 == Inner_size.size())
-            nStepmax = Inner_size[3];
-    } // // accelerator_selector device;
+
+    // // accelerator_selector device;
     std::vector<int> devapa = apa.match<int>("-dev");
     if (!std::empty(devapa))
         DeviceSelect = devapa;
@@ -134,23 +151,43 @@ void Setup::ReWrite()
 // =======================================================
 void Setup::init()
 { // set other parameters
-    BlSz.DimX = Dimensions[0], BlSz.DimY = Dimensions[1], BlSz.DimZ = Dimensions[2];
-    BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1, BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1, BlSz.Z_inner = BlSz.DimZ ? BlSz.Z_inner : 1;
-    BlSz.Bwidth_X = BlSz.DimX ? BlSz.Bwidth_X : 0, BlSz.Bwidth_Y = BlSz.DimY ? BlSz.Bwidth_Y : 0, BlSz.Bwidth_Z = BlSz.DimZ ? BlSz.Bwidth_Z : 0;
-    BlSz.Domain_length = BlSz.DimX ? BlSz.Domain_length : 1.0, BlSz.Domain_width = BlSz.DimY ? BlSz.Domain_width : 1.0, BlSz.Domain_height = BlSz.DimZ ? BlSz.Domain_height : 1.0;
+    BlSz.DimX_t = BlSz.DimX;
+    BlSz.DimY_t = BlSz.DimY;
+    BlSz.DimZ_t = BlSz.DimZ;
 
-    BlSz.dx = BlSz.DimX ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
-    BlSz.dy = BlSz.DimY ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
-    BlSz.dz = BlSz.DimZ ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
+    OutDirX = BlSz.DimX ? OutDIRX : 0;
+    OutDirY = BlSz.DimY ? OutDIRY : 0;
+    OutDirZ = BlSz.DimZ ? OutDIRZ : 0;
+
+    BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1;
+    BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1;
+    BlSz.Z_inner = BlSz.DimZ ? BlSz.Z_inner : 1;
+
+    BlSz.Bwidth_X = BlSz.DimX ? BlSz.Bwidth_X : 0;
+    BlSz.Bwidth_Y = BlSz.DimY ? BlSz.Bwidth_Y : 0;
+    BlSz.Bwidth_Z = BlSz.DimZ ? BlSz.Bwidth_Z : 0;
+
+    BlSz.dim_block_x = BlSz.DimX ? BlSz.dim_block_x : 1;
+    BlSz.dim_block_y = BlSz.DimY ? BlSz.dim_block_y : 1;
+    BlSz.dim_block_z = BlSz.DimZ ? BlSz.dim_block_z : 1;
+
+    BlSz.Domain_length = BlSz.DimX ? BlSz.Domain_length : 1.0;
+    BlSz.Domain_width = BlSz.DimY ? BlSz.Domain_width : 1.0;
+    BlSz.Domain_height = BlSz.DimZ ? BlSz.Domain_height : 1.0;
 
     BlSz.Domain_xmax = BlSz.Domain_xmin + BlSz.Domain_length;
     BlSz.Domain_ymax = BlSz.Domain_ymin + BlSz.Domain_width;
     BlSz.Domain_zmax = BlSz.Domain_zmin + BlSz.Domain_height;
 
+    BlSz.dx = BlSz.DimX ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
+    BlSz.dy = BlSz.DimY ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
+    BlSz.dz = BlSz.DimZ ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
+
     // maximum number of total cells
     BlSz.Xmax = BlSz.DimX ? (BlSz.X_inner + 2 * BlSz.Bwidth_X) : 1;
     BlSz.Ymax = BlSz.DimY ? (BlSz.Y_inner + 2 * BlSz.Bwidth_Y) : 1;
     BlSz.Zmax = BlSz.DimZ ? (BlSz.Z_inner + 2 * BlSz.Bwidth_Z) : 1;
+
     BlSz.dl = BlSz.dx + BlSz.dy + BlSz.dz;
     if (BlSz.DimX)
         BlSz.dl = std::min(BlSz.dl, BlSz.dx);

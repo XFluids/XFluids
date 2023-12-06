@@ -16,6 +16,9 @@
 #define SBICounts 0
 #endif
 
+#ifndef NUM_SPECIES
+#define NUM_SPECIES 1
+#endif
 #ifndef COP_CHEME
 #define COP_CHEME 1
 #endif

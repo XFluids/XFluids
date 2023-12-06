@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 #ifdef USE_MPI // Create MPI session if MPI enabled
 	MPI_Init(&argc, &argv);
 #endif // USE_MPI
+
 	// // Setup Initialize
 	Setup setup(argc, argv);
 	// // Solver Construction

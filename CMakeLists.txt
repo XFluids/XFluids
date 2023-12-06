@@ -34,9 +34,6 @@ set(INIT_SAMPLE "1d-insert-st") # set INIT_SAMPLE for Initializing settings
 set(MIXTURE_MODEL "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)
-option(DIM_X "if enable dim_x" ON)
-option(DIM_Y "if enable dim_y" ON)
-option(DIM_Z "if enable dim_z" OFF)
 set(DISCRETIZATION_METHOD "FDM") # FVM or FDM ME FluxWall reconstruction
 set(WENO_ORDER "5") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
 set(RIEMANN_SOLVER "HLLC") # HLLC or AUSM Riemann solver, used in FVM method

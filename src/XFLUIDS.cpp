@@ -49,30 +49,30 @@ XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0),
 	if (Ss.BlSz.DimX)
 	{
 		if (Ss.mpiTrans->neighborsBC[XMIN] == BC_COPY)
-			if (OutDIRX)
+			if (Ss.OutDirX)
 				PLT.nbX += 1;
 		if (Ss.mpiTrans->neighborsBC[XMAX] == BC_COPY)
-			if (OutDIRX)
+			if (Ss.OutDirX)
 				PLT.nbX += 1;
 	}
 
 	if (Ss.BlSz.DimY)
 	{
 		if (Ss.mpiTrans->neighborsBC[YMIN] == BC_COPY)
-			if (OutDIRY)
+			if (Ss.OutDirY)
 				PLT.nbY += 1;
 		if (Ss.mpiTrans->neighborsBC[YMAX] == BC_COPY)
-			if (OutDIRY)
+			if (Ss.OutDirY)
 				PLT.nbY += 1;
 	}
 
 	if (Ss.BlSz.DimZ)
 	{
 		if (Ss.mpiTrans->neighborsBC[ZMIN] == BC_COPY)
-			if (OutDIRZ)
+			if (Ss.OutDirZ)
 				PLT.nbZ += 1;
 		if (Ss.mpiTrans->neighborsBC[ZMAX] == BC_COPY)
-			if (OutDIRZ)
+			if (Ss.OutDirZ)
 				PLT.nbZ += 1;
 	}
 #endif // use MPI
@@ -80,9 +80,9 @@ XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0),
 	CPT.minX = Ss.BlSz.Bwidth_X + outpos_x;
 	CPT.minY = Ss.BlSz.Bwidth_Y + outpos_y;
 	CPT.minZ = Ss.BlSz.Bwidth_Z + outpos_z;
-	CPT.nbX = OutDIRX ? PLT.nbX : 1;
-	CPT.nbY = OutDIRY ? PLT.nbY : 1;
-	CPT.nbZ = OutDIRZ ? PLT.nbZ : 1;
+	CPT.nbX = Ss.OutDirX ? PLT.nbX : 1;
+	CPT.nbY = Ss.OutDirY ? PLT.nbY : 1;
+	CPT.nbZ = Ss.OutDirZ ? PLT.nbZ : 1;
 	CPT.maxX = CPT.minX + CPT.nbX;
 	CPT.maxY = CPT.minY + CPT.nbY;
 	CPT.maxZ = CPT.minZ + CPT.nbZ;
@@ -148,11 +148,14 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				std::cout << " dt: " << dt << " to do";
 			physicalTime += dt;
 
-			if (SlipOrder == std::string("Strang"))
+			// strang slipping
+			if ((ReactSources) && (SlipOrder == std::string("Strang")))
 				error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
 			// solved the fluid with 3rd order Runge-Kutta method
 			error_out = error_out || SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
-			error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
+			// reaction sources
+			if (ReactSources)
+				error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
 
 #if ESTIM_NAN
 #ifdef USE_MPI
@@ -405,7 +408,7 @@ bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const in
 		if (error_t)
 		{
 			Output(q, rank, "PErs_" + Stepstr + RkStep, Time, true);
-			std::cout << "Output DIR(X, Y, Z = " << OutDIRX << ", " << OutDIRY << ", " << OutDIRZ << ") has been done at Step = PErs_" << Stepstr << RkStep << std::endl;
+			std::cout << "Output DIR(X, Y, Z = " << Ss.OutDirX << ", " << Ss.OutDirY << ", " << Ss.OutDirZ << ") has been done at Step = PErs_" << Stepstr << RkStep << std::endl;
 		}
 #ifdef USE_MPI
 		int root, maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
@@ -663,7 +666,7 @@ void XFLUIDS::Output(sycl::queue &q, int rank, std::string interation, real_t Ti
 	{ // only out pvti and vti error files
 		Output_vti(rank, timeFormat, stepFormat, rankFormat, true);
 	}
-	else if (!(OutDIRX && OutDIRY && OutDIRZ))
+	else if (!(Ss.OutDirX && Ss.OutDirY && Ss.OutDirZ))
 	{
 		if (OutDAT)
 			Output_cplt(rank, timeFormat, stepFormat, rankFormat);
@@ -679,7 +682,7 @@ void XFLUIDS::Output(sycl::queue &q, int rank, std::string interation, real_t Ti
 	}
 
 	if (rank == 0)
-		std::cout << "Output DIR(X, Y, Z = " << (OutDIRX && Ss.BlSz.DimX) << ", " << (OutDIRY && Ss.BlSz.DimY) << ", " << (OutDIRZ && Ss.BlSz.DimZ) << ") has been done at Step = " << interation << std::endl;
+		std::cout << "Output DIR(X, Y, Z = " << (Ss.OutDirX && Ss.BlSz.DimX) << ", " << (Ss.OutDirY && Ss.BlSz.DimY) << ", " << (Ss.OutDirZ && Ss.BlSz.DimZ) << ") has been done at Step = " << interation << std::endl;
 }
 
 void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
@@ -1568,11 +1571,11 @@ void XFLUIDS::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 	for (int k = VTI.minZ; k < VTI.maxZ; k++)
 		for (int j = VTI.minY; j < VTI.maxY; j++)
 			for (int i = VTI.minX; i < VTI.maxX; i++)
-			{ //&& OutDIRX//&& OutDIRY//&& OutDIRZ
+			{ //&& Ss.OutDirX//&& Ss.OutDirY//&& Ss.OutDirZ
 				int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
-				Out1 = ((!OutDIRX) && (pos_x == outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
-				Out2 = ((!OutDIRY) && (pos_y == outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
-				Out3 = ((!OutDIRZ) && (pos_z == outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
+				Out1 = ((!Ss.OutDirX) && (pos_x == outpos_x)); // fabs(OutPoint[0] - Ss.outpos_x) < temx
+				Out2 = ((!Ss.OutDirY) && (pos_y == outpos_y)); // fabs(OutPoint[1] - Ss.outpos_y) < temy
+				Out3 = ((!Ss.OutDirZ) && (pos_z == outpos_z)); // fabs(OutPoint[2] - Ss.outpos_z) < temz
 				if (Out1 || Out2 || Out3)
 				{
 					if_outrank = rank;
@@ -1627,11 +1630,11 @@ void XFLUIDS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostring
 		int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0, mx = 0, my = 0, mz = 0;
 		real_t dx = 0.0, dy = 0.0, dz = 0.0;
 
-		if (OutDIRX && Ss.BlSz.DimX)
+		if (Ss.OutDirX && Ss.BlSz.DimX)
 			xmin = Ss.BlSz.myMpiPos_x * VTI.nbX, xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX, dx = Ss.BlSz.dx;
-		if (OutDIRY && Ss.BlSz.DimY)
+		if (Ss.OutDirY && Ss.BlSz.DimY)
 			ymin = Ss.BlSz.myMpiPos_y * VTI.nbY, ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY, dy = Ss.BlSz.dy;
-		if (OutDIRZ && Ss.BlSz.DimZ)
+		if (Ss.OutDirZ && Ss.BlSz.DimZ)
 			zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ), zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ), dz = Ss.BlSz.dz;
 
 		std::string file_name, outputPrefix = INI_SAMPLE;
@@ -1643,9 +1646,9 @@ void XFLUIDS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostring
 		file_name += ".vti";
 
 		std::string headerfile_name = OutputDir + "/CVTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
-		mx = (OutDIRX) ? Ss.BlSz.mx : 0;
-		my = (OutDIRY) ? Ss.BlSz.my : 0;
-		mz = (OutDIRZ) ? Ss.BlSz.mz : 0;
+		mx = (Ss.OutDirX) ? Ss.BlSz.mx : 0;
+		my = (Ss.OutDirY) ? Ss.BlSz.my : 0;
+		mz = (Ss.OutDirZ) ? Ss.BlSz.mz : 0;
 		if (0 == rank) // write header
 		{
 			std::fstream outHeader;
@@ -1693,7 +1696,7 @@ void XFLUIDS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostring
 
 					// get MPI coords corresponding to MPI rank iPiece
 					int coords[3] = {0, 0, 0};
-					int OnbX = (OutDIRX) ? VTI.nbX : 0, OnbY = (OutDIRY) ? VTI.nbY : 0, OnbZ = (OutDIRZ) ? VTI.nbZ : 0;
+					int OnbX = (Ss.OutDirX) ? VTI.nbX : 0, OnbY = (Ss.OutDirY) ? VTI.nbY : 0, OnbZ = (Ss.OutDirZ) ? VTI.nbZ : 0;
 #ifdef USE_MPI
 					Ss.mpiTrans->communicator->getCoords(iPiece, Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ, coords);
 #endif // end USE_MPI
@@ -1740,7 +1743,7 @@ void XFLUIDS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostring
 		} // end writing pvti header
 
 		int minX = CPT.minX, minY = CPT.minY, minZ = CPT.minZ;
-		int nbX = (OutDIRX) ? VTI.nbX : 1, nbY = (OutDIRY) ? VTI.nbY : 1, nbZ = (OutDIRZ) ? VTI.nbZ : 1;
+		int nbX = (Ss.OutDirX) ? VTI.nbX : 1, nbY = (Ss.OutDirY) ? VTI.nbY : 1, nbZ = (Ss.OutDirZ) ? VTI.nbZ : 1;
 		int maxX = minX + nbX, maxY = minY + nbY, maxZ = minZ + nbZ;
 		if (OutRanks[rank] >= 0)
 		{
@@ -1979,7 +1982,7 @@ void XFLUIDS::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostring
 		for (int k = CPT.minZ; k < CPT.maxZ; k++)
 			for (int j = CPT.minY; j < CPT.maxY; j++)
 				for (int i = CPT.minX; i < CPT.maxX; i++)
-				{ //&& OutDIRX//&& OutDIRY//&& OutDIRZ
+				{ //&& Ss.OutDirX//&& Ss.OutDirY//&& Ss.OutDirZ
 					int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
 					int pos_x = i + posx, pos_y = j + posy, pos_z = k + posz;
 					OutPoint[0] = (Ss.BlSz.DimX) ? (pos_x)*Ss.BlSz.dx + temx : 0.0;

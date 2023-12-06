@@ -29,6 +29,7 @@ public:
 	std::string WorkDir;
 	int nStepmax;		   // running steps
 	int bytes, cellbytes;  // memory allocate
+	bool OutDirX, OutDirY, OutDirZ;
 
 	//--for-Mesh-----------------------------
 	Block BlSz;

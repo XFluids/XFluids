@@ -160,6 +160,8 @@ typedef struct
 {
 	//--for-Computational-dimensions---------
 	bool DimX, DimY, DimZ;
+	real_t DimX_t, DimY_t, DimZ_t;
+	size_t BlockSize, dim_block_x, dim_block_y, dim_block_z;
 	//--for-Solving-system-------------------
 	size_t num_fluids, num_species, num_cop, num_rea, num_eqn;
 	//--for-Chemical-sources-----------------

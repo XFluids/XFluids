@@ -45,18 +45,18 @@ const size_t outpos_x = j_conf.at("run").value("outpos_x", 0);
 const size_t outpos_y = j_conf.at("run").value("outpos_y", 0);
 const size_t outpos_z = j_conf.at("run").value("outpos_z", 0);
 const size_t OutBoundary = j_conf.at("run").value("OutBoundary", 0);
-const size_t OutDIRX = j_conf.at("run").value("OutDIRX", Dimensions[0]);
-const size_t OutDIRY = j_conf.at("run").value("OutDIRY", Dimensions[1]);
-const size_t OutDIRZ = j_conf.at("run").value("OutDIRZ", Dimensions[2]);
+const size_t OutDIRX = j_conf.at("run").value("OutDIRX", 1);
+const size_t OutDIRY = j_conf.at("run").value("OutDIRY", 1);
+const size_t OutDIRZ = j_conf.at("run").value("OutDIRZ", 1);
 const size_t nStepmax_json = j_conf.at("run").value("nStepMax", 10);
 const size_t nOutput = j_conf.at("run").value("nOutMax", 0);
 const size_t OutInterval = j_conf.at("run").value("OutInterval", nStepmax_json);
 const size_t POutInterval = j_conf.at("run").value("PushInterval", 5);
 const size_t RcalInterval = j_conf.at("run").value("RcalInterval", 200);
-const size_t BlockSize = j_conf.at("run").value("DtBlockSize", 4);
-const size_t dim_block_x = Dimensions[0] ? j_conf.at("run").value("blockSize_x", BlockSize) : 1;
-const size_t dim_block_y = Dimensions[1] ? j_conf.at("run").value("blockSize_y", BlockSize) : 1;
-const size_t dim_block_z = Dimensions[2] ? j_conf.at("run").value("blockSize_z", BlockSize) : 1;
+const size_t BlockSize_json = j_conf.at("run").value("DtBlockSize", 4);
+const size_t dim_block_x_json = j_conf.at("run").value("blockSize_x", BlockSize_json);
+const size_t dim_block_y_json = j_conf.at("run").value("blockSize_y", BlockSize_json);
+const size_t dim_block_z_json = j_conf.at("run").value("blockSize_z", BlockSize_json);
 
 // MPI setup
 const size_t mx_json = j_conf.at("mpi").value("mx", 1);

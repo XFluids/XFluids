@@ -42,7 +42,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 
 void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)
 {
-	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z); // size of workgroup
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 	real_t *rho = fdata.rho;

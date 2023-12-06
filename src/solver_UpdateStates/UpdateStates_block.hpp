@@ -3,7 +3,7 @@
 
 bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma, int &error_patched_times)
 {
-	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z); // size of workgroup
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 
 	real_t *rho = fdata.rho;
@@ -130,7 +130,7 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
-	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z); // size of workgroup
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 	q.submit([&](sycl::handler &h)

@@ -22,8 +22,8 @@ extern const size_t outpos_x, outpos_y, outpos_z;
 extern const size_t OutBoundary, OutDIRX, OutDIRY, OutDIRZ;
 extern const size_t nStepmax_json, nOutput;	   // nOutMax
 extern const size_t OutInterval, POutInterval, RcalInterval; // PushInterval
-//--for-Thread---------------------------
-extern const size_t BlockSize, dim_block_x, dim_block_y, dim_block_z;
+//--for-Thread-Allocation----------------
+extern const size_t BlockSize_json, dim_block_x_json, dim_block_y_json, dim_block_z_json;
 
 // MPI
 extern const size_t mx_json;

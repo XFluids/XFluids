@@ -17,7 +17,8 @@ Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIt
 	nranks = Fs.mpiTrans->nProcs;
 #endif
 
-	ZeroDimensionalFreelyFlame();
+	if (ReactSources)
+		ZeroDimensionalFreelyFlame();
 	// Creat Counts file
 	AllCountsHeader();
 }
@@ -537,7 +538,7 @@ void Fluid::GetTheta(sycl::queue &q)
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
-				   sycl::nd_range<2>(sycl::range<2>(bl.X_inner, bl.Z_inner), sycl::range<2>(dim_block_x, dim_block_z)), [=](nd_item<2> index)
+				   sycl::nd_range<2>(sycl::range<2>(bl.X_inner, bl.Z_inner), sycl::range<2>(bl.dim_block_x, bl.dim_block_z)), [=](nd_item<2> index)
 				   {	
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int k = index.get_global_id(1) + bl.Bwidth_Z;
@@ -580,14 +581,14 @@ void Fluid::GetTheta(sycl::queue &q)
 	real_t _RomY = _DF(1.0) / real_t(bl.Y_inner);
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
-				   sycl::nd_range<1>(sycl::range<1>(bl.X_inner * bl.Z_inner), sycl::range<1>(BlockSize)), Sum_YXN, Sum_YXeN2, Sum_YXe, [=](nd_item<1> index, auto &tSum_YXN, auto &tSum_YXeN2, auto &tSum_YXe)
+				   sycl::nd_range<1>(sycl::range<1>(bl.X_inner * bl.Z_inner), sycl::range<1>(bl.BlockSize)), Sum_YXN, Sum_YXeN2, Sum_YXe, [=](nd_item<1> index, auto &tSum_YXN, auto &tSum_YXeN2, auto &tSum_YXe)
 				   { auto id = index.get_global_id(0);
 				tSum_YXN += smyXN[id];
 				tSum_YXeN2 += smyXe[id]  * smyN2[id];
 				tSum_YXe += smyXe[id]; }); })
 		.wait();
 
-	auto local_ndrange3d = range<3>(dim_block_x, dim_block_y, dim_block_z);
+	auto local_ndrange3d = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange3d = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 	for (size_t i = 0; i < 6; i++)
 		interface_point[i] = _DF(0.0);
@@ -634,7 +635,7 @@ void Fluid::GetTheta(sycl::queue &q)
 	if (ReactSources)
 	{
 		int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
-		auto local_ndrange = range<1>(BlockSize); // size of workgroup
+		auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
 		auto global_ndrange = range<1>(meshSize);
 		for (size_t n = 0; n < NUM_SPECIES - 3; n++)
 			pVar_max[n] = _DF(0.0);
@@ -800,7 +801,7 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 		break;
 	}
 
-	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z);
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_max = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 	int x_offset = OutBoundary ? 0 : bl.Bwidth_X;

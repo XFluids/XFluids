@@ -4,6 +4,7 @@
 
 ### 1.1. IF USE Intel oneAPI
 
+- #### [libboost_filesystem](https://www.boost.org/users/history/version_1_83_0.html)
 - #### [intel oneapi version &gt;= 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline)
 - #### [codeplay Solutions for NVIDIA and AMD backends](https://codeplay.com/solutions/oneapi/)
 - #### activate environment for oneAPI appended codeplay sultion libs
@@ -112,9 +113,10 @@
 
   | name of options  |                         function                                                        | type  |
   | :--------------- | :-------------------------------------------------------------------------------------: | :---: |
+  | -blk             |  dim_blk_x, dim_blk_y, dim_blk_z,DtBlockSize(if given)                                  |  int  |
   | -mpi             |  mpi cartesian size: mx,my,mz                                                           |  int  |
   | -dev             |  device counting and selecting: device munber,platform,device                           |  int  |
-  | -run             |  domain resolution and running steps: X_inner,Y_inner,Z_inner,nStepmax                  |  int  |
+  | -run             |  domain resolution and running steps: X_inner,Y_inner,Z_inner,nStepmax(if given)        |  int  |
 
 ## 7. Uutput data format
 

@@ -20,7 +20,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 
-	auto local_ndrange = range<3>(dim_block_x, dim_block_y, dim_block_z);
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 
 	if (bl.DimX)
