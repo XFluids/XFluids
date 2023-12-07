@@ -9,9 +9,8 @@
             "postDebugTask": "",
             "program": "${workspaceFolder}/build/XFLUIDS",
             "args": [
-                // "-dev=1,1,0",
                 "-dev=1,0,0",
-                "-run=100,0,2,2"
+                "-run=100,4,4"
             ],
         },
         {

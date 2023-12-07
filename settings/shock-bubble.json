@@ -1,9 +1,9 @@
 {
 	"run": {
-		"blockSize_x": 8,
-		"blockSize_y": 8,
-		"blockSize_z": 8,
-		"DtBlockSize": 8,
+		"blockSize_x": 4,
+		"blockSize_y": 4,
+		"blockSize_z": 4,
+		"DtBlockSize": 4,
 		"nStepMax": 100000000,
 		"nOutMax": 2500,
 		"OutDAT": 0,
@@ -36,7 +36,7 @@
 		"mz": 1,
 		"DeviceSelect": [
 			1,
-			0,
+			1,
 			0
 		]
 	},
@@ -77,14 +77,6 @@
 		"blast_type": 1,
 		"blast_center": [
 			-0.025,
-			0.0,
-			0.0
-		],
-		"blast_upstream": [
-			0.0,
-			0.0,
-			0.0,
-			0.0,
 			0.0,
 			0.0
 		],

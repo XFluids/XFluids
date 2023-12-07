@@ -20,10 +20,8 @@ typedef struct
 	real_t rho, P, T, u, v, w, gamma, c, *yi, *hi, *ei, e, h, H;
 } IniBubble;
 
-class IniShape
+struct IniShape
 {
-private:
-public:
 	// // cop_type: 0 for 1d set, 1 for bubble of cop
 	// // blast_type: 0 for 1d shock, 1 for circular shock
 	int cop_type, blast_type, bubble_type;
@@ -42,14 +40,13 @@ public:
 	real_t bubble_center_x, bubble_center_y, bubble_center_z;
 	// // bubble shape
 	real_t xa, yb, zc, C, _xa2, _yb2, _zc2;
-	// , _xa2_in, _yb2_in, _zc2_in, _xa2_out, _yb2_out, _zc2_out;
 
-public:
+	// // Utils initializing model
 	size_t num_box, num_bubble;
 	IniBox *iboxs;
 	IniBubble *ibubbles;
 
-	IniShape(){};
-	~IniShape(){};
-	IniShape(sycl::queue &q, size_t num_box, size_t num_bubble);
+	// IniShape(){};
+	// ~IniShape(){};
+	// IniShape(sycl::queue &q, size_t num_box, size_t num_bubble);
 };

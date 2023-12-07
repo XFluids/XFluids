@@ -7,15 +7,15 @@
  * @return void
  */
 extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
-                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T) {}
+                                real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T) {}
 
 /**
  * @brief  Initialize conservative quantity;
  * @return void
  */
 extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
-                                          real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-                                          real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
+                            real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
+                            real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
     if (i >= Xmax)
@@ -47,15 +47,15 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
            //     _y[i][id] = thermal.species_ratio_out[i];
 #endif // end COP
 
-        // // 1D multicomponent insert shock tube
+    // // 1D multicomponent insert shock tube
     if (bl.DimX)
         T[id] = x < 0.05 ? 400 : 1200, p[id] = x < 0.05 ? 8000 : 80000;
 
-    if (bl.DimY)
-        T[id] = y < 0.05 ? 400 : 1200, p[id] = y < 0.05 ? 8000 : 80000;
+    // if (bl.DimY)
+    //     T[id] = y < 0.05 ? 400 : 1200, p[id] = y < 0.05 ? 8000 : 80000;
 
-    if (bl.DimZ)
-        T[id] = z < 0.05 ? 400 : 1200, p[id] = z < 0.05 ? 8000 : 80000;
+    // if (bl.DimZ)
+    //     T[id] = z < 0.05 ? 400 : 1200, p[id] = z < 0.05 ? 8000 : 80000;
 
     // Get R of mixture
     real_t R = get_CopR(thermal._Wi, yi);

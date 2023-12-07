@@ -121,17 +121,17 @@ Fluid::~Fluid()
 	}
 
 #ifdef Visc // free viscous estimate Vars
-	if (Ss.BlSz.DimX)
+	if (Fs.BlSz.DimX)
 	{
 		sycl::free(h_fstate.visFwx, q);
 		sycl::free(d_fstate.visFwx, q);
 	}
-	if (Ss.BlSz.DimY)
+	if (Fs.BlSz.DimY)
 	{
 		sycl::free(h_fstate.visFwy, q);
 		sycl::free(d_fstate.visFwy, q);
 	}
-	if (Ss.BlSz.DimZ)
+	if (Fs.BlSz.DimZ)
 	{
 		sycl::free(h_fstate.visFwz, q);
 		sycl::free(d_fstate.visFwz, q);
@@ -143,21 +143,21 @@ Fluid::~Fluid()
 	sycl::free(d_fstate.Ertemp1, q);
 	sycl::free(d_fstate.Ertemp2, q);
 
-	if (Ss.BlSz.DimX)
+	if (Fs.BlSz.DimX)
 	{
 		sycl::free(h_fstate.Dim_wallx, q), sycl::free(h_fstate.hi_wallx, q);
 		sycl::free(h_fstate.Yi_wallx, q), sycl::free(h_fstate.Yil_wallx, q);
 		sycl::free(d_fstate.Dim_wallx, q), sycl::free(d_fstate.hi_wallx, q);
 		sycl::free(d_fstate.Yi_wallx, q), sycl::free(d_fstate.Yil_wallx, q);
 	}
-	if (Ss.BlSz.DimY)
+	if (Fs.BlSz.DimY)
 	{
 		sycl::free(h_fstate.Dim_wally, q), sycl::free(h_fstate.hi_wally, q);
 		sycl::free(h_fstate.Yi_wally, q), sycl::free(h_fstate.Yil_wally, q);
 		sycl::free(d_fstate.Dim_wally, q), sycl::free(d_fstate.hi_wally, q);
 		sycl::free(d_fstate.Yi_wally, q), sycl::free(d_fstate.Yil_wally, q);
 	}
-	if (Ss.BlSz.DimZ)
+	if (Fs.BlSz.DimZ)
 	{
 		sycl::free(h_fstate.Dim_wallz, q), sycl::free(h_fstate.hi_wallz, q);
 		sycl::free(h_fstate.Yi_wallz, q), sycl::free(h_fstate.Yil_wallz, q);
@@ -443,10 +443,11 @@ void Fluid::AllCountsHeader()
 				out << "_Step_teXN_teXeN2_teXe_Ymin_Ymax";
 				// 			out << "_Xmin_Xmax_Lambdax";
 				// 			out << "_Zmin_Zmax_Lambdaz";
-				out << "'\nvariables=Time[s], Time[-], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], ";
+				out << "'\nvariables=Time[s], t<sup>*</sup>[-], <b><greek>Q</greek></b>[-], <greek>L</greek><sub>y</sub>[-], ";
 				out << "<greek>e</greek><sub><greek>r</greek></sub>[m<sup>2</sup>/s<sup>2</sup>], ";
 				out << "<greek>e</greek><sub><greek>r</greek>n</sub>[m<sup>2</sup>/s<sup>2</sup>], ";
-				// Time[s]: Time in tecplot x-Axis variable
+				// Time[s]: physical Time as a form of tecplot variable
+				// t<sup>*</sup>[-]: normalized Time as a form of tecplot variable
 				//<greek>Q</greek>[-]: (theta(Theta(XN)/Theta(Xe)/Theta(N2))) in tecplot
 				//<greek>L</greek><sub>y</sub>[-]: Lambday in tecplot
 				//<greek>e</greek><sub><greek>r</greek></sub>: sigma in tecplot

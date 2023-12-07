@@ -20,8 +20,11 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	auto global_ndrange_x = range<3>(bl.X_inner + local_ndrange[0], bl.Y_inner, bl.Z_inner);
+	auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + local_ndrange[1], bl.Z_inner);
+	auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + local_ndrange[2]);
 
 	if (bl.DimX)
 	{
@@ -30,7 +33,6 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 		// 	// sleep(5);
 		// #endif // end DEBUG
 		// proceed at x directiom and get F-flux terms at node wall
-		auto global_ndrange_x = range<3>(bl.X_inner + local_ndrange[0], bl.Y_inner, bl.Z_inner);
 
 		q.submit([&](sycl::handler &h)
 				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
@@ -88,7 +90,6 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 		// 	// sleep(5);
 		// #endif // end DEBUG
 		// proceed at y directiom and get G-flux terms at node wall
-		auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + local_ndrange[1], bl.Z_inner);
 
 		q.submit([&](sycl::handler &h)
 				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
@@ -145,7 +146,6 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 		// 	// sleep(5);
 		// #endif // end DEBUG
 		// proceed at y directiom and get G-flux terms at node wall
-		auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + local_ndrange[2]);
 
 		q.submit([&](sycl::handler &h)
 				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)

@@ -1,5 +1,5 @@
 #pragma once
- 
+
 #include "sycl_devices.hpp"
 
 /**
@@ -7,7 +7,7 @@
  * @return void
  */
 extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, MaterialProperty material, Thermal thermal,
-                                              real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T)
+                                real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T)
 {
     MARCO_DOMAIN_GHOST();
     if (i >= Xmax)
@@ -22,6 +22,33 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
     real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
     real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
     real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
+
+    rho[id] = _DF(0.0);
+    p[id] = _DF(0.0);
+    T[id] = _DF(0.0);
+    u[id] = _DF(0.0);
+    v[id] = _DF(0.0);
+    w[id] = _DF(0.0);
+
+    // // 1D multicomponent insert shock tube
+    if (x < ini.blast_center_x) // 0.05) // ini.blast_center_x) // (i > 3)
+    {
+        T[id] = ini.blast_T_in;
+        p[id] = ini.blast_pressure_in;
+        // T[id] = 400, p[id] = 8000;
+        u[id] = ini.blast_u_in;
+        v[id] = ini.blast_v_in;
+        w[id] = ini.blast_w_in;
+    }
+    else
+    {
+        T[id] = ini.blast_T_out;
+        p[id] = ini.blast_pressure_out;
+        // T[id] = 1200, p[id] = 80000;
+        u[id] = ini.blast_u_out;
+        v[id] = ini.blast_v_out;
+        w[id] = ini.blast_w_out;
+    }
 
 #ifdef COP
     real_t *xi = &(_y[NUM_SPECIES * id]);
@@ -62,67 +89,6 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
     }
 
 #endif // end COP
-
-    if (x > ini.blast_center_x) //(i > 3)
-    {
-        T[id] = ini.blast_T_out;
-        p[id] = ini.blast_pressure_out;
-        u[id] = ini.blast_u_out;
-        v[id] = ini.blast_v_out;
-        w[id] = ini.blast_w_out;
-    }
-    else
-    {
-        T[id] = ini.blast_T_in;
-        p[id] = ini.blast_pressure_in;
-        u[id] = ini.blast_u_in;
-        v[id] = ini.blast_v_in;
-        w[id] = ini.blast_w_in;
-    }
-
-    // if (x > ini.blast_center_x) // downstream of the shock
-    //     {
-    //         T[id] = ini.blast_T_out;
-    //         rho[id] = ini.blast_density_out;
-    //         p[id] = ini.blast_pressure_out;
-    //         u[id] = ini.blast_u_out;
-    //         v[id] = ini.blast_v_out;
-    //         w[id] = ini.blast_w_out;
-    // #ifdef COP
-    //         if (dy_in < 0 && dy_out < 0)
-    //         {                                 // in bubble
-    //             rho[id] = ini.cop_density_in; // 气泡内单独赋值密度以和气泡外区分
-    //             p[id] = ini.cop_pressure_in;  // 气泡内单独赋值压力以和气泡外区分
-    //             for (size_t i = 0; i < NUM_SPECIES; i++)
-    //                 _y[i][id] = thermal.species_ratio_in[i];
-    //         }
-    //         else if (dy_in > 0 && dy_out < 0)
-    //         { // boundary of bubble && shock
-    //             rho[id] = _DF(0.5) * (ini.cop_density_in + ini.blast_density_out);
-    //             p[id] = _DF(0.5) * (ini.cop_pressure_in + ini.blast_pressure_out);
-    //             for (size_t i = 0; i < NUM_SPECIES; i++)
-    //                 _y[i][id] = _DF(0.5) * (thermal.species_ratio_in[i] + thermal.species_ratio_out[i]);
-    //         }
-    //         else
-    //         { // out of bubble
-    //             for (size_t i = 0; i < NUM_SPECIES; i++)
-    //                 _y[i][id] = thermal.species_ratio_out[i];
-    //         }
-    // #endif // end COP
-    //     }
-    //     else // upstream of the shock
-    //     {
-    //         T[id] = ini.blast_T_in;
-    //         rho[id] = ini.blast_density_in;
-    //         p[id] = ini.blast_pressure_in;
-    //         u[id] = ini.blast_u_in;
-    //         v[id] = ini.blast_v_in;
-    //         w[id] = ini.blast_w_in;
-    // #ifdef COP // to be 1d shock without define React
-    //         for (size_t i = 0; i < NUM_SPECIES; i++)
-    //             _y[i][id] = thermal.species_ratio_out[i];
-    // #endif // end COP
-    //     }
 }
 
 /**
@@ -130,8 +96,8 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
  * @return void
  */
 extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty material, Thermal thermal, real_t *U, real_t *U1, real_t *LU,
-                                          real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
-                                          real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
+                            real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
+                            real_t *u, real_t *v, real_t *w, real_t *rho, real_t *p, real_t *_y, real_t *T, real_t *H, real_t *c)
 {
     MARCO_DOMAIN_GHOST();
     if (i >= Xmax)
@@ -147,16 +113,13 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
     real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
     real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
-    // // Ini yi
-    // get_yi(_y, yi, id);
     // Get R of mixture
-    real_t *yi = &(_y[NUM_SPECIES * id]);
+    real_t *yi = &(_y[NUM_SPECIES * id]), R = get_CopR(thermal._Wi, yi);
 
-    real_t R = get_CopR(thermal._Wi, yi);
     rho[id] = p[id] / R / T[id];
 
-    // real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
-    // c[id] = sycl::sqrt(p[id] / rho[id] * Gamma_m);
+    real_t Gamma_m = get_CopGamma(thermal, yi, T[id]);
+    c[id] = sycl::sqrt(p[id] / rho[id] * Gamma_m);
 
     // U[4] of mixture differ from pure gas
     real_t h = get_Coph(thermal, yi, T[id]);
