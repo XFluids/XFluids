@@ -1,6 +1,6 @@
 #include "mpiPacks.h"
 
-MpiTrans::MpiTrans(Block &Bl, BConditions const Boundarys[6]) : bl(Bl)
+MpiTrans::MpiTrans(Block &bl, BConditions const Boundarys[6])
 {
 	mx = bl.mx, my = bl.my, mz = bl.mz;
 	// runtime determination if we are using float ou double (for MPI communication)
@@ -70,6 +70,8 @@ MpiTrans::MpiTrans(Block &Bl, BConditions const Boundarys[6]) : bl(Bl)
 		if (bl.myMpiPos_z == mz - 1) // Z_MAX boundary
 			neighborsBC[Z_MAX] = Boundarys[ZMAX];
 	}
+	// block in mpiPacks
+	mbl = bl;
 } // MpiTrans::MpiTrans
 // =======================================================
 // =======================================================
@@ -288,7 +290,7 @@ long double MpiTrans::AllocMemory(middle::device_t &q, Block &bl, const int N)
 #ifdef EXPLICIT_ALLOC
 void MpiTrans::MpiBufCpy(MpiData dest, MpiData src, middle::device_t &q)
 {
-	if (bl.DimX)
+	if (mbl.DimX)
 	{
 		middle::MemCpy<real_t>(dest.TransBufSend_xmin, src.TransBufSend_xmin, Ghost_CellSz_x, q);
 		middle::MemCpy<real_t>(dest.TransBufRecv_xmin, src.TransBufRecv_xmin, Ghost_CellSz_x, q);
@@ -296,7 +298,7 @@ void MpiTrans::MpiBufCpy(MpiData dest, MpiData src, middle::device_t &q)
 		middle::MemCpy<real_t>(dest.TransBufSend_xmax, src.TransBufSend_xmax, Ghost_CellSz_x, q);
 	}
 
-	if (bl.DimY)
+	if (mbl.DimY)
 	{
 		middle::MemCpy<real_t>(dest.TransBufSend_ymin, src.TransBufSend_ymin, Ghost_CellSz_y, q);
 		middle::MemCpy<real_t>(dest.TransBufRecv_ymin, src.TransBufRecv_ymin, Ghost_CellSz_y, q);
@@ -304,7 +306,7 @@ void MpiTrans::MpiBufCpy(MpiData dest, MpiData src, middle::device_t &q)
 		middle::MemCpy<real_t>(dest.TransBufSend_ymax, src.TransBufSend_ymax, Ghost_CellSz_y, q);
 	}
 
-	if (bl.DimZ)
+	if (mbl.DimZ)
 	{
 		middle::MemCpy<real_t>(dest.TransBufSend_zmin, src.TransBufSend_zmin, Ghost_CellSz_z, q);
 		middle::MemCpy<real_t>(dest.TransBufRecv_zmin, src.TransBufRecv_zmin, Ghost_CellSz_z, q);

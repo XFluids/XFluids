@@ -29,13 +29,13 @@ struct MpiTrans
 	int nNeighbors;
 	// MPI rank of adjacent MPI processes
 	int neighborsRank[6];
+
 	// CellSz: total number of the cell points transferred by Mpi ranks, needed by mpisendrecv-function
 	int Ghost_CellSz_x, Ghost_CellSz_y, Ghost_CellSz_z;
 	// DataSz: total sizeof-data(bytes) of all physical arguments in these cell points used for malloc memory
 	int Ghost_DataSz_x, Ghost_DataSz_y, Ghost_DataSz_z;
 
-	// Block size
-	Block bl;
+	Block mbl; // Block
 	// Dynamically set groupx, groupy, groupz;
 	MPI_Group comm_world;
 	// MPI communicator in a cartesian virtual topology
