@@ -277,6 +277,12 @@ endif()
 message(STATUS "  Multi-Component: ${COP}")
 message(STATUS "    Species' Thermo Fit: ${THERMAL}")
 message(STATUS "  Capture unexpected errors: ${ESTIM_NAN}")
+
+if(ERROR_OUT)
+    message(STATUS "    Out intermediate variables while unexpected error captured, ")
+    message(STATUS "    Highly grow up device memory usage.")
+endif()
+
 message(STATUS "  Convention term scheme: WENO${WENO_ORDER}")
 message(STATUS "    Discretization method: ${DISCRETIZATION_METHOD}")
 message(STATUS "    Artificial  viscosity: ${ARTIFICIAL_VISC_TYPE}")

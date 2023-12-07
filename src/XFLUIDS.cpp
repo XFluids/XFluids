@@ -568,7 +568,7 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
 
-#if ESTIM_NAN
+#if ESTIM_OUT
 		if (error)
 		{
 #ifdef Visc // copy vosicous estimating Vars
@@ -637,7 +637,7 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 				q.memcpy(fluids[n]->h_fstate.pstFwz, fluids[n]->d_wallFluxH, cellbytes);
 			}
 		}
-#endif // end ESTIM_NAN
+#endif // end ESTIM_OUT
 	}
 	q.wait();
 }
@@ -702,7 +702,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 	if (Ss.BlSz.DimZ)
 		variables_names[index] = "DIR-Z", index++, variables_names[index] = "OV-w", index++;
 
-#if ESTIM_NAN
+#if ESTIM_OUT
 	if (error)
 	{
 #ifdef Visc // Out name of viscous out estimating Vars
@@ -814,7 +814,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 			variables_names[index] = "E-LU[" + std::to_string(u) + "]", index++;
 		}
 	}
-#endif // ESTIM_NAN
+#endif // ESTIM_OUT
 
 	variables_names[index] = "OV-c", index++;
 	variables_names[index] = "O-rho", index++;
@@ -1037,7 +1037,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 			} // for k
 		}
 
-#if ESTIM_NAN
+#if ESTIM_OUT
 		if (error)
 		{
 #ifdef Visc // Out content of viscous out estimating Vars
@@ -1347,7 +1347,7 @@ void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostrings
 				}
 			}
 		}
-#endif // end ESTIM_NAN
+#endif // end ESTIM_OUT
 
 		//[6]V-c
 		MARCO_OUTLOOP

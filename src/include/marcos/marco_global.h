@@ -59,7 +59,8 @@
 // // #endif // end COP
 
 // //    Get error out of c2 arguments
-#if ESTIM_NAN
+#if ESTIM_OUT
+
 #define MARCO_ERROR_OUT()                   \
     eb1[id_l] = b1;                         \
     eb3[id_l] = b3;                         \
@@ -69,8 +70,10 @@
         ezi[nn + NUM_COP * id_l] = z[nn];   \
     }
 #else
+
 #define MARCO_ERROR_OUT() ;
-#endif // end ESTIM_NAN
+
+#endif // end ESTIM_OUT
 
 // =======================================================
 //    Loop in Output

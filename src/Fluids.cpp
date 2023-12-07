@@ -90,7 +90,7 @@ Fluid::~Fluid()
 		sycl::free(theta, q), sycl::free(sigma, q);
 		sycl::free(pVar_max, q), sycl::free(interface_point, q);
 	}
-#if ESTIM_NAN
+#if ESTIM_OUT
 	sycl::free(h_U, q), sycl::free(h_U1, q), sycl::free(h_LU, q);
 	if (Fs.BlSz.DimX)
 	{
@@ -166,7 +166,7 @@ Fluid::~Fluid()
 	}
 #endif // end Visc_Diffu
 #endif // end Visc
-#endif // ESTIM_NAN
+#endif // ESTIM_OUT
 }
 
 void Fluid::initialize(int n)
@@ -281,7 +281,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		interface_point = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
 	}
 
-#if ESTIM_NAN
+#if ESTIM_OUT
 	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
@@ -393,7 +393,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	MemMbSize += ((double(bytes) / 1024.0 / 1024.0) * (3.0 + 4.0 * double(Fs.BlSz.DimX + Fs.BlSz.DimY + Fs.BlSz.DimZ))) * double(NUM_SPECIES);
 #endif // end Visc_Diffu
 #endif // end Visc
-#endif // ESTIM_NAN
+#endif // ESTIM_OUT
 
 #if USE_MPI
 	MPIMbSize = Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax);

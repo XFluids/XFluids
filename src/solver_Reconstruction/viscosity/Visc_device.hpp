@@ -152,9 +152,9 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 				Dkm_aver_id[k] = temp1 / temp2 / rho * C_total; // rho/C_total:the mole mass of mixture;
 			Dkm_aver_id[k] *= _DF(1.0e-1);						// cm2/s==>m2/s
 
-#if ESTIM_NAN
+#if ESTIM_OUT
 			Ertemp1[k] = temp1, Ertemp2[k] = temp2;
-#endif // end ESTIM_NAN
+#endif // end ESTIM_OUT
 		}
 	}
 #else

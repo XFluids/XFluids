@@ -4,14 +4,14 @@ set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
 # # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l, Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t))) with low performance
 option(COP "if enable compoent" ON)
-option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON)
-# # EXPLICIT_ALLOC: 1. ON: allocate each device buffer and transfer. 2. OFF: allocate struct ptr in device
-option(ESTIM_NAN "estimate if rho is nan or <0 or inf" ON)
-option(ERROR_PATCH_PRI "if patch rho/T/P errors capured" OFF)
+option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # ON: allocate device buffer and transfer. OFF: allocate struct ptr on host
+option(ESTIM_NAN "estimate if primitive variable(rho,yi,P,T) is nan or <0 or inf." ON)
+option(ERROR_OUT "if out intermediate variables for Flux ((b1,b3,zi)[convention],Di[visc],...)." OFF)
+option(ERROR_PATCH_PRI "if patch primitive varibales using Roe average method, destruct physic fluid flow." OFF)
 
 # # add cmake files
-set(ESTIM_NAN "ON")
 include(init_sample)
+
 # file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 # file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output/cal)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
@@ -37,6 +37,12 @@ ENDIF(USE_DOUBLE)
 IF(ESTIM_NAN)
   add_compile_options(-DESTIM_NAN=1)
 
+  IF(ERROR_OUT)
+    add_compile_options(-DESTIM_OUT=1)
+  ELSE()
+    add_compile_options(-DESTIM_OUT=0)
+  ENDIF(ERROR_OUT)
+
   IF(ERROR_PATCH_PRI)
     add_compile_options(-DERROR_PATCH)
   ENDIF()
@@ -50,7 +56,6 @@ IF(ESTIM_NAN)
   ENDIF()
 ELSE()
   add_compile_options(-DESTIM_NAN=0)
-
 ENDIF(ESTIM_NAN)
 
 # define Thermo 1				  // 1 for NASA and 0 for JANAF
