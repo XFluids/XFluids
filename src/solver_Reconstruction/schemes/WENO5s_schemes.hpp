@@ -26,16 +26,31 @@ inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, c
 	a1 = dtre * v3 - _DF(4.0) * v4 + v5;
 	s3 += dtre * a1 * a1;
 
-	real_t tol = _DF(1.0e-6);
-	a1 = _DF(0.1) * (tol + s2) * (tol + s2) * (tol + s3) * (tol + s3);
-	a2 = _DF(0.2) * (tol + s1) * (tol + s1) * (tol + s3) * (tol + s3);
-	a3 = _DF(0.3) * (tol + s1) * (tol + s1) * (tol + s2) * (tol + s2);
+	real_t tol = _DF(1.0E-6);
+	s1 += tol, s2 += tol, s3 += tol;
+
+	// // TODO: float precison
+	// // // for float precision
+	// real_t _s1 = CarmackR(s1), _s2 = CarmackR(s2), _s3 = CarmackR(s3);
+	// int cs1 = sycl::log10(s1), cs2 = sycl::log10(s2), cs3 = sycl::log10(s3);
+	// int c12 = cs1 - cs2, c13 = cs1 - cs3, c1 = -bit_maxmag(c12, c13);
+	// int c21 = cs2 - cs1, c23 = cs2 - cs3, c2 = -bit_maxmag(c21, c23);
+	// int c31 = cs3 - cs1, c32 = cs3 - cs2, c3 = -bit_maxmag(c31, c32);
+	// real_t fc1 = pown(_DF(10.0), c1), fc2 = pown(_DF(10.0), c2), fc3 = pown(_DF(10.0), c3);
+
+	// a1 = CarmackR(_DF(1.0) * fc1 * fc1 + _DF(2.0) * (s1 * fc1 * _s2) * (s1 * fc1 * _s2) + _DF(3.0) * (s1 * fc1 * _s3) * (s1 * fc1 * _s3)) * _DF(1.0) * fc1 * fc1;
+	// a2 = CarmackR(_DF(1.0) * (s2 * fc2 * _s1) * (s2 * fc2 * _s1) + _DF(2.0) * fc2 * fc2 + _DF(3.0) * (s2 * fc2 * _s3) * (s2 * fc2 * _s3)) * _DF(2.0) * fc2 * fc2;
+	// a3 = CarmackR(_DF(1.0) * (s3 * fc3 * _s1) * (s3 * fc3 * _s1) + _DF(2.0) * (s3 * fc3 * _s2) * (s3 * fc3 * _s2) + _DF(3.0) * fc3 * fc3) * _DF(3.0) * fc3 * fc3;
+	// // // for float precision
+
+	// // for double precision
+	a1 = _DF(0.1) * s2 * s2 * s3 * s3;
+	a2 = _DF(0.2) * s1 * s1 * s3 * s3;
+	a3 = _DF(0.3) * s1 * s1 * s2 * s2;
 
 	real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
-
-	a1 = a1 * tw1;
-	a2 = a2 * tw1;
-	a3 = a3 * tw1;
+	a1 = a1 * tw1, a2 = a2 * tw1, a3 = a3 * tw1;
+	// // for double precision
 
 	s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
 	s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
@@ -55,7 +70,8 @@ inline real_t weno5old_GPU(real_t *f, real_t *m)
 	v3 = *(f + k);
 	v4 = *(f + k + 1);
 	v5 = *(f + k + 2);
-	temf = weno5old_BODY(v1, v2, v3, v4, v5);
+
+	temf = weno5old_BODY(v1, v2, v3, v4, v5); //* sum;
 	// mm
 	k = 1;
 	v1 = *(m + k + 2);
@@ -63,7 +79,8 @@ inline real_t weno5old_GPU(real_t *f, real_t *m)
 	v3 = *(m + k);
 	v4 = *(m + k - 1);
 	v5 = *(m + k - 2);
-	temm = weno5old_BODY(v1, v2, v3, v4, v5);
+
+	temm = weno5old_BODY(v1, v2, v3, v4, v5); //* sum;
 
 	return (temf + temm) * _six;
 }

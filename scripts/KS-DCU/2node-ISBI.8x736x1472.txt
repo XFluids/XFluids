@@ -43,7 +43,7 @@ Setup_ini is copying buffers into Device .  . Done
 Device Memory Usage: 1.78452 GB
 MPI trans Memory Size: 0.00212097 GB
 ReCal-file not exist or open failed, ReCal closed.
-Additional calculating file of Step = 0 has been output.
+CheckingPoint  file of Step = 0 has been output.
 N=      1  beginning physicalTime:              0  mpi communicated dt: 1.1524813e-08 to do, runtime: 0.44763979
 N=      2  beginning physicalTime:  1.1524813e-08  mpi communicated dt: 1.1524799e-08 to do, runtime: 0.89422214
 N=      3  beginning physicalTime:  2.3049613e-08  mpi communicated dt: 1.1524785e-08 to do, runtime:  1.3408045

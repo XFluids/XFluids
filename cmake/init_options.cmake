@@ -10,6 +10,7 @@ option(ERROR_OUT "if out intermediate variables for Flux ((b1,b3,zi)[convention]
 option(ERROR_PATCH_PRI "if patch primitive varibales using Roe average method, destruct physic fluid flow." OFF)
 
 # # add cmake files
+include(init_compile) # SYCL compile system
 include(init_sample)
 
 # file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)

@@ -1,6 +1,6 @@
 #include <cmath>
-#include <iomanip>
-#include <algorithm>
+#include <fstream>
+#include <iostream>
 
 #include "setupini.h"
 #include "mixture.hpp"
@@ -1349,11 +1349,11 @@ void Setup::print()
         printf("cells' volume less than this vule will be mixed          : %lf\n", mx_vlm);
         printf("cells' volume less than states updated based on mixed    : %lf\n", ext_vlm);
         printf("half-width of level set narrow band                      : %lf\n", BandforLevelset);
-        printf("Number of fluids                                         : %d\n", BlSz.num_fluids);
+        printf("Number of fluids                                         : %zu\n", BlSz.num_fluids);
         for (size_t n = 0; n < NumFluid; n++)
         { // 0: phase_indicator, 1: gamma, 2: A, 3: B, 4: rho0, 5: R_0, 6: lambda_0, 7: a(rtificial)s(peed of)s(ound)
-            printf("fluid[%d]: %s, characteristics(Material, Phase_indicator, Gamma, A, B, Rho0, R_0, Lambda_0, artificial speed of sound): \n", n, Fluids_name[n].c_str());
-            printf("  %d,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f\n", material_props[n][0],
+            printf("fluid[%zu]: %s, characteristics(Material, Phase_indicator, Gamma, A, B, Rho0, R_0, Lambda_0, artificial speed of sound): \n", n, Fluids_name[n].c_str());
+            printf("  %f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f,   %.6f\n", material_props[n][0],
                    material_props[n][1], material_props[n][2], material_props[n][3], material_props[n][4],
                    material_props[n][5], material_props[n][6], material_props[n][7], material_props[n][8]);
         }
@@ -1460,6 +1460,7 @@ void Setup::print()
 #else
     std::cout << "   Resolution of Domain:                 " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
 #endif // end USE_MPI
+    printf("   GhostWidth Cells: Bx, By, Bz:         %d,  %d,  %d\n", BlSz.Bwidth_X, BlSz.Bwidth_Y, BlSz.Bwidth_Z);
     printf("   Difference steps: dx, dy, dz:         %lf, %lf, %lf\n", BlSz.dx, BlSz.dy, BlSz.dz);
     std::cout << "<---------------------------------------------------> \n";
 

@@ -64,6 +64,7 @@ class XFLUIDS
     OutSize VTI, PLT, CPT;
 
 public:
+    bool ReadCheckingPoint;
     real_t dt, physicalTime;
     int Iteration, rank, nranks;
     float duration, duration_backup, MPI_trans_time, MPI_BCs_time;

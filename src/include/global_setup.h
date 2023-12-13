@@ -1,10 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <unistd.h>
-#include <iostream>
-#include <fstream>
-#include <cstring>
 // // SYCL headers
 #include <sycl/sycl.hpp>
 

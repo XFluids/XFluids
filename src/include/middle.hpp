@@ -8,8 +8,9 @@
  */
 #pragma once
 
-#include <sycl/sycl.hpp>
 #include <string>
+#include <sycl/sycl.hpp>
+
 namespace middle
 {
     using device_t = sycl::queue;

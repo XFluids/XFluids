@@ -3,7 +3,10 @@ add_subdirectory(settings)
 
 # # add readini lib
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
+
+IF(BOOST_CXX)
 find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
+ENDIF(BOOST_CXX)
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
@@ -24,9 +27,15 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         inishape
         readgrid
         settings
+    )
+    IF(BOOST_CXX)
+    add_compile_options(-DUSE_CXX_BOOST=1)
+    target_link_libraries(readini
+        PUBLIC
         boost_filesystem
     )
-
+    ENDIF(BOOST_CXX)
+    
     IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
         add_sycl_to_target(TARGET readini)
     ENDIF()
@@ -40,6 +49,13 @@ ELSE()
         inishape
         readgrid
         settings
+    )
+    IF(BOOST_CXX)
+    add_compile_options(-DUSE_CXX_BOOST=1)
+    target_link_libraries(readini
+        INTERFACE
         boost_filesystem
     )
+    ENDIF(BOOST_CXX)
+
 ENDIF()

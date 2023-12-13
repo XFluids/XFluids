@@ -1,16 +1,5 @@
 #pragma once
 
-// #include "setup.h"
-// #include <CL/sycl.hpp>
-// #include "dpc_common.hpp"
-// using namespace std;
-#include <map>
-#include <cmath>
-#include <iomanip>
-#include <cstdlib> //for malloc()
-#include <fstream>
-#include <iostream>
-#include <string.h>
 #include "global_setup.h"
 
 typedef struct

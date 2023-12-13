@@ -21,7 +21,8 @@ real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const
  */
 real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ Hib, int *__restrict__ Nu_d_, const real_t T, const int m)
 {
-	real_t Kck = _DF(0.0), Nu_sum = _DF(0.0);
+	real_t Kck = _DF(0.0);
+	int Nu_sum = _DF(0.0);
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 	{
 		real_t Ri = Ru * _Wi[n];
@@ -30,7 +31,7 @@ real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ 
 		Nu_sum += Nu_d_[m * NUM_SPECIES + n];
 	}
 	Kck = sycl::exp(Kck);
-	Kck *= sycl::pow(p_atm / Ru / T * _DF(1e-6), Nu_sum); // 1e-6: m^-3 -> cm^-3
+	Kck *= sycl::pown(p_atm / Ru / T * _DF(1e-6), Nu_sum); // 1e-6: m^-3 -> cm^-3
 	return Kck;
 }
 

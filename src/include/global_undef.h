@@ -23,7 +23,7 @@
 #define COP_CHEME 1
 #endif
 #ifndef NUM_REA
-#define NUM_REA 0
+#define NUM_REA 1
 #endif
 #ifndef CHEME_SPLITTING
 #define CHEME_SPLITTING "Strang"

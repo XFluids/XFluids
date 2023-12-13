@@ -194,7 +194,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "ON")
-    set(Visc "ON")
+    set(Visc "OFF")
     set(Visc_Heat "ON")
     set(Visc_Diffu "ON") # depends on COP=ON
     set(THERMAL "NASA") # NASA fit of Xe
@@ -202,7 +202,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
     set(COP_CHEME "OFF")
     set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(POSITIVITY_PRESERVING "ON")
+    set(POSITIVITY_PRESERVING "OFF")
     add_compile_options(-DSBICounts=1)
     set(MIXTURE_MODEL "Insert-SBI-without-fuel")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")

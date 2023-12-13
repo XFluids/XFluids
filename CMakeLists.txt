@@ -3,12 +3,12 @@ PROJECT(XFLUIDS LANGUAGES CXX)
 
 # // == Compile system =====================================
 # ####  1. oneAPI: Intel oneAPI compiling system  2. OpenSYCL: OpenSYCL syclcc compiling system
-set(SYCL_COMPILE_SYSTEM "OpenSYCL") # # oneAPI or OpenSYCL compile system,
-set(SelectDv "cuda") # which platform: host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
+set(SYCL_COMPILE_SYSTEM "oneAPI") # # oneAPI or OpenSYCL compile system,
+set(SelectDv "host") # which platform: host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
 set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
-option(USE_MPI "if enable mpi" ON)
+option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
 
 # // == Functionality option ===============================
@@ -33,8 +33,8 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # 2species				# # CJ_mechanism			# # inert_2species
 # # H2O_18_reaction			# # H2O_19_reaction			# # H2O_21_reaction			# # H2O_23_reaction
 # # RSBI-18REA				# # RSBI-19REA				# # for shock-bubble-interaction sample
-set(INIT_SAMPLE "3d-shock-bubble-without-fuel") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+set(INIT_SAMPLE "1d-insert-st") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "1d-mc-diffusion") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)
@@ -53,7 +53,6 @@ set(VISCOSITY_ORDER "Second") # Fourth, Second order viscosity discretization me
 # // == CMake modules ======================================
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake") # #default local cmake macro repository
 include(init_cmake) # cmake compile options
-include(init_compile) # SYCL compile system
 include(init_options) # add program functionality
 
 # // == ADD source dir =====================================

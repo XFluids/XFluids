@@ -48,7 +48,7 @@
         "Resolution": [
             2000,
             100,
-            1000
+            0
         ],
         // // Inflow = 0,Outflow = 1,Symmetry = 2,Periodic = 3,nslipWall = 4
         "Boundarys": [

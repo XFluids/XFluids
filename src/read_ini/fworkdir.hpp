@@ -1,7 +1,16 @@
 #pragma once
 
+#include <unistd.h>
+
 #include "global_setup.h"
+
+#if USE_CXX_BOOST
 #include <boost/filesystem.hpp>
+namespace fsm = boost::filesystem;
+#else
+#include <filesystem>
+namespace fsm = std::filesystem;
+#endif // end USE_CXX_BOOST
 
 // =======================================================
 // // // set work dir
@@ -15,7 +24,7 @@ std::string getWorkDir(std::string exe_path, std::string exe_name)
 	{
 		int a = exe_path.find_last_of("/");
 		// std::cout << exe_path.erase(a) + "/runtime.dat" << std::endl;
-		if (boost::filesystem::exists(exe_path.erase(a) + "/runtime.dat"))
+		if (fsm::exists(exe_path.erase(a) + "/runtime.dat"))
 			return exe_path;
 		if (a < 0)
 			break;

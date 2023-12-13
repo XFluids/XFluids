@@ -237,23 +237,31 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	for (size_t i = 0; i < 9; i++)
 		d_fstate.Vde[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0 * 10.0;
+
+	// // vrotex
 	for (size_t i = 0; i < 3; i++)
 		h_fstate.vxs[i] = static_cast<real_t *>(sycl::malloc_host(bytes, q)), d_fstate.vxs[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	h_fstate.vx = static_cast<real_t *>(sycl::malloc_host(bytes, q)); // vorticity.
 	d_fstate.vx = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += 4.0 * bytes / 1024.0 / 1024.0;
 
-#ifdef Visc // allocate mem viscous Vars
+#ifdef Visc
+	// allocate mem viscous Vars
+	// // kinematic viscosity
 	d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+	// // fourier heat transfer
 #ifdef Visc_Heat
 	d_fstate.thermal_conduct_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 	MemMbSize += bytes / 1024.0 / 1024.0;
-#endif // end Visc_Heat
+#endif
+	// // mass diffusion
 #ifdef Visc_Diffu
+
 	d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 	MemMbSize += NUM_SPECIES * bytes / 1024.0 / 1024.0 * 2.0;
 #endif // end Visc_Diffu
+
 #endif // end Visc
 
 	d_FluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
@@ -829,7 +837,7 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 
 	if (*error)
 	{
-		std::cout << "Errors of LU[";
+		std::cout << "\nErrors of LU[";
 		for (size_t ii = 0; ii < Emax - 1; ii++)
 			std::cout << error_pos[ii] << ", ";
 		std::cout << error_pos[Emax - 1] << "] located at (i, j, k)= (";

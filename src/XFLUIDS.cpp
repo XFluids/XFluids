@@ -107,7 +107,7 @@ float XFLUIDS::OutThisTime(std::chrono::high_resolution_clock::time_point start_
 void XFLUIDS::Evolution(sycl::queue &q)
 {
 	bool TimeLoopOut = false, Stepstop = false;
-	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 1;
+	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
 
 	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 	while (TimeLoop < OutTimeStamps.size())
@@ -125,7 +125,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				OutNum++;
 				TimeLoopOut = false;
 			}
-			if (RcalOut % RcalInterval == 0)
+			if ((RcalOut % RcalInterval == 0) && RcalOut)
 				Output_Ubak(rank, Iteration, physicalTime, duration);
 			RcalOut++;
 			// get minmum dt, if MPI used, get the minimum of all ranks
@@ -188,8 +188,6 @@ flag_ernd:
 	Ss.mpiTrans->communicator->synchronize();
 #endif
 	duration = OutThisTime(start_time) + duration_backup;
-	if (rank == 0)
-		std::cout << ", runtime: " << std::setw(10) << duration << "\n";
 	EndProcess();
 	Output(q, rank, std::to_string(Iteration), physicalTime); // The last step Output.
 }
@@ -447,7 +445,8 @@ void XFLUIDS::InitialCondition(sycl::queue &q)
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->InitialU(q);
 
-	Read_Ubak(q, rank, &(Iteration), &(physicalTime), &(duration_backup));
+	ReadCheckingPoint = Read_Ubak(q, rank, &(Iteration), &(physicalTime), &(duration_backup));
+	duration = duration_backup;
 }
 
 bool XFLUIDS::Reaction(sycl::queue &q, const real_t dt, const real_t Time, const int Step)
@@ -484,9 +483,9 @@ void XFLUIDS::Output_Ubak(const int rank, const int Step, const real_t Time, con
 {
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	if (solution)
-		file_name = OutputDir + "/cal/" + outputPrefix + "_ReCal";
+		file_name = OutputDir + "/cal/" + outputPrefix + "_CheckingPoint";
 	else
-		file_name = OutputDir + "/" + outputPrefix + "_ReCal";
+		file_name = OutputDir + "/" + outputPrefix + "_CheckingPoint";
 #ifdef USE_MPI
 	file_name += "_rank_" + std::to_string(rank);
 #endif
@@ -503,7 +502,7 @@ void XFLUIDS::Output_Ubak(const int rank, const int Step, const real_t Time, con
 	{
 		if (solution)
 			std::cout << "Solution ";
-		std::cout << "Additional calculating file of Step = " << Step << " has been output." << std::endl;
+		std::cout << "CheckingPoint file of Step = " << Step << " has been output." << std::endl;
 	}
 }
 
@@ -511,7 +510,7 @@ bool XFLUIDS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time,
 {
 	int size = Ss.cellbytes, all_read = 1;
 	std::string file_name, outputPrefix = INI_SAMPLE;
-	file_name = OutputDir + "/" + outputPrefix + "_ReCal";
+	file_name = OutputDir + "/" + outputPrefix + "_CheckingPoint";
 #ifdef USE_MPI
 	file_name += "_rank_" + std::to_string(rank);
 #endif
@@ -527,7 +526,7 @@ bool XFLUIDS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time,
 	if (!all_read)
 	{
 		if (rank == 0)
-			std::cout << "ReCal-file not exist or open failed, ReCal closed." << std::endl;
+			std::cout << "CheckingPoint-file not exist or open failed, CheckingPoint closed." << std::endl;
 		return false;
 	}
 	fin.read((char *)Step, sizeof(int));

@@ -5,6 +5,8 @@ ENDIF()
 # // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	# // =======================================================
+	add_compile_options(-DDEFINED_OPENSYCL)
+	set(BOOST_CXX "ON") # use boost c++ library or std internal library
 	set(AdaptiveCpp_DIR "/home/ljl/Apps/OpenSYCL/lib/cmake/AdaptiveCpp")
 	find_package(AdaptiveCpp CONFIG REQUIRED)
 
@@ -21,8 +23,6 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format")
 	ENDIF()
 
-	add_compile_options(-DDEFINED_OPENSYCL)
-
 	# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
 	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
@@ -35,6 +35,7 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
 	# // =======================================================
 	add_compile_options(-DDEFINED_ONEAPI)
+	set(BOOST_CXX "OFF") # use boost c++ library or std internal library
 	set(CMAKE_CXX_COMPILER "clang++") # for Intel oneAPI compiling system
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 

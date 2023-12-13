@@ -28,9 +28,6 @@ using interfunc = std::function<int(int *, int)>;
 // // =======================================================
 // // // // for json file read
 bool is_read_json_success = ReadJson(std::string(IniFile), j_conf);
-
-// Set XYZ dimensions before used
-const std::vector<bool> Dimensions = j_conf.at("mesh").value("DOMAIN_Dirs", std::vector<bool>{DIM_X, DIM_Y, DIM_Z});
 // Run setup
 const std::string OutputDir = j_conf.at("run").value("OutputDir", "output");
 const std::vector<real_t> OutTimeStamps = j_conf.at("run").value("OutTimeStamps", std::vector<real_t>{0.0, 0.0});
@@ -53,10 +50,6 @@ const size_t nOutput = j_conf.at("run").value("nOutMax", 0);
 const size_t OutInterval = j_conf.at("run").value("OutInterval", nStepmax_json);
 const size_t POutInterval = j_conf.at("run").value("PushInterval", 5);
 const size_t RcalInterval = j_conf.at("run").value("RcalInterval", 200);
-const size_t BlockSize_json = j_conf.at("run").value("DtBlockSize", 4);
-const size_t dim_block_x_json = j_conf.at("run").value("blockSize_x", BlockSize_json);
-const size_t dim_block_y_json = j_conf.at("run").value("blockSize_y", BlockSize_json);
-const size_t dim_block_z_json = j_conf.at("run").value("blockSize_z", BlockSize_json);
 
 // MPI setup
 const size_t mx_json = j_conf.at("mpi").value("mx", 1);
@@ -94,8 +87,13 @@ const real_t BandforLevelset = j_conf.at("mesh").value("BandforLevelset", 6.0); 
 const std::vector<real_t> Refs = j_conf.at("mesh").value("Refs", std::vector<real_t>{1.0});
 const std::vector<real_t> DOMAIN_Size = j_conf.at("mesh").value("DOMAIN_Size", std::vector<real_t>{1.0, 1.0, 1.0}); // XYZ
 const std::vector<real_t> Domain_medg = j_conf.at("mesh").value("DOMAIN_Medg", std::vector<real_t>{0.0, 0.0, 0.0}); // XYZ
-const std::vector<size_t> Inner = j_conf.at("mesh").value("Resolution", std::vector<size_t>{1, 1, 1});				// XYZ
-const std::vector<size_t> Bwidth = j_conf.at("mesh").value("Ghost_width", std::vector<size_t>{4, 4, 4});			// XYZ
+const std::vector<size_t> Inner = j_conf.at("mesh").value("Resolution", std::vector<size_t>{1, 0, 0});				// XYZ
+const std::vector<bool> Dimensions = std::vector<bool>{bool(Inner[0]), bool(Inner[1]), bool(Inner[2])};
+const size_t BlockSize_json = j_conf.at("run").value("DtBlockSize", 4);
+const size_t dim_block_x_json = Dimensions[0] ? j_conf.at("run").value("blockSize_x", BlockSize_json) : 1;
+const size_t dim_block_y_json = Dimensions[1] ? j_conf.at("run").value("blockSize_y", BlockSize_json) : 1;
+const size_t dim_block_z_json = Dimensions[2] ? j_conf.at("run").value("blockSize_z", BlockSize_json) : 1;
+const std::vector<size_t> Bwidth = j_conf.at("mesh").value("Ghost_width", std::vector<size_t>{4, 4, 4}); // XYZ
 /* Simple Boundary settings */
 const std::vector<size_t> NBoundarys = j_conf.at("mesh").value("BoundaryBundles", std::vector<size_t>{2, 2, 2});		// BoundaryBundles
 const std::vector<size_t> Boundarys_json = j_conf.at("mesh").value("Boundarys", std::vector<size_t>{2, 2, 2, 2, 2, 2}); // simple Boundarys settings

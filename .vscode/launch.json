@@ -2,73 +2,45 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "OpenSYCL-debug",
+            "name": "OpenSYCL C++: Launch & Run",
             "type": "lldb",
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
+            "cwd": "${workspaceFolder}/build",
             "program": "${workspaceFolder}/build/XFLUIDS",
             "args": [
                 "-dev=1,0,0",
-                "-run=100,4,4"
+                "-run=10,0,0"
             ],
         },
         {
-            "name": "util-debug",
+            "name": "oneAPI C++: Launch & Run",
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "",
             "postDebugTask": "",
-            "program": "${workspaceFolder}/build/XFLUIDS",
-            "args": [],
-            "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
-        },
-        {
-            "name": "util-debug-para",
-            "type": "cppdbg",
-            "request": "launch",
-            "preLaunchTask": "",
-            "postDebugTask": "",
             "program": "${workspaceFolder}/build/XFLUIDS",
             "args": [
                 "-dev=1,1,0",
-                // "-mpi=2,1,1",
-                // "-ini=/home/ljl/Documents/XFLUIDS/settings/sa-1d-reactive-st-mpi.ini",
+                "-run=10,0,0",
+                "-blk=2,1,1,2"
+            ],
+            "environment": [
+                {
+                    "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
+                    "value": "1"
+                },
+                {
+                    "name": "IGC_EnableGTLocationDebugging",
+                    "value": "1"
+                }
             ],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build",
-            "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
-        },
-        {
-            "name": "launch-mpi-debug",
-            "type": "cppdbg",
-            "request": "launch",
-            "preLaunchTask": "",
-            "postDebugTask": "",
-            "program": "${workspaceFolder}/build/src/XFLUIDS",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
-        },
-        {
-            "name": "attach-mpi-debug",
-            "type": "cppdbg",
-            "request": "attach",
-            "program": "${workspaceFolder}/build/src/XFLUIDS",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -79,8 +51,23 @@
                     "description": "Disable target async",
                     "text": "set target-async off",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "Do not display function arguments when printing a stack frame",
+                    "text": "set print frame-arguments none",
+                    "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "MPI C++: Attach",
+            "type": "cppdbg",
+            "request": "attach",
+            "preLaunchTask": "",
+            "postDebugTask": "",
+            "program": "${workspaceFolder}/build/XFLUIDS",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
         }
     ]
 }

@@ -103,4 +103,5 @@ extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *Flu
 
 	// real_t de_LU[Emax];
 	// get_Array(LU, de_LU, Emax, id);
+	// real_t de_XU[Emax];
 }
