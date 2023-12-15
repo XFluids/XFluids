@@ -1,5 +1,6 @@
 add_subdirectory(inishape)
 add_subdirectory(settings)
+add_subdirectory(strsplit)
 
 # # add readini lib
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
@@ -27,6 +28,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         inishape
         readgrid
         settings
+        strsplit
     )
     IF(BOOST_CXX)
     add_compile_options(-DUSE_CXX_BOOST=1)
@@ -49,6 +51,7 @@ ELSE()
         inishape
         readgrid
         settings
+        strsplit
     )
     IF(BOOST_CXX)
     add_compile_options(-DUSE_CXX_BOOST=1)

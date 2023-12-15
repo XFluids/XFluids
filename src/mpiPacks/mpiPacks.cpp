@@ -157,15 +157,50 @@ void MpiTrans::Get_RankGroupZ(MPI_Group &group, const int pos)
 
 	MPI_Group_incl(comm_world, size, members, &group);
 } // MPI_Group MpiTrans::Get_RankGroupZ
-// =======================================================
-// =======================================================
-void MpiTrans::GroupallReduce(void *input, void *result, int inputCount, int type, int op, MPI_Group group)
+  // =======================================================
+  // =======================================================
+void MpiTrans::BocastGroup2All(void *target, int type, int *group_ranks)
 {
-	MPI_Comm group_comm;
+	real_t value = (group_ranks[myRank] >= 0) ? *(static_cast<real_t *>(target)) : 0;
+	int root, maybe_root = group_ranks[myRank] >= 0 ? myRank : -1;
+
+	communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
+	communicator->bcast(target, 1, type, root);
+}
+// =======================================================
+// =======================================================
+void MpiTrans::allReduce(void *input, void *result, int inputCount, int type, int op, MPI_Comm group_comm)
+{
 	MPI_Op mpiOp = communicator->getOp(op);
 	MPI_Datatype mpiType = communicator->getDataType(type);
-	MPI_Comm_create(MPI_COMM_WORLD, group, &group_comm);
 	MPI_Allreduce(input, result, inputCount, mpiType, mpiOp, group_comm);
+}
+// =======================================================
+// =======================================================
+void MpiTrans::GroupallReduce(void *input, void *result, int inputCount, int type, int op, int *group_ranks, bool bocast)
+{
+	MPI_Comm group_comm;
+	MPI_Group comm_group, mgroup;
+	MPI_Op mpiOp = communicator->getOp(op);
+	MPI_Datatype mpiType = communicator->getDataType(type);
+	std::vector<int> ranks;
+	for (size_t nn = 0; nn < nProcs; nn++)
+		if (group_ranks[nn] >= 0)
+			ranks.push_back(group_ranks[nn]);
+
+	MPI_Comm_group(MPI_COMM_WORLD, &comm_group);					 // call in all ranks
+	MPI_Group_incl(comm_group, ranks.size(), ranks.data(), &mgroup); // call in all ranks
+	MPI_Comm_create(MPI_COMM_WORLD, mgroup, &group_comm);			 // call in all ranks
+
+	if (group_ranks[myRank] >= 0)
+		MPI_Allreduce(input, result, inputCount, mpiType, mpiOp, group_comm); // call in rank of std::vector<int> &ranks
+
+	if (bocast)
+		BocastGroup2All(result, type, group_ranks);
+
+	// MPI_Group_free(&mgroup);
+	// MPI_Group_free(&comm_group);
+	// MPI_Comm_free(&group_comm);
 }
 // =======================================================
 // =======================================================
@@ -491,7 +526,7 @@ real_t MpiTrans::MpiAllReduce(real_t &var, int Option)
 	return temp;
 }
 
-bool MpiTrans::MpiBocastTrue(const bool mayTrue)
+bool MpiTrans::BocastTrue(const bool mayTrue)
 {
 	int root, maybe_root = mayTrue ? myRank : 0, error_t = mayTrue ? 1 : 0;
 #ifdef USE_MPI

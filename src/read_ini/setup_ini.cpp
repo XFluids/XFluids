@@ -37,7 +37,6 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
 #ifdef USE_MPI
     mpiTrans = new MpiTrans(BlSz, Boundarys);
 #endif // end USE_MPI
-
     std::cout << "Selected Device: " << middle::DevInfo(q) << "  of rank: " << myRank << std::endl;
 
     CpyToGPU();
@@ -50,6 +49,7 @@ void Setup::ReadIni()
 {
     /* initialize RUN parameters */
     nStepmax = nStepmax_json;
+    PartialOut = PartialOut_json;
     /* initialize React sources  */
     BlSz.RSources = ReactSources;
     /* initialize MPI parameters */
@@ -71,6 +71,8 @@ void Setup::ReadIni()
     BlSz.Bwidth_X = Bwidth[0], BlSz.Bwidth_Y = Bwidth[1], BlSz.Bwidth_Z = Bwidth[2];
     BlSz.Domain_xmin = Domain_medg[0], BlSz.Domain_ymin = Domain_medg[1], BlSz.Domain_zmin = Domain_medg[2];
     BlSz.Domain_length = DOMAIN_Size[0], BlSz.Domain_width = DOMAIN_Size[1], BlSz.Domain_height = DOMAIN_Size[2];
+
+    // // read GPU block size settings
     BlSz.BlockSize = BlockSize_json;
     BlSz.dim_block_x = dim_block_x_json, BlSz.dim_block_y = dim_block_y_json, BlSz.dim_block_z = dim_block_z_json;
 
@@ -136,6 +138,20 @@ void Setup::ReWrite()
     if (!std::empty(mpiapa))
         BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
 
+    // // open mpi threads debug;
+    std::vector<int> mpidbg = apa.match<int>("-mpidbg");
+    if (!std::empty(mpidbg))
+    {
+        // bool a = false;
+        // while (!a)
+        {
+            sleep(10);
+        };
+        // #ifdef USE_MPI
+        //         a = mpiTrans->BocastTrue(a);
+        // #endif // end USE_MPI
+    }
+
     // // accelerator_selector device;
     std::vector<int> devapa = apa.match<int>("-dev");
     if (!std::empty(devapa))
@@ -155,9 +171,9 @@ void Setup::init()
     BlSz.DimY_t = BlSz.DimY;
     BlSz.DimZ_t = BlSz.DimZ;
 
-    OutDirX = BlSz.DimX ? OutDIRX : 0;
-    OutDirY = BlSz.DimY ? OutDIRY : 0;
-    OutDirZ = BlSz.DimZ ? OutDIRZ : 0;
+    OutDirX = BlSz.DimX ? OutDIRs[0] : 0;
+    OutDirY = BlSz.DimY ? OutDIRs[1] : 0;
+    OutDirZ = BlSz.DimZ ? OutDIRs[2] : 0;
 
     BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1;
     BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1;
@@ -1343,7 +1359,9 @@ void Setup::print()
     // 后接流体状态输出
     if (1 < NumFluid)
     {
-        std::cout << "<---------------------------------------------------> \n";
+        if (myRank == 0)
+            std::cout << "<---------------------------------------------------> \n";
+
         printf("Extending width: width_xt                                : %lf\n", width_xt);
         printf("Ghost-fluid update width: width_hlf                      : %lf\n", width_hlf);
         printf("cells' volume less than this vule will be mixed          : %lf\n", mx_vlm);
@@ -1360,7 +1378,10 @@ void Setup::print()
     }
 
 #ifdef COP
-    std::cout << "<---------------------------------------------------> \n";
+
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
+
     std::cout << species_name.size() << " species mole/mass fraction: " << std::endl;
     for (int n = 0; n < NUM_SPECIES; n++)
     {
@@ -1370,7 +1391,10 @@ void Setup::print()
     }
 
 #if Visc
-    std::cout << "<---------------------------------------------------> \n";
+
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
+
     printf("Viscisity characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): \n");
     for (size_t n = 0; n < NUM_SPECIES; n++)
     {
@@ -1447,9 +1471,10 @@ void Setup::print()
     }
 #endif // COP
 
-    std::cout << "<---------------------------------------------------> \n";
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
+
     printf("Start time: %.6lf and End time: %.6lf                        \n", StartTime, EndTime);
-    printf("   XYZ dir Domain size:                  %1.3lf x %1.3lf x %1.3lf\n", BlSz.Domain_length, BlSz.Domain_width, BlSz.Domain_height);
 #ifdef USE_MPI // end USE_MPI
     {          // print information about current setup
         std::cout << "MPI rank mesh setup as below: \n";
@@ -1460,8 +1485,11 @@ void Setup::print()
 #else
     std::cout << "   Resolution of Domain:                 " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
 #endif // end USE_MPI
-    printf("   GhostWidth Cells: Bx, By, Bz:         %d,  %d,  %d\n", BlSz.Bwidth_X, BlSz.Bwidth_Y, BlSz.Bwidth_Z);
-    printf("   Difference steps: dx, dy, dz:         %lf, %lf, %lf\n", BlSz.dx, BlSz.dy, BlSz.dz);
-    std::cout << "<---------------------------------------------------> \n";
+    printf("GhostWidth Cells: Bx, By, Bz:         %d,  %d,  %d\n", BlSz.Bwidth_X, BlSz.Bwidth_Y, BlSz.Bwidth_Z);
+    printf("Block size:   bx, by, bz, Dt:         %d,  %d,  %d,  %d\n", BlSz.dim_block_x, BlSz.dim_block_y, BlSz.dim_block_z, BlSz.BlockSize);
+    printf("XYZ dir Domain size:                  %1.3lf x %1.3lf x %1.3lf\n", BlSz.Domain_length, BlSz.Domain_width, BlSz.Domain_height);
+    printf("Difference steps: dx, dy, dz:         %lf, %lf, %lf\n", BlSz.dx, BlSz.dy, BlSz.dz);
 
+    if (myRank == 0)
+        std::cout << "<---------------------------------------------------> \n";
 } // Setup::print

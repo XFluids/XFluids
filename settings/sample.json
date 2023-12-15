@@ -12,9 +12,11 @@
         "outpos_x": 1,
         "outpos_y": 1,
         "outpos_z": 1,
-        "OutDIRX": 0,
-        "OutDIRY": 0,
-        "OutDIRZ": 0,
+        "OutDIRs": [
+            1,
+            1,
+            1
+        ],
         "CFLnumber": 0.4,
         "OutBoundary": 0,
         "OutInterval": 10,

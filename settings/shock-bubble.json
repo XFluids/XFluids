@@ -10,7 +10,11 @@
 		"OutVTI": 1,
 		"CFLnumber": 0.4,
 		"OutBoundary": 0,
-		"OutInterval": 10000,
+		"PartialOut_Criterion": [
+			"yi[Xe] > 0.01"
+			//,// "yi[Xe] <= 1"
+		],
+		"OutInterval": 100000,
 		"OutTimeStamps": [
 			0.000020,
 			0.000046,
@@ -31,12 +35,12 @@
 		]
 	},
 	"mpi": {
-		"mx": 1,
+		"mx": 4,
 		"my": 1,
 		"mz": 1,
 		"DeviceSelect": [
 			1,
-			2,
+			1,
 			0
 		]
 	},
@@ -47,7 +51,7 @@
 	"sources": {},
 	"mesh": {
 		"DOMAIN_Size": [
-			0.05,
+			0.2,
 			0.05,
 			0.05
 		],
@@ -57,9 +61,9 @@
 			0.0
 		],
 		"Resolution": [
-			100,
-			100,
-			100
+			20,
+			4,
+			4
 		],
 		"Boundarys": [
 			0,

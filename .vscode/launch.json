@@ -11,8 +11,15 @@
             "program": "${workspaceFolder}/build/XFLUIDS",
             "args": [
                 "-dev=1,0,0",
-                "-run=10,0,0"
+                "-run=10,1,1",
+                "-blk=2,1,1,2"
             ],
+        },
+        {
+            "name": "OpenSYCL MPI: Attach",
+            "type": "lldb",
+            "request": "attach",
+            "pid": "${command:pickMyProcess}" // use ${command:pickProcess} to pick other users' processes
         },
         {
             "name": "oneAPI C++: Launch & Run",
@@ -60,7 +67,7 @@
             ]
         },
         {
-            "name": "MPI C++: Attach",
+            "name": "oneAPI MPI: Attach",
             "type": "cppdbg",
             "request": "attach",
             "preLaunchTask": "",
@@ -68,6 +75,6 @@
             "program": "${workspaceFolder}/build/XFLUIDS",
             "MIMode": "gdb",
             "miDebuggerPath": "/opt/intel/oneapi/debugger/latest/gdb/intel64/bin/gdb-oneapi"
-        }
+        },
     ]
 }

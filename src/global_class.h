@@ -1,16 +1,7 @@
 #pragma once
 
-//  C++ headers
-#include <ctime>
-#include <cstdio>
-#include <vector>
-#include <iomanip>
-#include <cstdlib>
-#include <float.h>
-#include <fstream>
-#include <string.h>
-#include <iostream>
 // program headers
+#include "criterion.hpp"
 #include "read_ini/setupini.h"
 #include "marcos/marco_global.h"
 
@@ -70,6 +61,7 @@ public:
     float duration, duration_backup, MPI_trans_time, MPI_BCs_time;
     BConditions *d_BCs; // boundary condition indicators
     std::vector<Fluid *> fluids{NumFluid};
+    std::vector<Criterion> PartialOutVars;
 
     XFLUIDS(Setup &setup);
     virtual ~XFLUIDS();
@@ -102,9 +94,11 @@ public:
         return ((*(char *)&i) == 0);
     }
     void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
+    std::vector<OutSize> GetSPT_OutRanks(int *OutRanks, const int rank, std::vector<Criterion> &var);
     void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
     void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
     void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
+    void Output_svti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
     void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
 };

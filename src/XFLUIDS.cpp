@@ -1,3 +1,11 @@
+//  C++ headers
+#include <ctime>
+#include <cstdio>
+#include <iomanip>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+
 #include "global_class.h"
 
 XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), nranks(1), physicalTime(0.0)
@@ -438,6 +446,13 @@ void XFLUIDS::AllocateMemory(sycl::queue &q)
 		fluids[n]->AllocateFluidMemory(q);
 
 	// levelset->AllocateLSMemory();
+
+	PartialOutVars.clear();
+	for (size_t nn = 0; nn < Ss.PartialOut.size(); nn++)
+	{
+		std::vector<std::string> temp = Stringsplit(Ss.PartialOut[nn], ' ');
+		PartialOutVars.push_back(Criterion(temp, Ss.species_name, fluids[0]->h_fstate));
+	}
 }
 
 void XFLUIDS::InitialCondition(sycl::queue &q)
@@ -671,6 +686,15 @@ void XFLUIDS::Output(sycl::queue &q, int rank, std::string interation, real_t Ti
 			Output_cplt(rank, timeFormat, stepFormat, rankFormat);
 		if (OutVTI)
 			Output_cvti(rank, timeFormat, stepFormat, rankFormat);
+		if (rank == 0)
+			std::cout << "Compress Dimensions solution";
+	}
+	else if (!std::empty(PartialOutVars))
+	{
+		if (OutVTI)
+			Output_svti(rank, timeFormat, stepFormat, rankFormat);
+		if (rank == 0)
+			std::cout << "Partial Domain solution ";
 	}
 	else
 	{
@@ -681,7 +705,7 @@ void XFLUIDS::Output(sycl::queue &q, int rank, std::string interation, real_t Ti
 	}
 
 	if (rank == 0)
-		std::cout << "Output DIR(X, Y, Z = " << (Ss.OutDirX && Ss.BlSz.DimX) << ", " << (Ss.OutDirY && Ss.BlSz.DimY) << ", " << (Ss.OutDirZ && Ss.BlSz.DimZ) << ") has been done at Step = " << interation << std::endl;
+		std::cout << "has been done at Step = " << interation << std::endl;
 }
 
 void XFLUIDS::Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error)
@@ -1583,8 +1607,398 @@ void XFLUIDS::GetCPT_OutRanks(int *OutRanks, int rank, int nranks)
 
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->allGather(&(if_outrank), 1, mpiUtils::MpiComm::INT, OutRanks, 1, mpiUtils::MpiComm::INT);
-	// std::cout << "OutRanks[rank], recvcounts[rank], displs[rank]= " << OutRanks[rank] << " of rank: " << rank << std::endl; //<< ", " << recvcounts[rank] << ", " << displs[rank]
 #endif
+}
+
+std::vector<OutSize> XFLUIDS::GetSPT_OutRanks(int *OutRanks, const int rank, std::vector<Criterion> &var)
+{
+	// partial out: output size less than caculate size
+	int if_outrank = -1;
+	OutSize rank_size = VTI;
+
+	for (int k = VTI.minZ; k < VTI.maxZ; k++)
+		for (int j = VTI.minY; j < VTI.maxY; j++)
+			for (int i = VTI.minX; i < VTI.maxX; i++)
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				for (size_t n = 0; n < var.size(); n++)
+				{
+					if (var[n].in_range(id))
+					{
+						if_outrank = rank;
+						goto flag_out;
+						// rank_size.minX = std::max(rank_size.minX, i);
+						// rank_size.maxX = std::min(rank_size.maxX, i);
+						// rank_size.minY = std::max(rank_size.minY, j);
+						// rank_size.maxY = std::min(rank_size.maxY, j);
+						// rank_size.minZ = std::max(rank_size.minZ, k);
+						// rank_size.maxZ = std::min(rank_size.maxZ, k);
+					}
+				}
+			}
+
+flag_out:
+	OutRanks[rank] = if_outrank;
+
+#ifdef USE_MPI
+	Ss.mpiTrans->communicator->synchronize();
+	Ss.mpiTrans->communicator->allGather(&(if_outrank), 1, mpiUtils::MpiComm::INT, OutRanks, 1, mpiUtils::MpiComm::INT);
+#endif
+
+	return std::vector<OutSize>{VTI};
+}
+
+void XFLUIDS::Output_svti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat)
+{
+	// Init var names
+	int Onbvar = 6 + (Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ) * 2; // one fluid without COP
+#ifdef COP
+	Onbvar += NUM_SPECIES;
+#endif // end COP
+	std::map<int, std::string> variables_names;
+	int index = 0;
+
+	if (Ss.BlSz.DimX)
+		variables_names[index] = "DIR-X", index++, variables_names[index] = "OV-u", index++;
+	if (Ss.BlSz.DimY)
+		variables_names[index] = "DIR-Y", index++, variables_names[index] = "OV-v", index++;
+	if (Ss.BlSz.DimZ)
+		variables_names[index] = "DIR-Z", index++, variables_names[index] = "OV-w", index++;
+
+	variables_names[index] = "OV-c", index++;
+	variables_names[index] = "O-rho", index++;
+	variables_names[index] = "O-p", index++;
+	variables_names[index] = "O-gamma", index++;
+	variables_names[index] = "O-T", index++;
+	variables_names[index] = "O-e", index++, Onbvar += 4;
+	variables_names[index] = "O-vorticity", index++;
+	variables_names[index] = "O-vorticity_x", index++;
+	variables_names[index] = "O-vorticity_y", index++;
+	variables_names[index] = "O-vorticity_z", index++;
+#ifdef COP
+	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
+		variables_names[ii] = "Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")";
+#endif // COP
+
+	bool PartialOut_security = false;
+	int *OutRanks = new int[nranks]{0};
+#ifdef USE_MPI
+	GetSPT_OutRanks(OutRanks, rank, PartialOutVars);
+#endif // end USE_MPI
+
+	real_t dx = 0.0, dy = 0.0, dz = 0.0;
+	int minMpiPos_x = 0, maxMpiPos_x = Ss.BlSz.mx;
+	int minMpiPos_y = 0, maxMpiPos_y = Ss.BlSz.my;
+	int minMpiPos_z = 0, maxMpiPos_z = Ss.BlSz.mz;
+	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0;
+
+	if (Ss.BlSz.DimX)
+		xmin = Ss.BlSz.myMpiPos_x * VTI.nbX, xmax = Ss.BlSz.myMpiPos_x * VTI.nbX + VTI.nbX, dx = Ss.BlSz.dx;
+	if (Ss.BlSz.DimY)
+		ymin = Ss.BlSz.myMpiPos_y * VTI.nbY, ymax = Ss.BlSz.myMpiPos_y * VTI.nbY + VTI.nbY, dy = Ss.BlSz.dy;
+	if (Ss.BlSz.DimZ)
+		zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ), zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ), dz = Ss.BlSz.dz;
+
+	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string temp_name = "./SVTI_" + outputPrefix + "_Step_Time_" + stepFormat.str() + "." + timeFormat.str();
+	file_name = OutputDir + "/" + temp_name;
+#ifdef USE_MPI
+	file_name = file_name + "_rank_" + rankFormat.str();
+
+	if (nranks > 1)
+	{
+		Ss.mpiTrans->GroupallReduce(&(Ss.BlSz.myMpiPos_x), &(minMpiPos_x), 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MIN, OutRanks, true);
+		Ss.mpiTrans->GroupallReduce(&(Ss.BlSz.myMpiPos_y), &(minMpiPos_y), 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MIN, OutRanks, true);
+		Ss.mpiTrans->GroupallReduce(&(Ss.BlSz.myMpiPos_z), &(minMpiPos_z), 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MIN, OutRanks, true);
+
+		Ss.mpiTrans->GroupallReduce(&(Ss.BlSz.myMpiPos_x), &(maxMpiPos_x), 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX, OutRanks, true);
+		Ss.mpiTrans->GroupallReduce(&(Ss.BlSz.myMpiPos_y), &(maxMpiPos_y), 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX, OutRanks, true);
+		Ss.mpiTrans->GroupallReduce(&(Ss.BlSz.myMpiPos_z), &(maxMpiPos_z), 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX, OutRanks, true);
+
+		if (((minMpiPos_x - 1 == Ss.BlSz.myMpiPos_x) || (maxMpiPos_x + 1 == Ss.BlSz.myMpiPos_x)) && (Ss.BlSz.mx > 4))
+			PartialOut_security = true;
+	}
+
+#endif
+	file_name += ".vti";
+
+	std::string headerfile_name = OutputDir + "/SVTI_" + outputPrefix + "_Step_" + stepFormat.str() + ".pvti";
+	if (0 == rank) // write header
+	{
+		std::fstream outHeader;
+		std::string compressor("");
+		// open pvti header file
+		outHeader.open(headerfile_name.c_str(), std::ios_base::out);
+		outHeader << "<?xml version=\"1.0\"?>" << std::endl;
+		if (isBigEndian())
+			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"BigEndian\"" << compressor << ">" << std::endl;
+		else
+			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
+		outHeader << "  <PImageData WholeExtent=\"";
+		outHeader << minMpiPos_x * VTI.nbX << " " << (maxMpiPos_x + 1) * VTI.nbX << " ";
+		outHeader << minMpiPos_y * VTI.nbY << " " << (maxMpiPos_y + 1) * VTI.nbY << " ";
+		outHeader << minMpiPos_z * VTI.nbZ << " " << (maxMpiPos_z + 1) * VTI.nbZ << "\" GhostLevel=\"0\" "
+				  << "Origin=\""
+				  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
+				  << "Spacing=\""
+				  << dx << " " << dy << " " << dz << "\">"
+				  << std::endl;
+		outHeader << "    <PCellData Scalars=\"Scalars_\">" << std::endl;
+		for (int iVar = 0; iVar < Onbvar; iVar++)
+		{
+#if USE_DOUBLE
+			outHeader << "      <PDataArray type=\"Float64\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+#else
+			outHeader << "      <PDataArray type=\"Float32\" Name=\"" << variables_names.at(iVar) << "\"/>" << std::endl;
+#endif // end USE_DOUBLE
+		}
+		outHeader << "    </PCellData>" << std::endl;
+
+		// Out put for 2D && 3D;
+		for (int iPiece = 0; iPiece < Ss.nRanks; ++iPiece)
+			if (OutRanks[iPiece] >= 0)
+			{
+				std::ostringstream pieceFormat;
+				pieceFormat.width(5);
+				pieceFormat.fill('0');
+				pieceFormat << iPiece;
+				std::string pieceFilename = temp_name;
+#ifdef USE_MPI
+				pieceFilename += "_rank_" + pieceFormat.str();
+#endif
+				pieceFilename += +".vti";
+
+				// get MPI coords corresponding to MPI rank iPiece
+				int coords[3] = {0, 0, 0};
+				int OnbX = VTI.nbX, OnbY = VTI.nbY, OnbZ = VTI.nbZ;
+#ifdef USE_MPI
+				Ss.mpiTrans->communicator->getCoords(iPiece, Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ, coords);
+#endif // end USE_MPI
+
+				outHeader << " <Piece Extent=\"";
+				// pieces in first line of column are different (due to the special
+				// pvti file format with overlapping by 1 cell)
+				if (Ss.BlSz.DimX)
+				{
+					if (coords[0] == 0)
+						outHeader << 0 << " " << OnbX << " ";
+					else
+						outHeader << coords[0] * OnbX << " " << coords[0] * OnbX + OnbX << " ";
+				}
+				else
+					outHeader << 0 << " " << 0;
+
+				if (Ss.BlSz.DimY)
+				{
+					if (coords[1] == 0)
+						outHeader << 0 << " " << OnbY << " ";
+					else
+						outHeader << coords[1] * OnbY << " " << coords[1] * OnbY + OnbY << " ";
+				}
+				else
+					outHeader << 0 << " " << 0;
+
+				if (Ss.BlSz.DimZ)
+				{
+					if (coords[2] == 0)
+						outHeader << 0 << " " << OnbZ << " ";
+					else
+						outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
+				}
+				else
+					outHeader << 0 << " " << 0;
+				outHeader << "\" Source=\"";
+				outHeader << pieceFilename << "\"/>" << std::endl;
+			}
+		outHeader << "</PImageData>" << std::endl;
+		outHeader << "</VTKFile>" << std::endl;
+		// close header file
+		outHeader.close();
+	} // end writing pvti header
+
+	int nbX = VTI.nbX, nbY = VTI.nbY, nbZ = VTI.nbZ;
+	int minX = CPT.minX, minY = CPT.minY, minZ = CPT.minZ;
+	int maxX = minX + nbX, maxY = minY + nbY, maxZ = minZ + nbZ;
+
+	if (OutRanks[rank] >= 0 || PartialOut_security)
+	{
+		std::fstream outFile;
+		outFile.open(file_name.c_str(), std::ios_base::out);
+		// write xml data header
+		if (isBigEndian())
+			outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
+		else
+			outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+
+		outFile << "  <ImageData WholeExtent=\""
+				<< xmin << " " << xmax << " "
+				<< ymin << " " << ymax << " "
+				<< zmin << " " << zmax << "\" "
+				<< "Origin=\""
+				<< Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
+				<< "Spacing=\""
+				<< dx << " " << dy << " " << dz << "\">" << std::endl;
+		outFile << "  <Piece Extent=\""
+				<< xmin << " " << xmax << " "
+				<< ymin << " " << ymax << " "
+				<< zmin << " " << zmax << ""
+				<< "\">" << std::endl;
+		outFile << "    <PointData>\n";
+		outFile << "    </PointData>\n";
+		// write data in binary format
+		outFile << "    <CellData>" << std::endl;
+		for (int iVar = 0; iVar < Onbvar; iVar++)
+		{
+#if USE_DOUBLE
+			outFile << "     <DataArray type=\"Float64\" Name=\"";
+#else
+			outFile << "     <DataArray type=\"Float32\" Name=\"";
+#endif // end USE_DOUBLE
+			outFile << variables_names.at(iVar)
+					<< "\" format=\"appended\" offset=\""
+					<< iVar * nbX * nbY * nbZ * sizeof(real_t) + iVar * sizeof(unsigned int)
+					<< "\" />" << std::endl;
+		}
+		outFile << "    </CellData>" << std::endl;
+		outFile << "  </Piece>" << std::endl;
+		outFile << "  </ImageData>" << std::endl;
+		outFile << "  <AppendedData encoding=\"raw\">" << std::endl;
+		// write the leading undescore
+		outFile << "_";
+		// then write heavy data (column major format)
+		unsigned int nbOfWords = nbX * nbY * nbZ * sizeof(real_t);
+		//[0]x
+		if (Ss.BlSz.DimX)
+		{
+			MARCO_COUTLOOP
+			{
+				real_t tmp = (Ss.BlSz.DimX) ? (i - Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner) + _DF(0.5)) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin : 0.0;
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			//[1]u
+			MARCO_COUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.u[id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+		}
+		//[2]y
+		if (Ss.BlSz.DimY)
+		{
+			MARCO_COUTLOOP
+			{
+				real_t tmp = (Ss.BlSz.DimY) ? (j - Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner) + _DF(0.5)) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin : 0.0;
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			//[3]v
+			MARCO_COUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.v[id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+		}
+		//[4]z
+		if (Ss.BlSz.DimZ)
+		{
+			MARCO_COUTLOOP
+			{
+				real_t tmp = (Ss.BlSz.DimZ) ? (i - Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner) + _DF(0.5)) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin : 0.0;
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+			//[5]w
+			MARCO_COUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.w[id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+		}
+		//[6]V-c
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.c[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[7]rho
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.rho[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[8]P
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.p[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[9]Gamma
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.gamma[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[10]T
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.T[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[11]e
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.e[id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		//[12]vorticity
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = sqrt(fluids[0]->h_fstate.vx[id]);
+			outFile.write((char *)&tmp, sizeof(real_t));
+		}
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[0][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for i
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[1][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for j
+		MARCO_COUTLOOP
+		{
+			int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+			real_t tmp = fluids[0]->h_fstate.vxs[2][id];
+			outFile.write((char *)&tmp, sizeof(real_t));
+		} // for k
+#ifdef COP
+		//[COP]yii
+		for (int ii = 0; ii < NUM_SPECIES; ii++)
+		{
+			MARCO_COUTLOOP
+			{
+				int id = Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i;
+				real_t tmp = fluids[0]->h_fstate.y[ii + NUM_SPECIES * id]; // h_fstate.y[ii][id];
+				outFile.write((char *)&tmp, sizeof(real_t));
+			}
+		}
+#endif // end  COP
+		outFile << "  </AppendedData>" << std::endl;
+		outFile << "</VTKFile>" << std::endl;
+		outFile.close();
+	}
+	delete[] OutRanks;
 }
 
 // Need (Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ > 1)
@@ -1922,6 +2336,8 @@ void XFLUIDS::Output_cvti(int rank, std::ostringstream &timeFormat, std::ostring
 			outFile << "</VTKFile>" << std::endl;
 			outFile.close();
 		}
+
+		delete[] OutRanks;
 	}
 }
 
@@ -2031,4 +2447,6 @@ void XFLUIDS::Output_cplt(int rank, std::ostringstream &timeFormat, std::ostring
 		out.close();
 		free(OutPoint);
 	}
+
+	delete[] OutRanks;
 }

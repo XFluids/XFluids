@@ -30,6 +30,7 @@ public:
 	int nStepmax;		   // running steps
 	int bytes, cellbytes;  // memory allocate
 	bool OutDirX, OutDirY, OutDirZ;
+	std::vector<std::string> PartialOut;
 
 	//--for-Mesh-----------------------------
 	Block BlSz;

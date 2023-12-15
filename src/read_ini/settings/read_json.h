@@ -13,14 +13,16 @@ std::vector<T> IntervalDivision(const T &start, const T &end, const T &period, s
 // ==============================read data from json================================
 extern nlohmann::json j_conf;
 // run
-extern const std::string OutputDir;
-extern const std::vector<real_t> OutTimeStamps;
+extern const size_t OutBoundary;
 extern const real_t CFLnumber_json;
+extern const std::string OutputDir;
 extern const real_t StartTime, EndTime; // NOTE: ignore
-extern const size_t OutDAT, OutVTI, OutSTL, OutOverTime;
+extern const std::vector<size_t> OutDIRs;
+extern const size_t nStepmax_json, nOutput; // nOutMax
+extern const std::vector<real_t> OutTimeStamps;
 extern const size_t outpos_x, outpos_y, outpos_z;
-extern const size_t OutBoundary, OutDIRX, OutDIRY, OutDIRZ;
-extern const size_t nStepmax_json, nOutput;	   // nOutMax
+extern const std::vector<std::string> PartialOut_json;
+extern const size_t OutDAT, OutVTI, OutSTL, OutOverTime;
 extern const size_t OutInterval, POutInterval, RcalInterval; // PushInterval
 //--for-Thread-Allocation----------------
 extern const size_t BlockSize_json, dim_block_x_json, dim_block_y_json, dim_block_z_json;
