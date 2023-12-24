@@ -6,7 +6,9 @@ add_subdirectory(strsplit)
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF(BOOST_CXX)
-find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
+    add_compile_options(-DUSE_CXX_BOOST=1)
+    find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
+    message(STATUS "Find boost_filesystem: ${boost_filesystem}")
 ENDIF(BOOST_CXX)
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
@@ -30,14 +32,14 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         settings
         strsplit
     )
+
     IF(BOOST_CXX)
-    add_compile_options(-DUSE_CXX_BOOST=1)
-    target_link_libraries(readini
-        PUBLIC
-        boost_filesystem
-    )
+        target_link_libraries(readini
+            PUBLIC
+            boost_filesystem
+        )
     ENDIF(BOOST_CXX)
-    
+
     IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
         add_sycl_to_target(TARGET readini)
     ENDIF()
@@ -53,12 +55,11 @@ ELSE()
         settings
         strsplit
     )
-    IF(BOOST_CXX)
-    add_compile_options(-DUSE_CXX_BOOST=1)
-    target_link_libraries(readini
-        INTERFACE
-        boost_filesystem
-    )
-    ENDIF(BOOST_CXX)
 
+    IF(BOOST_CXX)
+        target_link_libraries(readini
+            INTERFACE
+            boost_filesystem
+        )
+    ENDIF(BOOST_CXX)
 ENDIF()

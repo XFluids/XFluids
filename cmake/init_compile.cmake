@@ -8,6 +8,7 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	add_compile_options(-DDEFINED_OPENSYCL)
 	set(BOOST_CXX "ON") # use boost c++ library or std internal library
 	set(AdaptiveCpp_DIR "/home/ljl/Apps/OpenSYCL/lib/cmake/AdaptiveCpp")
+	message(STATUS "Find Package \"AdaptiveCpp\": ${AdaptiveCpp_DIR}")
 	find_package(AdaptiveCpp CONFIG REQUIRED)
 
 	IF(SelectDv STREQUAL "cuda-nvcxx")
