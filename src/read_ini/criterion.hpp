@@ -1,6 +1,6 @@
 #pragma once
 
-#include "global_setup.h"
+#include "../include/global_setup.h"
 
 // ================================================================================
 // // // class Criterion Member function definitions
@@ -15,7 +15,8 @@ class Criterion
 	size_t num, num_id;
 
 public:
-	Criterion(std::vector<std::string> str, std::vector<std::string> species_list, FlowData &h_data) : is_num(false), num(1), num_id(0)
+	Criterion(std::vector<std::string> str, std::vector<std::string> species_list,
+			  FlowData &h_data) : is_num(false), num(1), num_id(0)
 	{
 		std::string svar = str[0];
 		if (0 == svar.compare("rho"))
@@ -37,8 +38,8 @@ public:
 		else if (svar.find("yi[") != std::string::npos)
 		{
 			var = h_data.y;
-			num = NUM_SPECIES;
-			for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+			num = species_list.size();
+			for (size_t nn = 0; nn < species_list.size(); nn++)
 			{
 				if (0 == svar.compare("yi[" + species_list[nn] + "]"))
 					num_id = nn;
@@ -48,7 +49,7 @@ public:
 		{
 			std::cout << "\n  Criterion: Invalid variable name: " << svar << std::endl;
 			std::cout << "Criterion: available variable name: rho, p(P), u, v, w, Gamma, vorticity" << str[1] << std::endl;
-			for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+			for (size_t nn = 0; nn < species_list.size(); nn++)
 				std::cout << ", yi[" << species_list[nn] << "]";
 			std::cout << "\n";
 		}

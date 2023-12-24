@@ -47,4 +47,35 @@ public:
 		}
 		return std::vector<T>();
 	};
+
+	std::vector<std::string> match(std::vector<std::string> &str, std::string option, char split = ',')
+	{
+		size_t i = 0;
+		option += "=";
+		for (i = 0; i < str.size(); i++)
+		{
+			if (std::string(str[i]).find(option) != std::string::npos)
+			{
+				return Stringsplit(std::string(str[i]).erase(0, option.length()), split);
+				break;
+			}
+		}
+		return std::vector<std::string>();
+	};
+
+	template <typename T>
+	std::vector<T> match(std::vector<std::string> &str, std::string option, char split = ',')
+	{
+		size_t i = 0;
+		option += "=";
+		for (i = 0; i < str.size(); i++)
+		{
+			if (std::string(str[i]).find(option) != std::string::npos)
+			{
+				return Stringsplit<T>(std::string(str[i]).erase(0, option.length()), split);
+				break;
+			}
+		}
+		return std::vector<T>();
+	};
 };

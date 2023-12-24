@@ -1,7 +1,7 @@
 #pragma once
 
 // program headers
-#include "criterion.hpp"
+#include "utils/diskinfo.hpp"
 #include "read_ini/setupini.h"
 #include "marcos/marco_global.h"
 
@@ -58,10 +58,11 @@ public:
     bool ReadCheckingPoint;
     real_t dt, physicalTime;
     int Iteration, rank, nranks;
-    float duration, duration_backup, MPI_trans_time, MPI_BCs_time;
+    float duration, duration_backup;
+    float MPI_trans_time, MPI_BCs_time;
+
     BConditions *d_BCs; // boundary condition indicators
     std::vector<Fluid *> fluids{NumFluid};
-    std::vector<Criterion> PartialOutVars;
 
     XFLUIDS(Setup &setup);
     virtual ~XFLUIDS();
@@ -88,17 +89,17 @@ public:
     void ComputeLU(sycl::queue &q, int flag);
     bool Reaction(sycl::queue &q, real_t dt, real_t Time, const int Step);
     // Output
-    static bool isBigEndian()
-    {
-        const int i = 1;
-        return ((*(char *)&i) == 0);
-    }
-    void GetCPT_OutRanks(int *OutRanks, int rank, int nranks);
-    std::vector<OutSize> GetSPT_OutRanks(int *OutRanks, const int rank, std::vector<Criterion> &var);
-    void Output(sycl::queue &q, int rank, std::string interation, real_t Time, bool error = false);
-    void Output_vti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
-    void Output_plt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat, bool error);
-    void Output_svti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
-    void Output_cvti(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
-    void Output_cplt(int rank, std::ostringstream &timeFormat, std::ostringstream &stepFormat, std::ostringstream &rankFormat);
+    void GetCPT_OutRanks(int *OutRanks, OutSize &CVTI, OutSlice pos);
+    void GetSPT_OutRanks(int *OutRanks, std::vector<Criterion> &var);
+    std::vector<OutVar> Output_variables(std::vector<OutVar> &vars, std::vector<std::string> &sp);
+    void Output(sycl::queue &q, OutFmt ctrl, bool error = false);
+    void Output_plt(int rank, OutString &osr, bool error);
+    template <typename T = float>
+    void Output_vti(int rank, OutString &osr);
+    template <typename T = float>
+    void Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &cri, OutString &osr);
+    template <typename T = float>
+    void Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString &osr);
+    template <typename T = float>
+    void Output_cvti(std::vector<OutVar> &varout, OutSlice &pos, OutString &osr);
 };

@@ -229,11 +229,3 @@ typedef struct
 	real_t Gamma, A, B, rho0; // Eos Parameters and maxium sound speed
 	real_t R_0, lambda_0;	  // gas constant and heat conductivity
 } MaterialProperty;
-
-typedef struct
-{
-	int nbX, nbY, nbZ;	  // number of points output along each DIR
-	int minX, minY, minZ; // beginning point of output along each DIR
-	int maxX, maxY, maxZ; // ending point of output along each DIR
-
-} OutSize;

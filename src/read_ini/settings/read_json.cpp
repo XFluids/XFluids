@@ -30,25 +30,21 @@ using interfunc = std::function<int(int *, int)>;
 bool is_read_json_success = ReadJson(std::string(IniFile), j_conf);
 // Run setup
 const std::string OutputDir = j_conf.at("run").value("OutputDir", "output");
-const std::vector<real_t> OutTimeStamps = j_conf.at("run").value("OutTimeStamps", std::vector<real_t>{0.0, 0.0});
 const real_t CFLnumber_json = j_conf.at("run").value("CFLnumber", 0.4);
 const real_t StartTime = j_conf.at("run").value("StartTime", 0.0); // physical time when the simulation start
-const real_t EndTime = j_conf.at("run").value("EndTime", OutTimeStamps.back());
+const real_t EndTime = j_conf.at("run").value("EndTime", 0.0);	   // physical time when the simulation terminated
 const size_t OutDAT = j_conf.at("run").value("OutDAT", 1);
 const size_t OutVTI = j_conf.at("run").value("OutVTI", 0);
 const size_t OutSTL = j_conf.at("run").value("OutSTL", 0);
 const size_t OutOverTime = j_conf.at("run").value("OutOverTime", SBICounts);
-const size_t outpos_x = j_conf.at("run").value("outpos_x", 0);
-const size_t outpos_y = j_conf.at("run").value("outpos_y", 0);
-const size_t outpos_z = j_conf.at("run").value("outpos_z", 0);
 const size_t OutBoundary = j_conf.at("run").value("OutBoundary", 0);
-const std::vector<size_t> OutDIRs = j_conf.at("run").value("OutDIRs", std::vector<size_t>{1, 1, 1});
-const std::vector<std::string> PartialOut_json = j_conf.at("run").value("PartialOut_Criterion", std::vector<std::string>{});
 const size_t nStepmax_json = j_conf.at("run").value("nStepMax", 10);
 const size_t nOutput = j_conf.at("run").value("nOutMax", 0);
 const size_t OutInterval = j_conf.at("run").value("OutInterval", nStepmax_json);
 const size_t POutInterval = j_conf.at("run").value("PushInterval", 5);
 const size_t RcalInterval = j_conf.at("run").value("RcalInterval", 200);
+const std::vector<std::string> OutTimeArrays_json = j_conf.at("run").value("OutTimeArrays", std::vector<std::string>{});
+const std::vector<std::string> OutTimeStamps_json = j_conf.at("run").value("OutTimeStamps", std::vector<std::string>{});
 
 // MPI setup
 const size_t mx_json = j_conf.at("mpi").value("mx", 1);

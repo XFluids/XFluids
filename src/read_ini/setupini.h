@@ -5,6 +5,7 @@
 #include "marcos/marco_thermal.h"
 // // internal header
 #include "options.hpp"
+#include "outvars.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
 // // external header
@@ -29,8 +30,7 @@ public:
 	std::string WorkDir;
 	int nStepmax;		   // running steps
 	int bytes, cellbytes;  // memory allocate
-	bool OutDirX, OutDirY, OutDirZ;
-	std::vector<std::string> PartialOut;
+	std::vector<OutFmt> OutTimeStamps;
 
 	//--for-Mesh-----------------------------
 	Block BlSz;

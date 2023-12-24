@@ -29,7 +29,9 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     if (ReactSources)
         ReadReactions();
         /*end runtime read*/
-#ifdef Visc // read && caculate coffes for visicity
+
+// read && caculate coffes for visicity
+#ifdef Visc
     GetFitCoefficient();
 #endif
 
@@ -49,12 +51,71 @@ void Setup::ReadIni()
 {
     /* initialize RUN parameters */
     nStepmax = nStepmax_json;
-    PartialOut = PartialOut_json;
+    // // initialize output time arrays
+    for (size_t nn = 0; nn < OutTimeArrays_json.size(); nn++)
+    {
+        std::vector<std::string> temp = Stringsplit(OutTimeArrays_json[nn], ':');
+        std::vector<std::string> tempt = Stringsplit(temp[0], ';');
+        std::vector<real_t> temp0 = Stringsplit<real_t>(tempt[1], '*');
+        temp[1].erase(0, 2), temp[1].erase(temp[1].size() - 1, 1);
+        std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
+
+        real_t tn_b = stod(tempt[0]);
+        for (size_t tn = 1; tn <= size_t(temp0[0]); tn++)
+        {
+            OutFmt this_time(tn * temp0[1] + tn_b);
+            this_time._C = apa.match(temp1, "-C");
+            this_time._V = apa.match(temp1, "-V");
+            this_time._P = apa.match(temp1, "-P");
+            OutTimeStamps.push_back(this_time);
+        }
+
+        // // 200*1.0E-6
+        // std::vector<std::string> temp = Stringsplit(OutTimeArrays_json[nn], ':');
+        // std::vector<std::string> temp0 = Stringsplit(temp[0], '*');
+        // std::vector<std::string> times = Stringsplit(temp0[1], 'E');
+        // std::vector<int> time_it = Stringsplit<int>(times[0], '.');
+        // interval = time_it[0] + real_t(time_it[1]) / _DF(10.0);
+        // real_t bak = real_t(stoi(times[1]));
+        // interval = std::pow(interval, bak);
+        // temp[1].erase(0, 2), temp[1].erase(temp[1].size() - 1, 1);
+        // std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
+        // std::vector<std::string> temp2 = apa.match(temp1, "-C", ':');
+        // for (size_t tn = 0; tn < stoi(temp0[0]); tn++)
+        // {
+        //     OutFmt this_time(tn * interval + tn_b);
+        //     this_time._V = apa.match(temp1, "-V");
+        //     this_time._P = apa.match(temp1, "-P");
+        //     OutTimeStamps.push_back(this_time);
+        // }
+        // tn_b = stoi(temp0[0]) * interval;
+    }
+    // // insert specific output time stamps
+    for (size_t nn = 0; nn < OutTimeStamps_json.size(); nn++)
+    {
+        std::vector<std::string> temp = Stringsplit(OutTimeStamps_json[nn], ':');
+        temp[1].erase(0, 2), temp[1].erase(temp[1].size() - 1, 1);
+        for (int tn = 0; tn < OutTimeStamps.size(); tn++)
+        {
+            real_t this_time = stod(temp[0]);
+            bool is_pos = OutTimeStamps[tn].time < this_time;
+            is_pos = OutTimeStamps[tn + 1].time > this_time;
+            if (is_pos)
+            {
+                OutTimeStamps.emplace(OutTimeStamps.begin() + (tn + 1), OutFmt(this_time));
+                std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
+                OutTimeStamps[tn + 1]._C = apa.match(temp1, "-C");
+                OutTimeStamps[tn + 1]._V = apa.match(temp1, "-V");
+                OutTimeStamps[tn + 1]._P = apa.match(temp1, "-P");
+                break;
+            }
+        }
+    }
+
     /* initialize React sources  */
     BlSz.RSources = ReactSources;
     /* initialize MPI parameters */
-    BlSz.mx = mx_json,
-    BlSz.my = my_json, BlSz.mz = mz_json;
+    BlSz.mx = mx_json, BlSz.my = my_json, BlSz.mz = mz_json;
     // initial rank postion to zero, will be changed in MpiTrans
     BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
     // for sycl::queue construction and device select
@@ -170,10 +231,6 @@ void Setup::init()
     BlSz.DimX_t = BlSz.DimX;
     BlSz.DimY_t = BlSz.DimY;
     BlSz.DimZ_t = BlSz.DimZ;
-
-    OutDirX = BlSz.DimX ? OutDIRs[0] : 0;
-    OutDirY = BlSz.DimY ? OutDIRs[1] : 0;
-    OutDirZ = BlSz.DimZ ? OutDIRs[2] : 0;
 
     BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1;
     BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1;
