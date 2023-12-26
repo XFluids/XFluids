@@ -33,8 +33,8 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # 2species				# # CJ_mechanism			# # inert_2species
 # # H2O_18_reaction			# # H2O_19_reaction			# # H2O_21_reaction			# # H2O_23_reaction
 # # RSBI-18REA				# # RSBI-19REA				# # for shock-bubble-interaction sample
-set(INIT_SAMPLE "3d-shock-bubble-without-fuel") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "1d-mc-diffusion") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+set(INIT_SAMPLE "1d-reactive-st") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "H2O_18_reaction") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)

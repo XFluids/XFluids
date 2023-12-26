@@ -279,10 +279,29 @@ struct OutFmt
 		Initialize_V(Bl, sp, data, v);
 	};
 
-	OutFmt Initialize_step(const std::string &Step)
+	OutFmt Reinitialize_step(const std::string &Step)
 	{
-		this->inter = Step;
-		return *(this);
+		OutFmt nfmt = *this;
+		nfmt.inter = Step;
+
+		return nfmt;
+	}
+
+	OutFmt Reinitialize_time(const real_t Time)
+	{
+		OutFmt nfmt = *this;
+		nfmt.time = Time;
+
+		return nfmt;
+	}
+
+	OutFmt Reinitialize(const real_t Time, const std::string &Step)
+	{
+		OutFmt nfmt = *this;
+		nfmt.time = Time;
+		nfmt.inter = Step;
+
+		return nfmt;
 	}
 
 	/**

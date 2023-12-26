@@ -5,7 +5,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	real_t xi[NUM_SPECIES], yi[NUM_SPECIES]; // molecular concentration, unit: mol/cm^3; mass fraction
 	memcpy(yi, Ss.h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
 	// get_yi(yi, Ss.h_thermal.Wi);
-	real_t T0 = _DF(1001.0), p0 = _DF(101325.0);
+	real_t T0 = _DF(1150.0), p0 = _DF(101325.0);
 	real_t R, rho, h, e, T = T0; // h: unit: J/kg // e: enternal energy
 
 	// chemeq2 solver
@@ -13,7 +13,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	std::string outputPrefix = INI_SAMPLE;
 	std::string file_name = OutputDir + "/0D-Detonation-" + outputPrefix + ".dat";
 	std::ofstream out(file_name);
-	out << "variables= time(s),Temperature(K),Density(kg/m3)";
+	out << "variables= time(s),Temperature(K)";
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 		out << "," << Ss.species_name[n];
 	// out << "variables= time[s], <i>T</i>[K]";

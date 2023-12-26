@@ -6,13 +6,15 @@
         "DtBlockSize": 8,
         "nStepMax": 10000,
         "nOutMax": 100,
+        "OutDAT": 1,
+        "OutVTI": 0,
         "CFLnumber": 0.4,
         "OutBoundary": 0,
         "OutInterval": 3000,
         "OutTimeStamps": [
-            0.00017,
-            0.00019,
-            0.00023
+            "0.000170: {-C=X,0.0,0.0;-V=rho,P,T,yi[H2],yi[O2],yi[H],yi[AR]}",
+            "0.000190: {-C=X,0.0,0.0;-V=rho,P,T,yi[H2],yi[O2],yi[H],yi[AR]}",
+            "0.000230: {-C=X,0.0,0.0;-V=rho,P,T,yi[H2],yi[O2],yi[H],yi[AR]}"
         ]
     },
     "mpi": {

@@ -104,70 +104,79 @@ float XFLUIDS::OutThisTime(std::chrono::high_resolution_clock::time_point start_
 
 void XFLUIDS::Evolution(sycl::queue &q)
 {
-	bool TimeLoopOut = false, Stepstop = false;
 	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
+	bool TimeLoopOut = false, Stepstop = false, timer_create = true;
+	// timer beginning point definition
+	std::chrono::high_resolution_clock::time_point start_time;
 
-	std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
 	while (TimeLoop < Ss.OutTimeStamps.size())
 	{
-		real_t target_t = physicalTime < Ss.OutTimeStamps[TimeLoop].time ? Ss.OutTimeStamps[TimeLoop].time : Ss.OutTimeStamps[TimeLoop++].time; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
-		// TimeLoop++;
+		real_t target_t = (physicalTime < Ss.OutTimeStamps[TimeLoop].time) ? Ss.OutTimeStamps[TimeLoop].time : Ss.OutTimeStamps[TimeLoop++].time; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
 		while (physicalTime < target_t)
 		{
 			CopyToUbak(q);
-			if (Iteration % OutInterval == 0 && OutNum <= nOutput || TimeLoopOut)
+			if ((((Iteration % OutInterval == 0) || TimeLoopOut) && OutNum <= nOutput))
 			{
-				Output(q, Ss.OutTimeStamps[TimeLoop].Initialize_step(std::to_string(Iteration)));
-				if (Iteration > 0)
-					Output_Ubak(rank, Iteration, physicalTime, duration, true);
+				Output(q, Ss.OutTimeStamps[std::max(0, TimeLoop - 1)].Reinitialize(physicalTime, std::to_string(Iteration)));
+				// if (Iteration > 0)	// solution checkingpoint file output
+				// 	Output_Ubak(rank, Iteration, physicalTime, duration, true);
 				OutNum++;
 				TimeLoopOut = false;
 			}
 			if ((RcalOut % RcalInterval == 0) && RcalOut)
 				Output_Ubak(rank, Iteration, physicalTime, duration);
 			RcalOut++;
-			// get minmum dt, if MPI used, get the minimum of all ranks
-			dt = ComputeTimeStep(q); // 2.0e-6; //
-
 			Iteration++;
-			if (rank == 0) // An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
-				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
+
+			if (timer_create)
+			{ // creat timer beginning point, execute only once.
+				timer_create = false;
+				std::cout << "Timer beginning at this point.\n";
+				start_time = std::chrono::high_resolution_clock::now();
+			}
+
+			{ // screen log print
+				// An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
+				if (rank == 0)
+					std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
 #ifdef USE_MPI
-			Ss.mpiTrans->communicator->synchronize();
-			real_t temp;
-			Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-			dt = temp;
-			if (rank == 0)
-				std::cout << "  mpi communicated";
-#endif // end USE_MPI
-			if (physicalTime + dt > target_t)
-				dt = target_t - physicalTime;
-			if (rank == 0)
-				std::cout << " dt: " << dt << " to do";
-			physicalTime += dt;
+				Ss.mpiTrans->communicator->synchronize();
+				real_t temp;
+				Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+				dt = temp;
+#endif
+				// get minmum dt, if MPI used, get the minimum of all ranks
+				dt = ComputeTimeStep(q); // 2.0e-6; //
+				if (physicalTime + dt > target_t)
+					dt = target_t - physicalTime;
+				physicalTime += dt;
+				if (rank == 0)
+					std::cout << " dt: " << std::setw(14) << dt << " End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
+			}
 
-			// strang slipping
-			if ((ReactSources) && (SlipOrder == std::string("Strang")))
-				error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
-			// solved the fluid with 3rd order Runge-Kutta method
-			error_out = error_out || SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
-			// reaction sources
-			if (ReactSources)
-				error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
-
+			{ // a advance time step
+				// strang slipping
+				if ((ReactSources) && (SlipOrder == std::string("Strang")))
+					error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
+				// solved the fluid with 3rd order Runge-Kutta method
+				error_out = error_out || SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
+				// reaction sources
+				if (ReactSources)
+					error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
 #if ESTIM_NAN
 #ifdef USE_MPI
-			int root, maybe_root = (error_out ? rank : 0);
-			Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-			Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
+				error_out = Ss.mpiTrans->BocastTrue(error_out);
 #endif
-			if (error_out)
-				goto flag_ernd;
+				if (error_out)
+					goto flag_ernd;
 #endif // end ESTIM_NAN
+			}
 
 			Stepstop = Ss.nStepmax <= Iteration ? true : false;
 			if (Stepstop)
 				goto flag_end;
+
+			// timer of this step
 			duration = OutThisTime(start_time) + duration_backup;
 			if (rank == 0)
 				std::cout << ", runtime: " << std::setw(10) << duration << "\n";
@@ -185,10 +194,11 @@ flag_ernd:
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 #endif
+	// // Timer ended at this point.
 	duration = OutThisTime(start_time) + duration_backup;
-	EndProcess();
 	// // The last step Output,
-	Output(q, Ss.OutTimeStamps[TimeLoop].Initialize_step(std::to_string(Iteration)));
+	Output(q, Ss.OutTimeStamps.back().Reinitialize(physicalTime, std::to_string(Iteration)));
+	EndProcess();
 }
 
 void XFLUIDS::EndProcess()
@@ -857,7 +867,7 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, bool error)
 	}
 
 	if (rank == 0)
-		std::cout << "has been done at Step = " << ctrl.inter << std::endl;
+		std::cout << "has been done at Step = " << ctrl.inter << ", Time = " << ctrl.time << std::endl;
 }
 
 template <typename T>
@@ -1397,7 +1407,7 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 	Cnbvar += NUM_SPECIES;
 #endif
 
-	OutSize CVTI = VTI;
+	OutSize CPT = VTI;
 	int *OutRanks = new int[nranks];
 	real_t temx = _DF(0.5) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin;
 	real_t temy = _DF(0.5) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin;
@@ -1406,7 +1416,7 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 	real_t posy = -Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner);
 	real_t posz = -Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner);
 #ifdef USE_MPI
-	GetCPT_OutRanks(OutRanks, CVTI, pos);
+	GetCPT_OutRanks(OutRanks, CPT, pos);
 	if (OutRanks[rank] >= 0)
 #endif // end USE_MPI
 	{

@@ -90,25 +90,35 @@ void Setup::ReadIni()
         // }
         // tn_b = stoi(temp0[0]) * interval;
     }
+
     // // insert specific output time stamps
     for (size_t nn = 0; nn < OutTimeStamps_json.size(); nn++)
     {
         std::vector<std::string> temp = Stringsplit(OutTimeStamps_json[nn], ':');
+        real_t the_time = stod(temp[0]);
         temp[1].erase(0, 2), temp[1].erase(temp[1].size() - 1, 1);
-        for (int tn = 0; tn < OutTimeStamps.size(); tn++)
-        {
-            real_t this_time = stod(temp[0]);
-            bool is_pos = OutTimeStamps[tn].time < this_time;
-            is_pos = OutTimeStamps[tn + 1].time > this_time;
-            if (is_pos)
+        std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
+        if (!std::empty(OutTimeArrays_json))
+            for (int tn = 0; tn < OutTimeStamps.size(); tn++)
             {
-                OutTimeStamps.emplace(OutTimeStamps.begin() + (tn + 1), OutFmt(this_time));
-                std::vector<std::string> temp1 = Stringsplit(temp[1], ';');
-                OutTimeStamps[tn + 1]._C = apa.match(temp1, "-C");
-                OutTimeStamps[tn + 1]._V = apa.match(temp1, "-V");
-                OutTimeStamps[tn + 1]._P = apa.match(temp1, "-P");
-                break;
+                bool is_pos = OutTimeStamps[tn].time < the_time;
+                is_pos = OutTimeStamps[tn + 1].time > the_time;
+                if (is_pos)
+                {
+                    OutTimeStamps.emplace(OutTimeStamps.begin() + (tn + 1), OutFmt(the_time));
+                    OutTimeStamps[tn + 1]._C = apa.match(temp1, "-C");
+                    OutTimeStamps[tn + 1]._V = apa.match(temp1, "-V");
+                    OutTimeStamps[tn + 1]._P = apa.match(temp1, "-P");
+                    break;
+                }
             }
+        else
+        {
+            OutFmt this_time(the_time);
+            this_time._C = apa.match(temp1, "-C");
+            this_time._V = apa.match(temp1, "-V");
+            this_time._P = apa.match(temp1, "-P");
+            OutTimeStamps.push_back(this_time);
         }
     }
 

@@ -34,10 +34,6 @@ extern void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal therma
 	// update partial density according to C0
 	for (int n = 0; n < NUM_COP; n++)
 	{
-		// if (bool(sycl::isnan(yi[n])))
-		// {
-		// yi[n] = _DF(1.0e-20);
-		// }
 		UI[Emax * id + n + 5] = yi[n] * rho[id];
 	}
 }
