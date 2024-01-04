@@ -53,12 +53,15 @@ ENDIF()
 # // =======================================================
 # #### about external boost libs
 # // =======================================================
+if(NOT BOOST_ROOT)
+	set(BOOST_ROOT "$ENV{BOOST_ROOT}")
+endif()
 IF(BOOST_CXX)
-	find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
+	find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "${BOOST_ROOT}/lib")
 
 	IF("${boost_filesystem}" STREQUAL "boost_filesystem-NOTFOUND")
 		set(BOOST_CXX "OFF")
-		message(WARNING "Cann't find boost_filesystem, set BOOST_CXX=OFF automaticlly for using std interfaces")
+		message(WARNING "Cann't find boost_filesystem, set BOOST_CXX=OFF automaticlly using std interfaces, set cmake options or system env variable BOOST_ROOT for using boost interfaces")
 	ELSE()
 		message(STATUS "Find boost_filesystem: ${boost_filesystem}")
 	ENDIF()
