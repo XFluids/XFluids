@@ -1,6 +1,10 @@
 # // =======================================================
 # #### util sample
 # // =======================================================
+IF(MIXTURE_MODEL MATCHES "Reaction")
+    set(COP_CHEME ON)
+ENDIF()
+
 IF(INIT_SAMPLE MATCHES "read_grid/") # read grid
     set(INIT_SAMPLE "src/${INIT_SAMPLE}")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/read-grid")
@@ -33,7 +37,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-insert-st")
 ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
     set(COP "ON")
     set(Visc "OFF")
-    set(COP_CHEME "ON")
     set(COP_CHEME_TEST "ON")
     set(POSITIVITY_PRESERVING "OFF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/reactive-st")
@@ -115,11 +118,10 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-detonation")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
-    set(COP_CHEME "ON")
     set(THERMAL "NASA") # NASA fit of Xe
     set(POSITIVITY_PRESERVING "ON")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(MIXTURE_MODEL "H2O-N2_19_reaction")
+    set(MIXTURE_MODEL "Reaction/H2O-N2_19_reaction")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-detonation")
     set(INI_FILE "settings/2d-detonation.json")
 
@@ -157,13 +159,12 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     add_compile_options(-DSBICounts=1)
 
-    if(${COP_CHEME})
-        if((MIXTURE_MODEL STREQUAL "RSBI-18REA") OR(MIXTURE_MODEL STREQUAL "RSBI-19REA"))
-        else()
-            message(FATAL_ERROR " Not suitable MIXTURE_MODEL opened: checkout option MIXTURE_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
-        endif()
+    if((MIXTURE_MODEL STREQUAL "Reaction/RSBI-18REA") OR(MIXTURE_MODEL STREQUAL "Reaction/RSBI-19REA"))
+        set(COP_CHEME ON)
+    elseif(MIXTURE_MODEL STREQUAL "Insert-SBI")
+        set(COP_CHEME OFF)
     else()
-        set(MIXTURE_MODEL "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
+        message(FATAL_ERROR " Not suitable MIXTURE_MODEL opened: checkout option MIXTURE_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
     endif()
 
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
@@ -183,7 +184,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
     set(POSITIVITY_PRESERVING "ON")
-    set(MIXTURE_MODEL "H2O_21_reaction")
+    set(MIXTURE_MODEL "Reaction/H2O_21_reaction")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/mixing-layer")
     set(INI_FILE "settings/2d-mixing-layer.json")
 
@@ -224,13 +225,12 @@ ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
     set(ARTIFICIAL_VISC_TYPE "GLF")
     add_compile_options(-DSBICounts=1)
 
-    if(${COP_CHEME})
-        if((MIXTURE_MODEL STREQUAL "RSBI-18REA") OR(MIXTURE_MODEL STREQUAL "RSBI-19REA"))
-        else()
-            message(FATAL_ERROR " Not suitable MIXTURE_MODEL opened: checkout option MIXTURE_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
-        endif()
+    if((MIXTURE_MODEL STREQUAL "Reaction/RSBI-18REA") OR(MIXTURE_MODEL STREQUAL "Reaction/RSBI-19REA"))
+        set(COP_CHEME ON)
+    elseif(MIXTURE_MODEL STREQUAL "Insert-SBI")
+        set(COP_CHEME OFF)
     else()
-        set(MIXTURE_MODEL "Insert-SBI") # location of species_list.dat read in project listed under ./runtime.dat/ folder, 1d-mc-insert-shock-tube, 2d-under-expanded-jet.
+        message(FATAL_ERROR " Not suitable MIXTURE_MODEL opened: checkout option MIXTURE_MODEL for RSBI: Reaction/RSBI-18REA, Reaction/RSBI-19REA")
     endif()
 
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
@@ -252,7 +252,6 @@ IF(COP)
 
     IF(COP_CHEME)
         add_compile_options(-DCOP_CHEME=1)
-        set(MIXTURE_MODEL "Reaction/${MIXTURE_MODEL}") # where to read species including reactions
     ELSE()
         add_compile_options(-DCOP_CHEME=0)
     ENDIF(COP_CHEME)
@@ -265,8 +264,7 @@ ELSE(COP)
     add_compile_options(-DNCOP_Gamma=${Gamma})
 ENDIF(COP)
 
-set(MIXTURE_MODEL "/runtime.dat/${MIXTURE_MODEL}") # Be invalid while option COP_CHEME "ON"
-
+set(MIXTURE_MODEL "/runtime.dat/${MIXTURE_MODEL}") 
 message(STATUS "Solvers' settings: ")
 
 if(USE_DOUBLE)

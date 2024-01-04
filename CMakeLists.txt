@@ -26,15 +26,17 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # 3d-shock-bubble, 3d-shock-bubble-without-fuel, 3d-under-expanded-jet
 # # // // == MIXTURE_MODEL settings =========================================
 # # // // // == insert MIXURE_MODEL settings ================================
-# #	NO-COP					# # 1d-mc-insert-shock-tube
-# # 1d-mc-diffusion			# # 1d-mc-diffusion-reverse # # 2d-under-expanded-jet
-# # Insert-SBI 				# # Insert-SBI-without-fuel
+# #	NO-COP
+# # 1d-mc-diffusion 			# # 1d-mc-diffusion-reverse		# # 1d-mc-insert-shock-tube
+# # 2d-under-expanded-jet		# # Insert-SBI 					# # Insert-SBI-without-fuel
 # # // // // == reacting MIXURE_MODEL settings ==============================
-# # 2species				# # CJ_mechanism			# # inert_2species
-# # H2O_18_reaction			# # H2O_19_reaction			# # H2O_21_reaction			# # H2O_23_reaction
-# # RSBI-18REA				# # RSBI-19REA				# # for shock-bubble-interaction sample
-set(INIT_SAMPLE "1d-reactive-st") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "N2_dissociation") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+# # Reaction/Insert-Air			# # Reaction/Inert_H2+N2
+# # Reaction/2H+O2=H+HO2		# # Reaction/N2_dissociation
+# # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
+# # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
+# # Reaction/RSBI-18REA			# # Reaction/RSBI-18REA			# # modified for RSBI samples
+set(INIT_SAMPLE "3d-shock-bubble") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "Reaction/RSBI-18REA") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)
@@ -53,7 +55,5 @@ set(VISCOSITY_ORDER "Second") # Fourth, Second order viscosity discretization me
 # // == CMake modules ======================================
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake") # #default local cmake macro repository
 include(init_cmake) # cmake compile options
-include(init_options) # add program functionality
-
-# // == ADD source dir =====================================
+include(init_options) # add program functionality# // == ADD source dir =====================================
 add_subdirectory(src) # add main program source dir
