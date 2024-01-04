@@ -5,11 +5,20 @@ ENDIF()
 # // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	# // =======================================================
+	if(NOT AdaptiveCpp_DIR)
+		set(AdaptiveCpp_DIR "$ENV{AdaptiveCpp_DIR}")
+	endif()
+
 	add_compile_options(-DDEFINED_OPENSYCL)
 	set(BOOST_CXX "ON") # use boost c++ library or std internal library
-	set(AdaptiveCpp_DIR "/home/ljl/Apps/OpenSYCL/lib/cmake/AdaptiveCpp")
-	message(STATUS "Find Package \"AdaptiveCpp\": ${AdaptiveCpp_DIR}")
+	set(AdaptiveCpp_DIR "${AdaptiveCpp_DIR}")
 	find_package(AdaptiveCpp CONFIG REQUIRED)
+
+	if(AdaptiveCpp_FOUND)
+		message(STATUS "Find Package \"AdaptiveCpp\": ${AdaptiveCpp_DIR}")
+	else()
+		message(FATAL_ERROR "Cannot Find Package \"AdaptiveCpp\"")
+	endif()
 
 	IF(SelectDv STREQUAL "cuda-nvcxx")
 		set(ARCH "cc${ARCH}")
@@ -25,12 +34,13 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	ENDIF()
 
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pass-failed") # get samples from syclcc --help
+
 	# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
 	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
 		set(ARCH "host")
 	ELSE()
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help		
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
 	ENDIF()
 
 # // =======================================================
@@ -56,6 +66,7 @@ ENDIF()
 if(NOT BOOST_ROOT)
 	set(BOOST_ROOT "$ENV{BOOST_ROOT}")
 endif()
+
 IF(BOOST_CXX)
 	find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "${BOOST_ROOT}/lib")
 
@@ -66,6 +77,7 @@ IF(BOOST_CXX)
 		message(STATUS "Find boost_filesystem: ${boost_filesystem}")
 	ENDIF()
 ENDIF(BOOST_CXX)
+
 # // =======================================================
 # #### about device select
 # // =======================================================
