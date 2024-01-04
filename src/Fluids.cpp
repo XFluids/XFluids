@@ -861,10 +861,8 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 
 void Fluid::ZeroDimensionalFreelyFlame()
 {
-	std::cout << "0D H2-O2 freely flame testing";
 	if (0 == rank)
 		ZeroDimensionalFreelyFlameBlock(Fs);
-	std::cout << " done.\n";
 }
 
 void Fluid::ODESolver(sycl::queue &q, real_t Time)

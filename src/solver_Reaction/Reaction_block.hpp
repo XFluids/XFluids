@@ -15,6 +15,7 @@
 
 void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 {
+	std::cout << "0D H2-O2 freely flame testing";
 	real_t xi[NUM_SPECIES], yi[NUM_SPECIES];		  // molecular concentration; mass fraction
 	real_t T0 = ZeroDTemperature, p0 = ZeroDPressure; // initial Temperature and Pressure
 #ifdef ZeroMassFraction								  // initial Mass Fraction
@@ -66,7 +67,7 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 		// std::cout << "time = " << run_time << ", temp = " << T << "\n";
 	}
 	out.close();
-	std::cout << "beginning at " << T0 << "K, " << p0 << "Pa. ";
+	std::cout << "beginning at " << T0 << "K, " << p0 << "Pa done.\n";
 }
 
 void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)

@@ -131,7 +131,8 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			if (timer_create)
 			{ // creat timer beginning point, execute only once.
 				timer_create = false;
-				std::cout << "Timer beginning at this point.\n";
+				if (0 == rank)
+					std::cout << "Timer beginning at this point.\n";
 				start_time = std::chrono::high_resolution_clock::now();
 			}
 
@@ -978,7 +979,7 @@ void XFLUIDS::Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &c
 		mx = Ss.BlSz.mx;
 		my = Ss.BlSz.my;
 		mz = (3 == Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ) ? Ss.BlSz.mz : 0;
-		if (0 == rank) // write header
+		if ((minMpiPos_x == Ss.BlSz.myMpiPos_x) && (minMpiPos_y == Ss.BlSz.myMpiPos_y) && (minMpiPos_z == Ss.BlSz.myMpiPos_z)) // write header
 		{
 			std::fstream outHeader;
 			// dummy string here, when using the full VTK API, data can be compressed

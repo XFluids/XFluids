@@ -161,11 +161,11 @@ void MpiTrans::Get_RankGroupZ(MPI_Group &group, const int pos)
   // =======================================================
 void MpiTrans::BocastGroup2All(void *target, int type, int *group_ranks)
 {
-	real_t value = (group_ranks[myRank] >= 0) ? *(static_cast<real_t *>(target)) : 0;
 	int root, maybe_root = group_ranks[myRank] >= 0 ? myRank : -1;
 
 	communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	communicator->bcast(target, 1, type, root);
+	// std::cout << "BcastGroup2All: root = " << root << std::endl;
+	communicator->bcast(&target, 1, type, root);
 }
 // =======================================================
 // =======================================================
@@ -194,6 +194,8 @@ void MpiTrans::GroupallReduce(void *input, void *result, int inputCount, int typ
 
 	if (group_ranks[myRank] >= 0)
 		MPI_Allreduce(input, result, inputCount, mpiType, mpiOp, group_comm); // call in rank of std::vector<int> &ranks
+
+	// std::cout << group_ranks[0] << " " << group_ranks[1] << " " << group_ranks[2] << " " << group_ranks[3] << std::endl;
 
 	if (bocast)
 		BocastGroup2All(result, type, group_ranks);

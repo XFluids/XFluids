@@ -159,7 +159,7 @@ void Setup::ReadIni()
     ini.blast_type = blast_type;
     ini.blast_center_x = blast_pos[0], ini.blast_center_y = blast_pos[1], ini.blast_center_z = blast_pos[2];
     // // Bubble size and shape
-    ini.xa = xa_json, ini.yb = yb_json, ini.zc = zc_json, ini.C = C_json;
+    ini.xa = xa_json, ini.yb = yb_json, ini.zc = zc_json;
     // // upstream of blast
     ini.blast_density_in = blast_upstates[0], ini.blast_pressure_in = blast_upstates[1];
     ini.blast_T_in = blast_upstates[2], ini.blast_u_in = blast_upstates[3], ini.blast_v_in = blast_upstates[4], ini.blast_w_in = blast_upstates[5];
@@ -289,6 +289,7 @@ void Setup::init()
     ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
     ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
     ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
+    ini.C = C_json * BlSz.mx * BlSz.X_inner;
 
     // DataBytes set
     bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
@@ -644,7 +645,6 @@ void Setup::ReadReactions()
     }
     fint.close();
 
-    printf("\n%d Reactions been actived                                     \n", NUM_REA);
     IniSpeciesReactions();
 }
 
@@ -660,6 +660,8 @@ void Setup::IniSpeciesReactions()
                 reaction_list[j].push_back(i);
     }
 
+    if (0 == myRank)
+        printf("\n%d Reactions been actived                                     \n", NUM_REA);
     bool react_error = false;
     for (size_t i = 0; i < NUM_REA; i++)
     {
@@ -680,6 +682,7 @@ void Setup::IniSpeciesReactions()
         }
         h_react.third_ind[i] = (sum > _DF(0.0)) ? 1 : 0;
 
+        if (0 == myRank)
         { // output this reaction kinetic
             if (i + 1 < 10)
                 std::cout << "Reaction:" << i + 1 << "  ";

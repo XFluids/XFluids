@@ -84,7 +84,7 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
         real_t xre = _DF(1.0e-15), ratios = xre * real_t(NUM_COP - 3) * _DF(0.25);
         for (size_t n1 = 0; n1 < NUM_COP; n1++)
             xi[n1] -= ratios;
-        for (size_t nn = 2; nn < NUM_COP - 1; nn++)
+        for (size_t nn = 2; nn < NUM_COP - 2; nn++)
             xi[nn] = xre;
     }
 

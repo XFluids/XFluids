@@ -5,10 +5,10 @@ PROJECT(XFLUIDS LANGUAGES CXX)
 # ####  1. oneAPI: Intel oneAPI compiling system  2. OpenSYCL: OpenSYCL syclcc compiling system
 set(SYCL_COMPILE_SYSTEM "OpenSYCL") # # oneAPI or OpenSYCL compile system,
 set(SelectDv "host") # which platform: host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
-set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
+set(ARCH "906") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
-option(USE_MPI "if enable mpi" OFF)
+option(USE_MPI "if enable mpi" ON)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
 
 # // == Functionality option ===============================

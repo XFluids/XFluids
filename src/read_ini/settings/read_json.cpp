@@ -121,7 +121,7 @@ const real_t zc_first_json = xa_json / j_conf.at("init").value("bubble_shape_rat
 const real_t yb_json = j_conf.at("init").value("bubble_shape_y", yb_first_json);
 const real_t zc_json = j_conf.at("init").value("bubble_shape_z", zc_first_json);
 const real_t bubble_boundary = j_conf.at("init").value("bubble_boundary_cells", 2); // number of cells for cop bubble boundary
-const real_t C_json = xa_json * j_conf.at("init").value("bubble_boundary_width", mx_json *Inner[0] * bubble_boundary);
+const real_t C_json = xa_json * j_conf.at("init").value("bubble_boundary_width", bubble_boundary);
 
 bool ReadJson(std::string filename, nlohmann::json &j)
 {
