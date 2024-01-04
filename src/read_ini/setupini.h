@@ -74,10 +74,9 @@ public:
 	real_t Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real_t PP); // PP:pressure,unit:Pa
 
 	//--for-reacting---------------------------
-	bool BackArre = false; // *backwardArrhenius
 	Reaction d_react, h_react;
 	std::vector<std::vector<int>> reaction_list{NUM_SPECIES}, reactant_list{NUM_REA}, product_list{NUM_REA}, species_list{NUM_REA};
 	void ReadReactions();
 	void IniSpeciesReactions();
-	void ReactionType(int flag, int i, int *Nuf, int *Nub);
+	bool ReactionType(int flag, int i, int *Nuf, int *Nub);
 };

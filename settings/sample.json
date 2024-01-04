@@ -21,8 +21,9 @@
         "OutBoundary": 0,
         "OutInterval": 10,
         "OutTimeStamps": [
-            0.0,
-            0.1
+            "0.001: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.002: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.003: {-C=X,0.0,0.0;-V=rho,P,T}"
         ],
         "PushInterval": 10
     },

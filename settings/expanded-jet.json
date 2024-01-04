@@ -10,9 +10,9 @@
 		"OutBoundary": 1,
 		"OutInterval": 5000,
 		"OutTimeStamps": [
-			0.001,
-			0.010,
-			0.050
+			"0.001: {-C=X,0.0,0.0;-V=rho,P,T}",
+			"0.010: {-C=X,0.0,0.0;-V=rho,P,T}",
+			"0.050: {-C=X,0.0,0.0;-V=rho,P,T}"
 		]
 	},
 	"mpi": {

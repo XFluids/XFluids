@@ -1,15 +1,34 @@
 #include "Reaction_kernels.hpp"
 
+#ifndef ZeroDTemperature
+#define ZeroDTemperature 1150.0
+#endif
+#ifndef ZeroDPressure
+#define ZeroDPressure 101325.0
+#endif
+#ifndef ZeroDtStep
+#define ZeroDtStep 1.0E-7
+#endif
+#ifndef ZeroEndTime
+#define ZeroEndTime 2.0E-4
+#endif
+
 void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 {
-	real_t xi[NUM_SPECIES], yi[NUM_SPECIES]; // molecular concentration, unit: mol/cm^3; mass fraction
+	real_t xi[NUM_SPECIES], yi[NUM_SPECIES];		  // molecular concentration; mass fraction
+	real_t T0 = ZeroDTemperature, p0 = ZeroDPressure; // initial Temperature and Pressure
+#ifdef ZeroMassFraction								  // initial Mass Fraction
+	memcpy(yi, ZeroMassFraction.data(), NUM_SPECIES * sizeof(real_t));
+#else
 	memcpy(yi, Ss.h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
-	// get_yi(yi, Ss.h_thermal.Wi);
-	real_t T0 = _DF(1150.0), p0 = _DF(101325.0);
-	real_t R, rho, h, e, T = T0; // h: unit: J/kg // e: enternal energy
+#endif
+	real_t R, rho, h, e, T = T0, yn2_ = _DF(1.0) - yi[NUM_SPECIES - 1]; // h: unit: J/kg // e: enternal energy
+	R = get_CopR(Ss.h_thermal._Wi, yi), rho = p0 / R / T;
+	h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
+	e = h - R * T;					   // enternal energy
 
 	// chemeq2 solver
-	real_t t_start = _DF(0.0), t_end = _DF(0.001), dt = _DF(1.0E-5), run_time = t_start;
+	real_t t_start = _DF(0.0), t_end = ZeroEndTime, dt = ZeroDtStep, run_time = t_start;
 	std::string outputPrefix = INI_SAMPLE;
 	std::string file_name = OutputDir + "/0D-Detonation-" + outputPrefix + ".dat";
 	std::ofstream out(file_name);
@@ -17,8 +36,8 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	for (size_t n = 0; n < NUM_SPECIES; n++)
 		out << "," << Ss.species_name[n];
 	// out << "variables= time[s], <i>T</i>[K]";
-	// for (size_t n = 0; n < NUM_SPECIES; n++)
-	// 	out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
+	for (size_t n = 0; n < NUM_SPECIES; n++)
+		out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
 
 	// zone name
 	out << "\nzone t='0D-Detonation" << SlipOrder << "'\n";
@@ -26,24 +45,28 @@ void ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	/* Solver loop */
 	while (run_time < t_end + dt)
 	{
-		R = get_CopR(Ss.h_thermal._Wi, yi), rho = p0 / R / T;
-		h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
-		e = h - R * T;					   // enternal energy
-		// T = get_T(Ss.h_thermal, yi, e, T); // update temperature
 		get_xi(xi, yi, Ss.h_thermal._Wi, rho);
 		out << run_time << " " << T;
 		for (int n = 0; n < NUM_SPECIES; n++)
 			out << " " << xi[n];
+		for (int n = 0; n < NUM_SPECIES; n++)
+			out << " " << yi[n];
 		out << "\n";
 
-		real_t Kf[NUM_REA], Kb[NUM_REA];																				// yi[NUM_SPECIES],//get_yi(y, yi, id);
-		get_KbKf(Kf, Kb, Ss.h_react.Rargus, Ss.h_thermal._Wi, Ss.h_thermal.Hia, Ss.h_thermal.Hib, Ss.h_react.Nu_d_, T); // get_e
+		real_t Kf[NUM_REA], Kb[NUM_REA];
+		// get_KbKf(Kf, Kb, Ss.h_react.Rargus, Ss.h_thermal._Wi, Ss.h_thermal.Hia, Ss.h_thermal.Hib, Ss.h_react.Nu_d_, T);
 		Chemeq2(0, Ss.h_thermal, Kf, Kb, Ss.h_react.React_ThirdCoef, Ss.h_react.Rargus, Ss.h_react.Nu_b_, Ss.h_react.Nu_f_, Ss.h_react.Nu_d_, Ss.h_react.third_ind,
 				Ss.h_react.reaction_list, Ss.h_react.reactant_list, Ss.h_react.product_list, Ss.h_react.rns, Ss.h_react.rts, Ss.h_react.pls, yi, dt, T, rho, e);
 		run_time += dt;
+
+		// real_t yn2b_ = _DF(1.0) / (_DF(1.0) - yi[NUM_SPECIES - 1]);
+		// for (int n = 0; n < NUM_SPECIES - 1; n++)
+		// 	yi[n] *= (yn2_ * yn2b_);
+
 		// std::cout << "time = " << run_time << ", temp = " << T << "\n";
 	}
 	out.close();
+	std::cout << "beginning at " << T0 << "K, " << p0 << "Pa. ";
 }
 
 void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)
@@ -61,8 +84,9 @@ void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata
 	real_t *T = fdata.T;
 
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+			 { h.parallel_for(
+				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+				   {
 								  int i = index.get_global_id(0) + bl.Bwidth_X;
 								  int j = index.get_global_id(1) + bl.Bwidth_Y;
 								  int k = index.get_global_id(2) + bl.Bwidth_Z;

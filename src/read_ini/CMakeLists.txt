@@ -5,14 +5,13 @@ add_subdirectory(strsplit)
 # # add readini lib
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
-IF(BOOST_CXX)
-    add_compile_options(-DUSE_CXX_BOOST=1)
-    find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
-    message(STATUS "Find boost_filesystem: ${boost_filesystem}")
-ENDIF(BOOST_CXX)
-
 IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
+
+    IF(BOOST_CXX)
+        target_compile_options(readini PUBLIC -DUSE_CXX_BOOST=1)
+    ENDIF(BOOST_CXX)
+
     target_sources(readini
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/setupini.h

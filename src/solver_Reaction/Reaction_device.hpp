@@ -13,7 +13,23 @@
  */
 real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
 {
+#if defined(Modified_ArrheniusLaw_form)
+	/**
+	 * @brief: Modified ArrheniusLaw form
+	 * *Arrhenius arguments:list A B C , k=A*T^B*exp(-C/T)
+	 * *input units C: K, A: cm^3/molecule/s NOTE: 1 mol=NA molecule
+	 * *output units: k: cm^3/mol/s
+	 */
+	return A * sycl::pow(T, B) * sycl::exp(-E / T);
+#else
+	/**
+	 * @brief: Default ArrheniusLaw form
+	 * *Arrhenius arguments:list A B E , k=A*T^B*exp(-E/R/T)
+	 * *input units E: cal/mol, A: cm^3/mole/s NOTE: 1 cal=4.184 J*mol/K
+	 * *output units: k: cm^3/mol/s
+	 */
 	return A * sycl::pow(T, B) * sycl::exp(-E * _DF(4.184) / Ru / T);
+#endif
 }
 
 /**
@@ -43,14 +59,17 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *_Wi, real_t *Hia, 
 	for (size_t m = 0; m < NUM_REA; m++)
 	{
 		real_t A = Rargus[m * 6 + 0], B = Rargus[m * 6 + 1], E = Rargus[m * 6 + 2];
-#if CJ
-		Kf[m] = sycl::min((_DF(20.0) * _DF(1.0)), A * sycl::pow(T, B) * sycl::exp(-E / T));
-		Kb[m] = _DF(0.0);
-#else
 		Kf[m] = get_Kf_ArrheniusLaw(A, B, E, T);
-		real_t Kck = get_Kc(_Wi, Hia, Hib, Nu_d_, T, m);
-		Kb[m] = Kf[m] / Kck;
-#endif
+		if (BackArre)
+		{
+			real_t A_ = Rargus[m * 6 + 3], B_ = Rargus[m * 6 + 4], E_ = Rargus[m * 6 + 5];
+			Kb[m] = get_Kf_ArrheniusLaw(A_, B_, E_, T);
+		}
+		else
+		{
+			real_t Kck = get_Kc(_Wi, Hia, Hib, Nu_d_, T, m);
+			Kb[m] = Kf[m] / Kck;
+		}
 	}
 }
 
@@ -61,9 +80,13 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t *yi, The
 			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
 {
-	real_t C[MAX_SPECIES] = {_DF(0.0)}, _rho = _DF(1.0) / rho;
+	real_t C[MAX_SPECIES] = {_DF(0.0)}, _rho = _DF(1.0) / rho, mdcoeff = _DF(1.0), _mdcoeff = _DF(1.0);
+	// #if defined(Modified_ArrheniusLaw_form)
+	// 	mdcoeff = NA, _mdcoeff = _DF(1.0) / mdcoeff;
+	// #endif
+
 	for (int n = 0; n < NUM_SPECIES; n++)
-		C[n] = rho * yi[n] * thermal._Wi[n] * _DF(1e-6);
+		C[n] = rho * yi[n] * thermal._Wi[n] * _DF(1e-6) * mdcoeff;
 
 	for (int n = 0; n < NUM_SPECIES; n++)
 	{
@@ -99,8 +122,8 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t *yi, The
 			q[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPf + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPb;
 			d[n] += Nu_b_[react_id * NUM_SPECIES + n] * tb * RPb + Nu_f_[react_id * NUM_SPECIES + n] * tb * RPf;
 		}
-		q[n] *= thermal.Wi[n] * _rho * _DF(1.0e6);
-		d[n] *= thermal.Wi[n] * _rho * _DF(1.0e6);
+		q[n] *= thermal.Wi[n] * _rho * _DF(1.0e6) * _mdcoeff;
+		d[n] *= thermal.Wi[n] * _rho * _DF(1.0e6) * _mdcoeff;
 	}
 }
 
@@ -137,30 +160,29 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 			 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
 			 real_t *y, const real_t dtg, real_t &TT, const real_t rho, const real_t e)
 {
+	int itermax = 1;
+	bool high_level_accuracy_ = (itermax >= 3) ? true : false;
+	real_t tfd = _DF(1.0) + _DF(1.0e-10), ymin = _DF(1.0e-20), dtmin = _DF(1.0e-15);
+	real_t eps = _DF(1e-10), scrtch = _DF(1e-25);
+	real_t epsmax = _DF(1.0), epsmin = _DF(1.0e-4), epscl = _DF(1.0e4), sqreps = _DF(0.05);
 	/**
-	 * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least three corrector
-	 * iterations are performed. For most problems, the stability check is not needed, and eliminating the calculations
-	 * and logic associated with the check enhances performance.
-	 */
-	int itermax = 1;				   // iterations of correction
-	bool high_level_accuracy_ = false; //!< enables accuracy through stability based check (default false)
-
-	real_t tfd = _DF(1.0) + _DF(1.0e-10);			  // round-off parameter used to determine when integration is complete
-	real_t dtmin = _DF(1.0e-15), ymin = _DF(1.0e-20); // ymin: minimum concentration allowed for species i, too much low ymin decrease performance
-	/**
-	 * NOTE: epsion contrl
+	 * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least
+	 * three corrector iterations are performed. For most problems, the stability check is not needed, and eliminating
+	 * the calculations and logic associated with the check enhances performance.
+	 * @param itermax: iterations of correction
+	 * @param high_level_accuracy_: if enable accuracy through stability based check
+	 * @param tfd: round-off parameter used to determine when integration is complete
+	 * @param dtmin: unused, minimum dt step.
+	 * @param ymin: minimum concentration allowed for species i, too much low ymin decrease performance
+	 * 	*NOTE: epsion contrl
 	 * @param eps: error epslion, intializa into _DF(1e-10).
 	 * @param scrtch: to calculate initial time step of q2 integral, intializa into _DF(1e-25).
 	 * @param epscl=1.0/epsmin, intermediate variable used to avoid repeated divisions, higher epscl leading to higher accuracy and lower performace
 	 * @param sqreps=5.0*sycl::sqrt(epsmin), parameter used to calculate initial timestep, || \delta y_i^{c(Nc-1)} ||/(||\delta y_i^{c(Nc)} ||)
 	 */
-	real_t eps = _DF(1e-10), scrtch = _DF(1e-25);
-	real_t epsmax = _DF(1.0), epsmin = _DF(1.0e-4), epscl = _DF(1.0e4), sqreps = _DF(0.05);
 
-	real_t ym1_[NUM_SPECIES], ym2_[NUM_SPECIES];
-	real_t rtau[NUM_SPECIES], rtaus[NUM_SPECIES];				   // deprecated.
-	real_t scrarray[NUM_SPECIES], deltascr[NUM_SPECIES];		   // y_i^p, predicted value from Eq. (35)
-	real_t scrarraym[NUM_SPECIES], deltascrm[NUM_SPECIES];
+	real_t ym1_[NUM_SPECIES], ym2_[NUM_SPECIES], rtau[NUM_SPECIES];			 //, rtaus[NUM_SPECIES];
+	real_t scrarray[NUM_SPECIES];											 //  \delta y based input y_i value for calculate predicted value y_i^p
 	real_t ys[NUM_SPECIES], y0[NUM_SPECIES], y1[NUM_SPECIES];				 // y0: intial concentrations for the global timestep passed to Chemeq
 	real_t qs[NUM_SPECIES], ds[NUM_SPECIES], q[NUM_SPECIES], d[NUM_SPECIES]; // production and loss rate
 
@@ -181,7 +203,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	real_t *species_chara = thermal.species_chara, *Hia = thermal.Hia, *Hib = thermal.Hib;
 	//=========================================================
 	// // initial p and d before predicting
-	// get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+	get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
 	QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 	gcount++;
 	// // to initilize the first 'dt'
@@ -222,12 +244,6 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 			real_t alpha = Alpha(rtau[i]);
 			scrarray[i] = dt * (qs[i] - ds[i]) / (_DF(1.0) + alpha * rtau[i]); // \delta y
 		}
-		// // predict T, Kf, and Kb based predicted y, the predicted assumed not accurate, only update q, d use predicted y excluded T and Kf, Kb
-		// TTn = get_T(thermal, y, e, TTs);
-		// get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
-		// // get predicted q^p , d^p based predictd y
-		QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
-
 		// // // begin correction while loop
 		iter = 1;
 		while (iter <= itermax)
@@ -247,12 +263,14 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 			{
 				tn = ts + dt;
 				for (int i = 0; i < NUM_SPECIES; i++)
-					y1[i] = y[i];
+					y1[i] = y[i]; // predicted y results stored by y1
 			}
 
-			get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+			// // predict T, Kf, Kb, q, d based predicted y
+			// TTn = get_T(thermal, y, e, TTs);
+			// get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+			// // get predicted q^p , d^p based predictd y
 			QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
-			eps = _DF(1e-10);
 
 			for (int i = 0; i < NUM_SPECIES; i++)
 			{
@@ -268,6 +286,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 
 		// // Calculate new f, check for convergence, and limit decreasing functions
 		// // NOTE: The order of operations in this loop is important
+		eps = _DF(1e-10);
 		for (int i = 0; i < NUM_SPECIES; i++)
 		{
 			const real_t scr2 = sycl::max(ys[i] + scrarray[i], _DF(0.0));
@@ -284,10 +303,9 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 			}
 		}
 
-		eps = eps * epscl;
-
 		// // Check for convergence
 		// // // The following section is used for the stability check
+		eps = eps * epscl;
 		real_t stab = _DF(0.0);
 		if (high_level_accuracy_)
 		{

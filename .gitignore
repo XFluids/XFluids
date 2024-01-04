@@ -34,7 +34,6 @@ build
 build/*
 
 # Output
-/*.dat
 /output*
 
 # Hiden files

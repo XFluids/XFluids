@@ -28,6 +28,9 @@
 #ifndef CHEME_SPLITTING
 #define CHEME_SPLITTING "Strang"
 #endif
+#ifndef BackArre
+#define BackArre false
+#endif
 
 #ifndef ESTIM_NAN
 #define ESTIM_NAN 1

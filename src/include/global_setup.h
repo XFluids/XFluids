@@ -31,9 +31,7 @@ using real_t = float; // #define real_t float;
 #define _DF(a) a##f
 #endif //  USE_DOUBLE
 
-#define CJ 0 // 1: CJ detonation case
 #define Interface_line _DF(0.01)
-
 // =======================================================
 // //    Global __device__ constant
 const real_t _OT = (_DF(1.0) / _DF(3.0));

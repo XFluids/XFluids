@@ -301,9 +301,10 @@ void Setup::init()
 // =======================================================
 // =======================================================
 void Setup::ReadSpecies()
-{                                                                                                          // compoent in or out bubble differs
-    h_thermal.species_ratio_in = middle::MallocHost<real_t>(h_thermal.species_ratio_in, NUM_SPECIES, q);   // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
-    h_thermal.species_ratio_out = middle::MallocHost<real_t>(h_thermal.species_ratio_out, NUM_SPECIES, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
+{
+    // compoent in or out bubble differs
+    h_thermal.species_ratio_in = middle::MallocHost<real_t>(h_thermal.species_ratio_in, NUM_SPECIES, q);
+    h_thermal.species_ratio_out = middle::MallocHost<real_t>(h_thermal.species_ratio_out, NUM_SPECIES, q);
 
     std::string path = WorkDir + std::string(RFile) + "/species_list.dat";
     std::fstream fins(path);
@@ -631,18 +632,14 @@ void Setup::ReadReactions()
                         fint >> h_react.React_ThirdCoef[i * NUM_SPECIES + j];
             }
             else if (!std::strcmp(Key_word, "*Arrhenius"))
-            { // reaction rate constant parameters, A, B, E for Arrhenius law // unit: cm^3/mole/sec/kcal
+            { // reaction rate constant parameters, A, B, E for Arrhenius law
                 for (int i = 0; i < NUM_REA; i++)
+                {
                     fint >> h_react.Rargus[i * 6 + 0] >> h_react.Rargus[i * 6 + 1] >> h_react.Rargus[i * 6 + 2];
-            } //-----------------*backwardArrhenius------------------//
-            else if (!std::strcmp(Key_word, "*A"))
-            {
-                BackArre = true;
-                // reaction rate constant parameters, A, B, E for Arrhenius law // unit: cm^3/mole/sec/kcal
-                for (int i = 0; i < NUM_REA; i++)
-                    fint >> h_react.Rargus[i * 6 + 3] >> h_react.Rargus[i * 6 + 4] >> h_react.Rargus[i * 6 + 5];
-                break;
-            } //-----------------*backwardArrhenius------------------//
+                    if (BackArre)
+                        fint >> h_react.Rargus[i * 6 + 3] >> h_react.Rargus[i * 6 + 4] >> h_react.Rargus[i * 6 + 5];
+                } //-----------------*backwardArrhenius------------------//
+            }
         }
     }
     fint.close();
@@ -659,13 +656,11 @@ void Setup::IniSpeciesReactions()
     {
         reaction_list[j].clear();
         for (size_t i = 0; i < NUM_REA; i++)
-        {
             if (h_react.Nu_f_[i * NUM_SPECIES + j] > 0 || h_react.Nu_b_[i * NUM_SPECIES + j] > 0)
-            {
                 reaction_list[j].push_back(i);
-            }
-        }
     }
+
+    bool react_error = false;
     for (size_t i = 0; i < NUM_REA; i++)
     {
         reactant_list[i].clear();
@@ -684,30 +679,112 @@ void Setup::IniSpeciesReactions()
             sum += h_react.React_ThirdCoef[i * NUM_SPECIES + j];
         }
         h_react.third_ind[i] = (sum > _DF(0.0)) ? 1 : 0;
-        ReactionType(0, i, h_react.Nu_f_, h_react.Nu_b_);
-        ReactionType(1, i, h_react.Nu_b_, h_react.Nu_f_);
-    }
-}
 
+        { // output this reaction kinetic
+            if (i + 1 < 10)
+                std::cout << "Reaction:" << i + 1 << "  ";
+            else
+                std::cout << "Reaction:" << i + 1 << " ";
+            int numreactant = 0, numproduct = 0;
+            // // output reactant
+            for (int j = 0; j < NUM_SPECIES; ++j)
+                numreactant += h_react.Nu_f_[i * NUM_SPECIES + j];
+
+            if (numreactant == 0)
+                std::cout << "0	  <-->  ";
+            else
+            {
+                for (int j = 0; j < NUM_SPECIES; j++)
+                {
+                    if (h_react.Nu_f_[i * NUM_SPECIES + j] > 0)
+                        std::cout << h_react.Nu_f_[i * NUM_SPECIES + j] << " " << species_name[j] << " + ";
+
+                    if (NUM_COP == j)
+                    {
+                        if (h_react.React_ThirdCoef[i * NUM_SPECIES + j] > _DF(0.0))
+                            std::cout << " M ";
+                        std::cout << "  <-->  ";
+                    }
+                }
+            }
+            // // output product
+            for (int j = 0; j < NUM_SPECIES; ++j)
+                numproduct += h_react.Nu_b_[i * NUM_SPECIES + j];
+            if (numproduct == 0)
+                std::cout << "0	";
+            else
+            {
+                for (int j = 0; j < NUM_SPECIES; j++)
+                {
+                    if (h_react.Nu_b_[i * NUM_SPECIES + j] > 0)
+                        std::cout << h_react.Nu_b_[i * NUM_SPECIES + j] << " " << species_name[j] << " + ";
+
+                    if (NUM_COP == j)
+                    {
+                        if (h_react.React_ThirdCoef[i * NUM_SPECIES + j] > _DF(0.0))
+                            std::cout << " M ";
+                    }
+                }
+            }
+            std::cout << " with forward rate: " << h_react.Rargus[i * 6 + 0] << " " << h_react.Rargus[i * 6 + 1] << " " << h_react.Rargus[i * 6 + 2];
+            //-----------------*backwardArrhenius------------------//
+            if (BackArre)
+                std::cout << ", backward rate: " << h_react.Rargus[i * 6 + 3] << " " << h_react.Rargus[i * 6 + 4] << " " << h_react.Rargus[i * 6 + 5];
+            std::cout << std::endl;
+
+            if (1 == h_react.third_ind[i])
+            {
+                std::cout << " Third Body coffcients:";
+                for (int j = 0; j < NUM_SPECIES - 1; j++)
+                    std::cout << "  " << species_name[j] << ":" << h_react.React_ThirdCoef[i * NUM_SPECIES + j];
+                std::cout << "\n";
+            }
+        }
+
+        react_error || ReactionType(0, i, h_react.Nu_f_, h_react.Nu_b_); // forward reaction kinetic
+        react_error || ReactionType(1, i, h_react.Nu_b_, h_react.Nu_f_); // backward reaction kinetic
+    }
+
+    // if (react_error)
+    //     exit(EXIT_FAILURE);
+}
 // =======================================================
 // =======================================================
-void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
+/**
+ * @brief determine types of reaction:
+ * 		1: "0 -> A";		2: "A -> 0";		    3: "A -> B";		    4: "A -> B + C";
+ * 	    5: "A -> A + B"     6: "A + B -> 0"		    7: "A + B -> C"		    8: "A + B -> C + D"
+ *      9: "A + B -> A";	10: "A + B -> A + C"    11: "2A -> B"		    12: "A -> 2B"
+ *      13: "2A -> B + C"	14: "A + B -> 2C"	    15: "2A + B -> C + D"   16: "2A -> 2C + D"
+ * @note  only a few simple reaction has analytical solution, for other cases one can use quasi-statical-state-approxiamte(ChemeQ2)
+ * @param i: index of the reaction
+ * @param flag: 0: forward reaction; 1: backward reaction
+ * @param Nuf,Nub: forward and backward reaction matrix
+ * @return true: has unsupported reaction kinetic type
+ * @return false: all supported reaction kinetic type
+ */
+bool Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
 {
+    std::string error_str;
     std::vector<int> forward_list, backward_list;
     if (flag == 0)
     {
-        forward_list = reactant_list[i];
-        backward_list = product_list[i];
+        error_str = "forward ";
+        forward_list = reactant_list[i], backward_list = product_list[i];
     }
     else
     {
-        forward_list = product_list[i];
-        backward_list = reactant_list[i];
+        error_str = "backward";
+        forward_list = product_list[i], backward_list = reactant_list[i];
     }
-    // reaction type
+
+    /**
+     * @brief: reaction type
+     * @note: the support is not complete
+     */
     h_react.react_type[i * 2 + flag] = 0;
-    int Od_Rec = 0, Od_Pro = 0, Num_Repeat = 0; // the order of the reaction
-    // loop all species in reaction "i"
+    int Od_Rec = 0, Od_Pro = 0, Num_Repeat = 0; // // the order of the reaction
+    // // loop all species in reaction "i"
     for (int l = 0; l < forward_list.size(); l++)
     {
         int species_id = forward_list[l];
@@ -731,12 +808,13 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
             }
         }
     }
+    // // get reaction type
     switch (Od_Rec)
     {
-    case 0: // 0th-order
+    case 0: // // 0th-order
         h_react.react_type[i * 2 + flag] = 1;
         break;
-    case 1: // 1st-order
+    case 1: // // 1st-order
         if (Od_Pro == 0)
             h_react.react_type[i * 2 + flag] = 2;
         else if (Od_Pro == 1)
@@ -748,7 +826,7 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
                 h_react.react_type[i * 2 + flag] = 12;
         }
         break;
-    case 2: // 2nd-order
+    case 2: // // 2nd-order
         if (Od_Pro == 0)
             h_react.react_type[i * 2 + flag] = 6;
         else if (Od_Pro == 1)
@@ -767,22 +845,27 @@ void Setup::ReactionType(int flag, int i, int *Nuf, int *Nub)
         }
         else if (Od_Pro == 3)
         {
-            if (Nub[i * NUM_SPECIES + backward_list[0]] == 2)
+            if ((Nub[i * NUM_SPECIES + backward_list[0]] == 2) && !(Num_Repeat))
                 h_react.react_type[i * 2 + flag] = 16;
         }
-    case 3: // 3rd-order
+        break;
+    case 3: // // 3rd-order
         if (Od_Pro == 2)
         {
-            if (Nuf[i * NUM_SPECIES + forward_list[0]] == 2 || Nuf[i * NUM_SPECIES + backward_list[0]] == 2)
+            if (Nuf[i * NUM_SPECIES + forward_list[0]] == 2 || Nuf[i * NUM_SPECIES + forward_list[1]] == 2 && Nuf[i * NUM_SPECIES + backward_list[0]] == 1 && !(Num_Repeat))
                 h_react.react_type[i * 2 + flag] = 15;
         }
         break;
     }
     if (h_react.react_type[i * 2 + flag] == 0)
+    {
         if (myRank == 0)
-        {
-            std::cout << "reaction type error for i = " << i << "\n";
-        }
+            std::cout << " Note:no analytical solutions for" << error_str << " reaction of the " << i + 1 << " kinetic.\n";
+
+        return true;
+    }
+
+    return false;
 }
 
 // =======================================================
@@ -1449,16 +1532,15 @@ void Setup::print()
     if (myRank == 0)
         std::cout << "<---------------------------------------------------> \n";
 
-    std::cout << species_name.size() << " species mole/mass fraction: " << std::endl;
+    std::cout << species_name.size() << " species mole/mass fraction(in/out): " << std::endl;
     for (int n = 0; n < NUM_SPECIES; n++)
     {
-        std::cout << "species[" << n << "]=" << species_name[n] << ": "
+        std::cout << "species[" << n << "]=" << std::left << std::setw(10) << species_name[n]
                   << std::setw(5) << h_thermal.xi_in[n] << std::setw(5) << h_thermal.xi_out[n]
                   << std::setw(15) << h_thermal.species_ratio_in[n] << std::setw(15) << h_thermal.species_ratio_out[n] << std::endl;
     }
 
 #if Visc
-
     if (myRank == 0)
         std::cout << "<---------------------------------------------------> \n";
 
@@ -1472,71 +1554,7 @@ void Setup::print()
                h_thermal.species_chara[n * SPCH_Sz + 5], h_thermal.species_chara[n * SPCH_Sz + 6]);
     }
 #endif // Visc
-
-    if (ReactSources)
-    {
-        for (size_t id = 0; id < NUM_REA; id++)
-        {
-            if (id + 1 < 10)
-                std::cout << "Reaction:" << id + 1 << "  ";
-            else
-                std::cout << "Reaction:" << id + 1 << " ";
-            int numreactant = 0, numproduct = 0;
-            // output reactant
-            for (int j = 0; j < NUM_SPECIES; ++j)
-                numreactant += h_react.Nu_f_[id * NUM_SPECIES + j];
-
-            if (numreactant == 0)
-                std::cout << "0	"
-                          << "  <-->  ";
-            else
-            {
-                for (int j = 0; j < NUM_SPECIES; j++)
-                {
-                    if (j != NUM_COP)
-                    {
-                        if (h_react.Nu_f_[id * NUM_SPECIES + j] > 0)
-                            std::cout << h_react.Nu_f_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
-                    }
-                    else
-                    {
-                        if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
-                            std::cout << " M ";
-                        std::cout << "  <-->  ";
-                    }
-                }
-            }
-            // output product
-            for (int j = 0; j < NUM_SPECIES; ++j)
-                numproduct += h_react.Nu_b_[id * NUM_SPECIES + j];
-            if (numproduct == 0)
-                std::cout << "0	";
-            else
-            {
-                for (int j = 0; j < NUM_SPECIES; j++)
-                {
-                    if (j != NUM_COP)
-                    {
-                        if (h_react.Nu_b_[id * NUM_SPECIES + j] > 0)
-                            std::cout << h_react.Nu_b_[id * NUM_SPECIES + j] << " " << species_name[j] << " + ";
-                    }
-                    else
-                    {
-                        if (h_react.React_ThirdCoef[id * NUM_SPECIES + j] > 1e-6)
-                            std::cout << " M ";
-                    }
-                }
-            }
-            std::cout << " with rate: " << h_react.Rargus[id * 6 + 0] << " " << h_react.Rargus[id * 6 + 1] << " " << h_react.Rargus[id * 6 + 2] << std::endl;
-            //-----------------*backwardArrhenius------------------//
-            if (BackArre)
-            {
-                std::cout << " with back rate: " << h_react.Rargus[id * 6 + 3] << " " << h_react.Rargus[id * 6 + 4] << " " << h_react.Rargus[id * 6 + 5] << std::endl;
-            }
-            //-----------------*backwardArrhenius------------------//
-        }
-    }
-#endif // COP
+#endif // end COP
 
     if (myRank == 0)
         std::cout << "<---------------------------------------------------> \n";
@@ -1550,10 +1568,10 @@ void Setup::print()
         std::cout << "   MPI Cartesian topology        : " << BlSz.mx << " x " << BlSz.my << " x " << BlSz.mz << std::endl;
     }
 #else
-    std::cout << "   Resolution of Domain:                 " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
+    std::cout << "Resolution of Domain:                 " << BlSz.X_inner << " x " << BlSz.Y_inner << " x " << BlSz.Z_inner << "\n";
 #endif // end USE_MPI
     printf("GhostWidth Cells: Bx, By, Bz:         %d,  %d,  %d\n", BlSz.Bwidth_X, BlSz.Bwidth_Y, BlSz.Bwidth_Z);
-    printf("Block size:   bx, by, bz, Dt:         %d,  %d,  %d,  %d\n", BlSz.dim_block_x, BlSz.dim_block_y, BlSz.dim_block_z, BlSz.BlockSize);
+    printf("Block size:   bx, by, bz, Dt:         %zu,  %zu,  %zu,  %zu\n", BlSz.dim_block_x, BlSz.dim_block_y, BlSz.dim_block_z, BlSz.BlockSize);
     printf("XYZ dir Domain size:                  %1.3lf x %1.3lf x %1.3lf\n", BlSz.Domain_length, BlSz.Domain_width, BlSz.Domain_height);
     printf("Difference steps: dx, dy, dz:         %lf, %lf, %lf\n", BlSz.dx, BlSz.dy, BlSz.dz);
 

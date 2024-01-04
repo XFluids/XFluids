@@ -13,13 +13,9 @@
  */
 real_t get_DpDrho(const real_t hN, const real_t RN, const real_t q2, const real_t Cp, const real_t R, const real_t T, const real_t e, const real_t gamma)
 {
-#if CJ
-	return (Gamma0 - _DF(1.0)) * e; // p/rho;//
-#else
 	real_t RNT = RN * T; // unit: J/kg
 	return (gamma - _DF(1.0)) * (_DF(0.5) * q2 - hN + Cp * RNT / R);
 	// NOTE:return gamma * RNT + (gamma - _DF(1.0)) * (e - hN); // is not right
-#endif
 }
 
 /**
@@ -32,14 +28,10 @@ real_t get_DpDrho(const real_t hN, const real_t RN, const real_t q2, const real_
  */
 real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const real_t RiN, const real_t T, const real_t Cp, const real_t R, const real_t gamma)
 {
-#if CJ
-	return 0; //(Gamma0-1.0)*(-heat_release[n]);
-#else
 	real_t hN_minus_hi = -hin + hiN;  // unit: J/kg
 	real_t Ri_minus_RN = (Rin - RiN); // unit: J/kg/K
 	real_t temp = (gamma - _DF(1.0)) * (hN_minus_hi + Cp * Ri_minus_RN * T / R);
 	return temp;
-#endif
 }
 
 /**

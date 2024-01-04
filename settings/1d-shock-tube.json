@@ -11,7 +11,7 @@
 		"OutBoundary": 0,
 		"OutInterval": 1000,
 		"OutTimeStamps": [
-			0.00004
+			"0.00004: {-C=X,0.0,0.0;-V=rho,P,T}"
 		]
 	},
 	"mpi": {

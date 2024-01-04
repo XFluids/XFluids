@@ -119,6 +119,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-detonation")
     set(THERMAL "NASA") # NASA fit of Xe
     set(POSITIVITY_PRESERVING "ON")
     set(ARTIFICIAL_VISC_TYPE "GLF")
+    set(MIXTURE_MODEL "H2O-N2_19_reaction")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-detonation")
     set(INI_FILE "settings/2d-detonation.json")
 
@@ -182,7 +183,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(DIM_Y "ON")
     set(DIM_Z "OFF")
     set(POSITIVITY_PRESERVING "ON")
-    set(MIXTURE_MODEL "Reaction/H2O_21_reaction")
+    set(MIXTURE_MODEL "H2O_21_reaction")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/mixing-layer")
     set(INI_FILE "settings/2d-mixing-layer.json")
 

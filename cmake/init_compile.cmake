@@ -51,6 +51,19 @@ ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
 ENDIF()
 
 # // =======================================================
+# #### about external boost libs
+# // =======================================================
+IF(BOOST_CXX)
+	find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "$ENV{BOOST_ROOT}/lib")
+
+	IF("${boost_filesystem}" STREQUAL "boost_filesystem-NOTFOUND")
+		set(BOOST_CXX "OFF")
+		message(WARNING "Cann't find boost_filesystem, set BOOST_CXX=OFF automaticlly for using std interfaces")
+	ELSE()
+		message(STATUS "Find boost_filesystem: ${boost_filesystem}")
+	ENDIF()
+ENDIF(BOOST_CXX)
+# // =======================================================
 # #### about device select
 # // =======================================================
 message(STATUS "CMAKE STATUS:")
