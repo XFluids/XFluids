@@ -152,7 +152,7 @@
   | -dev             |  device counting and selecting: device munber,platform,device                           |  int  |
   | -run             |  domain resolution and running steps: X_inner,Y_inner,Z_inner,nStepmax(if given)        |  int  |
 
-## 7. Uutput data format
+## 7. Output data format
 
 - #### Set "OutDAT", "OutVTI" as 1 in .ini file
 

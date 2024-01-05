@@ -864,11 +864,10 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, bool error)
 	}
 	else if (ctrl.SPOut)
 	{
-		if (OutVTI)
-			Output_svti(ctrl.out_vars, ctrl.cri_list, osr);
-
 		if (rank == 0)
 			std::cout << "Partial Domain solution ";
+		if (OutVTI)
+			Output_svti(ctrl.out_vars, ctrl.cri_list, osr);
 	}
 
 	if (rank == 0)
@@ -983,13 +982,14 @@ void XFLUIDS::Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &c
 		mx = Ss.BlSz.mx;
 		my = Ss.BlSz.my;
 		mz = (3 == Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ) ? Ss.BlSz.mz : 0;
-		if ((minMpiPos_x == Ss.BlSz.myMpiPos_x) && (minMpiPos_y == Ss.BlSz.myMpiPos_y) && (minMpiPos_z == Ss.BlSz.myMpiPos_z)) // write header
+		if ((OutRanks[rank] >= 0) && (minMpiPos_x == Ss.BlSz.myMpiPos_x) && (minMpiPos_y == Ss.BlSz.myMpiPos_y) && (minMpiPos_z == Ss.BlSz.myMpiPos_z))
 		{
+			// // write header
 			std::fstream outHeader;
-			// dummy string here, when using the full VTK API, data can be compressed
-			// here, no compression used
+			// // dummy string here, when using the full VTK API, data can be compressed
+			// // here, no compression used
 			std::string compressor("");
-			// open pvti header file
+			// // open pvti header file
 			outHeader.open(headerfile_name.c_str(), std::ios_base::out);
 			outHeader << "<?xml version=\"1.0\"?>" << std::endl;
 			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
@@ -1006,7 +1006,7 @@ void XFLUIDS::Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &c
 			for (int iVar = 0; iVar < varout.size(); iVar++)
 				outHeader << "      <PDataArray type=\"Float" << sizeof(T) * 8 << "\" Name=\"" << varout[iVar].name << "\"/>" << std::endl;
 			outHeader << "    </PCellData>" << std::endl;
-			// Out put for 2D && 3D;
+			// // Out put for 2D && 3D;
 			for (int iPiece = 0; iPiece < Ss.nRanks; ++iPiece)
 				if (OutRanks[iPiece] >= 0)
 				{
@@ -1052,7 +1052,7 @@ void XFLUIDS::Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &c
 				}
 			outHeader << "</PImageData>" << std::endl;
 			outHeader << "</VTKFile>" << std::endl;
-			// close header file
+			// // close header file
 			outHeader.close();
 		} // end writing pvti header
 	}
