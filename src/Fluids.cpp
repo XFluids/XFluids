@@ -738,7 +738,7 @@ void Fluid::GetTheta(sycl::queue &q)
 
 	if (ReactSources)
 	{
-		real_t pVar[NUM_SPECIES - 3];
+		real_t pVar[NUM_SPECIES];
 		for (size_t n = 0; n < NUM_SPECIES - 3; n++)
 			Fs.mpiTrans->communicator->allReduce(&(pVar_max[n]), &pVar[n], 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 		Fs.mpiTrans->communicator->synchronize();

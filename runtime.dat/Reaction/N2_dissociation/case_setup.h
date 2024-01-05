@@ -7,7 +7,7 @@
 #define ZeroDTemperature 4000.0
 #define ZeroDPressure 100000.0
 #define ZeroDtStep 1.0E-7
-#define ZeroEndTime 2.0E-4
+#define ZeroEndTime 5.0E-4
 
 /**
  * @brief Ref1.Table 1 of Assessment of a Two-Temperature Kinetic Model for Dissociating and Weakly Ionizing Nitrogen
