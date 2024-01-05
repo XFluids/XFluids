@@ -180,7 +180,11 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			// timer of this step
 			duration = OutThisTime(start_time) + duration_backup;
 			if (rank == 0)
-				std::cout << ", runtime: " << std::setw(10) << duration << "\n";
+			{
+				std::cout << ", runtime: " << std::setw(10) << duration;
+				time_t timestamp_s = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+				std::cout << ", at: " << std::string(ctime(&timestamp_s));
+			}
 		}
 		TimeLoopOut = true;
 	}

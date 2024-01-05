@@ -18,14 +18,16 @@ class Fluid
     std::string outputPrefix, file_name;
 
 public:
-    int error_patched_times, rank, nranks, SBIOutIter;
-    float MPI_trans_time, MPI_BCs_time;
     long double MemMbSize, MPIMbSize;
-    real_t *uvw_c_max, *eigen_block_x, *eigen_block_y, *eigen_block_z, *theta, *sigma, *pVar_max, *interface_point;
-    // std::vector<real_t> pTime, Theta, Sigma, thetas[3], Var_max[NUM_SPECIES - 3], Interface_points[6]; // Var_max[3]= {Tmax, YiHO2max, YiH2O2max}
-    real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak; // *h_ptr for Err out and h_Ubak for Continued Caculate
-    real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
+    float MPI_trans_time, MPI_BCs_time;
+    int error_patched_times, rank, nranks, SBIOutIter;
+
+    real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
+
+    real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
+    real_t *uvw_c_max, *eigen_block_x, *eigen_block_y, *eigen_block_z, *theta, *sigma, *pVar_max, *interface_point;
+
     FlowData d_fstate, h_fstate;
 
     std::string Fluid_name; // name of the fluid
