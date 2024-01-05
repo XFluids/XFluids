@@ -162,7 +162,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 {
 	int itermax = 1;
 	bool high_level_accuracy_ = (itermax >= 3) ? true : false;
-	real_t tfd = _DF(1.0) + _DF(1.0e-10), ymin = _DF(1.0e-20), dtmin = _DF(1.0e-15);
+	real_t tfd = _DF(1.0) + _DF(1.0e-10), ymin = _DF(1.0e-20), dtmin = _DF(1.0e-7);
 	real_t eps = _DF(1e-10), scrtch = _DF(1e-25);
 	real_t epsmax = _DF(1.0), epsmin = _DF(1.0e-4), epscl = _DF(1.0e4), sqreps = _DF(0.05);
 	/**
@@ -172,7 +172,8 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	 * @param itermax: iterations of correction
 	 * @param high_level_accuracy_: if enable accuracy through stability based check
 	 * @param tfd: round-off parameter used to determine when integration is complete
-	 * @param dtmin: unused, minimum dt step.
+	 * @param dto: original dt for a integration step
+	 * @param dtmin: minimum dt for each step, automatically relax convergence restrictions while dt<=dtmin*dto for a step .
 	 * @param ymin: minimum concentration allowed for species i, too much low ymin decrease performance
 	 * 	*NOTE: epsion contrl
 	 * @param eps: error epslion, intializa into _DF(1e-10).
@@ -218,6 +219,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 		scrtch = sycl::max(scr1, sycl::max(temp, scrtch));
 	}
 	dt = sycl::min(sqreps / scrtch, dtg);
+	dtmin *= dt;
 
 	while (1)
 	{
@@ -336,11 +338,13 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 		else
 			dt = sycl::min(dt * (_DF(1.0) / rteps + _DF(0.005)), tfd * (dtg - tn)); // new dt
 
-		// // // Begin a new step if previous step converged
+		// // // Rebegin the step if  this previous step not converged
 		if (eps > epsmax || stab > _DF(1.0))
 		{
 			dt = sycl::min(dt, _DF(0.34) * dto); // add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
 			rcount++;
+			if (dt <= dtmin)
+				epsmax *= _DF(10.0);
 			// dto = dt / dto;
 			// for (int i = 0; i < NUM_SPECIES; i++)
 			// 	rtaus[i] = rtaus[i] * dto;
@@ -348,6 +352,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 		}
 
 		// // A valid time step has done
+		epsmax = _DF(1.0);
 		TTn = get_T(thermal, y, e, TTs); // new T
 		get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
 		QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
