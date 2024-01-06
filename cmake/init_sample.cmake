@@ -65,6 +65,16 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-reverse")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
     set(INI_FILE "settings/1d-diffusion.json")
 
+ELSEIF(INIT_SAMPLE STREQUAL "1d-laminar-flame")
+    set(COP "ON")
+    set(Visc "OFF")
+    set(COP_CHEME "ON")
+    set(Visc_Heat "ON")
+    set(Visc_Diffu "ON")
+    set(POSITIVITY_PRESERVING "OFF")
+    set(MIXTURE_MODEL "Reaction/H2O-N2_21_reaction")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/laminar-flame")
+    set(INI_FILE "settings/1d-laminar-flame.json")
 # // =======================================================
 # #### 2d sample
 # // =======================================================

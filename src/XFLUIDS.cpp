@@ -112,16 +112,17 @@ void XFLUIDS::Evolution(sycl::queue &q)
 	while (TimeLoop < Ss.OutTimeStamps.size())
 	{
 		real_t target_t = (physicalTime < Ss.OutTimeStamps[TimeLoop].time) ? Ss.OutTimeStamps[TimeLoop].time : Ss.OutTimeStamps[TimeLoop++].time; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
+		OutAtThis = Ss.OutTimeStamps[std::max(0, TimeLoop - 1)];
 		while (physicalTime < target_t)
 		{
 			CopyToUbak(q);
 			if ((((Iteration % OutInterval == 0) || TimeLoopOut) && OutNum <= nOutput))
 			{
-				Output(q, Ss.OutTimeStamps[std::max(0, TimeLoop - 1)].Reinitialize(physicalTime, std::to_string(Iteration)));
-				// if (Iteration > 0)	// solution checkingpoint file output
-				// 	Output_Ubak(rank, Iteration, physicalTime, duration, true);
 				OutNum++;
 				TimeLoopOut = false;
+				// if (Iteration > 0)	// solution checkingpoint file output
+				// 	Output_Ubak(rank, Iteration, physicalTime, duration, true);
+				Output(q, OutAtThis.Reinitialize(physicalTime, std::to_string(Iteration)));
 			}
 			if ((RcalOut % RcalInterval == 0) && RcalOut)
 				Output_Ubak(rank, Iteration, physicalTime, duration);
@@ -129,31 +130,25 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			Iteration++;
 
 			if (timer_create)
-			{ // creat timer beginning point, execute only once.
+			{ // // creat timer beginning point, execute only once.
 				timer_create = false;
 				if (0 == rank)
 					std::cout << "Timer beginning at this point.\n";
 				start_time = std::chrono::high_resolution_clock::now();
 			}
 
-			{ // screen log print
-				// An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
-				if (rank == 0)
-					std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
-#ifdef USE_MPI
-				Ss.mpiTrans->communicator->synchronize();
-				real_t temp;
-				Ss.mpiTrans->communicator->allReduce(&dt, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-				dt = temp;
-#endif
-				// get minmum dt, if MPI used, get the minimum of all ranks
-				dt = ComputeTimeStep(q); // 2.0e-6; //
+			{ // // get minmum dt, if MPI used, get the minimum of all ranks
+				dt = ComputeTimeStep(q);
 				if (physicalTime + dt > target_t)
 					dt = target_t - physicalTime;
 				physicalTime += dt;
-				if (rank == 0)
-					std::cout << " dt: " << std::setw(14) << dt << " End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
 			}
+
+			// // screen log print
+			// // An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
+			if (rank == 0)
+				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime
+						  << " dt: " << std::setw(14) << dt << " End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
 
 			{ // a advance time step
 				// strang slipping
@@ -164,26 +159,25 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				// reaction sources
 				if (ReactSources)
 					error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
-#if ESTIM_NAN
-#ifdef USE_MPI
-				error_out = Ss.mpiTrans->BocastTrue(error_out);
-#endif
-				if (error_out)
-					goto flag_ernd;
-#endif // end ESTIM_NAN
 			}
 
-			Stepstop = Ss.nStepmax <= Iteration ? true : false;
-			if (Stepstop)
-				goto flag_end;
-
-			// timer of this step
-			duration = OutThisTime(start_time) + duration_backup;
-			if (rank == 0)
-			{
-				std::cout << ", runtime: " << std::setw(10) << duration;
-				time_t timestamp_s = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-				std::cout << ", at: " << std::string(ctime(&timestamp_s));
+			{ // // timer of this step
+				duration = OutThisTime(start_time) + duration_backup;
+				if (rank == 0)
+				{
+					std::cout << ", runtime: " << std::setw(10) << duration;
+					time_t timestamp_s = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+					std::cout << ", at: " << std::string(ctime(&timestamp_s));
+				}
+			}
+			{ // // if stop based error captured
+				if (error_out)
+					goto flag_ernd;
+			}
+			{ // // if stop based nStepmax
+				Stepstop = Ss.nStepmax <= Iteration ? true : false;
+				if (Stepstop)
+					goto flag_end;
 			}
 		}
 		TimeLoopOut = true;
@@ -295,7 +289,7 @@ bool XFLUIDS::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t 
 bool XFLUIDS::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag)
 {
 	bool error = false, errors[NumFluid];
-	int root, maybe_root, error_out = 0;
+
 	for (int n = 0; n < NumFluid; n++)
 	{
 		errors[n] = fluids[n]->EstimateFluidNAN(q, flag);
@@ -303,21 +297,15 @@ bool XFLUIDS::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, con
 		// if (rank == 1 && Step == 10)
 		// 	error = true;
 	}
-	maybe_root = (error ? rank : 0), error_out = error;
-#ifdef USE_MPI
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-	Ss.mpiTrans->communicator->synchronize();
-	Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
-	Ss.mpiTrans->communicator->synchronize();
-#endif // end USE_MPI
 
+	std::string StepEr = std::to_string(Step) + "_RK" + std::to_string(flag);
 	if (error)
-		Output(q, OutFmt(Time, "UErs_" + std::to_string(Step) + "_RK" + std::to_string(flag), true));
-	if (error_out)
-		Output(q, OutFmt(Time, "UErr_" + std::to_string(Step) + "_RK" + std::to_string(flag), false));
-
-	error = bool(error_out);
+		Output(q, OutFmt(Time, "UErs_" + StepEr), true);
+#ifdef USE_MPI
+	error = Ss.mpiTrans->BocastTrue(error);
+#endif // end USE_MPI
+	if (error)
+		Output(q, OutAtThis.Reinitialize(Time, "UErr_" + StepEr), false);
 
 	q.wait();
 
@@ -384,6 +372,14 @@ real_t XFLUIDS::ComputeTimeStep(sycl::queue &q)
 	real_t dt_ref = _DF(1.0e-10);
 	dt_ref = fluids[0]->GetFluidDt(q, Iteration, physicalTime);
 
+// // if MPI used, get the minimum of all ranks
+#ifdef USE_MPI
+	real_t temp;
+	Ss.mpiTrans->communicator->synchronize();
+	Ss.mpiTrans->communicator->allReduce(&dt_ref, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+	dt_ref = temp;
+#endif
+
 	return dt_ref;
 }
 
@@ -415,29 +411,16 @@ bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const in
 		// 	error[n] = true;
 		error_t = error_t || error[n]; // rank error
 	}
-	// if (Step)
+
 	{
-#if ESTIM_NAN
 		std::string Stepstr = std::to_string(Step);
 		if (error_t)
-		{
 			Output(q, OutFmt(Time, "PErs_" + Stepstr + RkStep), true);
-			std::cout << "Output has been done at Step = PErs_" << Stepstr << RkStep << std::endl;
-		}
 #ifdef USE_MPI
-		int root, maybe_root = (error_t ? rank : 0), error_out = error_t; // error_out==1 in all rank for all rank out after bcast
-		Ss.mpiTrans->communicator->synchronize();
-		Ss.mpiTrans->communicator->allReduce(&maybe_root, &root, 1, mpiUtils::MpiComm::INT, mpiUtils::MpiComm::MAX);
-		Ss.mpiTrans->communicator->synchronize();
-		Ss.mpiTrans->communicator->bcast(&(error_out), 1, mpiUtils::MpiComm::INT, root);
-		Ss.mpiTrans->communicator->synchronize();
-		error_t = bool(error_out);
+		error_t = Ss.mpiTrans->BocastTrue(error_t);
 #endif // end USE_MPI
 		if (error_t)
-			Output(q, OutFmt(Time, "PErr_" + Stepstr + RkStep), false);
-#else
-		error_t = false;
-#endif // end ESTIM_NAN
+			Output(q, OutAtThis.Reinitialize(Time, "PErr_" + Stepstr + RkStep), false);
 	}
 
 	return error_t; // all rank == 1 or 0
@@ -446,14 +429,16 @@ bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const in
 void XFLUIDS::AllocateMemory(sycl::queue &q)
 {
 	d_BCs = static_cast<BConditions *>(malloc_device(6 * sizeof(BConditions), q));
-
 	q.memcpy(d_BCs, Ss.Boundarys, 6 * sizeof(BConditions));
 
 	// host arrays for each fluid
+	if (0 == rank)
+		std::cout << "<---------------------------------------------------> \n";
 	for (int n = 0; n < NumFluid; n++)
 		fluids[n]->AllocateFluidMemory(q);
-
 	// levelset->AllocateLSMemory();
+	if (0 == rank)
+		std::cout << "<---------------------------------------------------> \n";
 
 	for (size_t nn = 0; nn < Ss.OutTimeStamps.size(); nn++)
 		Ss.OutTimeStamps[nn].Initialize(Ss.BlSz, Ss.species_name, fluids[0]->h_fstate);
@@ -851,7 +836,14 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, bool error)
 	CopyDataFromDevice(q, error); // only copy when output
 
 	if (error)
-		Output_vti(rank, osr);
+	{
+		if (OutVTI)
+			Output_vti(rank, osr);
+		if (OutDAT)
+			Output_cplt(ctrl.out_vars, ctrl.pos, osr);
+		if (rank == 0)
+			std::cout << "Errors Captured solution";
+	}
 	else if (ctrl.CPOut)
 	{
 		if (OutDAT)

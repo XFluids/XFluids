@@ -312,7 +312,7 @@ struct OutFmt
 	 * @param Oy: if y axis dimension output
 	 * @param Oz: if z axis dimension output
 	 */
-	OutFmt(const real_t Time, std::string Step = "",
+	OutFmt(const real_t Time = _DF(0.0), std::string Step = "",
 		   const bool Ox = true, const bool Oy = true, const bool Oz = true,
 		   const real_t O_x = 0, const real_t O_y = 0, const real_t O_z = 0)
 	{

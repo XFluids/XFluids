@@ -63,6 +63,7 @@ public:
     float duration, duration_backup;
     float MPI_trans_time, MPI_BCs_time;
 
+    OutFmt OutAtThis;
     BConditions *d_BCs; // boundary condition indicators
     std::vector<Fluid *> fluids{NumFluid};
 
