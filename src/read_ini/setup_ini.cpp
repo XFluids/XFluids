@@ -266,7 +266,7 @@ void Setup::init()
     BlSz.dy = BlSz.DimY ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
     BlSz.dz = BlSz.DimZ ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
 
-    // maximum number of total cells
+    // // maximum number of total cells
     BlSz.Xmax = BlSz.DimX ? (BlSz.X_inner + 2 * BlSz.Bwidth_X) : 1;
     BlSz.Ymax = BlSz.DimY ? (BlSz.Y_inner + 2 * BlSz.Bwidth_Y) : 1;
     BlSz.Zmax = BlSz.DimZ ? (BlSz.Z_inner + 2 * BlSz.Bwidth_Z) : 1;
@@ -285,16 +285,28 @@ void Setup::init()
 
     BlSz._dx = _DF(1.0) / BlSz.dx, BlSz._dy = _DF(1.0) / BlSz.dy, BlSz._dz = _DF(1.0) / BlSz.dz, BlSz._dl = _DF(1.0) / BlSz.dl;
 
-    // bubble size: two cell boundary
+    // // bubble size: two cell boundary
     ini._xa2 = _DF(1.0) / (ini.xa * ini.xa);
     ini._yb2 = _DF(1.0) / (ini.yb * ini.yb);
     ini._zc2 = _DF(1.0) / (ini.zc * ini.zc);
     ini.C = C_json * BlSz.mx * BlSz.X_inner;
 
-    // DataBytes set
+    // // DataBytes set
     bytes = BlSz.Xmax * BlSz.Ymax * BlSz.Zmax * sizeof(real_t), cellbytes = Emax * bytes;
 
+    // // solving system
+    BlSz.num_species = NUM_SPECIES;
+    BlSz.num_cop = NUM_SPECIES - 1;
+#ifdef GhostSpecies
+    BlSz.num_species += (-1);
+#else
+#endif
+    BlSz.num_rea = NUM_REA;
+    BlSz.num_eqn = BlSz.num_species + 4;
+
+    // // Initialize shock base mach number
     mach_shock = Mach_Shock();
+    // // Initialize shock base mach number
     if (0 == myRank)
         print();
 } // Setup::init

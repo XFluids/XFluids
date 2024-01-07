@@ -88,7 +88,6 @@ extern void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, re
 	Vox[id] = wx * wx + wy * wy + wz * wz; // |w|, magnitude or the vorticity, w^2 used later, sqrt while output
 }
 
-#if DIM_X
 extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
@@ -191,12 +190,10 @@ extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall
 	//             FluxFw[n + Emax * id] -= F_x_wall_v[n];
 	//     }
 }
-#endif // end DIM_X
 
-#if DIM_Y
 extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
-											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
-											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
+								real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
+								real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
 { // compute Physical、Visc_Heat、Visc_Diffu viscity in this function
 	if (i >= bl.X_inner + bl.Bwidth_X)
 		return;
@@ -296,9 +293,7 @@ extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall
 	//             FluxGw[n + Emax * id] -= F_y_wall_v[n];
 	//     }
 }
-#endif // end DIM_Y
 
-#if DIM_Z
 extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
@@ -401,5 +396,3 @@ extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall
 	//             FluxHw[n + Emax * id] -= F_z_wall_v[n];
 	//     }
 }
-#endif // end DIM_Z
-

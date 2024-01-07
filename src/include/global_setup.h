@@ -152,8 +152,10 @@ enum MpiCpyType
 typedef struct
 {
 	//--for-Computational-dimensions---------
+	size_t DimS;
 	bool DimX, DimY, DimZ;
-	real_t DimX_t, DimY_t, DimZ_t;
+	real_t DimX_t, DimY_t, DimZ_t, DimS_t;
+	//--for-Thread-manage--------------------
 	size_t BlockSize, dim_block_x, dim_block_y, dim_block_z;
 	//--for-Solving-system-------------------
 	size_t num_fluids, num_species, num_cop, num_rea, num_eqn;
@@ -166,13 +168,14 @@ typedef struct
 	real_t Domain_xmin, Domain_ymin, Domain_zmin;
 	real_t Domain_xmax, Domain_ymax, Domain_zmax;
 	real_t Domain_length, Domain_width, Domain_height;
+	//--for-Discretization-------------------
 	real_t dx, dy, dz, dl, _dx, _dy, _dz, _dl, CFLnumber;
 	//--for-Mpi: mx means number of ranks in x direction, myMpiPos_x means location of this rank in x-dir ranks(from 0 to mx-1)
 	real_t offx, offy, offz;
 	int mx, my, mz, myMpiPos_x, myMpiPos_y, myMpiPos_z;
 	// reference parameters, for calulate coordinate while readgrid
 	real_t LRef;
-	// for theta count
+	//--for-SBI-over-time-count--------------
 	size_t Xe_id, N2_id;
 } Block;
 

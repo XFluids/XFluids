@@ -101,7 +101,6 @@ extern void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, re
  * @param T,rho,hi,Yi,u,v,w is the variables of the fluid flow field.
  * @param Er-* are the Error to be Output in Flux reconstruction.
  */
-#if DIM_X
 extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
@@ -155,9 +154,7 @@ extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall
 
 	MARCO_VISCFLUX();
 }
-#endif // end DIM_X
 
-#if DIM_Y
 extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
@@ -211,9 +208,7 @@ extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall
 
 	MARCO_VISCFLUX();
 }
-#endif // end DIM_Y
 
-#if DIM_Z
 extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
 											  real_t *T, real_t *rho, real_t *hi, real_t *Yi, real_t *u, real_t *v, real_t *w, real_t *const *Vde,
 											  real_t *ErvisFw, real_t *ErDimw, real_t *Erhiw, real_t *ErYiw, real_t *ErYilw)
@@ -267,5 +262,3 @@ extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall
 
 	MARCO_VISCFLUX();
 }
-#endif // end DIM_Z
-

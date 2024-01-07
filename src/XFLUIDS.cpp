@@ -145,22 +145,26 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			}
 
 			// // screen log print
-			// // An iteration begins at the physicalTime output on screen and ends at physicalTime + dt, which is the physicalTime of the next iteration
+			// // an iteration begins at physicalTime and ends at physicalTime + dt;
 			if (rank == 0)
 				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime
 						  << " dt: " << std::setw(14) << dt << " End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
 
 			{ // a advance time step
-				// strang slipping
+				// // strang slipping
 				if ((ReactSources) && (SlipOrder == std::string("Strang")))
 					error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
-				// solved the fluid with 3rd order Runge-Kutta method
+				// // solved the fluid with 3rd order Runge-Kutta method
 				error_out = error_out || SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
-				// reaction sources
+				// // reaction sources
 				if (ReactSources)
 					error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
 			}
 
+			// // if stop based error captured
+			if (error_out)
+				goto flag_ernd;
+			else
 			{ // // timer of this step
 				duration = OutThisTime(start_time) + duration_backup;
 				if (rank == 0)
@@ -169,10 +173,6 @@ void XFLUIDS::Evolution(sycl::queue &q)
 					time_t timestamp_s = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 					std::cout << ", at: " << std::string(ctime(&timestamp_s));
 				}
-			}
-			{ // // if stop based error captured
-				if (error_out)
-					goto flag_ernd;
 			}
 			{ // // if stop based nStepmax
 				Stepstop = Ss.nStepmax <= Iteration ? true : false;
@@ -442,6 +442,7 @@ void XFLUIDS::AllocateMemory(sycl::queue &q)
 
 	for (size_t nn = 0; nn < Ss.OutTimeStamps.size(); nn++)
 		Ss.OutTimeStamps[nn].Initialize(Ss.BlSz, Ss.species_name, fluids[0]->h_fstate);
+	OutAtThis = Ss.OutTimeStamps[0];
 }
 
 void XFLUIDS::InitialCondition(sycl::queue &q)
@@ -1314,7 +1315,7 @@ void XFLUIDS::Output_plt(int rank, OutString &osr, bool error)
 	variables_names[index] = "<i>c</i>[m/s]", index++;							   // sound speed
 	variables_names[index] = "<i><greek>g</greek></i>[-]", index++;				   // gamma
 #ifdef COP
-	for (size_t ii = Onbvar - NUM_SPECIES; ii < Onbvar; ii++)
+	for (size_t ii = Onbvar - Ss.BlSz.num_species; ii < Onbvar; ii++)
 		variables_names[ii] = "<i>Y" + std::to_string(ii - Onbvar + NUM_SPECIES) + "(" + Ss.species_name[ii - Onbvar + NUM_SPECIES] + ")</i>[-]";
 #endif // COP
 
@@ -1390,7 +1391,7 @@ void XFLUIDS::Output_plt(int rank, OutString &osr, bool error)
 	MARCO_POUTLOOP(fluids[0]->h_fstate.gamma[Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i]);
 
 #ifdef COP
-	for (size_t n = 0; n < NUM_SPECIES; n++)
+	for (size_t n = 0; n < Ss.BlSz.num_species; n++)
 		MARCO_POUTLOOP(fluids[0]->h_fstate.y[n + NUM_SPECIES * (Ss.BlSz.Xmax * Ss.BlSz.Ymax * k + Ss.BlSz.Xmax * j + i)]);
 #endif
 	out.close();
@@ -1437,13 +1438,14 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 			out << ", <i>v</i>[m/s]";
 		if (Ss.BlSz.DimZ)
 			out << ", <i>w</i>[m/s]";
-		out << ", <i><greek>g</greek></i>[-], <i>T</i>[K]"
-			<< ", <i>e</i>[J], |<i><greek>w</greek></i>|[s<sup>-1</sup>]"
-			<< ", <i><greek>w</greek></i><sub>x</sub>[s<sup>-1</sup>]"
-			<< ", <i><greek>w</greek></i><sub>y</sub>[s<sup>-1</sup>]"
-			<< ", <i><greek>w</greek></i><sub>z</sub>[s<sup>-1</sup>]";
+		out << ", <i><greek>g</greek></i>[-], <i>T</i>[K]";
+		if (Visc && (Ss.BlSz.DimS > 1))
+			out << ", <i>e</i>[J], |<i><greek>w</greek></i>|[s<sup>-1</sup>]"
+				<< ", <i><greek>w</greek></i><sub>x</sub>[s<sup>-1</sup>]"
+				<< ", <i><greek>w</greek></i><sub>y</sub>[s<sup>-1</sup>]"
+				<< ", <i><greek>w</greek></i><sub>z</sub>[s<sup>-1</sup>]";
 #ifdef COP
-		for (size_t n = 0; n < NUM_SPECIES; n++)
+		for (size_t n = 0; n < Ss.BlSz.num_species; n++)
 			out << ", <i>Y(" << Ss.species_name[n] << ")</i>[-]";
 #endif
 		out << "\n";
@@ -1476,7 +1478,7 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 					OutPoint[14] = fluids[0]->h_fstate.vxs[1][id];
 					OutPoint[15] = fluids[0]->h_fstate.vxs[2][id];
 #if COP
-					for (int n = 0; n < NUM_SPECIES; n++)
+					for (int n = 0; n < Ss.BlSz.num_species; n++)
 						OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];
 #endif
 					if (Ss.BlSz.DimX) // x
@@ -1496,9 +1498,11 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 						out << OutPoint[8] << " ";
 
 					out << OutPoint[9] << " " << OutPoint[10] << " " << OutPoint[11] << " ";						 // gamma, T, e
-					out << OutPoint[12] << " " << OutPoint[13] << " " << OutPoint[14] << " " << OutPoint[15] << " "; // Vorticity
+
+					if (Visc && (Ss.BlSz.DimS > 1))
+						out << OutPoint[12] << " " << OutPoint[13] << " " << OutPoint[14] << " " << OutPoint[15] << " "; // Vorticity
 #if COP
-					for (int n = 0; n < NUM_SPECIES; n++)
+					for (int n = 0; n < Ss.BlSz.num_species; n++)
 						out << OutPoint[Cnbvar - NUM_SPECIES + n] << " "; // Yi
 #endif
 					out << "\n";

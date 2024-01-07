@@ -15,12 +15,13 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # // // == Ini sample selection ===========================
 # # # # (0d and 1d samples are forced out with plt)
 # # read_grid/${GRID_NAME}("read_grid/rae2822.xyz"): using Plot3D grid: ./src/read_grid/${GRID_NAME} to initialize flow field
-# # 1d, 2d, 3d util: for-debug, guass-wave, sharp-interface
+# # # # 1d, 2d, 3d util: for-debug, guass-wave, sharp-interface
 # # 1d-insert-st			# # 1d-reactive-st		 			## shock tube without viscisity and positivity-preserving
 # # 1d-diffusion 			# # 1d-diffusion-reverse 			## mass and heat diffusion without convention
 # # 1d-laminar-flame		# # 2d-detonation 					## multi-dimensional reactive laminar flame
 # # 2d-riemann(-shocks/-interruptions-reduce/-interruptions-plus/-shock-interruption) 		## no-cop sample
-# # 2d-mixing-layer			# # 2d-under-expanded-jet			# # 3d-under-expanded-jet
+# # 1d-diffusion-layer		# # 2d-mixing-layer			
+# # 2d-under-expanded-jet	# # 3d-under-expanded-jet
 # # 2d-shock-bubble			# # 2d-shock-bubble-without-fuel
 # # 3d-shock-bubble			# # 3d-shock-bubble-without-fuel
 # # // // == MIXTURE_MODEL settings =========================================
@@ -34,7 +35,7 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
 # # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
 # # Reaction/RSBI-18REA			# # Reaction/RSBI-18REA			# # modified for RSBI samples
-set(INIT_SAMPLE "1d-laminar-flame") # set INIT_SAMPLE for Initializing settings
+set(INIT_SAMPLE "1d-diffusion-layer") # set INIT_SAMPLE for Initializing settings
 set(MIXTURE_MODEL "Reaction/H2O-N2_21_reaction") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
@@ -49,7 +50,7 @@ set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs
 option(Visc "if add physic viscidity flux" OFF)
 option(Visc_Heat "if add heat transfer term" ON)
 option(Visc_Diffu "if add mass diffusion term" ON) # depends on COP=ON
-set(VISCOSITY_ORDER "Second") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
+set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
 
 # // == CMake modules ======================================
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake") # #default local cmake macro repository
