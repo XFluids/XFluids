@@ -38,6 +38,7 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     init(); // Ini
 #ifdef USE_MPI
     mpiTrans = new MpiTrans(BlSz, Boundarys);
+    mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
     std::cout << "Selected Device: " << middle::DevInfo(q) << "  of rank: " << myRank << std::endl;
 
@@ -238,9 +239,8 @@ void Setup::ReWrite()
 // =======================================================
 void Setup::init()
 { // set other parameters
-    BlSz.DimX_t = BlSz.DimX;
-    BlSz.DimY_t = BlSz.DimY;
-    BlSz.DimZ_t = BlSz.DimZ;
+    BlSz.DimS = BlSz.DimX + BlSz.DimY + BlSz.DimZ;
+    BlSz.DimX_t = BlSz.DimX, BlSz.DimY_t = BlSz.DimY, BlSz.DimZ_t = BlSz.DimZ;
 
     BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1;
     BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1;
@@ -1302,8 +1302,8 @@ void Setup::CpyToGPU()
 {
 #ifdef USE_MPI
     mpiTrans->communicator->synchronize();
-#endif // end USE_MPI
     if (0 == myRank)
+#endif // end USE_MPI
     {
         std::cout << "<---------------------------------------------------> \n";
         std::cout << "Setup_ini is copying buffers into Device . ";
@@ -1505,7 +1505,6 @@ void Setup::CpyToGPU()
     if (0 == myRank)
     {
         std::cout << " . Done \n";
-        std::cout << "<---------------------------------------------------> \n";
     }
 }
 

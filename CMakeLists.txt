@@ -20,7 +20,7 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # 1d-diffusion 			# # 1d-diffusion-reverse 			## mass and heat diffusion without convention
 # # 1d-laminar-flame		# # 2d-detonation 					## multi-dimensional reactive laminar flame
 # # 2d-riemann(-shocks/-interruptions-reduce/-interruptions-plus/-shock-interruption) 		## no-cop sample
-# # 1d-diffusion-layer		# # 2d-mixing-layer			
+# # 1d-diffusion-layer		# # 2d-mixing-layer
 # # 2d-under-expanded-jet	# # 3d-under-expanded-jet
 # # 2d-shock-bubble			# # 2d-shock-bubble-without-fuel
 # # 3d-shock-bubble			# # 3d-shock-bubble-without-fuel
@@ -35,8 +35,8 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
 # # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
 # # Reaction/RSBI-18REA			# # Reaction/RSBI-18REA			# # modified for RSBI samples
-set(INIT_SAMPLE "1d-diffusion-layer") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "Reaction/H2O-N2_21_reaction") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+set(INIT_SAMPLE "1d-reactive-st") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "Reaction/N2_dissociation") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)

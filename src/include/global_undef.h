@@ -22,6 +22,9 @@
 #ifndef COP_CHEME
 #define COP_CHEME 1
 #endif
+#ifndef Visc
+#define Visc 0
+#endif
 #ifndef NUM_REA
 #define NUM_REA 1
 #endif

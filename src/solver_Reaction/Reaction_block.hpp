@@ -21,9 +21,9 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	real_t xi[NUM_SPECIES], yi[NUM_SPECIES];		  // molecular concentration; mass fraction
 	real_t T0 = ZeroDTemperature, p0 = ZeroDPressure; // initial Temperature and Pressure
 #ifdef ZeroMassFraction								  // initial Mass Fraction
-	memcpy(yi, ZeroMassFraction.data(), NUM_SPECIES * sizeof(real_t));
+	std::memcpy(yi, ZeroMassFraction.data(), NUM_SPECIES * sizeof(real_t));
 #else
-	memcpy(yi, Ss.h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
+	std::memcpy(yi, Ss.h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
 #endif
 	real_t R, rho, h, e, T = T0, Temp = _DF(0.0); // h: unit: J/kg // e: enternal energy
 	R = get_CopR(Ss.h_thermal._Wi, yi), rho = p0 / R / T;
@@ -47,7 +47,7 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	// std::cout << std::endl;
 	do
 	{
-		std::cout << "";
+		// std::cout << "";
 		// std::cout << "time = " << run_time << ", temp = " << T << "\n";
 		get_xi(xi, yi, Ss.h_thermal._Wi, rho);
 		out << run_time << " " << T;
@@ -69,7 +69,8 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	} while (std::fabs(Temp - T) >= equilibrium || run_time < t_end);
 
 	out.close();
-	std::cout << "\n0D reaction testing beginning at " << T0 << "K, " << p0 << "Pa done.\n";
+	// std::cout << "\n";
+	std::cout << "0D reaction testing beginning at " << T0 << "K, " << p0 << "Pa done.\n";
 	return Temp;
 }
 
