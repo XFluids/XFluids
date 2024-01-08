@@ -1438,9 +1438,9 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 			out << ", <i>v</i>[m/s]";
 		if (Ss.BlSz.DimZ)
 			out << ", <i>w</i>[m/s]";
-		out << ", <i><greek>g</greek></i>[-], <i>T</i>[K]";
+		out << ", <i><greek>g</greek></i>[-], <i>T</i>[K], <i>e</i>[J]";
 		if (Visc && (Ss.BlSz.DimS > 1))
-			out << ", <i>e</i>[J], |<i><greek>w</greek></i>|[s<sup>-1</sup>]"
+			out << ", |<i><greek>w</greek></i>|[s<sup>-1</sup>]"
 				<< ", <i><greek>w</greek></i><sub>x</sub>[s<sup>-1</sup>]"
 				<< ", <i><greek>w</greek></i><sub>y</sub>[s<sup>-1</sup>]"
 				<< ", <i><greek>w</greek></i><sub>z</sub>[s<sup>-1</sup>]";
