@@ -127,7 +127,11 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) * _denominator; // Pa.s=kg/(m.s)
 #ifdef Visc_Heat
 		// calculate thermal_conduct via Su Hongmin//
+#ifdef ConstantFurrier
+		thermal_conduct_aver = _DF(0.1);
+#else
 		thermal_conduct_aver = thermal_conduct_aver + X[k] * Thermal_conductivity(fct[int(specie[k][SID])], T) * _denominator;
+#endif // end
 #endif // end Visc_Heat
 	}
 #ifdef Visc_Diffu

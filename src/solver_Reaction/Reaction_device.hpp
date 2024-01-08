@@ -162,24 +162,27 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 {
 	int itermax = 1;
 	bool high_level_accuracy_ = (itermax >= 3) ? true : false;
-	real_t tfd = _DF(1.0) + _DF(1.0e-10), ymin = _DF(1.0e-20), dtmin = _DF(1.0e-7);
-	real_t eps = _DF(1e-10), scrtch = _DF(1e-25);
-	real_t epsmax = _DF(1.0), epsmin = _DF(1.0e-4), epscl = _DF(1.0e4), sqreps = _DF(0.05);
+	real_t ymin = _DF(1.0e-20), dtmin = _DF(1.0e-7);
+	real_t eps, epsmin = _DF(1.0e-4), scrtch = _DF(1e-25);
+	real_t tfd = _DF(1.000008), sqreps = _DF(0.5), epsmax = _DF(1.0), epscl = _DF(1.0E2);
 	/**
 	 * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least
 	 * three corrector iterations are performed. For most problems, the stability check is not needed, and eliminating
 	 * the calculations and logic associated with the check enhances performance.
 	 * @param itermax: iterations of correction
 	 * @param high_level_accuracy_: if enable accuracy through stability based check
-	 * @param tfd: round-off parameter used to determine when integration is complete
-	 * @param dto: original dt for a integration step
-	 * @param dtmin: minimum dt for each step, automatically relax convergence restrictions while dt<=dtmin*dto for a step .
 	 * @param ymin: minimum concentration allowed for species i, too much low ymin decrease performance
+	 * 	*NOTE: initializing time intergation control
+	 * @param dto: original dt for a integration step
+	 * @param tfd: round-off parameter used to determine when integration is complete
+	 * @param epsmin: to calculate initial time step of q2 integral, intializa into _DF(1e-04).
+	 * @param scrtch: to calculate initial time step of q2 integral, intializa into _DF(1e-25).
+	 * @param sqreps: 5.0*sycl::sqrt(epsmin), parameter used to calculate initial timestep
+	 * @param dtmin: minimum dt for each step, automatically relax convergence restrictions while dt<=dtmin*dto for a step .
 	 * 	*NOTE: epsion contrl
 	 * @param eps: error epslion, intializa into _DF(1e-10).
-	 * @param scrtch: to calculate initial time step of q2 integral, intializa into _DF(1e-25).
-	 * @param epscl=1.0/epsmin, intermediate variable used to avoid repeated divisions, higher epscl leading to higher accuracy and lower performace
-	 * @param sqreps=5.0*sycl::sqrt(epsmin), parameter used to calculate initial timestep, || \delta y_i^{c(Nc-1)} ||/(||\delta y_i^{c(Nc)} ||)
+	 * @param epsmax: if this previous step not converged, higher for low accuracy and higher performace.
+	 * @param epscl: 1.0/epsmin, intermediate variable used to avoid repeated divisions, higher epscl leading to higher accuracy and lower performace.
 	 */
 
 	real_t ym1_[NUM_SPECIES], ym2_[NUM_SPECIES], rtau[NUM_SPECIES];			 //, rtaus[NUM_SPECIES];
@@ -194,12 +197,8 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	real_t TTn = TT, TT0 = TTn, TTs;
 
 	// // // Initialize and limit y to the minimum value and save the initial yi inputs into y0
-	real_t sumy = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
-		y0[i] = y[i], y[i] = sycl::max(y[i], ymin), sumy += y[i];
-	sumy = _DF(1.0) / sumy;
-	for (int i = 0; i < NUM_SPECIES; i++)
-		y[i] *= sumy;
+		y0[i] = y[i], y[i] = sycl::max(y[i], ymin);
 
 	real_t *species_chara = thermal.species_chara, *Hia = thermal.Hia, *Hib = thermal.Hib;
 	//=========================================================
@@ -215,8 +214,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 		const real_t scr1 = scr2 * d[i];
 
 		// // // If the species is already at the minimum, disregard destruction when calculating step size
-		real_t temp = (ymin == y[i]) ? _DF(0.0) : -sycl::fabs(ascr - d[i]) * scr2;
-		scrtch = sycl::max(scr1, sycl::max(temp, scrtch));
+		scrtch = sycl::max(-sycl::fabs(ascr - d[i]) * scr2, sycl::max(scr1, scrtch));
 	}
 	dt = sycl::min(sqreps / scrtch, dtg);
 	dtmin *= dt;
@@ -225,8 +223,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 	{
 		int num_iter = 0;
 		// // Independent variable at the start of the chemical timestep
-		ts = tn;
-		TTs = TTn;
+		ts = tn, TTs = TTn;
 		for (int i = 0; i < NUM_SPECIES; i++)
 		{
 			// // store the 0-subscript state using s
@@ -336,7 +333,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 		if (high_level_accuracy_)
 			dt = sycl::min(dt * (_DF(1.) / rteps + _DF(0.005)), sycl::min(tfd * (dtg - tn), dto / (stab + _DF(0.001))));
 		else
-			dt = sycl::min(dt * (_DF(1.0) / rteps + _DF(0.005)), tfd * (dtg - tn)); // new dt
+			dt = sycl::min(dt * (_DF(1.) / rteps + _DF(0.005)), tfd * (dtg - tn)); // new dt
 
 		// // // Rebegin the step if  this previous step not converged
 		if (eps > epsmax || stab > _DF(1.0))
@@ -354,7 +351,7 @@ void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *Reac
 		// // A valid time step has done
 		epsmax = _DF(1.0);
 		TTn = get_T(thermal, y, e, TTs); // new T
-		get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+		// get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
 		QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 		gcount++;
 	}
