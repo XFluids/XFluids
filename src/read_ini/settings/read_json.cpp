@@ -42,7 +42,7 @@ const size_t nStepmax_json = j_conf.at("run").value("nStepMax", 10);
 const size_t nOutput = j_conf.at("run").value("nOutMax", 0);
 const size_t OutInterval = j_conf.at("run").value("OutInterval", nStepmax_json);
 const size_t POutInterval = j_conf.at("run").value("PushInterval", 5);
-const size_t RcalInterval = j_conf.at("run").value("RcalInterval", 200);
+const size_t RcalInterval = j_conf.at("run").value("RcalInterval", 100);
 const std::vector<std::string> OutTimeArrays_json = j_conf.at("run").value("OutTimeArrays", std::vector<std::string>{});
 const std::vector<std::string> OutTimeStamps_json = j_conf.at("run").value("OutTimeStamps", std::vector<std::string>{});
 

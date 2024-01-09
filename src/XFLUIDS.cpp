@@ -137,6 +137,10 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				start_time = std::chrono::high_resolution_clock::now();
 			}
 
+			// // screen log print
+			if (rank == 0)
+				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
+
 			{ // // get minmum dt, if MPI used, get the minimum of all ranks
 				dt = ComputeTimeStep(q);
 				if (physicalTime + dt > target_t)
@@ -144,11 +148,9 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				physicalTime += dt;
 			}
 
-			// // screen log print
 			// // an iteration begins at physicalTime and ends at physicalTime + dt;
 			if (rank == 0)
-				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime
-						  << " dt: " << std::setw(14) << dt << " End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
+				std::cout << " dt: " << std::setw(14) << dt << " End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
 
 			{ // a advance time step
 				// // strang slipping
