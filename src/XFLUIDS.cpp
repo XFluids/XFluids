@@ -111,7 +111,8 @@ void XFLUIDS::Evolution(sycl::queue &q)
 
 	while (TimeLoop < Ss.OutTimeStamps.size())
 	{
-		real_t target_t = (physicalTime < Ss.OutTimeStamps[TimeLoop].time) ? Ss.OutTimeStamps[TimeLoop].time : Ss.OutTimeStamps[TimeLoop++].time; // std::max(Ss.OutTimeStamp, TimeLoop * Ss.OutTimeStamp + Ss.OutTimeStart);
+		real_t tbak = _DF(0.0);
+		real_t target_t = (physicalTime < Ss.OutTimeStamps[TimeLoop].time) ? Ss.OutTimeStamps[TimeLoop].time : Ss.OutTimeStamps[TimeLoop++].time;
 		OutAtThis = Ss.OutTimeStamps[std::max(0, TimeLoop - 1)];
 		while (physicalTime < target_t)
 		{
@@ -137,20 +138,19 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				start_time = std::chrono::high_resolution_clock::now();
 			}
 
-			// // screen log print
-			if (rank == 0)
-				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
-
 			{ // // get minmum dt, if MPI used, get the minimum of all ranks
 				dt = ComputeTimeStep(q);
 				if (physicalTime + dt > target_t)
 					dt = target_t - physicalTime;
+				tbak = physicalTime;
 				physicalTime += dt;
 			}
 
+			// // screen log print
 			// // an iteration begins at physicalTime and ends at physicalTime + dt;
 			if (rank == 0)
-				std::cout << " dt: " << std::setw(14) << dt << " End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime;
+				std::cout << "N=" << std::setw(7) << Iteration << "  beginning physicalTime: " << std::setw(14) << std::setprecision(8) << tbak
+						  << " dt: " << std::setw(14) << dt << "End physicalTime: " << std::setw(14) << std::setprecision(8) << physicalTime << "\n";
 
 			{ // a advance time step
 				// // strang slipping
@@ -171,7 +171,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				duration = OutThisTime(start_time) + duration_backup;
 				if (rank == 0)
 				{
-					std::cout << ", runtime: " << std::setw(10) << duration;
+					std::cout << "         runtime: " << std::setw(10) << duration;
 					time_t timestamp_s = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 					std::cout << ", at: " << std::string(ctime(&timestamp_s));
 				}
@@ -302,12 +302,12 @@ bool XFLUIDS::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, con
 
 	std::string StepEr = std::to_string(Step) + "_RK" + std::to_string(flag);
 	if (error)
-		Output(q, OutFmt(Time, "UErs_" + StepEr), true);
+		Output(q, OutAtThis.Reinitialize(Time, "UErs_" + StepEr), 1);
 #ifdef USE_MPI
 	error = Ss.mpiTrans->BocastTrue(error);
 #endif // end USE_MPI
 	if (error)
-		Output(q, OutAtThis.Reinitialize(Time, "UErr_" + StepEr), false);
+		Output(q, OutAtThis.Reinitialize(Time, "UErr_" + StepEr), 2);
 
 	q.wait();
 
@@ -409,7 +409,7 @@ bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const in
 	for (int n = 0; n < NumFluid; n++)
 	{
 		error[n] = fluids[n]->UpdateFluidStates(q, flag);
-		// if (Time > 0.0000003 && rank == 1)
+		// if (Time > 1.0E-6 && rank == 1)
 		// 	error[n] = true;
 		error_t = error_t || error[n]; // rank error
 	}
@@ -417,12 +417,12 @@ bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const in
 	{
 		std::string Stepstr = std::to_string(Step);
 		if (error_t)
-			Output(q, OutFmt(Time, "PErs_" + Stepstr + RkStep), true);
+			Output(q, OutAtThis.Reinitialize(Time, "PErs_" + Stepstr + RkStep), 1);
 #ifdef USE_MPI
 		error_t = Ss.mpiTrans->BocastTrue(error_t);
 #endif // end USE_MPI
 		if (error_t)
-			Output(q, OutAtThis.Reinitialize(Time, "PErr_" + Stepstr + RkStep), false);
+			Output(q, OutAtThis.Reinitialize(Time, "PErr_" + Stepstr + RkStep), 2);
 	}
 
 	return error_t; // all rank == 1 or 0
@@ -577,9 +577,13 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
 
-#if ESTIM_OUT
 		if (error)
 		{
+			q.memcpy(fluids[n]->h_U, fluids[n]->d_U, cellbytes);
+			q.memcpy(fluids[n]->h_U1, fluids[n]->d_U1, cellbytes);
+			q.memcpy(fluids[n]->h_LU, fluids[n]->d_LU, cellbytes);
+
+#if ESTIM_OUT
 #ifdef Visc // copy vosicous estimating Vars
 			if (Ss.BlSz.DimX)
 				q.memcpy(fluids[n]->h_fstate.visFwx, fluids[n]->d_fstate.visFwx, NUM_SPECIES * bytes);
@@ -615,9 +619,6 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 #endif // end Visc_Diffu
 #endif // end Visc
 
-			q.memcpy(fluids[n]->h_U, fluids[n]->d_U, cellbytes);
-			q.memcpy(fluids[n]->h_U1, fluids[n]->d_U1, cellbytes);
-			q.memcpy(fluids[n]->h_LU, fluids[n]->d_LU, cellbytes);
 			if (Ss.BlSz.DimX)
 			{
 				q.memcpy(fluids[n]->h_fstate.b1x, fluids[n]->d_fstate.b1x, bytes);
@@ -645,8 +646,8 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 				q.memcpy(fluids[n]->h_fstate.preFwz, fluids[n]->d_fstate.preFwz, cellbytes);
 				q.memcpy(fluids[n]->h_fstate.pstFwz, fluids[n]->d_wallFluxH, cellbytes);
 			}
-		}
 #endif // end ESTIM_OUT
+		}
 	}
 	q.wait();
 }
@@ -742,97 +743,112 @@ flag_out:
 #endif
 }
 
-std::vector<OutVar> XFLUIDS::Output_variables(std::vector<OutVar> &vars, std::vector<std::string> &sp)
+std::vector<OutVar> XFLUIDS::Output_variables(FlowData &data, std::vector<std::string> &sp, size_t error)
 {
 	Block bl = Ss.BlSz;
 	// Init var names
-	for (size_t u = 0; u < Emax; u++)
-	{
-		vars.push_back(OutVar("E-U[" + std::to_string(u) + "]", fluids[0]->h_U, Emax, u));
-		vars.push_back(OutVar("E-U1[" + std::to_string(u) + "]", fluids[0]->h_U1, Emax, u));
-		vars.push_back(OutVar("E-LU[" + std::to_string(u) + "]", fluids[0]->h_LU, Emax, u));
-	}
-	if (Ss.BlSz.DimX)
-	{
-		// vars.push_back(OutVar( "E-xb1", fluids[0]->h_fstate.b1x));
-		// vars.push_back(OutVar( "E-xb3", fluids[0]->h_fstate.b3x));
-		// vars.push_back(OutVar( "E-xc3", fluids[0]->h_fstate.c2x));
-		for (size_t mm = 0; mm < Emax; mm++)
-		{
-			vars.push_back(OutVar("E-Fw-prev-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.preFwx, Emax, mm));
-			vars.push_back(OutVar("E-Fw-pstv-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.pstFwx, Emax, mm));
-		}
-	}
-	if (Ss.BlSz.DimY)
-	{
-		// vars.push_back(OutVar( "E-yb1", fluids[0]->h_fstate.b1y));
-		// vars.push_back(OutVar( "E-yb3", fluids[0]->h_fstate.b3y));
-		// vars.push_back(OutVar( "E-yc3", fluids[0]->h_fstate.c2y));
-		for (size_t mm = 0; mm < Emax; mm++)
-		{
-			vars.push_back(OutVar("E-Fw-prev-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.preFwy, Emax, mm));
-			vars.push_back(OutVar("E-Fw-pstv-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.pstFwy, Emax, mm));
-		}
-	}
-	if (Ss.BlSz.DimZ)
-	{
-		// vars.push_back(OutVar( "E-zb1", fluids[0]->h_fstate.b1z));
-		// vars.push_back(OutVar( "E-zb3", fluids[0]->h_fstate.b3z));
-		// vars.push_back(OutVar( "E-zc3", fluids[0]->h_fstate.c2z));
-		for (size_t mm = 0; mm < Emax; mm++)
-		{
-			vars.push_back(OutVar("E-Fw-prev-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.preFwz, Emax, mm));
-			vars.push_back(OutVar("E-Fw-pstv-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.pstFwz, Emax, mm));
-		}
-	}
+	std::vector<OutVar> vars;
+	vars.clear();
 
+	vars.push_back(OutVar("rho", data.rho));
+	vars.push_back(OutVar("p", data.p));
+	vars.push_back(OutVar("T", data.T));
+#ifdef COP
+	for (size_t nn = 0; nn < sp.size(); nn++)
+		vars.push_back(OutVar("y" + std::to_string(nn) + "[" + sp[nn] + "]", data.y, sp.size(), nn));
+#endif // COP
+
+	if (1 == error)
+	{
+		for (size_t u = 0; u < Emax; u++)
+		{
+			vars.push_back(OutVar("E-U[" + std::to_string(u) + "]", fluids[0]->h_U, Emax, u));
+			vars.push_back(OutVar("E-U1[" + std::to_string(u) + "]", fluids[0]->h_U1, Emax, u));
+			vars.push_back(OutVar("E-LU[" + std::to_string(u) + "]", fluids[0]->h_LU, Emax, u));
+		}
 #if ESTIM_OUT
-#ifdef Visc // Out name of viscous out estimating Vars
+		if (Ss.BlSz.DimX)
+		{
+			// vars.push_back(OutVar( "E-xb1", fluids[0]->h_fstate.b1x));
+			// vars.push_back(OutVar( "E-xb3", fluids[0]->h_fstate.b3x));
+			// vars.push_back(OutVar( "E-xc3", fluids[0]->h_fstate.c2x));
 			for (size_t mm = 0; mm < Emax; mm++)
 			{
-				if (Ss.BlSz.DimX)
-					vars.push_back(OutVar("E-Fw-vis-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwx, Emax, mm));
-				if (Ss.BlSz.DimY)
-					vars.push_back(OutVar("E-Fw-vis-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwy, Emax, mm));
-				if (Ss.BlSz.DimZ)
-					vars.push_back(OutVar("E-Fw-vis-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwz, Emax, mm));
+				vars.push_back(OutVar("E-Fw-prev-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.preFwx, Emax, mm));
+				vars.push_back(OutVar("E-Fw-pstv-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.pstFwx, Emax, mm));
 			}
+		}
+		if (Ss.BlSz.DimY)
+		{
+			// vars.push_back(OutVar( "E-yb1", fluids[0]->h_fstate.b1y));
+			// vars.push_back(OutVar( "E-yb3", fluids[0]->h_fstate.b3y));
+			// vars.push_back(OutVar( "E-yc3", fluids[0]->h_fstate.c2y));
+			for (size_t mm = 0; mm < Emax; mm++)
+			{
+				vars.push_back(OutVar("E-Fw-prev-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.preFwy, Emax, mm));
+				vars.push_back(OutVar("E-Fw-pstv-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.pstFwy, Emax, mm));
+			}
+		}
+		if (Ss.BlSz.DimZ)
+		{
+			// vars.push_back(OutVar( "E-zb1", fluids[0]->h_fstate.b1z));
+			// vars.push_back(OutVar( "E-zb3", fluids[0]->h_fstate.b3z));
+			// vars.push_back(OutVar( "E-zc3", fluids[0]->h_fstate.c2z));
+			for (size_t mm = 0; mm < Emax; mm++)
+			{
+				vars.push_back(OutVar("E-Fw-prev-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.preFwz, Emax, mm));
+				vars.push_back(OutVar("E-Fw-pstv-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.pstFwz, Emax, mm));
+			}
+		}
+
+#ifdef Visc // Out name of viscous out estimating Vars
+		for (size_t mm = 0; mm < Emax; mm++)
+		{
+			if (Ss.BlSz.DimX)
+				vars.push_back(OutVar("E-Fw-vis-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwx, Emax, mm));
+			if (Ss.BlSz.DimY)
+				vars.push_back(OutVar("E-Fw-vis-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwy, Emax, mm));
+			if (Ss.BlSz.DimZ)
+				vars.push_back(OutVar("E-Fw-vis-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwz, Emax, mm));
+		}
 
 #ifdef Visc_Diffu
-			for (size_t mm = 0; mm < sp.size(); mm++)
+		for (size_t mm = 0; mm < sp.size(); mm++)
+		{
+			vars.push_back(OutVar("E-vis_Dim[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dkm_aver, sp.size(), mm));
+			vars.push_back(OutVar("E-vis_Dimtemp1[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp1, sp.size(), mm));
+			vars.push_back(OutVar("E-vis_Dimtemp2[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp2, sp.size(), mm));
+			if (Ss.BlSz.DimX)
 			{
-				vars.push_back(OutVar("E-vis_Dim[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dkm_aver, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Dimtemp1[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp1, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Dimtemp2[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp2, sp.size(), mm));
-				if (Ss.BlSz.DimX)
-				{
-					vars.push_back(OutVar("E-vis_Dimwallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallx, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_hi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallx, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_Yi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallx, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_Yil_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallx, sp.size(), mm));
-				}
-				if (Ss.BlSz.DimY)
-				{
-					vars.push_back(OutVar("E-vis_Dimwally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wally, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_hi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wally, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_Yi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wally, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_Yil_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wally, sp.size(), mm));
-				}
-				if (Ss.BlSz.DimZ)
-				{
-					vars.push_back(OutVar("E-vis_Dimwallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallz, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_hi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallz, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_Yi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallz, sp.size(), mm));
-					vars.push_back(OutVar("E-vis_Yil_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallz, sp.size(), mm));
-				}
+				vars.push_back(OutVar("E-vis_Dimwallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallx, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_hi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallx, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_Yi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallx, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_Yil_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallx, sp.size(), mm));
 			}
+			if (Ss.BlSz.DimY)
+			{
+				vars.push_back(OutVar("E-vis_Dimwally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wally, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_hi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wally, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_Yi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wally, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_Yil_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wally, sp.size(), mm));
+			}
+			if (Ss.BlSz.DimZ)
+			{
+				vars.push_back(OutVar("E-vis_Dimwallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallz, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_hi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallz, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_Yi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallz, sp.size(), mm));
+				vars.push_back(OutVar("E-vis_Yil_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallz, sp.size(), mm));
+			}
+		}
 #endif // Visc_Diffu
 #endif // Visc
 #endif // ESTIM_OUT
-			return vars;
+	}
+
+	return vars;
 }
 
-void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, bool error)
+void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, size_t error)
 {
 	// Write time in string timeFormat
 	OutString osr(ctrl.time, rank, ctrl.inter);
@@ -840,10 +856,13 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, bool error)
 
 	if (error)
 	{
+		// Init error var names
+		std::vector<OutVar> error_vars = Output_variables(fluids[0]->h_fstate, Ss.species_name, error);
 		if (OutVTI)
-			Output_vti(rank, osr);
+			Output_vti(error_vars, osr, error);
 		if (OutDAT)
 			Output_cplt(ctrl.out_vars, ctrl.pos, osr);
+
 		if (rank == 0)
 			std::cout << "Errors Captured solution";
 	}
@@ -859,23 +878,20 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, bool error)
 	}
 	else if (ctrl.SPOut)
 	{
-		if (rank == 0)
-			std::cout << "Partial Domain solution ";
 		if (OutVTI)
 			Output_svti(ctrl.out_vars, ctrl.cri_list, osr);
+
+		if (rank == 0)
+			std::cout << "Partial Domain solution";
 	}
 
 	if (rank == 0)
-		std::cout << "has been done at Step = " << ctrl.inter << ", Time = " << ctrl.time << std::endl;
+		std::cout << " has been done at Step = " << ctrl.inter << ", Time = " << ctrl.time << std::endl;
 }
 
 template <typename T>
-void XFLUIDS::Output_vti(int rank, OutString &osr)
+void XFLUIDS::Output_vti(std::vector<OutVar> error_vars, OutString &osr, size_t error)
 {
-	// Init var names
-	std::vector<OutVar> error_vars;
-	Output_variables(error_vars, Ss.species_name);
-
 	real_t dx = 0.0, dy = 0.0, dz = 0.0;
 	int xmin = 0, ymin = 0, xmax = 0, ymax = 0, zmin = 0, zmax = 0;
 	if (Ss.BlSz.DimX)
@@ -887,8 +903,87 @@ void XFLUIDS::Output_vti(int rank, OutString &osr)
 
 	std::string file_name, outputPrefix = INI_SAMPLE;
 	std::string temp_name = "./VTI_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() + "." + osr.timeFormat.str();
-	file_name = OutputDir + "/" + temp_name + "_rank_" + osr.rankFormat.str() + ".vti";
 
+	std::string headerfile_name = OutputDir + "/VTI_" + outputPrefix + "_Step_" + osr.stepFormat.str() + ".pvti";
+	{ // out pvti header
+		if (0 == rank && 2 == error)
+		{
+			// // write header
+			std::fstream outHeader;
+			// // dummy string here, when using the full VTK API, data can be compressed
+			// // here, no compression used
+			std::string compressor("");
+			// // open pvti header file
+			int mx = (Ss.BlSz.DimX) ? Ss.BlSz.mx : 0;
+			int my = (Ss.BlSz.DimY) ? Ss.BlSz.my : 0;
+			int mz = (Ss.BlSz.DimZ) ? Ss.BlSz.mz : 0;
+			outHeader.open(headerfile_name.c_str(), std::ios_base::out);
+			outHeader << "<?xml version=\"1.0\"?>" << std::endl;
+			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
+			outHeader << "  <PImageData WholeExtent=\"";
+			outHeader << 0 << " " << mx * VTI.nbX << " ";
+			outHeader << 0 << " " << my * VTI.nbY << " ";
+			outHeader << 0 << " " << mz * VTI.nbZ << "\" GhostLevel=\"0\" "
+					  << "Origin=\""
+					  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
+					  << "Spacing=\""
+					  << dx << " " << dy << " " << dz << "\">"
+					  << std::endl;
+			outHeader << "    <PCellData Scalars=\"Scalars_\">" << std::endl;
+			for (int iVar = 0; iVar < error_vars.size(); iVar++)
+				outHeader << "      <PDataArray type=\"Float" << sizeof(T) * 8 << "\" Name=\"" << error_vars[iVar].name << "\"/>" << std::endl;
+			outHeader << "    </PCellData>" << std::endl;
+			// // Out put for 2D && 3D;
+			for (int iPiece = 0; iPiece < Ss.nRanks; ++iPiece)
+			{
+				std::ostringstream pieceFormat;
+				pieceFormat.width(5);
+				pieceFormat.fill('0');
+				pieceFormat << iPiece;
+				std::string pieceFilename = temp_name;
+#ifdef USE_MPI
+				pieceFilename += "_rank_" + pieceFormat.str();
+#endif
+				pieceFilename += +".vti";
+				// get MPI coords corresponding to MPI rank iPiece
+				int coords[3] = {0, 0, 0};
+#ifdef USE_MPI
+				Ss.mpiTrans->communicator->getCoords(iPiece, Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ, coords);
+#endif
+				outHeader << " <Piece Extent=\"";
+				// pieces in first line of column are different (due to the special
+				// pvti file format with overlapping by 1 cell)
+				if (coords[0] == 0)
+					outHeader << 0 << " " << VTI.nbX << " ";
+				else
+					outHeader << coords[0] * VTI.nbX << " " << coords[0] * VTI.nbX + VTI.nbX << " ";
+
+				if (coords[1] == 0)
+					outHeader << 0 << " " << VTI.nbY << " ";
+				else
+					outHeader << coords[1] * VTI.nbY << " " << coords[1] * VTI.nbY + VTI.nbY << " ";
+
+				if (3 == Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ)
+				{
+					if (coords[2] == 0)
+						outHeader << 0 << " " << VTI.nbZ << " ";
+					else
+						outHeader << coords[2] * VTI.nbZ << " " << coords[2] * VTI.nbZ + VTI.nbZ << " ";
+				}
+				else
+					outHeader << 0 << " " << 0;
+
+				outHeader << "\" Source=\"";
+				outHeader << pieceFilename << "\"/>" << std::endl;
+			}
+			outHeader << "</PImageData>" << std::endl;
+			outHeader << "</VTKFile>" << std::endl;
+			// // close header file
+			outHeader.close();
+		} // end writing pvti header
+	}
+
+	file_name = OutputDir + "/" + temp_name + "_rank_" + osr.rankFormat.str() + ".vti";
 	unsigned long long need = error_vars.size() * (VTI.nbX * VTI.nbY * VTI.nbZ * sizeof(T) + 4); // Bytes
 	if (disk_avail<disk::B>(Ss.WorkDir, need, "Error output of rank: " + std::to_string(rank)))
 	{
@@ -977,6 +1072,7 @@ void XFLUIDS::Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &c
 		mx = Ss.BlSz.mx;
 		my = Ss.BlSz.my;
 		mz = (3 == Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ) ? Ss.BlSz.mz : 0;
+
 		if ((OutRanks[rank] >= 0) && (minMpiPos_x == Ss.BlSz.myMpiPos_x) && (minMpiPos_y == Ss.BlSz.myMpiPos_y) && (minMpiPos_z == Ss.BlSz.myMpiPos_z))
 		{
 			// // write header

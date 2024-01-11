@@ -27,7 +27,7 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # // // == MIXTURE_MODEL settings =========================================
 # # // // // == insert MIXURE_MODEL settings ================================
 # #	NO-COP
-# # 1d-mc-diffusion 			# # 1d-mc-diffusion-reverse		# # 1d-mc-insert-shock-tube
+# # 1d-mc-insert-shock-tube		# # 1d-mc-diffusion 			# # 1d-mc-diffusion-reverse
 # # 2d-under-expanded-jet		# # Insert-SBI 					# # Insert-SBI-without-fuel
 # # // // // == reacting MIXURE_MODEL settings ==============================
 # # Reaction/Insert-Air			# # Reaction/Inert_H2+N2
@@ -35,8 +35,8 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
 # # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
 # # Reaction/RSBI-18REA			# # Reaction/RSBI-19REA			# # modified for RSBI samples
-set(INIT_SAMPLE "1d-diffusion-layer") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "Reaction/H2O-N2_21_reaction") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+set(INIT_SAMPLE "2d-shock-bubble-without-fuel") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "Insert-SBI-without-fuel") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)

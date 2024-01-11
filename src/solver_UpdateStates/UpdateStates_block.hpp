@@ -102,9 +102,9 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 	if (*error_nga)
 	{
 		std::cout << "\nErrors of Primitive variables[rho, T, P][";
-		for (size_t ii = 0; ii < 2 + NUM_SPECIES; ii++)
+		for (size_t ii = 0; ii < 2; ii++)
 			std::cout << error_pos[ii] << ", ";
-		std::cout << error_pos[2 + NUM_SPECIES] << "] located at (i, j, k)= (";
+		std::cout << error_pos[2] << "] located at (i, j, k)= (";
 		std::cout << error_pos[3 + NUM_SPECIES] - offsetx << ", " << error_pos[4 + NUM_SPECIES] - offsety << ", " << error_pos[5 + NUM_SPECIES] - offsetz;
 #ifdef ERROR_PATCH
 		std::cout << ") patched.\n";

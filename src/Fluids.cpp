@@ -328,10 +328,10 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 					  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
 	}
 
-#if ESTIM_OUT
 	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+#if ESTIM_OUT
 	if (Fs.BlSz.DimX)
 	{
 		h_fstate.b1x = static_cast<real_t *>(sycl::malloc_host(bytes, q));
@@ -801,10 +801,7 @@ bool Fluid::UpdateFluidStates(sycl::queue &q, int flag)
 	else
 		UI = d_U1;
 
-	if (UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma, error_patched_times))
-		return true;
-
-	return false;
+	return UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma, error_patched_times, rank);
 }
 
 void Fluid::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)

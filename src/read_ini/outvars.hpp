@@ -252,8 +252,8 @@ struct OutFmt
 				if (_V[ii].find("yi[") != std::string::npos)
 					for (size_t nn = 0; nn < sp.size(); nn++)
 					{
-						if (0 == _V[ii].compare("yi[" + sp[nn] + "]"))
-							out_vars.push_back(OutVar("yi[" + sp[nn] + "]", h_data.y, sp.size(), nn));
+						if ((0 == _V[ii].compare("yi[" + sp[nn] + "]")) || (0 == _V[ii].compare("yi[all]")))
+							out_vars.push_back(OutVar("y" + std::to_string(nn) + "[" + sp[nn] + "]", h_data.y, sp.size(), nn));
 					}
 #endif // COP
 			}

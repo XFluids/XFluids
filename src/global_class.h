@@ -94,11 +94,11 @@ public:
     // Output
     void GetCPT_OutRanks(int *OutRanks, OutSize &CVTI, OutSlice pos);
     void GetSPT_OutRanks(int *OutRanks, std::vector<Criterion> &var);
-    std::vector<OutVar> Output_variables(std::vector<OutVar> &vars, std::vector<std::string> &sp);
-    void Output(sycl::queue &q, OutFmt ctrl, bool error = false);
-    void Output_plt(int rank, OutString &osr, bool error);
+    std::vector<OutVar> Output_variables(FlowData &data, std::vector<std::string> &sp, size_t error = 2);
+    void Output(sycl::queue &q, OutFmt ctrl, size_t error = 0);
     template <typename T = float>
-    void Output_vti(int rank, OutString &osr);
+    void Output_vti(std::vector<OutVar> error_vars, OutString &osr, size_t error = 0);
+    void Output_plt(int rank, OutString &osr, bool error = false);
     template <typename T = float>
     void Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &cri, OutString &osr);
     template <typename T = float>
