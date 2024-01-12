@@ -53,6 +53,8 @@
 	},
 	"sources": {},
 	"mesh": {
+		"Yil_limiter": 1600,
+		"Dim_limiter": 0.002,
 		"DOMAIN_Size": [
 			0.2,
 			0.05,

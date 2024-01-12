@@ -177,6 +177,8 @@ typedef struct
 	real_t LRef;
 	//--for-SBI-over-time-count--------------
 	size_t Xe_id, N2_id;
+	//--for-viscosity-Kernel-----------------
+	real_t Dim_limiter, Yil_limiter, Diffu_limiter;
 } Block;
 
 typedef struct

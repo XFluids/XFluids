@@ -8,10 +8,11 @@
 	real_t lamada = -_DF(2.0) * _OT * mue;
 
 #ifdef COP
-#define MARCO_VIS_COP_IN_DIFFU1()                                                                                                       \
-	Yil_wall[l] = (_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr; /* temperature gradient at wall*/ \
-	Yi_wall[l] = (_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn;                                           \
-	CorrectTerm += Dim_wall[l] * Yil_wall[l];
+#define MARCO_VIS_COP_IN_DIFFU1()                                                                                                                                                              \
+	Yil_wall[l] = sycl::min(sycl::max((_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr, -bl.Yil_limiter), bl.Yil_limiter); /* temperature gradient at wall*/ \
+	Yi_wall[l] = sycl::min(sycl::max((_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn, _DF(1.0E-20)), _DF(1.0));                                                    \
+	Dim_Yil = sycl::min(sycl::max(Dim_wall[l] * Yil_wall[l], -bl.Diffu_limiter), bl.Diffu_limiter);                                                                                            \
+	CorrectTerm += Dim_Yil;
 /**
  * NOTE: CorrectTerm for diffusion to Average the error from the last species to
  *  all species according to the mass fraction
@@ -40,25 +41,25 @@
 #endif // end ESTIM_OUT
 
 #ifdef Visc_Diffu
-#define MARCO_VIS_Diffu()                                                                                                                           \
-	real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) * _sxtn, CorrectTerm = _DF(0.0);                              \
-	real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];                                                \
-	for (int l = 0; l < NUM_SPECIES; l++)                                                                                                           \
-	{                                                                                                                                               \
-		int g_id_p1 = l + NUM_SPECIES * id_p1, g_id = l + NUM_SPECIES * id, g_id_p2 = l + NUM_SPECIES * id_p2, g_id_m1 = l + NUM_SPECIES * id_m1;   \
-		hi_wall[l] = (_DF(9.0) * (hi[g_id_p1] + hi[g_id]) - (hi[g_id_p2] + hi[g_id_m1])) * _sxtn;                                                   \
-		Dim_wall[l] = (_DF(9.0) * (Dkm_aver[g_id_p1] + Dkm_aver[g_id]) - (Dkm_aver[g_id_p2] + Dkm_aver[g_id_m1])) * _sxtn;                          \
-		MARCO_VIS_COP_IN_DIFFU1();                                                                                                                  \
-		/* visc flux for heat of diffusion */                                                                                                       \
-		F_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yil_wall[l];                                                                           \
-		MARCO_Err_Dffu();                                                                                                                           \
-	}                                                                                                                                               \
-	/* visc flux for cop equations*/                                                                                                                \
-	CorrectTerm *= rho_wall;                                                                                                                        \
-	for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/                                                                          \
-	{                                                                                                                                               \
-		int p_temp = p - 5;                                                                                                                         \
-		F_wall_v[p] = rho_wall * Dim_wall[p_temp] * Yil_wall[p_temp] - Yi_wall[p_temp] * CorrectTerm; /*CorrectTerm = 0.0 while not added in loop*/ \
+#define MARCO_VIS_Diffu()                                                                                                                         \
+	real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) * _sxtn, CorrectTerm = _DF(0.0);                            \
+	real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES], Dim_Yil = _DF(1.0E-20);                      \
+	for (int l = 0; l < NUM_SPECIES; l++)                                                                                                         \
+	{                                                                                                                                             \
+		int g_id_p1 = l + NUM_SPECIES * id_p1, g_id = l + NUM_SPECIES * id, g_id_p2 = l + NUM_SPECIES * id_p2, g_id_m1 = l + NUM_SPECIES * id_m1; \
+		hi_wall[l] = (_DF(9.0) * (hi[g_id_p1] + hi[g_id]) - (hi[g_id_p2] + hi[g_id_m1])) * _sxtn;                                                 \
+		Dim_wall[l] = (_DF(9.0) * (Dkm_aver[g_id_p1] + Dkm_aver[g_id]) - (Dkm_aver[g_id_p2] + Dkm_aver[g_id_m1])) * _sxtn;                        \
+		MARCO_VIS_COP_IN_DIFFU1();                                                                                                                \
+		/* visc flux for heat of diffusion */                                                                                                     \
+		F_wall_v[4] += rho_wall * hi_wall[l] * Dim_Yil;                                                                                           \
+		MARCO_Err_Dffu();                                                                                                                         \
+	}                                                                                                                                             \
+	/* visc flux for cop equations*/                                                                                                              \
+	CorrectTerm *= rho_wall;                                                                                                                      \
+	for (int p = 5; p < Emax; p++) /* ADD Correction Term in X-direction*/                                                                        \
+	{                                                                                                                                             \
+		int p_temp = p - 5;                                                                                                                       \
+		F_wall_v[p] = rho_wall * Dim_Yil - Yi_wall[p_temp] * CorrectTerm; /*CorrectTerm = 0.0 while not added in loop*/                           \
 	}
 #else // Visc_Diffu
 #define MARCO_VIS_Diffu()                                \

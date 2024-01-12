@@ -53,6 +53,8 @@ extern const std::vector<bool> Dimensions;										  // XYZ Dir
 extern const std::vector<size_t> Inner, Bwidth;									  // XYZ Resolution
 extern const std::vector<size_t> NBoundarys, Boundarys_json;					  // BoundaryBundles
 extern const std::vector<std::vector<size_t>> Boundary_x, Boundary_y, Boundary_z; // BoundaryBundle_xyz
+//--Limiters----------------
+extern const real_t Yil_limiter_json, Dim_limiter_json;
 
 // init
 extern const real_t Ma_json;
