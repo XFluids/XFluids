@@ -31,11 +31,11 @@ extern void PositivityPreservingKernel(int i, int j, int k, int id_l, int id_r, 
 	theta_u = _DF(1.0), theta_p = _DF(1.0);
 	rho_min = sycl::min(UU[0], epsilon[0]);
 	if (UU[0] - FF[0] < rho_min)
-		theta_u = (UU[0] - FF_LF[0] - rho_min) / (FF[0] - FF_LF[0]);
+		theta_u = (UU[0] - FF_LF[0] - rho_min + _DF(1.0e-40)) / (FF[0] - FF_LF[0] + _DF(1.0e-40));
 	rho_min = sycl::min(UP[0], epsilon[0]);
 	if (UP[0] + FF[0] < rho_min)
-		theta_p = (UP[0] + FF_LF[0] - rho_min) / (FF_LF[0] - FF[0]);
-	theta = sycl::min(theta_u, theta_p);
+		theta_p = (UP[0] + FF_LF[0] - rho_min + _DF(1.0e-40)) / (FF_LF[0] - FF[0] + _DF(1.0e-40));
+	theta = sycl::min(sycl::max(sycl::min(theta_u, theta_p), _DF(0.0)), _DF(1.0));
 	for (int n = 0; n < Emax; n++)
 	{
 		FF[n] = (_DF(1.0) - theta) * FF_LF[n] + theta * FF[n];
@@ -66,8 +66,11 @@ extern void PositivityPreservingKernel(int i, int j, int k, int id_l, int id_r, 
 			real_t yi_min = sycl::min(yi_up[n], temp);
 			theta_p = (yi_up[n] - yi_min + _DF(1.0e-40)) / (yi_up[n] - yi_qp[n] + _DF(1.0e-40));
 		}
-		theta = sycl::min(theta_u, theta_p);
+		theta = sycl::min(sycl::max(sycl::min(theta_u, theta_p), _DF(0.0)), _DF(1.0));
 		for (int nn = 0; nn < Emax; nn++)
+		{
+			FF[n] = (_DF(1.0) - theta) * FF_LF[n] + theta * FF[n];
 			Fwall[nn + id_l] = (_DF(1.0) - theta) * F_LF[nn] + theta * Fwall[nn + id_l];
+		}
 	}
 }

@@ -1,7 +1,7 @@
 #include "Update_kernels.hpp"
 #include "Estimate_kernels.hpp"
 
-bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma, int &error_patched_times)
+bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma, int &error_patched_times, const int rank)
 {
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
@@ -28,21 +28,21 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 #if ESTIM_NAN
 	int *error_posyi;
 	bool *error_org, *error_nan;
-	error_posyi = middle::MallocShared<int>(error_posyi, 4 + NUM_SPECIES, q);
+	error_posyi = middle::MallocShared<int>(error_posyi, 5 + NUM_SPECIES, q);
 	error_org = middle::MallocShared<bool>(error_org, 1, q), error_nan = middle::MallocShared<bool>(error_nan, 1, q);
 	*error_nan = false, *error_org = false;
-	for (size_t i = 0; i < NUM_SPECIES + 3; i++)
+	for (size_t i = 0; i < NUM_SPECIES + 4; i++)
 		error_posyi[i] = _DF(0.0);
-	auto Sum_Epts = sycl_reduction_plus(error_posyi[NUM_SPECIES + 3]); // sycl::reduction(&(error_posyi[NUM_SPECIES + 3]), sycl::plus<real_t>()); // error_patch_times
 
-	// // update estimate negative or nan yi and patch
+	// // update estimate negative or nan rho, yi
 	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange, local_ndrange), Sum_Epts, [=](sycl::nd_item<3> index, auto &tEpts)
-							  {
-									int i = index.get_global_id(0) + bl.Bwidth_X;
-									int j = index.get_global_id(1) + bl.Bwidth_Y;
-									int k = index.get_global_id(2) + bl.Bwidth_Z;
-									EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y); }); }) //, tEpts
+			 { h.parallel_for(
+				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
+				   {
+						int i = index.get_global_id(0) + bl.Bwidth_X;
+						int j = index.get_global_id(1) + bl.Bwidth_Y;
+						int k = index.get_global_id(2) + bl.Bwidth_Z;
+						EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y); }); })
 		.wait();
 
 	int offsetx = OutBoundary ? 0 : bl.Bwidth_X;
@@ -50,19 +50,21 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 	int offsetz = OutBoundary ? 0 : bl.Bwidth_Z;
 
 	if (*error_org)
-		error_patched_times += 1; // error_posyi[NUM_SPECIES + 3];
+		error_patched_times += 1;
 	if (*error_nan)
 	{
 		error_patched_times++;
-		std::cout << "\nErrors of Yi[";
-		for (size_t ii = 0; ii < NUM_COP; ii++)
+		std::cout << "\nErrors of rho/Yi[";
+		std::cout << error_posyi[NUM_SPECIES + 1] << ", ";
+		for (size_t ii = 0; ii < NUM_SPECIES - 1; ii++)
 			std::cout << error_posyi[ii] << ", ";
-		std::cout << error_posyi[NUM_SPECIES - 1] << "] located at (i, j, k)= (";
-		std::cout << error_posyi[NUM_SPECIES] - offsetx << ", " << error_posyi[NUM_SPECIES + 1] - offsety << ", " << error_posyi[NUM_SPECIES + 2] - offsetz;
+		std::cout << error_posyi[NUM_SPECIES] << "] located at (i, j, k)= (";
+		std::cout << error_posyi[NUM_SPECIES + 2] - offsetx << ", " << error_posyi[NUM_SPECIES + 3] - offsety << ", " << error_posyi[NUM_SPECIES + 4] - offsetz;
+		std::cout << ") of rank: " << rank;
 #ifdef ERROR_PATCH_YI
-		std::cout << ") patched.\n";
+		std::cout << " patched.\n";
 #else
-		std::cout << ") captured.\n";
+		std::cout << " captured.\n";
 		return true;
 #endif // end ERROR_PATCH_YI
 	}
@@ -106,10 +108,11 @@ bool UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI,
 			std::cout << error_pos[ii] << ", ";
 		std::cout << error_pos[2] << "] located at (i, j, k)= (";
 		std::cout << error_pos[3 + NUM_SPECIES] - offsetx << ", " << error_pos[4 + NUM_SPECIES] - offsety << ", " << error_pos[5 + NUM_SPECIES] - offsetz;
+		std::cout << ") of rank: " << rank;
 #ifdef ERROR_PATCH
-		std::cout << ") patched.\n";
+		std::cout << " patched.\n";
 #else
-		std::cout << ") captured.\n";
+		std::cout << " captured.\n";
 		return true;
 #endif // end ERROR_PATCH
 	}

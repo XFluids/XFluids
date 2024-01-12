@@ -35,9 +35,12 @@ extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool
 
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	bool spc = false, spcnan = false, spcs[NUM_SPECIES], spcnans[NUM_SPECIES];
+	bool rhonan = (rho[id] < 0) || sycl::isnan(rho[id]) || sycl::isinf(rho[id]);
 	real_t *yi = &(y[NUM_SPECIES * id]), *U = &(UI[Emax * id]), _theta = _DF(1.0) / theta;
 
-	for (size_t n2 = 0; n2 < NUM_SPECIES; n2++)
+	if (rhonan)
+		error_pos[NUM_SPECIES + 1] = 1;
+	for (size_t n2 = 0; n2 < NUM_SPECIES; n2++) // nan yi
 	{
 		spcs[n2] = (yi[n2] < _DF(1e-20) || yi[n2] > _DF(1.0));
 		spcnans[n2] = (sycl::isnan(yi[n2]) || sycl::isinf(yi[n2]));
@@ -90,10 +93,10 @@ extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool
 	// 		for (size_t n = 0; n < NUM_COP; n++)
 	// 			U[n + 5] = rho[id] * yi[n];
 
-	// 		*error_org = true; //, SumPts += 1;
-	// 		if (spcnan)		   // add condition to avoid rewrite by other threads
-	// 			*error_nan = true, error_pos[NUM_SPECIES] = i, error_pos[1 + NUM_SPECIES] = j, error_pos[2 + NUM_SPECIES] = k;
+	// *error_org = true; //, SumPts += 1;
 	// 	}
+	if (rhonan || spcnan) // add condition to avoid rewrite by other threads
+		*error_nan = true, error_pos[NUM_SPECIES + 2] = i, error_pos[NUM_SPECIES + 3] = j, error_pos[NUM_SPECIES + 4] = k;
 	// if (i == 100 && j == 100)
 	//     SumPts += 1;
 }
