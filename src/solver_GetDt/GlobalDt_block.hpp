@@ -65,7 +65,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	dtref = uvw_c_max[0] * bl._dx + uvw_c_max[1] * bl._dy + uvw_c_max[2] * bl._dz;
 
 	// NOTE: dt of viscous flow
-#ifdef Visc
+#if Visc
 	// real_t *va = fdata.viscosity_aver;
 	// real_t *tca = fdata.thermal_conduct_aver;
 	// real_t *Da = fdata.Dkm_aver;

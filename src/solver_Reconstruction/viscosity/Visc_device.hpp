@@ -107,7 +107,7 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 	real_t **fct = thermal.fitted_coefficients_therm;
 	real_t **Dkj = thermal.Dkj_matrix;
 	viscosity_aver = _DF(0.0);
-#ifdef Visc_Heat
+#if Visc_Heat
 	thermal_conduct_aver = _DF(0.0);
 #endif
 	real_t denominator = _DF(0.0);
@@ -125,7 +125,7 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 		// calculate viscosity_aver via equattion(5-49)//
 		real_t _denominator = _DF(1.0) / denominator;
 		viscosity_aver = viscosity_aver + X[k] * Viscosity(fcv[int(specie[k][SID])], T) * _denominator; // Pa.s=kg/(m.s)
-#ifdef Visc_Heat
+#if Visc_Heat
 		// calculate thermal_conduct via Su Hongmin//
 #ifdef ConstantFurrier
 		thermal_conduct_aver = _DF(0.1);
@@ -134,7 +134,7 @@ void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Th
 #endif // end
 #endif // end Visc_Heat
 	}
-#ifdef Visc_Diffu
+#if Visc_Diffu
 	// calculate diffusion coefficient specie_k to mixture via equation 5-45
 #if 1 < NUM_SPECIES
 	{

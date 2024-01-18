@@ -229,7 +229,7 @@ extern void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal therm
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	// get mole fraction of each specie
 	real_t X[MAX_SPECIES] = {_DF(0.0)}; //, yi[NUM_SPECIES] = {_DF(0.0)};
-#ifdef Visc_Diffu
+#if Visc_Diffu
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
 		hi[ii + NUM_SPECIES * id] = get_Enthalpy(thermal.Hia, thermal.Hib, T[id], thermal.Ri[ii], ii);
 #endif									 // end Visc_Diffu

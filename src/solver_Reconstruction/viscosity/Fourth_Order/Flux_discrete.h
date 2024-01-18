@@ -40,7 +40,7 @@
 
 #endif // end ESTIM_OUT
 
-#ifdef Visc_Diffu
+#if Visc_Diffu
 #define MARCO_VIS_Diffu()                                                                                                                         \
 	real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) * _sxtn, CorrectTerm = _DF(0.0);                            \
 	real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES], Dim_Yil = _DF(1.0E-20);                      \
@@ -67,7 +67,7 @@
 		F_wall_v[p] = _DF(0.0);
 #endif // Visc_Diffu
 
-#ifdef Visc_Heat
+#if Visc_Heat
 #define MARCO_VIS_HEAT() /* thermal conductivity at wall*/                                                                                                   \
 	real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) * _sxtn; \
 	kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) * _dl * _twfr; /* temperature gradient at wall*/                                          \
@@ -118,7 +118,7 @@
 // #define MARCO_VIS_COP_IN_DIFFU2() ;
 // #endif
 
-// #ifdef Visc_Heat
+// #if Visc_Heat
 // const bool _Heat = true;
 
 // #define MARCO_VIS_HEAT()                                                                                                                                                                       \
@@ -139,7 +139,7 @@
 // #define MARCO_VIS_HEAT_IN_DIFFU() ;
 // #endif
 
-// #ifdef Visc_Diffu
+// #if Visc_Diffu
 // const bool _Diffu = true;
 
 // #define MARCO_VIS_Diffu()                                                                                                                         \

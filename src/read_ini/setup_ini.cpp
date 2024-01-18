@@ -31,7 +31,7 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
         /*end runtime read*/
 
 // read && caculate coffes for visicity
-#ifdef Visc
+#if Visc
     GetFitCoefficient();
 #endif
 

@@ -152,12 +152,12 @@ extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall
 	//     F_x_wall_v[3] = f_z;
 	//     F_x_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
 
-	// #ifdef Visc_Heat // Fourier thermal conductivity; // thermal conductivity at wall
+	// #if Visc_Heat // Fourier thermal conductivity; // thermal conductivity at wall
 	//     real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0);
 	//     kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dx / _DF(24.0);                                                // temperature gradient at wall
 	//     F_x_wall_v[4] += kk;                                                                                                            // Equation (32) or Equation (10)
 	// #endif                                                                                                                              // end Visc_Heat
-	// #ifdef Visc_Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
+	// #if Visc_Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
 	//     real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);
 	//     real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yix_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];
 	//     for (int l = 0; l < NUM_SPECIES; l++)
@@ -171,7 +171,7 @@ extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall
 	//             Yix_wall[l] = _DF(0.0);
 	// #endif // end COP
 	//     }
-	// #ifdef Visc_Heat
+	// #if Visc_Heat
 	//     for (int l = 0; l < NUM_SPECIES; l++)
 	//             F_x_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yix_wall[l];
 	// #endif     // end Visc_Heat
@@ -255,12 +255,12 @@ extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall
 	//     F_y_wall_v[3] = f_z;
 	//     F_y_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
 
-	// #ifdef Visc_Heat    // Fourier thermal conductivity
+	// #if Visc_Heat    // Fourier thermal conductivity
 	//     real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0); // thermal conductivity at wall
 	//     kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dy / _DF(24.0);                                                // temperature gradient at wall
 	//     F_y_wall_v[4] += kk;                                                                                                            // Equation (32) or Equation (10)
 	// #endif                                                                                                                              // end Visc_Heat
-	// #ifdef Visc_Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
+	// #if Visc_Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
 	//     real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);
 	//     real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yiy_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];
 	//     for (int l = 0; l < NUM_SPECIES; l++)
@@ -274,7 +274,7 @@ extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall
 	//             Yiy_wall[l] = _DF(0.0);
 	// #endif // end COP
 	//     }
-	// #ifdef Visc_Heat
+	// #if Visc_Heat
 	//     for (int l = 0; l < NUM_SPECIES; l++)
 	//             F_y_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yiy_wall[l];
 	// #endif     // end Visc_Heat
@@ -358,12 +358,12 @@ extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall
 	//     F_z_wall_v[3] = f_z;
 	//     F_z_wall_v[4] = f_x * u_hlf + f_y * v_hlf + f_z * w_hlf;
 
-	// #ifdef Visc_Heat    // Fourier thermal conductivity
+	// #if Visc_Heat    // Fourier thermal conductivity
 	//     real_t kk = (_DF(9.0) * (thermal_conduct_aver[id_p1] + thermal_conduct_aver[id]) - (thermal_conduct_aver[id_p2] + thermal_conduct_aver[id_m1])) / _DF(16.0); // thermal conductivity at wall
 	//     kk *= (_DF(27.0) * (T[id_p1] - T[id]) - (T[id_p2] - T[id_m1])) / dz / _DF(24.0);                                                // temperature gradient at wall
 	//     F_z_wall_v[4] += kk;                                                                                                            // Equation (32) or Equation (10)
 	// #endif                                                                                                                              // end Visc_Heat
-	// #ifdef Visc_Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
+	// #if Visc_Diffu                                                                                                                        // energy fiffusion depends on mass diffusion
 	//     real_t rho_wall = (_DF(9.0) * (rho[id_p1] + rho[id]) - (rho[id_p2] + rho[id_m1])) / _DF(16.0);
 	//     real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yiz_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];
 	//     for (int l = 0; l < NUM_SPECIES; l++)
@@ -377,7 +377,7 @@ extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall
 	//             Yiz_wall[l] = _DF(0.0);
 	// #endif // end COP
 	//     }
-	// #ifdef Visc_Heat
+	// #if Visc_Heat
 	//     for (int l = 0; l < NUM_SPECIES; l++)
 	//             F_z_wall_v[4] += rho_wall * hi_wall[l] * Dim_wall[l] * Yiz_wall[l];
 	// #endif     // end Visc_Heat

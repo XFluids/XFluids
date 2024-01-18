@@ -25,6 +25,12 @@
 #ifndef Visc
 #define Visc 0
 #endif
+#ifndef Visc_Heat
+#define Visc_Heat 0
+#endif
+#ifndef Visc_Diffu
+#define Visc_Diffu 0
+#endif
 #ifndef NUM_REA
 #define NUM_REA 1
 #endif

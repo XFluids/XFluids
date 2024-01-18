@@ -584,14 +584,14 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 			q.memcpy(fluids[n]->h_LU, fluids[n]->d_LU, cellbytes);
 
 #if ESTIM_OUT
-#ifdef Visc // copy vosicous estimating Vars
+#if Visc // copy vosicous estimating Vars
 			if (Ss.BlSz.DimX)
 				q.memcpy(fluids[n]->h_fstate.visFwx, fluids[n]->d_fstate.visFwx, NUM_SPECIES * bytes);
 			if (Ss.BlSz.DimY)
 				q.memcpy(fluids[n]->h_fstate.visFwy, fluids[n]->d_fstate.visFwy, NUM_SPECIES * bytes);
 			if (Ss.BlSz.DimZ)
 				q.memcpy(fluids[n]->h_fstate.visFwz, fluids[n]->d_fstate.visFwz, NUM_SPECIES * bytes);
-#ifdef Visc_Diffu
+#if Visc_Diffu
 			q.memcpy(fluids[n]->h_fstate.Ertemp1, fluids[n]->d_fstate.Ertemp1, NUM_SPECIES * bytes);
 			q.memcpy(fluids[n]->h_fstate.Ertemp2, fluids[n]->d_fstate.Ertemp2, NUM_SPECIES * bytes);
 			q.memcpy(fluids[n]->h_fstate.Dkm_aver, fluids[n]->d_fstate.Dkm_aver, NUM_SPECIES * bytes);
@@ -801,7 +801,7 @@ std::vector<OutVar> XFLUIDS::Output_variables(FlowData &data, std::vector<std::s
 			}
 		}
 
-#ifdef Visc // Out name of viscous out estimating Vars
+#if Visc // Out name of viscous out estimating Vars
 		for (size_t mm = 0; mm < Emax; mm++)
 		{
 			if (Ss.BlSz.DimX)
@@ -812,7 +812,7 @@ std::vector<OutVar> XFLUIDS::Output_variables(FlowData &data, std::vector<std::s
 				vars.push_back(OutVar("E-Fw-vis-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwz, Emax, mm));
 		}
 
-#ifdef Visc_Diffu
+#if Visc_Diffu
 		for (size_t mm = 0; mm < sp.size(); mm++)
 		{
 			vars.push_back(OutVar("E-vis_Dim[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dkm_aver, sp.size(), mm));

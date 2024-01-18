@@ -40,7 +40,7 @@
 
 #endif // end ESTIM_OUT
 
-#ifdef Visc_Diffu
+#if Visc_Diffu
 #define MARCO_VIS_Diffu()                                                                                  \
 	real_t rho_wall = ((rho[id_p1] + rho[id])) * _DF(0.5), CorrectTerm = _DF(0.0), Dim_Yil = _DF(1.0E-20); \
 	real_t hi_wall[NUM_SPECIES], Dim_wall[NUM_SPECIES], Yil_wall[NUM_SPECIES], Yi_wall[NUM_SPECIES];       \
@@ -68,7 +68,7 @@
 		F_wall_v[p] = _DF(0.0);
 #endif // Visc_Diffu
 
-#ifdef Visc_Heat
+#if Visc_Heat
 #define MARCO_VIS_HEAT() /* thermal conductivity at wall*/                             \
 	real_t kk = ((thermal_conduct_aver[id_p1] + thermal_conduct_aver[id])) * _DF(0.5); \
 	kk *= ((T[id_p1] - T[id])) * _dl; /* temperature gradient at wall*/                \

@@ -267,7 +267,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 
 	GetCellCenterDerivative(q, bl, fdata, BCs); // get Vortex
 
-#ifdef Visc // NOTE: calculate and add viscous wall Flux to physical convection Flux
+#if Visc // NOTE: calculate and add viscous wall Flux to physical convection Flux
 	/* Viscous LU including physical visc(切应力),Visc_Heat transfer(传热), mass Diffusion(质量扩散)
 	 * Physical Visc must be included, Visc_Heat is alternative, Visc_Diffu depends on compent
 	 */

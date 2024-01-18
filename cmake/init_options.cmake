@@ -94,14 +94,14 @@ ELSE(DIM_Z)
 ENDIF(DIM_Z)
 
 IF(Visc)
-  add_compile_options(-DVisc)
+  add_compile_options(-DVisc=1)
 
   IF(Visc_Heat)
-    add_compile_options(-DVisc_Heat)
+    add_compile_options(-DVisc_Heat=1)
   ENDIF(Visc_Heat)
 
   IF(Visc_Diffu)
-    add_compile_options(-DVisc_Diffu)
+    add_compile_options(-DVisc_Diffu=1)
   ENDIF(Visc_Diffu)
 ENDIF(Visc)
 
