@@ -62,6 +62,8 @@ public:
     int Iteration, rank, nranks;
     float duration, duration_backup;
     float MPI_trans_time, MPI_BCs_time;
+    float runtime_boundary, runtime_updatestates, runtime_getdt;
+    float runtime_computelu, runtime_updateu, runtime_estimatenan;
 
     OutFmt OutAtThis;
     BConditions *d_BCs; // boundary condition indicators

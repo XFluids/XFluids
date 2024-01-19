@@ -14,6 +14,8 @@ XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0),
 	rank = Ss.mpiTrans->myRank;
 	nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
+	runtime_boundary = 0.0f, runtime_updatestates = 0.0f, runtime_getdt = 0.0f;
+	runtime_computelu = 0.0f, runtime_updateu = 0.0f, runtime_estimatenan = 0.0f;
 	MPI_trans_time = 0.0, MPI_BCs_time = 0.0, duration = 0.0f, duration_backup = 0.0f;
 	for (int n = 0; n < NumFluid; n++)
 	{
@@ -219,6 +221,7 @@ void XFLUIDS::EndProcess()
 	duration = Ttemp;
 	if (rank == 0)
 	{
+		std::cout << "<--------------------------------------------------->\n";
 		std::cout << "MPI averaged of " << nranks << " ranks ";
 ///////////////////////////
 #ifdef AWARE_MPI
@@ -227,6 +230,8 @@ void XFLUIDS::EndProcess()
 		std::cout << "without AWARE_MPI ";
 #endif // end AWARE_MPI
 ///////////////////////////
+#else
+	std::cout << "<--------------------------------------------------->\n";
 #endif // end USE_MPI
 		std::cout << SelectDv << " runtime(s):  " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
 		std::cout << "Device Memory Usage(GB)   :  " << fluids[0]->MemMbSize / 1024.0 << std::endl;
@@ -249,6 +254,17 @@ void XFLUIDS::EndProcess()
 #endif
 	{
 		std::cout << "Times of error patched: " << error_times_patched << std::endl;
+		float runtime_check_sum = runtime_estimatenan + runtime_boundary + runtime_updatestates + runtime_computelu + runtime_updateu + runtime_getdt;
+		std::cout << "<--------------------------------------------------->\n"
+				  << "DETAILED RUNTIME CHECK(s)\n"
+				  << "runtime of BoundaryCondition: " << runtime_boundary << "\n"
+				  << "runtime of UpdateStates:      " << runtime_updatestates << "\n"
+				  << "runtime of ComputeLU:         " << runtime_computelu << "\n"
+				  << "runtime of UpdateU:           " << runtime_updateu << "\n"
+				  << "runtime of GetDt:             " << runtime_getdt << "\n"
+				  << "runtime of EstimateNAN:       " << runtime_estimatenan << "\n"
+				  << "runtime check SUM:            " << runtime_check_sum << "\n"
+				  << "<--------------------------------------------------->\n";
 	}
 }
 
@@ -290,8 +306,9 @@ bool XFLUIDS::SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t 
 
 bool XFLUIDS::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag)
 {
-	bool error = false, errors[NumFluid];
+	std::chrono::high_resolution_clock::time_point runtime_nan_start_time = std::chrono::high_resolution_clock::now();
 
+	bool error = false, errors[NumFluid];
 	for (int n = 0; n < NumFluid; n++)
 	{
 		errors[n] = fluids[n]->EstimateFluidNAN(q, flag);
@@ -308,8 +325,9 @@ bool XFLUIDS::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, con
 #endif // end USE_MPI
 	if (error)
 		Output(q, OutAtThis.Reinitialize(Time, "UErr_" + StepEr), 2);
-
 	q.wait();
+
+	runtime_estimatenan += OutThisTime(runtime_nan_start_time);
 
 	return error; // all rank == 1 or 0
 }
@@ -317,61 +335,89 @@ bool XFLUIDS::EstimateNAN(sycl::queue &q, const real_t Time, const int Step, con
 bool XFLUIDS::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag)
 {
 	// estimate if rho is_nan or <0 or is_inf
-	bool error = false; //, errorp1 = false, errorp2 = false, errorp3 = false;
+	bool error = false;
+	std::chrono::high_resolution_clock::time_point runtime_start_time;
 	switch (flag)
 	{
 	case 1:
 		// the fisrt step
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		BoundaryCondition(q, 0);
+		runtime_boundary += OutThisTime(runtime_start_time);
+
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		if (UpdateStates(q, 0, Time, Step, "_RK1"))
 			return true;
+		runtime_updatestates += OutThisTime(runtime_start_time);
 
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		ComputeLU(q, 0);
+		runtime_computelu += OutThisTime(runtime_start_time);
 #if ESTIM_NAN
 		if (EstimateNAN(q, Time, Step, rank, flag))
 			return true;
 #endif // end ESTIM_NAN
 
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		UpdateU(q, 1);
+		runtime_updateu += OutThisTime(runtime_start_time);
 		break;
 
 	case 2:
 		// the second step
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		BoundaryCondition(q, 1);
+		runtime_boundary += OutThisTime(runtime_start_time);
+
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		if (UpdateStates(q, 1, Time, Step, "_RK2"))
 			return true;
+		runtime_updatestates += OutThisTime(runtime_start_time);
 
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		ComputeLU(q, 1);
+		runtime_computelu += OutThisTime(runtime_start_time);
 #if ESTIM_NAN
 		if (EstimateNAN(q, Time, Step, rank, flag))
 			return true;
 #endif // end ESTIM_NAN
 
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		UpdateU(q, 2);
+		runtime_updateu += OutThisTime(runtime_start_time);
 		break;
 
 	case 3:
 		// the third step
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		BoundaryCondition(q, 1);
+		runtime_boundary += OutThisTime(runtime_start_time);
+
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		if (UpdateStates(q, 1, Time, Step, "_RK3"))
 			return true;
+		runtime_updatestates += OutThisTime(runtime_start_time);
 
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		ComputeLU(q, 1);
+		runtime_computelu += OutThisTime(runtime_start_time);
 #if ESTIM_NAN
 		if (EstimateNAN(q, Time, Step, rank, flag))
 			return true;
 #endif // end ESTIM_NAN
 
+		runtime_start_time = std::chrono::high_resolution_clock::now();
 		UpdateU(q, 3);
+		runtime_updateu += OutThisTime(runtime_start_time);
 		break;
 	}
-
 	return false;
 }
 
 real_t XFLUIDS::ComputeTimeStep(sycl::queue &q)
 {
 	real_t dt_ref = _DF(1.0e-10);
+	std::chrono::high_resolution_clock::time_point runtime_dt_start_time = std::chrono::high_resolution_clock::now();
 	dt_ref = fluids[0]->GetFluidDt(q, Iteration, physicalTime);
 
 // // if MPI used, get the minimum of all ranks
@@ -381,6 +427,8 @@ real_t XFLUIDS::ComputeTimeStep(sycl::queue &q)
 	Ss.mpiTrans->communicator->allReduce(&dt_ref, &temp, 1, Ss.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 	dt_ref = temp;
 #endif
+
+	runtime_getdt += OutThisTime(runtime_dt_start_time);
 
 	return dt_ref;
 }
