@@ -30,7 +30,6 @@ inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, c
 	s1 += tol, s2 += tol, s3 += tol;
 
 	// // TODO: float precison
-	// // // for float precision
 	// real_t _s1 = CarmackR(s1), _s2 = CarmackR(s2), _s3 = CarmackR(s3);
 	// int cs1 = sycl::log10(s1), cs2 = sycl::log10(s2), cs3 = sycl::log10(s3);
 	// int c12 = cs1 - cs2, c13 = cs1 - cs3, c1 = -bit_maxmag(c12, c13);
@@ -41,8 +40,8 @@ inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, c
 	// a1 = CarmackR(_DF(1.0) * fc1 * fc1 + _DF(2.0) * (s1 * fc1 * _s2) * (s1 * fc1 * _s2) + _DF(3.0) * (s1 * fc1 * _s3) * (s1 * fc1 * _s3)) * _DF(1.0) * fc1 * fc1;
 	// a2 = CarmackR(_DF(1.0) * (s2 * fc2 * _s1) * (s2 * fc2 * _s1) + _DF(2.0) * fc2 * fc2 + _DF(3.0) * (s2 * fc2 * _s3) * (s2 * fc2 * _s3)) * _DF(2.0) * fc2 * fc2;
 	// a3 = CarmackR(_DF(1.0) * (s3 * fc3 * _s1) * (s3 * fc3 * _s1) + _DF(2.0) * (s3 * fc3 * _s2) * (s3 * fc3 * _s2) + _DF(3.0) * fc3 * fc3) * _DF(3.0) * fc3 * fc3;
-	// // // for float precision
 
+#ifdef USE_DOUBLE
 	// // for double precision
 	a1 = _DF(0.1) * s2 * s2 * s3 * s3;
 	a2 = _DF(0.2) * s1 * s1 * s3 * s3;
@@ -50,13 +49,23 @@ inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, c
 
 	real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
 	a1 = a1 * tw1, a2 = a2 * tw1, a3 = a3 * tw1;
-	// // for double precision
+
+#else
+
+	// // // for float precision
+	double Da1 = 0.1 * s2 * s2 * s3 * s3;
+	double Da2 = 0.2 * s1 * s1 * s3 * s3;
+	double Da3 = 0.3 * s1 * s1 * s2 * s2;
+
+	double tw1 = 1.0 / (Da1 + Da2 + Da3);
+	a1 = Da1 * tw1, a2 = Da2 * tw1, a3 = Da3 * tw1;
+#endif
 
 	s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);
 	s2 = a2 * (-v2 + _DF(5.0) * v3 + dtwo * v4);
 	s3 = a3 * (dtwo * v3 + _DF(5.0) * v4 - v5);
 
-	return (s1 + s2 + s3); /// _DF(6.0)
+	return (s1 + s2 + s3);
 }
 
 inline real_t weno5old_GPU(real_t *f, real_t *m)

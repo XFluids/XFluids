@@ -1,9 +1,9 @@
 {
 	"run": {
-		"blockSize_x": 1,
-		"blockSize_y": 1,
-		"blockSize_z": 1,
-		"DtBlockSize": 2,
+		"blockSize_x": 4,
+		"blockSize_y": 4,
+		"blockSize_z": 4,
+		"DtBlockSize": 8,
 		"nStepMax": 10000,
 		"nOutMax": 100,
 		"OutVTI": 1,
