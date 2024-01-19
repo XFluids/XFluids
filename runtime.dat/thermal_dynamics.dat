@@ -1,10 +1,10 @@
 --------------------------- NASA Glenn Thermodynamic Data Coefficients ------------------------------
-! using new NASA polynomials
+! using new NASA9 polynomials
 ! reference html: https://ntrs.nasa.gov/citations/20020085330
 ! reference "./References/thermo_NASA9_nasa9_2002_E.pdf" and "./References/thermo_NASA9_nasa9_2002_E.txt" for original data and more species 
 !
 !   Cp/R =  a0*T^-2   + a1*T^-1  + a2       + a3*T     + a4*T^2   + a5*T^3   + a6*T^4
-!   H/R =  -a0*T^-1   + a1*ln(T) + a2       + a3*T^2/2 + a4*T^3/3 + a5*T^4/4 + a6*T^5/5 + b1
+!   H/R =  -a0*T^-1   + a1*ln(T) + a2*T     + a3*T^2/2 + a4*T^3/3 + a5*T^4/4 + a6*T^5/5 + b1
 !   S/R =  -a0*T^-2/2 - a1*T^-1  + a2*ln(T) + a3*T     + a4*T^2/2 + a5*T^3/3 + a6*T^4/4 + b2
 -----------------------------------------------------------------------------------------------------
 *NCOP

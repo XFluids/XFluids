@@ -1,5 +1,5 @@
 --------------------------- JANAF Thermodynamic Data Coefficients ------------------------------
-! using JANAF polynomials
+! using JANAF/NASA7 polynomials
 ! reference html: https://www.osti.gov/biblio/7073290
 ! reference "./References/thermo_The_Chemkin_Thermodynamic_Data_Base.pdf" for original data and more species 
 !
