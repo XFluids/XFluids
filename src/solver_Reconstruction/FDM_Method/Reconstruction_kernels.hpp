@@ -32,17 +32,6 @@ extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, rea
 	real_t _c = sycl::sqrt(c2);
 	MARCO_ERROR_OUT();
 
-#if 1 == EIGEN_ALLOC
-	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
-#elif 2 == EIGEN_ALLOC
-	real_t *eigen_l[Emax], *eigen_r[Emax], eigen_value[Emax];
-	for (size_t n = 0; n < Emax; n++)
-	{
-		eigen_l[n] = &(eigen_lt[Emax * Emax * id_l + n * Emax]);
-		eigen_r[n] = &(eigen_rt[Emax * Emax * id_l + n * Emax]);
-	}
-#endif // end EIGEN_ALLOC
-
 //     // construct the right value & the left value scalar equations by characteristic reduction
 //     // at i+1/2 in x direction
 #if 0 == EIGEN_ALLOC
@@ -105,7 +94,8 @@ extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, rea
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#elif 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
+#elif 1 == EIGEN_ALLOC
+	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
 	MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_X, i + m, j, k, i + m - stencil_P, j, k);
@@ -147,17 +137,6 @@ extern void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, rea
 	real_t _c = sycl::sqrt(c2);
 	MARCO_ERROR_OUT();
 
-#if 1 == EIGEN_ALLOC
-	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
-#elif 2 == EIGEN_ALLOC
-	real_t *eigen_l[Emax], *eigen_r[Emax], eigen_value[Emax];
-	for (size_t n = 0; n < Emax; n++)
-	{
-		eigen_l[n] = &(eigen_lt[Emax * Emax * id_l + n * Emax]);
-		eigen_r[n] = &(eigen_rt[Emax * Emax * id_l + n * Emax]);
-	}
-#endif // end EIGEN_ALLOC
-
 	//     // // construct the right value & the left value scalar equations by characteristic reduction
 	//     // // at i+1/2 in x direction
 #if 0 == EIGEN_ALLOC
@@ -169,7 +148,8 @@ extern void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, rea
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#elif 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
+#elif 1 == EIGEN_ALLOC
+	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
 	MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_Y, i, j + m, k, i, j + m - stencil_P, k);
@@ -211,17 +191,6 @@ extern void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, rea
 	real_t _c = sycl::sqrt(c2);
 	MARCO_ERROR_OUT();
 
-#if 1 == EIGEN_ALLOC
-	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
-#elif 2 == EIGEN_ALLOC
-	real_t *eigen_l[Emax], *eigen_r[Emax], eigen_value[Emax];
-	for (size_t n = 0; n < Emax; n++)
-	{
-		eigen_l[n] = &(eigen_lt[Emax * Emax * id_l + n * Emax]);
-		eigen_r[n] = &(eigen_rt[Emax * Emax * id_l + n * Emax]);
-	}
-#endif // end EIGEN_ALLOC
-
 	//     // // construct the right value & the left value scalar equations by characteristic reduction
 	//     // // at i+1/2 in x direction
 #if 0 == EIGEN_ALLOC
@@ -233,7 +202,8 @@ extern void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, rea
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#elif 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
+#elif 1 == EIGEN_ALLOC
+	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
 	MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_Z, i, j, k + m, i, j, k + m - stencil_P);

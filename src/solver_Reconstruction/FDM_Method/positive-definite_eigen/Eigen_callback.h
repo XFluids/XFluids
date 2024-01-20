@@ -223,9 +223,9 @@
 		}                                                                                                                           \
 		Fwall[Emax * id_l + n] = fluxl;                                                                                             \
 	}
-#endif // end EIGEN_ALLOC
 
-#if 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
+#elif 1 == EIGEN_ALLOC
+
 // RoeAverage for each DIR
 #define MARCO_ROEAVERAGE_X \
 	RoeAverage_x(eigen_l, eigen_r, eigen_value, z, _yi, c2, _rho, _u, _v, _w, _H, b1, b3, Gamma0);
@@ -268,6 +268,8 @@
 		}                                                                                                                               \
 		/* calculate the scalar numerical flux at x direction*/                                                                         \
 		f_flux = weno7_P(&pp[stencil_P], dl) + weno7_M(&mm[stencil_P], dl);                                                             \
+		/* WENO_GPU;*/                                                                                                                  \
+		/* weno7_P(&pp[stencil_P], dl) + weno7_M(&mm[stencil_P], dl);*/                                                                 \
 		/* get Fp*/                                                                                                                     \
 		for (int n1 = 0; n1 < Emax; n1++)                                                                                               \
 		{                                                                                                                               \
@@ -285,43 +287,47 @@
 	}
 
 // WENO 5 //used by: MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_X, i + m, j, k, i + m, j, k);
-#define MARCO_FLUXWALL_WENO5(ROE_AVERAGE, _i_1, _j_1, _k_1, _i_2, _j_2, _k_2)                                                                                                                         \
-	ROE_AVERAGE;                                                                                                                                                                                      \
-	real_t uf[10], ff[10], pp[10], mm[10], f_flux, _p[Emax][Emax];                                                                                                                                    \
-	for (int n = 0; n < Emax; n++)                                                                                                                                                                    \
-	{                                                                                                                                                                                                 \
-		real_t eigen_local_max = _DF(0.0);                                                                                                                                                            \
-		for (int m = -stencil_P; m < stencil_size - stencil_P; m++)                                                                                                                                   \
-		{ /*int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m*/                                                                                                                \
-			int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                                                                                                           \
-			eigen_local_max = sycl::max(eigen_local_max, sycl::fabs(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/                                                                   \
-		}                                                                                                                                                                                             \
-		for (int m = -3; m <= 4; m++)                                                                                                                                                                 \
-		{ /* int _i_2 = i + m, _j_2 = j, _k_2 = k; 3rd oder and can be modified*/ /* 3rd oder and can be modified*/                                                                                   \
-			int id_local = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2);                                                                                                                             \
-			uf[m + 3] = _DF(0.0);                                                                                                                                                                     \
-			ff[m + 3] = _DF(0.0);                                                                                                                                                                     \
-			for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                         \
-			{                                                                                                                                                                                         \
-				uf[m + 3] = uf[m + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];                                                                                                                    \
-				ff[m + 3] = ff[m + 3] + Fl[Emax * id_local + n1] * eigen_l[n][n1];                                                                                                                    \
-			} /*  for local speed*/                                                                                                                                                                   \
-			pp[m + 3] = _DF(0.5) * (ff[m + 3] + eigen_local_max * uf[m + 3]);                                                                                                                         \
-			mm[m + 3] = _DF(0.5) * (ff[m + 3] - eigen_local_max * uf[m + 3]);                                                                                                                         \
-		}																																	  /* calculate the scalar numerical flux at x direction*/ \
-		f_flux = (weno5old_P(&pp[3], dl) + weno5old_M(&mm[3], dl)); /* f_flux = (linear_5th_P(&pp[3], dx) + linear_5th_M(&mm[3], dx))/60.0;*/ /* f_flux = weno_P(&pp[3], dx) + weno_M(&mm[3], dx);*/  \
-		for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                             \
-		{ /* get Fp*/                                                                                                                                                                                 \
-			_p[n][n1] = f_flux * eigen_r[n1][n];                                                                                                                                                      \
-		}                                                                                                                                                                                             \
-	}                                                                                                                                                                                                 \
-	for (int n = 0; n < Emax; n++)                                                                                                                                                                    \
-	{ /* reconstruction the F-flux terms*/                                                                                                                                                            \
-		real_t fluxl = _DF(0.0);                                                                                                                                                                      \
-		for (int n1 = 0; n1 < Emax; n1++)                                                                                                                                                             \
-		{                                                                                                                                                                                             \
-			fluxl += _p[n1][n];                                                                                                                                                                       \
-		}                                                                                                                                                                                             \
-		Fwall[Emax * id_l + n] = fluxl;                                                                                                                                                               \
+#define MARCO_FLUXWALL_WENO5(ROE_AVERAGE, _i_1, _j_1, _k_1, _i_2, _j_2, _k_2)                                                       \
+	ROE_AVERAGE;                                                                                                                    \
+	real_t uf[10], ff[10], pp[10], mm[10], f_flux, _p[Emax][Emax];                                                                  \
+	for (int n = 0; n < Emax; n++)                                                                                                  \
+	{                                                                                                                               \
+		real_t eigen_local_max = _DF(0.0);                                                                                          \
+		for (int m = -stencil_P; m < stencil_size - stencil_P; m++)                                                                 \
+		{ /*int _i_1 = i + m, _j_1 = j, _k_1 = k; Xmax * Ymax * k + Xmax * j + i + m*/                                              \
+			int id_local_1 = Xmax * Ymax * (_k_1) + Xmax * (_j_1) + (_i_1);                                                         \
+			eigen_local_max = sycl::max(eigen_local_max, sycl::fabs(eigen_local[Emax * id_local_1 + n])); /* local lax-friedrichs*/ \
+		}                                                                                                                           \
+		for (int m = -3; m <= 4; m++)                                                                                               \
+		{ /* int _i_2 = i + m, _j_2 = j, _k_2 = k; 3rd oder and can be modified*/ /* 3rd oder and can be modified*/                 \
+			int id_local = Xmax * Ymax * (_k_2) + Xmax * (_j_2) + (_i_2);                                                           \
+			uf[m + 3] = _DF(0.0);                                                                                                   \
+			ff[m + 3] = _DF(0.0);                                                                                                   \
+			for (int n1 = 0; n1 < Emax; n1++)                                                                                       \
+			{                                                                                                                       \
+				uf[m + 3] = uf[m + 3] + UI[Emax * id_local + n1] * eigen_l[n][n1];                                                  \
+				ff[m + 3] = ff[m + 3] + Fl[Emax * id_local + n1] * eigen_l[n][n1];                                                  \
+			} /*  for local speed*/                                                                                                 \
+			pp[m + 3] = _DF(0.5) * (ff[m + 3] + eigen_local_max * uf[m + 3]);                                                       \
+			mm[m + 3] = _DF(0.5) * (ff[m + 3] - eigen_local_max * uf[m + 3]);                                                       \
+		}                                                                                                                           \
+		/* calculate the scalar numerical flux at x direction*/                                                                     \
+		f_flux = WENO_GPU;                                                                                                          \
+		/* (weno5old_P(&pp[3], dl) + weno5old_M(&mm[3], dl));*/                                                                     \
+		/* f_flux = (linear_5th_P(&pp[3], dx) + linear_5th_M(&mm[3], dx))/60.0;*/                                                   \
+		/* f_flux = weno_P(&pp[3], dx) + weno_M(&mm[3], dx);*/                                                                      \
+		for (int n1 = 0; n1 < Emax; n1++)                                                                                           \
+		{ /* get Fp*/                                                                                                               \
+			_p[n][n1] = f_flux * eigen_r[n1][n];                                                                                    \
+		}                                                                                                                           \
+	}                                                                                                                               \
+	for (int n = 0; n < Emax; n++)                                                                                                  \
+	{ /* reconstruction the F-flux terms*/                                                                                          \
+		real_t fluxl = _DF(0.0);                                                                                                    \
+		for (int n1 = 0; n1 < Emax; n1++)                                                                                           \
+		{                                                                                                                           \
+			fluxl += _p[n1][n];                                                                                                     \
+		}                                                                                                                           \
+		Fwall[Emax * id_l + n] = fluxl;                                                                                             \
 	}
 #endif // end EIGEN_ALLOC

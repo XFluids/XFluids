@@ -2,6 +2,8 @@
 
 #include "Eigen_callback.h"
 
+#if 0 == EIGEN_ALLOC
+
 inline void RoeAverageLeft_x(int const n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi, real_t const c2,
 							 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H,
 							 real_t const b1, real_t const b3, real_t Gamma)
@@ -452,15 +454,10 @@ inline void RoeAverageRight_z(int const n, real_t *eigen_r, real_t *z, const rea
 	}
 }
 
-#if 1 == EIGEN_ALLOC || 2 == EIGEN_ALLOC
+#elif 1 == EIGEN_ALLOC
 
-#if 1 == EIGEN_ALLOC
 inline void RoeAverage_x(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t *z, const real_t *yi, real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
-#elif 2 == EIGEN_ALLOC
-inline void RoeAverage_x(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t eigen_value[Emax], real_t *z, const real_t *yi, real_t const c2,
-						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
-#endif
 {
 
 	MARCO_PREEIGEN();
@@ -579,13 +576,8 @@ inline void RoeAverage_x(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 #endif // COP
 }
 
-#if 1 == EIGEN_ALLOC
 inline void RoeAverage_y(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t *z, const real_t *yi, real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
-#elif 2 == EIGEN_ALLOC
-inline void RoeAverage_y(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t eigen_value[Emax], real_t *z, const real_t *yi, real_t const c2,
-						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
-#endif
 {
 	MARCO_PREEIGEN();
 
@@ -704,13 +696,8 @@ inline void RoeAverage_y(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t ei
 #endif // COP
 }
 
-#if 1 == EIGEN_ALLOC
 inline void RoeAverage_z(real_t eigen_l[Emax][Emax], real_t eigen_r[Emax][Emax], real_t eigen_value[Emax], real_t *z, const real_t *yi, real_t const c2,
 						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
-#elif 2 == EIGEN_ALLOC
-inline void RoeAverage_z(real_t *eigen_l[Emax], real_t *eigen_r[Emax], real_t eigen_value[Emax], real_t *z, const real_t *yi, real_t const c2,
-						 real_t const _rho, real_t const _u, real_t const _v, real_t const _w, real_t const _H, real_t const b1, real_t const b3, real_t Gamma)
-#endif
 {
 	MARCO_PREEIGEN();
 

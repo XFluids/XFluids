@@ -58,10 +58,6 @@ Fluid::~Fluid()
 	sycl::free(h_fstate.e, q);
 	sycl::free(h_fstate.gamma, q);
 
-#if 2 == EIGEN_ALLOC
-	sycl::free(d_eigen_l, q), sycl::free(d_eigen_r, q);
-#endif // end EIGEN_ALLOC
-
 	sycl::free(d_fstate.vx, q), sycl::free(h_fstate.vx, q);
 	for (size_t i = 0; i < 3; i++)
 		sycl::free(d_fstate.vxs[i], q), sycl::free(h_fstate.vxs[i], q);
@@ -192,6 +188,9 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	int Kbytes = (Fs.bytes >> 10), Kcellbytes = (Fs.cellbytes >> 10);
 	// 主机内存
 	{
+		h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
+		h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		h_fstate.rho = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 		h_fstate.p = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 		h_fstate.c = static_cast<real_t *>(sycl::malloc_host(bytes, q));
@@ -203,9 +202,9 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		h_fstate.e = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 		h_fstate.gamma = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 		h_fstate.y = static_cast<real_t *>(sycl::malloc_host(bytes * NUM_SPECIES, q));
-		MemMbSize = double(Kbytes >> 10) * (10.0 + NUM_SPECIES) / 1024.0;
+		MemMbSize = double(Kbytes >> 10) * (10.0 + NUM_SPECIES + 3.0 * Emax);
 		if (0 == rank)
-			std::cout << "Host memory malloced(primitive variables): " << MemMbSize << " GB" << std::endl;
+			std::cout << "Host memory malloced(primitive variables): " << MemMbSize << " MB/" << MemMbSize / 1024.0 << " GB" << std::endl;
 	}
 	// 设备内存
 	{
@@ -213,17 +212,18 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q)); // shared memory may inside device
-		MemMbSize = double(Kcellbytes >> 10) * 4.0 / 1024.0;
+		MemMbSize = double(Kcellbytes >> 10) * 4.0;
 		if (0 == rank)
-			std::cout << "Device memory malloced(conservative variables, checking_point file): " << MemMbSize << " GB" << std::endl;
+			std::cout << "Device memory malloced(conservative variables, checking_point file): " << MemMbSize << " MB, "
+					  << MemMbSize / 1024.0 << " GB" << std::endl;
 
 		d_eigen_local_x = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_eigen_local_y = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_eigen_local_z = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-		this_msize = double(Kcellbytes >> 10) * 3.0 / 1024.0, MemMbSize += this_msize;
+		this_msize = double(Kcellbytes >> 10) * 3.0, MemMbSize += this_msize;
 		if (0 == rank)
-			std::cout << "Device memory malloced(eigen values): " << this_msize << " GB, "
-					  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
+			std::cout << "Device memory malloced(eigen values): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
+					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 
 		d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
@@ -236,20 +236,11 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
 		d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		this_msize = double(Kbytes >> 10) * (10.0 + NUM_SPECIES) / 1024.0, MemMbSize += this_msize;
+		this_msize = double(Kbytes >> 10) * (10.0 + NUM_SPECIES), MemMbSize += this_msize;
 		if (0 == rank)
-			std::cout << "Device memory malloced(primitive variables): " << this_msize << " GB, "
-					  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
+			std::cout << "Device memory malloced(primitive variables): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
+					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
-
-#if 2 == EIGEN_ALLOC
-	d_eigen_l = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
-	d_eigen_r = static_cast<real_t *>(sycl::malloc_device(cellbytes * Emax, q));
-	this_msize = double(Kcellbytes >> 10) * 2.0 * Emax / 1024.0, MemMbSize += this_msize;
-	if (0 == rank)
-		std::cout << "Device memory malloced(device eigen matrix): " << this_msize << " GB, "
-				  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
-#endif // end EIGEN_ALLOC
 
 	// // vrotex
 	{
@@ -262,10 +253,10 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 			h_fstate.vxs[i] = static_cast<real_t *>(sycl::malloc_host(bytes, q));
 			d_fstate.vxs[i] = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		}
-		this_msize = double(Kbytes >> 10) * 12.0 / 1024.0, MemMbSize += this_msize;
+		this_msize = double(Kbytes >> 10) * 12.0, MemMbSize += this_msize;
 		if (0 == rank)
-			std::cout << "Device memory malloced(velocity deflection, vorticity): " << this_msize << " GB, "
-					  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
+			std::cout << "Device memory malloced(velocity deflection, vorticity): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
+					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
 #if Visc
@@ -286,10 +277,10 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 		d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 #endif
-		this_msize = double(Kbytes >> 10) * 2.0 * (1.0 + NUM_SPECIES) / 1024.0, MemMbSize += this_msize;
+		this_msize = double(Kbytes >> 10) * 2.0 * (1.0 + NUM_SPECIES), MemMbSize += this_msize;
 		if (0 == rank)
-			std::cout << "Device memory malloced(viscosity): " << this_msize << " GB, "
-					  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
+			std::cout << "Device memory malloced(viscosity): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
+					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 #endif // end Visc
 
@@ -300,10 +291,10 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_wallFluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_wallFluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_wallFluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
-		this_msize = double(Kcellbytes >> 10) * 6.0 / 1024.0, MemMbSize += this_msize;
+		this_msize = double(Kcellbytes >> 10) * 6.0, MemMbSize += this_msize;
 		if (0 == rank)
-			std::cout << "Device memory malloced(Fluxes): " << this_msize << " GB, "
-					  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
+			std::cout << "Device memory malloced(Fluxes): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
+					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
 	// shared memory
@@ -326,15 +317,12 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.thetaXe = static_cast<real_t *>(sycl::malloc_shared(Size, q));
 		d_fstate.thetaN2 = static_cast<real_t *>(sycl::malloc_shared(Size, q));
 		d_fstate.thetaXN = static_cast<real_t *>(sycl::malloc_shared(Size, q));
-		this_msize = double(Size >> 10) * 3.0 / 1024.0 / 1024.0, MemMbSize += this_msize;
+		this_msize = double(Size >> 10) * 3.0 / 1024.0, MemMbSize += this_msize;
 		if (0 == rank)
-			std::cout << "Device memory malloced(over time count): " << this_msize << " GB, "
-					  << "cumulative memory: " << MemMbSize << "GB." << std::endl;
+			std::cout << "Device memory malloced(over time count): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
+					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
-	h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
-	h_LU = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 #if ESTIM_OUT
 	if (Fs.BlSz.DimX)
 	{
@@ -447,15 +435,15 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 #endif // ESTIM_OUT
 
 #if USE_MPI
-	MPIMbSize = (Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax) / 1024.0);
+	MPIMbSize = (Fs.mpiTrans->AllocMemory(q, Fs.BlSz, Emax));
 	MemMbSize += MPIMbSize;
 	if (0 == Fs.mpiTrans->myRank)
 #endif // end USE_MPI
 	{
 #ifdef USE_MPI
-		std::cout << "MPI trans Memory Size: " << MPIMbSize << " GB\n";
+		std::cout << "MPI trans Memory Size: " << MPIMbSize << " MB/" << MPIMbSize / 1024.0 << " GB.\n";
 #endif
-		std::cout << "Device Memory Total Usage: " << MemMbSize << " GB\n";
+		std::cout << "Device Memory Total Usage: " << MemMbSize << " MB/" << MemMbSize / 1024.0 << " GB.\n";
 	}
 }
 

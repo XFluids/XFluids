@@ -22,6 +22,9 @@
 #ifndef COP_CHEME
 #define COP_CHEME 1
 #endif
+#ifndef EIGEN_ALLOC
+#define EIGEN_ALLOC 0
+#endif
 #ifndef Visc
 #define Visc 0
 #endif

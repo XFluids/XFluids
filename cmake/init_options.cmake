@@ -1,8 +1,7 @@
 set(THERMAL "NASA") # NASA or JANAF Thermal Fit
-set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
+set(EIGEN_ALLOC "RGIF") # Eigen memory allocate method used in FDM method
 # # OROC: calculate one row and column once in registers "for" loop(eigen_lr[Emax])
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
-# # AIGE: allocate eigen matrix in global memory (cudaMalloc(&eigen_l, Emax*Emax*Xmax*Ymax*Zmax*sizeof(real_t))) with low performance
 option(COP "if enable compoent" ON)
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # ON: allocate device buffer and transfer. OFF: allocate struct ptr on host
 option(ESTIM_NAN "estimate if primitive variable(rho,yi,P,T) is nan or <0 or inf." ON)
@@ -27,8 +26,6 @@ IF(EIGEN_ALLOC STREQUAL "OROC")
   add_compile_options(-DEIGEN_ALLOC=0)
 ELSEIF(EIGEN_ALLOC STREQUAL "RGIF")
   add_compile_options(-DEIGEN_ALLOC=1)
-ELSEIF(EIGEN_ALLOC STREQUAL "AIGE")
-  add_compile_options(-DEIGEN_ALLOC=2)
 ENDIF()
 
 IF(USE_DOUBLE)
