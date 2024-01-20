@@ -305,9 +305,8 @@ void Setup::init()
     BlSz.num_eqn = BlSz.num_species + 4;
 
     // Viscosity Kernel limiters
-    BlSz.Dim_limiter = Dim_limiter_json;
-    BlSz.Yil_limiter = std::min(std::min(std::min(BlSz._dx, BlSz._dy), BlSz._dz), Yil_limiter_json);
-    BlSz.Diffu_limiter = BlSz.Dim_limiter * BlSz.Yil_limiter;
+    BlSz.Dim_limiter = std::min(std::max(Dim_limiter_json, _DF(0.0)), _DF(1.0));
+    BlSz.Yil_limiter = std::max(std::max(BlSz._dx, BlSz._dy), BlSz._dz) * std::min(std::max(Yil_limiter_json, _DF(0.0)), _DF(1.0));
     // // Initialize shock base mach number
     mach_shock = Mach_Shock();
     // // Initialize shock base mach number

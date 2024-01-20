@@ -9,9 +9,9 @@
 
 #ifdef COP
 #define MARCO_VIS_COP_IN_DIFFU1()                                                                                                                                                              \
-	Yil_wall[l] = sycl::min(sycl::max((_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr, -bl.Yil_limiter), bl.Yil_limiter); /* temperature gradient at wall*/ \
+	Yil_wall[l] = sycl::min(sycl::max((_DF(27.0) * (Yi[g_id_p1] - Yi[g_id]) - (Yi[g_id_p2] - Yi[g_id_m1])) * _dl * _twfr, -Yil_limiter[l]), Yil_limiter[l]); /* temperature gradient at wall*/ \
 	Yi_wall[l] = sycl::min(sycl::max((_DF(9.0) * (Yi[g_id_p1] + Yi[g_id]) - (Yi[g_id_p2] + Yi[g_id_m1])) * _sxtn, _DF(1.0E-20)), _DF(1.0));                                                    \
-	Dim_Yil = sycl::min(sycl::max(Dim_wall[l] * Yil_wall[l], -bl.Diffu_limiter), bl.Diffu_limiter);                                                                                            \
+	Dim_Yil = sycl::min(sycl::max(Dim_wall[l] * Yil_wall[l], -Diffu_limiter[l]), Diffu_limiter[l]);                                                                                            \
 	CorrectTerm += Dim_Yil;
 /**
  * NOTE: CorrectTerm for diffusion to Average the error from the last species to

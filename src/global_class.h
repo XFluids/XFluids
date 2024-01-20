@@ -25,8 +25,10 @@ public:
     real_t *d_U, *d_U1, *d_LU, *h_U, *h_U1, *h_LU, *Ubak;
     real_t *d_FluxF, *d_FluxG, *d_FluxH, *d_wallFluxF, *d_wallFluxG, *d_wallFluxH;
 
+    real_t *yi_min, *yi_max, *Dim_min, *Dim_max;
+    real_t *eigen_block_x, *eigen_block_y, *eigen_block_z;
+    real_t *uvw_c_max, *theta, *sigma, *pVar_max, *interface_point;
     real_t *d_eigen_local_x, *d_eigen_local_y, *d_eigen_local_z, *d_eigen_l, *d_eigen_r;
-    real_t *uvw_c_max, *eigen_block_x, *eigen_block_y, *eigen_block_z, *theta, *sigma, *pVar_max, *interface_point;
 
     FlowData d_fstate, h_fstate;
 

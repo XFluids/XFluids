@@ -9,7 +9,8 @@
 void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal thermal, real_t *UI, real_t *LU,
 		   real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw,
 		   real_t const Gamma, int const Mtrl_ind, FlowData &fdata, real_t *eigen_local_x, real_t *eigen_local_y, real_t *eigen_local_z,
-		   real_t *eigen_l, real_t *eigen_r, real_t *uvw_c_max, real_t *eigen_block_x, real_t *eigen_block_y, real_t *eigen_block_z)
+		   real_t *eigen_l, real_t *eigen_r, real_t *uvw_c_max, real_t *eigen_block_x, real_t *eigen_block_y, real_t *eigen_block_z,
+		   real_t *yi_min, real_t *yi_max, real_t *Dim_min, real_t *Dim_max)
 {
 	real_t *rho = fdata.rho;
 	real_t *p = fdata.p;
@@ -285,6 +286,44 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 					Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2); }); })
 		.wait();
 
+	for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+	{
+		yi_min[nn] = _DF(0.0), yi_max[nn] = _DF(0.0);
+		Dim_min[nn] = _DF(0.0), Dim_max[nn] = _DF(0.0);
+		auto Yi_min = sycl_reduction_min(yi_min[nn]);
+		auto Yi_max = sycl_reduction_max(yi_max[nn]);
+		auto Dkm_min = sycl_reduction_min(Dim_min[nn]);
+		auto Dkm_max = sycl_reduction_max(Dim_max[nn]);
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), Yi_min, Yi_max, Dkm_min, Dkm_max,
+								  [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax, auto &temp_Dmin, auto &temp_Dmax)
+								  {
+						int i = index.get_global_id(0) + bl.Bwidth_X;
+						int j = index.get_global_id(1) + bl.Bwidth_Y;
+						int k = index.get_global_id(2) + bl.Bwidth_Z;
+						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+						real_t *yi = &(fdata.y[NUM_SPECIES * id]);
+						temp_Ymin.combine(yi[nn]), temp_Ymax.combine(yi[nn]);
+						real_t *Dkm = &(Da[NUM_SPECIES * id]);
+						temp_Dmin.combine(Dkm[nn]), temp_Dmax.combine(Dkm[nn]); }); })
+			.wait();
+
+#ifdef USE_MPI
+		real_t mpi_Ymin = _DF(0.0), mpi_Ymax = _DF(0.0), mpi_Dmin = _DF(0.0), mpi_Dmax = _DF(0.0);
+		setup.mpiTrans->communicator->synchronize();
+		setup.mpiTrans->communicator->allReduce(&(yi_min[nn]), &(mpi_Ymin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+		setup.mpiTrans->communicator->allReduce(&(yi_max[nn]), &(mpi_Ymax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+		setup.mpiTrans->communicator->allReduce(&(Dim_min[nn]), &(mpi_Dmin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+		setup.mpiTrans->communicator->allReduce(&(Dim_max[nn]), &(mpi_Dmax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+		setup.mpiTrans->communicator->synchronize();
+		yi_min[nn] = mpi_Ymin, yi_max[nn] = mpi_Ymin, Dim_min[nn] = mpi_Dmin, Dim_max[nn] = mpi_Dmax;
+#endif // end USE_MPI
+		yi_max[nn] -= yi_min[nn];
+		yi_max[nn] *= setup.BlSz.Yil_limiter;				// // yil limiter
+		Dim_max[nn] *= setup.BlSz.Dim_limiter * yi_max[nn]; // // Diffu_limiter=Yil_limiter*Dim_limiter
+	}
+
+	// // calculate viscous Fluxes
 	if (bl.DimX)
 	{
 		q.submit([&](sycl::handler &h)
@@ -293,7 +332,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 					int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwx, fdata.Dim_wallx, fdata.hi_wallx, fdata.Yi_wallx, fdata.Yil_wallx); }); }); //.wait()
+					GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, yi_max, Dim_max, fdata.visFwx, fdata.Dim_wallx, fdata.hi_wallx, fdata.Yi_wallx, fdata.Yil_wallx); }); }); //.wait()
 	}
 	if (bl.DimY)
 	{
@@ -303,7 +342,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 					int i = index.get_global_id(0) + bl.Bwidth_X;
 					int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwy, fdata.Dim_wally, fdata.hi_wally, fdata.Yi_wally, fdata.Yil_wally); }); }); //.wait()
+					GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, yi_max, Dim_max, fdata.visFwy, fdata.Dim_wally, fdata.hi_wally, fdata.Yi_wally, fdata.Yil_wally); }); }); //.wait()
 	}
 	if (bl.DimZ)
 	{
@@ -313,7 +352,7 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 					int i = index.get_global_id(0) + bl.Bwidth_X;
 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 					int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-					GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwz, fdata.Dim_wallz, fdata.hi_wallz, fdata.Yi_wallz, fdata.Yil_wallz); }); }); //.wait()
+					GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, yi_max, Dim_max, fdata.visFwz, fdata.Dim_wallz, fdata.hi_wallz, fdata.Yi_wallz, fdata.Yil_wallz); }); }); //.wait()
 	}
 
 #endif // end Visc
