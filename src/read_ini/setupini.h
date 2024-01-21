@@ -2,7 +2,6 @@
 
 // // global header
 #include "global_setup.h"
-#include "marcos/marco_thermal.h"
 // // internal header
 #include "options.hpp"
 #include "outvars.hpp"
@@ -55,12 +54,7 @@ public:
 	void CpyToGPU();
 	void ReadSpecies(); // pure or specie names && ratio in mixture for reaction
 	void ReadThermal();
-	void get_Yi(real_t *yi);
 	bool Mach_Shock();
-	real_t Enthalpy(const real_t T0, const int n);
-	real_t get_Coph(const real_t *yi, const real_t T);
-	real_t get_CopGamma(const real_t *yi, const real_t T);
-	real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n);
 
 	//--for-viscosity--------------------------
 	real_t Omega_table[2][37][8];	  // collision integral for viscosity and thermal conductivity(first index=0) & binary diffusion coefficient(first index=1)

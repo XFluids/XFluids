@@ -7,6 +7,7 @@
 #include "fworkdir.hpp"
 #include "rangeset.hpp"
 
+#include "../solver_Ini/Mixing_device.h"
 #include "../solver_Reconstruction/viscosity/Visc_device.h"
 
 // =======================================================
@@ -454,19 +455,8 @@ void Setup::ReadThermal()
     std::memcpy(h_thermal.xi_out, h_thermal.species_ratio_out, NUM_SPECIES * sizeof(real_t));
 
     // transfer mole fraction to mess fraction
-    get_Yi(h_thermal.species_ratio_out);
-    get_Yi(h_thermal.species_ratio_in);
-}
-
-// =======================================================
-// =======================================================
-void Setup::get_Yi(real_t *yi)
-{ // yi是体积分数，Yi=rhos/rho是质量分数
-    real_t W_mix = _DF(0.0);
-    for (size_t i = 0; i < NUM_SPECIES; i++)
-        W_mix += yi[i] * h_thermal.Wi[i];
-    for (size_t n = 0; n < NUM_SPECIES; n++) // Ri=Ru/Wi
-        yi[n] = yi[n] * h_thermal.Wi[n] / W_mix;
+    get_yi(h_thermal.species_ratio_in, h_thermal.Wi);
+    get_yi(h_thermal.species_ratio_out, h_thermal.Wi);
 }
 
 // =======================================================
@@ -487,7 +477,7 @@ bool Setup::Mach_Shock()
     //     Gamma_m2 = 1.33;
     // #else
     R = get_MixtureR(h_thermal.species_chara, h_thermal.species_ratio_out);
-    Gamma_m2 = get_CopGamma(h_thermal.species_ratio_out, T2);
+    Gamma_m2 = get_CopGamma(h_thermal, h_thermal.species_ratio_out, T2);
     // #endif                                        // end DEBUG
     real_t c2 = std::sqrt(Gamma_m2 * R * T2); // sound speed downstream the shock
     ini.blast_c_out = c2, ini.blast_gamma_out = Gamma_m2, ini.tau_H = _DF(2.0) * ini.xa / (ini.Ma * ini.blast_c_out);
@@ -1251,123 +1241,6 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
     real_t PPP = PP * _DF(10.0);                                                                                                                        // pa==>g/(cm.s2)
     real_t Dkj = _DF(3.0) * std::sqrt(_DF(2.0) * pi * std::pow(T * kB, _DF(3.0)) / W_jk) / (_DF(16.0) * PPP * pi * d_jk * d_jk * Omega1) * _DF(1.0e16); // equation5-4 //unit:cm*cm/s
     return Dkj;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief update heat capacity
- * @param T temperature Cp/R = a1*T^-2 + a2*T^-1 + a3 + a4*T + a5*T^2 + a6*T^3 + a7*T^4
- * @return real_t, unit: J/(kg.K)
- */
-real_t Setup::HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
-{
-    // real_t T = T0; // sycl::max(T0, _DF(200.0));
-    // real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
-    // #if Thermo
-    //     if (T >= (_DF(1000.0)) && T < (_DF(6000.0)))
-    //         Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 1] * _T + Hia[n * 7 * 3 + 1 * 3 + 1]) * _T + Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] + (Hia[n * 7 * 3 + 5 * 3 + 1] + Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T);
-    //     else if (T < (_DF(1000.0)))
-    //         Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 0] * _T + Hia[n * 7 * 3 + 1 * 3 + 0]) * _T + Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] + (Hia[n * 7 * 3 + 5 * 3 + 0] + Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T);
-    //     else if (T >= (_DF(6000.0)) && T < (_DF(15000.0)))
-    //     {
-    //         Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 2] * _T + Hia[n * 7 * 3 + 1 * 3 + 2]) * _T + Hia[n * 7 * 3 + 2 * 3 + 2] + (Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] + (Hia[n * 7 * 3 + 5 * 3 + 2] + Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T);
-    //     }
-    //     else
-    //     {
-    //         printf("T=%lf , Cpi=%lf , T > 15000 K,please check!!!NO Cpi[n] for T>15000 K \n", T, Cpi);
-    //     }
-    // #else // Cpi[n)/R = a1 + a2*T + a3*T^2 + a4*T^3 + a5*T^4
-    //     if (T > (1000.0))
-    //         Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] + (Hia[n * 7 * 3 + 1 * 3 + 0] + (Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + Hia[n * 7 * 3 + 4 * 3 + 0] * T) * T) * T) * T);
-    //     else
-    //         Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] + (Hia[n * 7 * 3 + 1 * 3 + 1] + (Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + Hia[n * 7 * 3 + 4 * 3 + 1] * T) * T) * T) * T);
-    // #endif
-
-#if Thermo
-    MARCO_HeatCapacity_NASA();
-#else
-    MARCO_HeatCapacity_JANAF();
-#endif // end Thermo
-
-    return Cpi;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief calculate Hi of every compoent at given point	unit:J/kg/K // get_hi
- */
-real_t Setup::Enthalpy(const real_t T0, const int n)
-{
-    real_t *Hia = h_thermal.Hia, *Hib = h_thermal.Hib, Ri = Ru / h_thermal.Wi[n];
-    //     real_t hi = _DF(0.0), TT = T0, T = std::max<real_t>(T0, _DF(200.0));
-    // #if Thermo
-    //     if (T >= _DF(1000.0) && T < _DF(6000.0))
-    //         hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] / T + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 1] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 1] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 1]);
-    //     else if (T < _DF(1000.0))
-    //         hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] / T + Hia[n * 7 * 3 + 1 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 0] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 0] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 0]);
-    //     else if (T >= _DF(6000.0))
-    //         hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] / T + Hia[n * 7 * 3 + 1 * 3 + 2] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 2] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 2] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 2]);
-    // #else
-    //     // H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
-    //     if (T > _DF(1000.0))
-    //         hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 0] + T * (Hia[n * 7 * 3 + 1 * 3 + 0] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 0] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 0] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 0]);
-    //     else
-    //         hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 1] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
-    // #endif
-    //     if (TT < _DF(200.0)) // take low tempreture into consideration
-    //     {                    // get_hi at T>200
-    //         real_t Cpi = HeatCapacity(_DF(200.0), n);
-    //         hi += Cpi * (TT - _DF(200.0));
-    //     }
-
-#if Thermo
-    MARCO_Enthalpy_NASA();
-#else
-    MARCO_Enthalpy_JANAF();
-#endif
-
-    return hi;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief calculate Hi of Mixture at given point	unit:J/kg/K
- */
-real_t Setup::get_Coph(const real_t *yi, const real_t T)
-{
-    real_t h = _DF(0.0);
-    for (size_t i = 0; i < NUM_SPECIES; i++)
-    {
-        real_t hi = Enthalpy(T, i);
-        h += hi * yi[i];
-    }
-    return h;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief calculate Gamma of the mixture at given point
- */
-real_t Setup::get_CopGamma(const real_t *yi, const real_t T)
-{
-    real_t Cp = _DF(0.0);
-    for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-        Cp += yi[ii] * HeatCapacity(h_thermal.Hia, T, h_thermal.Ri[ii], ii);
-    real_t CopW = get_MixtureW(h_thermal, yi);
-    real_t _CopGamma = Cp / (Cp - Ru / CopW);
-    if (_CopGamma > 1)
-    {
-        return _CopGamma;
-    }
-    else
-    {
-        printf("  Illegal Gamma captured.\n");
-        exit(EXIT_FAILURE);
-    }
 }
 
 // =======================================================
