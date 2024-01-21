@@ -7,6 +7,8 @@
 #include "fworkdir.hpp"
 #include "rangeset.hpp"
 
+#include "../solver_Reconstruction/viscosity/Visc_device.h"
+
 // =======================================================
 // // // struct Setup Member function definitions
 // =======================================================
@@ -930,15 +932,15 @@ void Setup::GetFitCoefficient()
         // h_thermal.fitted_coefficients_therm[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q);
 
         real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
-        Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_visc[k], 0);  // Visc
-        Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_therm[k], 1); // diffu
+        Fitting(Tnode, specie_k, specie_k, h_thermal.fitted_coefficients_visc[k], 0);  // Visc
+        Fitting(Tnode, specie_k, specie_k, h_thermal.fitted_coefficients_therm[k], 1); // diffu
         for (int j = 0; j < NUM_SPECIES; j++)
         { // Allocate Mem
             // h_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocHost<real_t>(h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q);
 
             real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
             if (k <= j)                                                                    // upper triangle
-                Fitting(specie_k, specie_j, h_thermal.Dkj_matrix[k * NUM_SPECIES + j], 2); // Dim
+                Fitting(Tnode, specie_k, specie_j, h_thermal.Dkj_matrix[k * NUM_SPECIES + j], 2); // Dim
             else
             { // lower triangle==>copy
                 for (int n = 0; n < order_polynominal_fitted; n++)
@@ -957,6 +959,75 @@ void Setup::GetFitCoefficient()
     d_thermal.Dkj_matrix = middle::MallocDevice2D<real_t>(d_Dkj_matrix, NUM_SPECIES * NUM_SPECIES, order_polynominal_fitted, q);
     d_thermal.fitted_coefficients_visc = middle::MallocDevice2D<real_t>(d_fitted_coefficients_visc, NUM_SPECIES, order_polynominal_fitted, q);
     d_thermal.fitted_coefficients_therm = middle::MallocDevice2D<real_t>(d_fitted_coefficients_therm, NUM_SPECIES, order_polynominal_fitted, q);
+
+    // Test
+    if (ViscosityTest_json)
+        VisCoeffsAccuracyTest(ViscosityTestRange[0], ViscosityTestRange[1]);
+}
+
+/**
+ * @brief get accurate three kind of viscosity coefficients
+ * @param Tmin beginning temperature point of the coefficient-Temperature plot
+ * @param Tmax Ending temperature point of the coefficient-Temperature plot
+ * @note  /delta T is devided by space discrete step
+ */
+void Setup::VisCoeffsAccuracyTest(real_t Tmin, real_t Tmax)
+{
+    std::string file_name = OutputDir + "/viscosity-test.dat";
+    std::ofstream out(file_name);
+    out << "variables= Temperature(K)";
+    for (size_t k = 0; k < species_name.size(); k++)
+    {
+        out << ",visc_" << species_name[k] << ",";
+        out << ",furier_" << species_name[k] << ",";
+        for (size_t j = 0; j <= k; j++)
+            out << ",Dkj_" << species_name[k] << "-" << species_name[j];
+    }
+    // zone name
+    out << "\nzone t='Accurate-solution'\n";
+
+    for (size_t i = 1; i < BlSz.X_inner; i++)
+    {
+        real_t Tpoint = Tmin + (i / real_t(BlSz.X_inner)) * (Tmax - Tmin);
+        out << Tpoint << " "; // Visc
+        for (size_t k = 0; k < species_name.size(); k++)
+        {
+            real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
+            out << viscosity(specie_k, Tpoint) << " ";                   // Visc
+            out << thermal_conductivities(specie_k, Tpoint, 1.0) << " "; // diffu
+            for (size_t j = 0; j <= k; j++)
+            {
+                real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
+                out << Dkj(specie_k, specie_j, Tpoint, 1.0) << " "; // Dkj
+            }
+        }
+        out << "\n";
+    }
+
+    out << "\nzone t='Fitting-solution'\n";
+    for (size_t i = 1; i < BlSz.X_inner; i++)
+    {
+        real_t **Dkj = h_thermal.Dkj_matrix;
+        real_t **fcv = h_thermal.fitted_coefficients_visc;
+        real_t **fct = h_thermal.fitted_coefficients_therm;
+
+        real_t Tpoint = Tmin + (i / real_t(BlSz.X_inner)) * (Tmax - Tmin);
+        out << Tpoint << " "; // Visc
+        for (size_t k = 0; k < species_name.size(); k++)
+        {
+            real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
+            out << Viscosity(fcv[int(specie_k[SID])], Tpoint) << " ";            // Visc
+            out << Thermal_conductivity(fct[int(specie_k[SID])], Tpoint) << " "; // diffu
+            for (size_t j = 0; j <= k; j++)
+            {
+                real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
+                out << GetDkj(specie_k, specie_j, Dkj, Tpoint, 1.0) << " "; // Dkj
+            }
+        }
+        out << "\n";
+    }
+
+    out.close();
 }
 
 /**
@@ -966,10 +1037,10 @@ void Setup::GetFitCoefficient()
  * @para aa the coefficients of the polynominal;
  * @para indicator fitting for viscosity(0),thermal conductivities(1) and binary diffusion coefficients(2)
  */
-void Setup::Fitting(real_t *specie_k, real_t *specie_j, real_t *aa, int indicator)
+void Setup::Fitting(std::vector<real_t> TT, real_t *specie_k, real_t *specie_j, real_t *aa, int indicator)
 {
-    int mm = 12;
-    real_t b[mm], AA[mm][order_polynominal_fitted], TT[] = {273.15, 500.0, 750.0, 1000.0, 1250.0, 1500.0, 1750.0, 2000.0, 2250.0, 2500.0, 2750.0, 3000.0}; //{100, 200, 298.15, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000}; // 0 oC= 273.15K
+    int mm = TT.size();
+    real_t b[mm], AA[mm][order_polynominal_fitted];
     for (int ii = 0; ii < mm; ii++)
     {
         switch (indicator)

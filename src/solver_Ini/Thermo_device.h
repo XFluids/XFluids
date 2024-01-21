@@ -7,7 +7,7 @@
  * @brief calculate Cpi of the specie at given point
  * unit: J/kg/K
  */
-real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
+inline real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
 	// 	real_t T = T0; // sycl::max(T0, _DF(200.0));
 	// 	real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
@@ -40,7 +40,7 @@ real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 /**
  * @brief calculate Hi of every compoent at given point	unit:J/kg/K // get_hi
  */
-real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+inline real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	// 	real_t hi = _DF(0.0), TT = T0, T = TT; // sycl::max(T0, _DF(200.0));
 	// #if Thermo
@@ -79,7 +79,7 @@ real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, 
 /**
  * @brief get_Entropy //S
  */
-real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t Ri, const real_t T0, const int n)
+inline real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t Ri, const real_t T0, const int n)
 {
 	real_t T = sycl::max(T0, _DF(200.0));
 	real_t S = _DF(0.0), _T = _DF(1.0) / T;
@@ -120,7 +120,7 @@ real_t get_Entropy(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const rea
 /**
  * @brief get_Gibson
  */
-real_t get_Gibson(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t T, const real_t Ri, const int n)
+inline real_t get_Gibson(real_t *__restrict__ Hia, real_t *__restrict__ Hib, const real_t T, const real_t Ri, const int n)
 {
 	real_t temp = _DF(0.0);
 	temp += get_Entropy(Hia, Hib, _DF(1.0), T, n);

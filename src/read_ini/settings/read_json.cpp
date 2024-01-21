@@ -59,18 +59,20 @@ const size_t NumFluid = Fluids_name.size();
 const size_t Equ_rho = j_conf.at("equations").value("Equ_rho", 1);
 const size_t Equ_energy = j_conf.at("equations").value("Equ_energy", 1);
 const std::vector<size_t> Equ_momentum = j_conf.at("equations").value("Equ_momentum", std::vector<size_t>{1, 1, 1});
-const bool ReactSources = j_conf.at("equations").value("Sources_React", COP_CHEME);
+// // FDM Flux reconstruction solving eigenmatrix system
 const bool if_overdetermined_eigen = j_conf.at("equations").value("if_overdetermined_eigen", 0) > 0;
+// // Positivity Preserving
 const bool PositivityPreserving = j_conf.at("equations").value("PositivityPreserving", 0);
+// // Viscosity
+const std::vector<real_t> Tnode = j_conf.at("equations").value("ViscosityFittingTnode", std::vector<real_t>{273.15, 500.0, 750.0, 1000.0, 1250.0, 1500.0, 1750.0, 2000.0, 2250.0, 2500.0, 2750.0, 3000.0, 5000.0, 8000.0});
+// // ODE Solver
+const bool ReactSources = j_conf.at("equations").value("Sources_React", COP_CHEME);
 const std::string SlipOrder = j_conf.at("equations").value("SlipOrder", CHEME_SPLITTING);
 const std::string ODESolver = j_conf.at("equations").value("ODESolver", "Q2");
-
-// const size_t NUM_SPECIES = species_name.size();
-// const size_t NUM_COP = species_name.size() + size_t(if_overdetermined_eigen) - 1;
-// const size_t Emax = species_name.size() + Equ_rho + Equ_momentum[0] + Equ_momentum[1] + Equ_momentum[2] + Equ_energy + if_overdetermined_eigen;
-
-// Source term setup
-// const size_t NUM_REA = j_conf.at("sources").value("num_reactions", 0);
+// // Test samples based functionity
+const bool ODETest_json = j_conf.at("equations").value("if_ODReactionTest", 1) > 0;
+const std::vector<real_t> ViscosityTestRange = j_conf.at("equations").value("ViscosityTestRange", std::vector<real_t>{0, 8000});
+const bool ViscosityTest_json = bool(!std::empty(ViscosityTestRange));
 
 // Mesh setup
 const size_t NUM_BISD = j_conf.at("mesh").value("NUM_BISD", 1);

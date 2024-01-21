@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Thermo_device.hpp"
+#include "Thermo_device.h"
 /**
  *@brief debug for array
  */
-void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
+inline void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
 {
 	for (size_t i = 0; i < Length; i++)
 	{
@@ -15,7 +15,7 @@ void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
 /**
  *@brief calculate yi : mass fraction from xi : mole fraction.
  */
-void get_yi(real_t *xi, real_t const *Wi)
+inline void get_yi(real_t *xi, real_t const *Wi)
 {
 	real_t W_mix = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -28,7 +28,7 @@ void get_yi(real_t *xi, real_t const *Wi)
 /**
  *@brief calculate xi : mole fraction
  */
-real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real_t rho)
+inline real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real_t rho)
 {
 	real_t C_total = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
@@ -46,7 +46,7 @@ real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real_t rho)
 /**
  *@brief calculate R for every cell
  */
-real_t get_CopR(const real_t *_Wi, const real_t *yi)
+inline real_t get_CopR(const real_t *_Wi, const real_t *yi)
 {
 	real_t R = _DF(0.0);
 	for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -58,7 +58,7 @@ real_t get_CopR(const real_t *_Wi, const real_t *yi)
 /**
  * @brief Compute the Cp of the mixture at given point unit:J/kg/K
  */
-real_t get_CopCp(Thermal thermal, const real_t *yi, const real_t T)
+inline real_t get_CopCp(Thermal thermal, const real_t *yi, const real_t T)
 {
 	real_t _CopCp = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -70,7 +70,7 @@ real_t get_CopCp(Thermal thermal, const real_t *yi, const real_t T)
 /**
  * @brief calculate W of the mixture at given point
  */
-real_t get_CopW(Thermal thermal, const real_t *yi)
+inline real_t get_CopW(Thermal thermal, const real_t *yi)
 {
 	real_t _W = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -81,7 +81,7 @@ real_t get_CopW(Thermal thermal, const real_t *yi)
 /**
  * @brief calculate Gamma of the mixture at given point
  */
-real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t T)
+inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t T)
 {
 	real_t Cp = get_CopCp(thermal, yi, T);
 	real_t CopW = get_CopW(thermal, yi);
@@ -99,7 +99,7 @@ real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t T)
 /**
  * @brief calculate Hi of Mixture at given point	unit:J/kg/K
  */
-real_t get_Coph(Thermal thermal, const real_t *yi, const real_t T)
+inline real_t get_Coph(Thermal thermal, const real_t *yi, const real_t T)
 {
 	real_t h = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -113,7 +113,7 @@ real_t get_Coph(Thermal thermal, const real_t *yi, const real_t T)
 /**
  *@brief sub_function_Steps of update T
  */
-void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t *yi, const real_t e, const real_t T)
+inline void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t *yi, const real_t e, const real_t T)
 {
 	real_t h = get_Coph(thermal, yi, T);   // J/kg/K
 	real_t R = get_CopR(thermal._Wi, yi);  // J/kg/K
@@ -125,7 +125,7 @@ void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t *y
 /**
  *@brief update T through Newtonian dynasty
  */
-real_t get_T(Thermal thermal, const real_t *yi, const real_t e, const real_t T0)
+inline real_t get_T(Thermal thermal, const real_t *yi, const real_t e, const real_t T0)
 {
 	real_t T = T0;
 	real_t tol = _DF(1.0e-6), T_dBdr = _DF(100.0), T_uBdr = _DF(1.0e4), x_eps = _DF(1.0e-3);
