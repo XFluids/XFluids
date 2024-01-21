@@ -2,7 +2,6 @@
 
 // // global header
 #include "global_setup.h"
-#include "marcos/marco_thermal.h"
 // // internal header
 #include "options.hpp"
 #include "outvars.hpp"
@@ -55,23 +54,19 @@ public:
 	void CpyToGPU();
 	void ReadSpecies(); // pure or specie names && ratio in mixture for reaction
 	void ReadThermal();
-	void get_Yi(real_t *yi);
 	bool Mach_Shock();
-	real_t Enthalpy(const real_t T0, const int n);
-	real_t get_Coph(const real_t *yi, const real_t T);
-	real_t get_CopGamma(const real_t *yi, const real_t T);
-	real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n);
 
 	//--for-viscosity--------------------------
 	real_t Omega_table[2][37][8];	  // collision integral for viscosity and thermal conductivity(first index=0) & binary diffusion coefficient(first index=1)
 	real_t delta_star[8], T_star[37]; // reduced temperature and reduced dipole moment,respectively;
 	void ReadOmega_table();
 	void GetFitCoefficient();
-	void Fitting(real_t *specie_k, real_t *specie_j, real_t *aa, int indicator);
+	void VisCoeffsAccuracyTest(real_t Tmin, real_t Tmax);
 	real_t Omega_interpolated(real_t Tstar, real_t deltastar, int index);
-	real_t viscosity(real_t *specie, const real_t T);
-	real_t thermal_conductivities(real_t *specie, const real_t T, const real_t PP);
-	real_t Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real_t PP); // PP:pressure,unit:Pa
+	void Fitting(std::vector<real_t> TT, real_t *specie_k, real_t *specie_j, real_t *aa, int indicator);
+	real_t viscosity(real_t *specie, const real_t T);								 // accurate kinematic vicosity coefficient
+	real_t thermal_conductivities(real_t *specie, const real_t T, const real_t PP);	 // accurate furier heat transfer coefficient
+	real_t Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real_t PP); // accurate binary diffusion coefficient // PP:pressure,unit:Pa
 
 	//--for-reacting---------------------------
 	Reaction d_react, h_react;

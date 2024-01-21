@@ -7,6 +7,9 @@
 #include "fworkdir.hpp"
 #include "rangeset.hpp"
 
+#include "../solver_Ini/Mixing_device.h"
+#include "../solver_Reconstruction/viscosity/Visc_device.h"
+
 // =======================================================
 // // // struct Setup Member function definitions
 // =======================================================
@@ -345,20 +348,60 @@ void Setup::ReadSpecies()
 // =======================================================
 void Setup::ReadThermal()
 {
-    h_thermal.species_chara = middle::MallocHost<real_t>(h_thermal.species_chara, NUM_SPECIES * SPCH_Sz, q); // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * SPCH_Sz * sizeof(real_t), q));
-    h_thermal.Ri = middle::MallocHost<real_t>(h_thermal.Ri, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
-    h_thermal.Wi = middle::MallocHost<real_t>(h_thermal.Wi, NUM_SPECIES, q);                                 // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
-    h_thermal._Wi = middle::MallocHost<real_t>(h_thermal._Wi, NUM_SPECIES, q);                               // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * sizeof(real_t), q));
-    h_thermal.Hia = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 7 * 3 * sizeof(real_t), q));
-    h_thermal.Hib = middle::MallocHost<real_t>(h_thermal.Hib, NUM_SPECIES * 2 * 3, q);                       // static_cast<real_t *>(sycl::malloc_host(NUM_SPECIES * 2 * 3 * sizeof(real_t), q));
+    h_thermal.species_chara = middle::MallocHost<real_t>(h_thermal.species_chara, NUM_SPECIES * SPCH_Sz, q);
+    h_thermal.Ri = middle::MallocHost<real_t>(h_thermal.Ri, NUM_SPECIES, q);
+    h_thermal.Wi = middle::MallocHost<real_t>(h_thermal.Wi, NUM_SPECIES, q);
+    h_thermal._Wi = middle::MallocHost<real_t>(h_thermal._Wi, NUM_SPECIES, q);
+    h_thermal.Hia = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);
+    h_thermal.Hib = middle::MallocHost<real_t>(h_thermal.Hib, NUM_SPECIES * 2 * 3, q);
+    h_thermal.Hia_NASA = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);
+    h_thermal.Hib_NASA = middle::MallocHost<real_t>(h_thermal.Hib, NUM_SPECIES * 2 * 3, q);
+    h_thermal.Hia_JANAF = middle::MallocHost<real_t>(h_thermal.Hia, NUM_SPECIES * 7 * 3, q);
 
     char Key_word[128];
+    // // read NASA
+    std::fstream fincn(WorkDir + std::string(RPath) + "/thermal_dynamics.dat");
+    for (int n = 0; n < NUM_SPECIES; n++)
+    {
+        // check the name of the species "n"
+        std::string my_string = "*" + species_name[n];
+        char *species_name_n = new char[my_string.size() + 1];
+        std::strcpy(species_name_n, my_string.c_str());
+        // reset file point location
+        fincn.seekg(0);
+        while (!fincn.eof())
+        {
+            fincn >> Key_word;
+            if (!std::strcmp(Key_word, "*END"))
+                break;
+            if (!std::strcmp(Key_word, species_name_n))
+            {
+                // low temperature parameters, 200K<T<1000K
+                for (int m = 0; m < 7; m++)
+                    fincn >> h_thermal.Hia_NASA[n * 7 * 3 + m * 3 + 0]; // a1-a7
+                for (int m = 0; m < 2; m++)
+                    fincn >> h_thermal.Hib_NASA[n * 2 * 3 + m * 3 + 0]; // b1,b2
+                // high temperature parameters, 1000K<T<6000K
+                for (int m = 0; m < 7; m++)
+                    fincn >> h_thermal.Hia_NASA[n * 7 * 3 + m * 3 + 1]; // a1-a7
+                for (int m = 0; m < 2; m++)
+                    fincn >> h_thermal.Hib_NASA[n * 2 * 3 + m * 3 + 1]; // b1,b2
+                // high temperature parameters, 6000K<T<15000K
+                for (int m = 0; m < 7; m++)
+                    fincn >> h_thermal.Hia_NASA[n * 7 * 3 + m * 3 + 2]; // a1-a7
+                for (int m = 0; m < 2; m++)
+                    fincn >> h_thermal.Hib_NASA[n * 2 * 3 + m * 3 + 2]; // b1,b2
 #if Thermo
-    std::string apath = WorkDir + std::string(RPath) + "/thermal_dynamics.dat";
-#else
-    std::string apath = WorkDir + std::string(RPath) + "/thermal_dynamics_janaf.dat";
+                fincn >> h_thermal.species_chara[n * SPCH_Sz + Wi]; // species[n].Wi; // molar mass, unit: g/mol
 #endif
-    std::fstream finc(apath);
+                break;
+            }
+        }
+    }
+    fincn.close();
+
+    // // read JANAF
+    std::fstream finc(WorkDir + std::string(RPath) + "/thermal_dynamics_janaf.dat");
     for (int n = 0; n < NUM_SPECIES; n++)
     {
         // check the name of the species "n"
@@ -374,49 +417,30 @@ void Setup::ReadThermal()
                 break;
             if (!std::strcmp(Key_word, species_name_n))
             {
-#if Thermo
-                // low temperature parameters, 200K<T<1000K
-                for (int m = 0; m < 7; m++)
-                {
-                    finc >> h_thermal.Hia[n * 7 * 3 + m * 3 + 0]; // a1-a7
-                    // std::cout << Hia[n * 7 * 3 + m * 3 + 0] << std::endl;
-                }
-                for (int m = 0; m < 2; m++)
-                {
-                    finc >> h_thermal.Hib[n * 2 * 3 + m * 3 + 0]; // b1,b2
-                    // std::cout << Hib[n * 2 * 3 + m * 3 + 0] << std::endl;
-                }
-                // high temperature parameters, 1000K<T<6000K
-                for (int m = 0; m < 7; m++)
-                    finc >> h_thermal.Hia[n * 7 * 3 + m * 3 + 1]; // a1-a7
-                for (int m = 0; m < 2; m++)
-                    finc >> h_thermal.Hib[n * 2 * 3 + m * 3 + 1]; // b1,b2
-                // high temperature parameters, 6000K<T<15000K
-                for (int m = 0; m < 7; m++)
-                    finc >> h_thermal.Hia[n * 7 * 3 + m * 3 + 2]; // a1-a7
-                for (int m = 0; m < 2; m++)
-                    finc >> h_thermal.Hib[n * 2 * 3 + m * 3 + 2]; // b1,b2
-#else
                 // high temperature parameters
                 for (int m = 0; m < 7; m++)
-                    finc >> h_thermal.Hia[n * 7 * 3 + m * 3 + 0]; // a1-a7
+                    finc >> h_thermal.Hia_JANAF[n * 7 * 3 + m * 3 + 0]; // a1-a7
                 // low temperature parameters
                 for (int m = 0; m < 7; m++)
-                    finc >> h_thermal.Hia[n * 7 * 3 + m * 3 + 1]; // a1-a7
-#endif
+                    finc >> h_thermal.Hia_JANAF[n * 7 * 3 + m * 3 + 1]; // a1-a7
+#if !Thermo
                 finc >> h_thermal.species_chara[n * SPCH_Sz + Wi]; // species[n].Wi; // molar mass, unit: g/mol
-                h_thermal.species_chara[n * SPCH_Sz + 6] *= 1e-3;  // kg/mol
-                h_thermal.Wi[n] = h_thermal.species_chara[n * SPCH_Sz + Wi];
-                h_thermal._Wi[n] = _DF(1.0) / h_thermal.Wi[n];
-                h_thermal.Ri[n] = Ru / h_thermal.Wi[n];
-                h_thermal.species_chara[n * SPCH_Sz + 7] = 0;   // Miu[i];
-                h_thermal.species_chara[n * SPCH_Sz + SID] = n; // SID;
+#endif
                 break;
             }
         }
     }
     finc.close();
 
+#if Thermo
+    std::memcpy(h_thermal.Hia, h_thermal.Hia_NASA, NUM_SPECIES * 7 * 3 * sizeof(real_t));
+    std::memcpy(h_thermal.Hib, h_thermal.Hib_NASA, NUM_SPECIES * 2 * 3 * sizeof(real_t));
+#else
+    std::memcpy(h_thermal.Hia, h_thermal.Hia_JANAF, NUM_SPECIES * 7 * 3 * sizeof(real_t));
+#endif // end Hia and Hib copy
+
+    /**
+     */
     std::string spath = WorkDir + std::string(RPath) + "/transport_data.dat";
     std::fstream fint(spath);
     for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -443,6 +467,13 @@ void Setup::ReadThermal()
                 break;
             }
         }
+        // // // species_chara pre-process
+        h_thermal.species_chara[i * SPCH_Sz + 6] *= 1e-3; // kg/mol
+        h_thermal.Wi[i] = h_thermal.species_chara[i * SPCH_Sz + Wi];
+        h_thermal._Wi[i] = _DF(1.0) / h_thermal.Wi[i];
+        h_thermal.Ri[i] = Ru / h_thermal.Wi[i];
+        h_thermal.species_chara[i * SPCH_Sz + 7] = 0;   // Miu[i];
+        h_thermal.species_chara[i * SPCH_Sz + SID] = i; // SID;
     }
     fint.close();
 
@@ -452,19 +483,8 @@ void Setup::ReadThermal()
     std::memcpy(h_thermal.xi_out, h_thermal.species_ratio_out, NUM_SPECIES * sizeof(real_t));
 
     // transfer mole fraction to mess fraction
-    get_Yi(h_thermal.species_ratio_out);
-    get_Yi(h_thermal.species_ratio_in);
-}
-
-// =======================================================
-// =======================================================
-void Setup::get_Yi(real_t *yi)
-{ // yi是体积分数，Yi=rhos/rho是质量分数
-    real_t W_mix = _DF(0.0);
-    for (size_t i = 0; i < NUM_SPECIES; i++)
-        W_mix += yi[i] * h_thermal.Wi[i];
-    for (size_t n = 0; n < NUM_SPECIES; n++) // Ri=Ru/Wi
-        yi[n] = yi[n] * h_thermal.Wi[n] / W_mix;
+    get_yi(h_thermal.species_ratio_in, h_thermal.Wi);
+    get_yi(h_thermal.species_ratio_out, h_thermal.Wi);
 }
 
 // =======================================================
@@ -485,7 +505,7 @@ bool Setup::Mach_Shock()
     //     Gamma_m2 = 1.33;
     // #else
     R = get_MixtureR(h_thermal.species_chara, h_thermal.species_ratio_out);
-    Gamma_m2 = get_CopGamma(h_thermal.species_ratio_out, T2);
+    Gamma_m2 = get_CopGamma(h_thermal, h_thermal.species_ratio_out, T2);
     // #endif                                        // end DEBUG
     real_t c2 = std::sqrt(Gamma_m2 * R * T2); // sound speed downstream the shock
     ini.blast_c_out = c2, ini.blast_gamma_out = Gamma_m2, ini.tau_H = _DF(2.0) * ini.xa / (ini.Ma * ini.blast_c_out);
@@ -516,7 +536,7 @@ bool Setup::Mach_Shock()
     Ma = 2.83;
 #else
     Ma = ini.Ma;
-#define MARCO_Coph(T) get_Coph(h_thermal.species_ratio_out, T)
+#define MARCO_Coph(T) get_Coph(h_thermal, h_thermal.species_ratio_out, T)
 #endif // end DEBUG
 
     if (!Mach_Modified)
@@ -930,15 +950,15 @@ void Setup::GetFitCoefficient()
         // h_thermal.fitted_coefficients_therm[k] = middle::MallocHost<real_t>(h_thermal.fitted_coefficients_therm[k], order_polynominal_fitted, q);
 
         real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
-        Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_visc[k], 0);  // Visc
-        Fitting(specie_k, specie_k, h_thermal.fitted_coefficients_therm[k], 1); // diffu
+        Fitting(Tnode, specie_k, specie_k, h_thermal.fitted_coefficients_visc[k], 0);  // Visc
+        Fitting(Tnode, specie_k, specie_k, h_thermal.fitted_coefficients_therm[k], 1); // diffu
         for (int j = 0; j < NUM_SPECIES; j++)
         { // Allocate Mem
             // h_thermal.Dkj_matrix[k * NUM_SPECIES + j] = middle::MallocHost<real_t>(h_thermal.Dkj_matrix[k * NUM_SPECIES + j], order_polynominal_fitted, q);
 
             real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
             if (k <= j)                                                                    // upper triangle
-                Fitting(specie_k, specie_j, h_thermal.Dkj_matrix[k * NUM_SPECIES + j], 2); // Dim
+                Fitting(Tnode, specie_k, specie_j, h_thermal.Dkj_matrix[k * NUM_SPECIES + j], 2); // Dim
             else
             { // lower triangle==>copy
                 for (int n = 0; n < order_polynominal_fitted; n++)
@@ -957,6 +977,122 @@ void Setup::GetFitCoefficient()
     d_thermal.Dkj_matrix = middle::MallocDevice2D<real_t>(d_Dkj_matrix, NUM_SPECIES * NUM_SPECIES, order_polynominal_fitted, q);
     d_thermal.fitted_coefficients_visc = middle::MallocDevice2D<real_t>(d_fitted_coefficients_visc, NUM_SPECIES, order_polynominal_fitted, q);
     d_thermal.fitted_coefficients_therm = middle::MallocDevice2D<real_t>(d_fitted_coefficients_therm, NUM_SPECIES, order_polynominal_fitted, q);
+
+    // Test
+    if (ViscosityTest_json)
+        VisCoeffsAccuracyTest(ViscosityTestRange[0], ViscosityTestRange[1]);
+}
+
+/**
+ * @brief get accurate three kind of viscosity coefficients
+ * @param Tmin beginning temperature point of the coefficient-Temperature plot
+ * @param Tmax Ending temperature point of the coefficient-Temperature plot
+ * @note  /delta T is devided by space discrete step
+ */
+void Setup::VisCoeffsAccuracyTest(real_t Tmin, real_t Tmax)
+{
+    size_t reso = std::max(200, BlSz.X_inner);
+    // // out Thermal
+    std::string file_name = OutputDir + "/viscosity-thermal.dat";
+    std::ofstream theo(file_name);
+    theo << "variables= Temperature(K)";
+    for (size_t k = 0; k < species_name.size(); k++)
+    {
+        theo << "," << species_name[k] << "_Cp_NASA,";
+        theo << "," << species_name[k] << "_Cp_JANAF,";
+    }
+    for (size_t k = 0; k < species_name.size(); k++)
+    {
+        theo << "," << species_name[k] << "_hi_NASA,";
+        theo << "," << species_name[k] << "_hi_JANAF,";
+    }
+    for (size_t k = 0; k < species_name.size(); k++)
+    {
+        theo << "," << species_name[k] << "_S_NASA,";
+        theo << "," << species_name[k] << "_S_JANAF,";
+    }
+    for (size_t i = 1; i <= reso; i++)
+    {
+        real_t Tpoint = Tmin + (i / real_t(reso)) * (Tmax - Tmin);
+        theo << Tpoint << " "; // Visc
+        for (size_t k = 0; k < species_name.size(); k++)
+        {
+            theo << HeatCapacity_NASA(h_thermal.Hia_NASA, Tpoint, h_thermal.Ri[k], k) << " ";   // Cp
+            theo << HeatCapacity_JANAF(h_thermal.Hia_JANAF, Tpoint, h_thermal.Ri[k], k) << " "; // Cp
+        }
+        for (size_t k = 0; k < species_name.size(); k++)
+        {
+            theo << get_Enthalpy_NASA(h_thermal.Hia_NASA, h_thermal.Hib_NASA, Tpoint, h_thermal.Ri[k], k) << " ";    // hi
+            theo << get_Enthalpy_JANAF(h_thermal.Hia_JANAF, h_thermal.Hib_JANAF, Tpoint, h_thermal.Ri[k], k) << " "; // hi
+        }
+        for (size_t k = 0; k < species_name.size(); k++)
+        {
+            theo << get_Entropy_NASA(h_thermal.Hia_NASA, h_thermal.Hib_NASA, Tpoint, h_thermal.Ri[k], k) << " ";    // S
+            theo << get_Entropy_JANAF(h_thermal.Hia_JANAF, h_thermal.Hib_JANAF, Tpoint, h_thermal.Ri[k], k) << " "; // S
+        }
+        theo << "\n";
+    }
+    theo.close();
+
+    // // visc coefficients
+    file_name = OutputDir + "/viscosity-test";
+#if Thermo
+    file_name += "-(NASA9).dat";
+#else
+    file_name += "-(JANAF).dat";
+#endif
+    std::ofstream out(file_name);
+    out << "variables= Temperature(K)";
+    for (size_t k = 0; k < species_name.size(); k++)
+    {
+        out << ",visc_" << species_name[k] << ",";
+        out << ",furier_" << species_name[k] << ",";
+        for (size_t j = 0; j <= k; j++)
+            out << ",Dkj_" << species_name[k] << "-" << species_name[j];
+    }
+    // zone name
+    out << "\nzone t='Accurate-solution'\n";
+    for (size_t i = 1; i <= reso; i++)
+    {
+        real_t Tpoint = Tmin + (i / real_t(reso)) * (Tmax - Tmin);
+        out << Tpoint << " "; // Visc
+        for (size_t k = 0; k < species_name.size(); k++)
+        {
+            real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
+            out << viscosity(specie_k, Tpoint) << " ";                   // Visc
+            out << thermal_conductivities(specie_k, Tpoint, 1.0) << " "; // diffu
+            for (size_t j = 0; j <= k; j++)
+            {
+                real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
+                out << Dkj(specie_k, specie_j, Tpoint, 1.0) << " "; // Dkj
+            }
+        }
+        out << "\n";
+    }
+
+    out << "\nzone t='Fitting-solution'\n";
+    for (size_t i = 1; i <= reso; i++)
+    {
+        real_t **Dkj = h_thermal.Dkj_matrix;
+        real_t **fcv = h_thermal.fitted_coefficients_visc;
+        real_t **fct = h_thermal.fitted_coefficients_therm;
+
+        real_t Tpoint = Tmin + (i / real_t(reso)) * (Tmax - Tmin);
+        out << Tpoint << " "; // Visc
+        for (size_t k = 0; k < species_name.size(); k++)
+        {
+            real_t *specie_k = &(h_thermal.species_chara[k * SPCH_Sz]);
+            out << Viscosity(fcv[int(specie_k[SID])], Tpoint) << " ";            // Visc
+            out << Thermal_conductivity(fct[int(specie_k[SID])], Tpoint) << " "; // diffu
+            for (size_t j = 0; j <= k; j++)
+            {
+                real_t *specie_j = &(h_thermal.species_chara[j * SPCH_Sz]);
+                out << GetDkj(specie_k, specie_j, Dkj, Tpoint, 1.0) << " "; // Dkj
+            }
+        }
+        out << "\n";
+    }
+    out.close();
 }
 
 /**
@@ -966,10 +1102,10 @@ void Setup::GetFitCoefficient()
  * @para aa the coefficients of the polynominal;
  * @para indicator fitting for viscosity(0),thermal conductivities(1) and binary diffusion coefficients(2)
  */
-void Setup::Fitting(real_t *specie_k, real_t *specie_j, real_t *aa, int indicator)
+void Setup::Fitting(std::vector<real_t> TT, real_t *specie_k, real_t *specie_j, real_t *aa, int indicator)
 {
-    int mm = 12;
-    real_t b[mm], AA[mm][order_polynominal_fitted], TT[] = {273.15, 500.0, 750.0, 1000.0, 1250.0, 1500.0, 1750.0, 2000.0, 2250.0, 2500.0, 2750.0, 3000.0}; //{100, 200, 298.15, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000}; // 0 oC= 273.15K
+    int mm = TT.size();
+    real_t b[mm], AA[mm][order_polynominal_fitted];
     for (int ii = 0; ii < mm; ii++)
     {
         switch (indicator)
@@ -1180,123 +1316,6 @@ real_t Setup::Dkj(real_t *specie_k, real_t *specie_j, const real_t T, const real
     real_t PPP = PP * _DF(10.0);                                                                                                                        // pa==>g/(cm.s2)
     real_t Dkj = _DF(3.0) * std::sqrt(_DF(2.0) * pi * std::pow(T * kB, _DF(3.0)) / W_jk) / (_DF(16.0) * PPP * pi * d_jk * d_jk * Omega1) * _DF(1.0e16); // equation5-4 //unit:cm*cm/s
     return Dkj;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief update heat capacity
- * @param T temperature Cp/R = a1*T^-2 + a2*T^-1 + a3 + a4*T + a5*T^2 + a6*T^3 + a7*T^4
- * @return real_t, unit: J/(kg.K)
- */
-real_t Setup::HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
-{
-    // real_t T = T0; // sycl::max(T0, _DF(200.0));
-    // real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
-    // #if Thermo
-    //     if (T >= (_DF(1000.0)) && T < (_DF(6000.0)))
-    //         Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 1] * _T + Hia[n * 7 * 3 + 1 * 3 + 1]) * _T + Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] + (Hia[n * 7 * 3 + 5 * 3 + 1] + Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T);
-    //     else if (T < (_DF(1000.0)))
-    //         Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 0] * _T + Hia[n * 7 * 3 + 1 * 3 + 0]) * _T + Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] + (Hia[n * 7 * 3 + 5 * 3 + 0] + Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T);
-    //     else if (T >= (_DF(6000.0)) && T < (_DF(15000.0)))
-    //     {
-    //         Cpi = Ri * ((Hia[n * 7 * 3 + 0 * 3 + 2] * _T + Hia[n * 7 * 3 + 1 * 3 + 2]) * _T + Hia[n * 7 * 3 + 2 * 3 + 2] + (Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] + (Hia[n * 7 * 3 + 5 * 3 + 2] + Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T);
-    //     }
-    //     else
-    //     {
-    //         printf("T=%lf , Cpi=%lf , T > 15000 K,please check!!!NO Cpi[n] for T>15000 K \n", T, Cpi);
-    //     }
-    // #else // Cpi[n)/R = a1 + a2*T + a3*T^2 + a4*T^3 + a5*T^4
-    //     if (T > (1000.0))
-    //         Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 0] + (Hia[n * 7 * 3 + 1 * 3 + 0] + (Hia[n * 7 * 3 + 2 * 3 + 0] + (Hia[n * 7 * 3 + 3 * 3 + 0] + Hia[n * 7 * 3 + 4 * 3 + 0] * T) * T) * T) * T);
-    //     else
-    //         Cpi = Ri * (Hia[n * 7 * 3 + 0 * 3 + 1] + (Hia[n * 7 * 3 + 1 * 3 + 1] + (Hia[n * 7 * 3 + 2 * 3 + 1] + (Hia[n * 7 * 3 + 3 * 3 + 1] + Hia[n * 7 * 3 + 4 * 3 + 1] * T) * T) * T) * T);
-    // #endif
-
-#if Thermo
-    MARCO_HeatCapacity_NASA();
-#else
-    MARCO_HeatCapacity_JANAF();
-#endif // end Thermo
-
-    return Cpi;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief calculate Hi of every compoent at given point	unit:J/kg/K // get_hi
- */
-real_t Setup::Enthalpy(const real_t T0, const int n)
-{
-    real_t *Hia = h_thermal.Hia, *Hib = h_thermal.Hib, Ri = Ru / h_thermal.Wi[n];
-    //     real_t hi = _DF(0.0), TT = T0, T = std::max<real_t>(T0, _DF(200.0));
-    // #if Thermo
-    //     if (T >= _DF(1000.0) && T < _DF(6000.0))
-    //         hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 1] / T + Hia[n * 7 * 3 + 1 * 3 + 1] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 1] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 1] + (Hia[n * 7 * 3 + 4 * 3 + 1] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 1] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 1] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 1]);
-    //     else if (T < _DF(1000.0))
-    //         hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 0] / T + Hia[n * 7 * 3 + 1 * 3 + 0] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 0] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 0] + (Hia[n * 7 * 3 + 4 * 3 + 0] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 0] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 0] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 0]);
-    //     else if (T >= _DF(6000.0))
-    //         hi = Ri * (-Hia[n * 7 * 3 + 0 * 3 + 2] / T + Hia[n * 7 * 3 + 1 * 3 + 2] * sycl::log(T) + (Hia[n * 7 * 3 + 2 * 3 + 2] + (0.5 * Hia[n * 7 * 3 + 3 * 3 + 2] + (Hia[n * 7 * 3 + 4 * 3 + 2] / _DF(3.0) + (_DF(0.25) * Hia[n * 7 * 3 + 5 * 3 + 2] + _DF(0.2) * Hia[n * 7 * 3 + 6 * 3 + 2] * T) * T) * T) * T) * T + Hib[n * 2 * 3 + 0 * 3 + 2]);
-    // #else
-    //     // H/RT = a1 + a2/2*T + a3/3*T^2 + a4/4*T^3 + a5/5*T^4 + a6/T
-    //     if (T > _DF(1000.0))
-    //         hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 0] + T * (Hia[n * 7 * 3 + 1 * 3 + 0] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 0] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 0] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 0] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 0]);
-    //     else
-    //         hi = Ri * (T * (Hia[n * 7 * 3 + 0 * 3 + 1] + T * (Hia[n * 7 * 3 + 1 * 3 + 1] * _DF(0.5) + T * (Hia[n * 7 * 3 + 2 * 3 + 1] / _DF(3.0) + T * (Hia[n * 7 * 3 + 3 * 3 + 1] * _DF(0.25) + Hia[n * 7 * 3 + 4 * 3 + 1] * T * _DF(0.2))))) + Hia[n * 7 * 3 + 5 * 3 + 1]);
-    // #endif
-    //     if (TT < _DF(200.0)) // take low tempreture into consideration
-    //     {                    // get_hi at T>200
-    //         real_t Cpi = HeatCapacity(_DF(200.0), n);
-    //         hi += Cpi * (TT - _DF(200.0));
-    //     }
-
-#if Thermo
-    MARCO_Enthalpy_NASA();
-#else
-    MARCO_Enthalpy_JANAF();
-#endif
-
-    return hi;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief calculate Hi of Mixture at given point	unit:J/kg/K
- */
-real_t Setup::get_Coph(const real_t *yi, const real_t T)
-{
-    real_t h = _DF(0.0);
-    for (size_t i = 0; i < NUM_SPECIES; i++)
-    {
-        real_t hi = Enthalpy(T, i);
-        h += hi * yi[i];
-    }
-    return h;
-}
-
-// =======================================================
-// =======================================================
-/**
- * @brief calculate Gamma of the mixture at given point
- */
-real_t Setup::get_CopGamma(const real_t *yi, const real_t T)
-{
-    real_t Cp = _DF(0.0);
-    for (size_t ii = 0; ii < NUM_SPECIES; ii++)
-        Cp += yi[ii] * HeatCapacity(h_thermal.Hia, T, h_thermal.Ri[ii], ii);
-    real_t CopW = get_MixtureW(h_thermal, yi);
-    real_t _CopGamma = Cp / (Cp - Ru / CopW);
-    if (_CopGamma > 1)
-    {
-        return _CopGamma;
-    }
-    else
-    {
-        printf("  Illegal Gamma captured.\n");
-        exit(EXIT_FAILURE);
-    }
 }
 
 // =======================================================

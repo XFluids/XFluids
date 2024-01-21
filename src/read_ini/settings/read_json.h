@@ -37,13 +37,11 @@ extern const size_t Equ_rho, Equ_energy;
 extern const std::vector<size_t> Equ_momentum;
 extern const std::string SlipOrder, ODESolver;
 extern const bool if_overdetermined_eigen, ReactSources, PositivityPreserving;
-// extern const size_t Emax;
-// extern const size_t NUM_COP;
-// extern const size_t NUM_SPECIES;
-
-// source terms
-// extern const size_t NUM_REA;
-// extern const string
+// // Viscosity
+extern const std::vector<real_t> Tnode;
+// // test samples
+extern const bool ODETest_json, ViscosityTest_json;
+extern const std::vector<real_t> ODETestRange, ViscosityTestRange;
 
 // mesh
 extern const size_t NUM_BISD;

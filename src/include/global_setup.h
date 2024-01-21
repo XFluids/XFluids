@@ -183,7 +183,9 @@ typedef struct
 
 typedef struct
 {
-	real_t *species_chara, *Ri, *Wi, *_Wi, *Hia, *Hib, *species_ratio_in, *species_ratio_out, *xi_in, *xi_out; // Ri=Ru/Wi;
+	real_t *species_chara, *Ri, *Wi, *_Wi, *Hia, *Hib;
+	real_t *Hia_NASA, *Hib_NASA, *Hia_JANAF, *Hib_JANAF;
+	real_t *species_ratio_in, *species_ratio_out, *xi_in, *xi_out;											   // Ri=Ru/Wi;
 	real_t **Dkj_matrix, **fitted_coefficients_visc, **fitted_coefficients_therm;							   // length: order_polynominal_fitted
 } Thermal;
 

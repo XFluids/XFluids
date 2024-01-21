@@ -3,7 +3,7 @@
 		"blockSize_x": 4,
 		"blockSize_y": 4,
 		"blockSize_z": 4,
-		"DtBlockSize": 8,
+		"DtBlockSize": 4,
 		"nStepMax": 10000,
 		"nOutMax": 100,
 		"OutVTI": 1,

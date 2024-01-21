@@ -74,4 +74,4 @@
       0.65099   0.6510 0.6512 0.6513 0.6516 0.6524 0.6534 0.6546
       0.61397   0.6141 0.6143 0.6145 0.6147 0.6148 0.6148 0.6147
       0.58870   0.5889 0.5894 0.5900 0.5903 0.5901 0.5895 0.5885
- //the first table is for binary diffusion coefficient;the second table is for viscosity and thermal conductivity;   
+ //the first table /Omega<1,1>* is for binary diffusion coefficient;the second table /Omega<2,2>* is for viscosity and thermal conductivity;   

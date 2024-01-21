@@ -19,7 +19,7 @@
 real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 {
 	real_t xi[NUM_SPECIES], yi[NUM_SPECIES];		  // molecular concentration; mass fraction
-	real_t T0 = ZeroDTemperature, p0 = ZeroDPressure; // initial Temperature and Pressure
+	real_t p0 = ODETestRange[0], T0 = ODETestRange[1], equilibrium = ODETestRange[2]; // initial Temperature and Pressure
 #ifdef ZeroMassFraction								  // initial Mass Fraction
 	std::memcpy(yi, ZeroMassFraction.data(), NUM_SPECIES * sizeof(real_t));
 #else
@@ -30,7 +30,6 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
 	e = h - R * T;					   // enternal energy
 	// chemeq2 solver
-	real_t run_time = _DF(0.0), t_end = ZeroEndTime, dt = ZeroDtStep, equilibrium = ZeroEqu;
 	std::string outputPrefix = INI_SAMPLE;
 	std::string file_name = OutputDir + "/0D-Detonation-" + outputPrefix + "-" + std::to_string(int(T0)) + "K-" + std::to_string(int(p0)) + "Pa" + ".dat";
 	std::ofstream out(file_name);
@@ -44,7 +43,7 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	out << "\nzone t='0D-Detonation" << SlipOrder << "'\n";
 
 	/* Solver loop */
-	// std::cout << std::endl;
+	real_t run_time = _DF(0.0), t_end = ODETestRange[3], dt = ODETestRange[4], break_out = dt * ODETestRange[5];
 	do
 	{
 		// std::cout << "";
@@ -66,6 +65,8 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 		// real_t yn2b_ = _DF(1.0) / (_DF(1.0) - yi[NUM_SPECIES - 1]);
 		// for (int n = 0; n < NUM_SPECIES - 1; n++)
 		// 	yi[n] *= (yn2_ * yn2b_);
+		if (run_time > break_out)
+			break;
 	} while (std::fabs(Temp - T) >= equilibrium || run_time < t_end);
 
 	out.close();

@@ -36,8 +36,8 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
 # # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
 # # Reaction/RSBI-18REA			# # Reaction/RSBI-19REA			# # modified for RSBI samples
-set(INIT_SAMPLE "1d-eigen-st") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "Insert-SBI-without-fuel") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+set(INIT_SAMPLE "2d-shock-bubble") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "Reaction/RSBI-18REA") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)
