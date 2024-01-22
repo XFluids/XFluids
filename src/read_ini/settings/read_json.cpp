@@ -64,15 +64,32 @@ const bool if_overdetermined_eigen = j_conf.at("equations").value("if_overdeterm
 // // Positivity Preserving
 const bool PositivityPreserving = j_conf.at("equations").value("PositivityPreserving", 0);
 // // Viscosity
-const std::vector<real_t> Tnode = j_conf.at("equations").value("ViscosityFittingTnode", std::vector<real_t>{273.15, 500.0, 750.0, 1000.0, 1250.0, 1500.0, 1750.0, 2000.0, 2250.0, 2500.0, 2750.0, 3000.0, 5000.0, 8000.0});
+const std::vector<real_t> Tnode = j_conf.at("equations").value("ViscosityFittingTnode", std::vector<real_t>{273.15, 500.0, 750.0, 1000.0, 1250.0, 1500.0, 1750.0, 2000.0, 2250.0, 2500.0, 2750.0, 3000.0, 5000.0});
 // // ODE Solver
 const bool ReactSources = j_conf.at("equations").value("Sources_React", COP_CHEME);
 const std::string SlipOrder = j_conf.at("equations").value("SlipOrder", CHEME_SPLITTING);
 const std::string ODESolver = j_conf.at("equations").value("ODESolver", "Q2");
+
 // // Test samples based functionity
-const bool ODETest_json = j_conf.at("equations").value("if_ODReactionTest", 1) > 0;
-const std::vector<real_t> ViscosityTestRange = j_conf.at("equations").value("ViscosityTestRange", std::vector<real_t>{0, 8000});
-const bool ViscosityTest_json = bool(!std::empty(ViscosityTestRange));
+/*** @brief params of ODETest sample 0D flame autoignition test
+ * @param ODETest_json: if enable this sample
+ * @param ODETestRange[0]: beginning pressure: Pa
+ * @param ODETestRange[1]: beginning Temperature: T
+ * @param ODETestRange[2]: equilibrium /delta Temperature to end test
+ * @param ODETestRange[3]: time to end test
+ * @param ODETestRange[4]: time step /delta t to evolution test
+ * @param ODETestRange[5]: max evolution steps to end test
+ * */
+const bool ODETest_json = j_conf.at("equations").value("if_ODReactionTest", ReactSources) > 0;
+const std::vector<real_t> ODETestRange = j_conf.at("equations").value("ODETestRange", std::vector<real_t>{101325.0, 1150, 1.0E-5, 0.2, 1.0E-5, 10000});
+
+/*** @brief params of Viscosity_coefficients-Temperature sample  test
+ * @param ViscosityTest_json: if enable this test
+ * @param ViscosityTestRange[0]: beginning Temperature: T
+ * @param ViscosityTestRange[1]: Ending Temperature: T
+ * */
+const bool ViscosityTest_json = j_conf.at("equations").value("if_ViscosityTest", COP_CHEME) > 0;
+const std::vector<real_t> ViscosityTestRange = j_conf.at("equations").value("ViscosityTestRange", std::vector<real_t>{0, 5000});
 
 // Mesh setup
 const size_t NUM_BISD = j_conf.at("mesh").value("NUM_BISD", 1);

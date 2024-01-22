@@ -41,7 +41,7 @@ extern const bool if_overdetermined_eigen, ReactSources, PositivityPreserving;
 extern const std::vector<real_t> Tnode;
 // // test samples
 extern const bool ODETest_json, ViscosityTest_json;
-extern const std::vector<real_t> ViscosityTestRange;
+extern const std::vector<real_t> ODETestRange, ViscosityTestRange;
 
 // mesh
 extern const size_t NUM_BISD;
