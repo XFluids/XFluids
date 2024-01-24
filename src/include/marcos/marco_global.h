@@ -10,11 +10,77 @@
 #define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<>())
 #define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<>())
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<>())
+
+#define SYCL_KERNEL SYCL_EXTERNAL
+
 #else
 #define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<real_t>())
 #define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<real_t>())
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
+
+// // OpenSYCL HIP Target
+#ifdef __HIPSYCL_ENABLE_HIP_TARGET__
+using vendorError_t = hipError_t;
+using vendorFuncAttributes = hipFuncAttributes;
+#define vendorSuccess hipSuccess;
+#define vendorSetDevice(A) hipSetDevice(A)
+#define vendorGetLastError() hipGetLastError()
+#define vendorDeviceSynchronize() hipDeviceSynchronize()
+#define vendorFuncGetAttributes(A, B) hipFuncGetAttributes(A, B)
+
+#define CheckGPUErrors(call)                                                             \
+    {                                                                                    \
+        hipError_t hipStatus = call;                                                     \
+        if (hipSuccess != hipStatus)                                                     \
+        {                                                                                \
+            fprintf(stderr,                                                              \
+                    "ERROR: CUDA RT call \"%s\" in line %d of file %s failed "           \
+                    "with "                                                              \
+                    "%s (%d).\n",                                                        \
+                    #call, __LINE__, __FILE__, hipGetErrorString(hipStatus), hipStatus); \
+            exit(EXIT_FAILURE);                                                          \
+        }                                                                                \
+    }                                                                                    \
+    while (0)
+
+// // OpenSYCL CUDA Target
+#elif defined(__HIPSYCL_ENABLE_CUDA_TARGET__)
+using vendorError_t = cudaError_t;
+using vendorFuncAttributes = cudaFuncAttributes;
+#define vendorSuccess cudaSuccess;
+#define vendorSetDevice(A) cudaSetDevice(A)
+#define vendorGetLastError() cudaGetLastError()
+#define vendorDeviceSynchronize() cudaDeviceSynchronize()
+#define vendorFuncGetAttributes(A, B) cudaFuncGetAttributes(A, B)
+
+#define CheckGPUErrors(call)                                                                \
+    {                                                                                       \
+        cudaError_t cudaStatus = call;                                                      \
+        if (cudaSuccess != cudaStatus)                                                      \
+        {                                                                                   \
+            fprintf(stderr,                                                                 \
+                    "ERROR: CUDA RT call \"%s\" in line %d of file %s failed "              \
+                    "with "                                                                 \
+                    "%s (%d).\n",                                                           \
+                    #call, __LINE__, __FILE__, cudaGetErrorString(cudaStatus), cudaStatus); \
+            exit(EXIT_FAILURE);                                                             \
+        }                                                                                   \
+    }                                                                                       \
+    while (0)
+
+#else
+
+#define SYCL_KERNEL
+#define SYCL_DEVICE
+
 #endif
+
+#if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
+#define SYCL_KERNEL __host__ __device__
+#define SYCL_DEVICE __host__ __device__
+#endif
+
+#endif // end oneAPI or OpenSYCL
 
 // =======================================================
 //    Set Domain size

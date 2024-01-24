@@ -894,5 +894,5 @@ void Fluid::ZeroDimensionalFreelyFlame()
 
 void Fluid::ODESolver(sycl::queue &q, real_t Time)
 {
-	ChemeODEQ2Solver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
+	ChemeODEQ2Solver(q, Fs, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
 }

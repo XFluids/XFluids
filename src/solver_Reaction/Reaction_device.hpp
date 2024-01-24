@@ -11,7 +11,7 @@
 /**
  * @brief get_Kf
  */
-real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
+SYCL_DEVICE real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const real_t T)
 {
 #if defined(Modified_ArrheniusLaw_form)
 	/**
@@ -35,7 +35,7 @@ real_t get_Kf_ArrheniusLaw(const real_t A, const real_t B, const real_t E, const
 /**
  * @brief get_Kc
  */
-real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ Hib, int *__restrict__ Nu_d_, const real_t T, const int m)
+SYCL_DEVICE real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ Hib, int *__restrict__ Nu_d_, const real_t T, const int m)
 {
 	real_t Kck = _DF(0.0);
 	int Nu_sum = _DF(0.0);
@@ -54,7 +54,7 @@ real_t get_Kc(const real_t *_Wi, real_t *__restrict__ Hia, real_t *__restrict__ 
 /**
  * @brief get_KbKf
  */
-void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *_Wi, real_t *Hia, real_t *Hib, int *Nu_d_, const real_t T)
+SYCL_DEVICE void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *_Wi, real_t *Hia, real_t *Hib, int *Nu_d_, const real_t T)
 {
 	for (size_t m = 0; m < NUM_REA; m++)
 	{
@@ -76,9 +76,9 @@ void get_KbKf(real_t *Kf, real_t *Kb, real_t *Rargus, real_t *_Wi, real_t *Hia, 
 /**
  * @brief QSSAFun
  */
-void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t *yi, Thermal thermal, real_t *React_ThirdCoef,
-			 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
-			 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
+SYCL_DEVICE void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t *yi, Thermal thermal, real_t *React_ThirdCoef,
+						 int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
+						 int *Nu_b_, int *Nu_f_, int *third_ind, const real_t rho)
 {
 	real_t C[MAX_SPECIES] = {_DF(0.0)}, _rho = _DF(1.0) / rho, mdcoeff = _DF(1.0), _mdcoeff = _DF(1.0);
 	// #if defined(Modified_ArrheniusLaw_form)
@@ -130,7 +130,7 @@ void QSSAFun(real_t *q, real_t *d, real_t *Kf, real_t *Kb, const real_t *yi, The
 /**
  * @brief sign for one argus
  */
-real_t frsign(const real_t a)
+SYCL_DEVICE real_t frsign(const real_t a)
 {
 	// if (a > 0)
 	// 	return _DF(1.0);
@@ -146,7 +146,7 @@ real_t frsign(const real_t a)
 /**
  * @brief sign for two argus
  */
-real_t frsign(const real_t a, const real_t b)
+SYCL_DEVICE real_t frsign(const real_t a, const real_t b)
 {
 	return frsign(b) * sycl::fabs(a);
 }
@@ -156,9 +156,9 @@ real_t frsign(const real_t a, const real_t b)
  * @ref   A Quasi-Steady-State Solver for the Stiff Ordinary Differential Equations of Reaction Kinetics
  * @param dtg: duration of time integral
  */
-void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
-			 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
-			 real_t *y, const real_t dtg, real_t &TT, const real_t rho, const real_t e)
+SYCL_DEVICE void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, real_t *React_ThirdCoef, real_t *Rargus, int *Nu_b_, int *Nu_f_, int *Nu_d_,
+						 int *third_ind, int **reaction_list, int **reactant_list, int **product_list, int *rns, int *rts, int *pls,
+						 real_t *y, const real_t dtg, real_t &TT, const real_t rho, const real_t e)
 {
 	int itermax = 1;
 	bool high_level_accuracy_ = (itermax >= 3) ? true : false;

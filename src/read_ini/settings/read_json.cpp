@@ -80,7 +80,7 @@ const std::string ODESolver = j_conf.at("equations").value("ODESolver", "Q2");
  * @param ODETestRange[4]: time step /delta t to evolution test
  * @param ODETestRange[5]: max evolution steps to end test
  * */
-const bool ODETest_json = j_conf.at("equations").value("if_ODReactionTest", ReactSources) > 0;
+const bool ODETest_json = j_conf.at("equations").value("if_ODReactionTest", 0);
 const std::vector<real_t> ODETestRange = j_conf.at("equations").value("ODETestRange", std::vector<real_t>{101325.0, 1150, 1.0E-5, 0.2, 1.0E-5, 10000});
 
 /*** @brief params of Viscosity_coefficients-Temperature sample  test

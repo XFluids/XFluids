@@ -75,12 +75,9 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	return Temp;
 }
 
-void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)
+void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)
 {
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
-	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
-
-	real_t *rho = fdata.rho;
+	Block bl = Fs.BlSz;
 	real_t *p = fdata.p;
 	real_t *H = fdata.H;
 	real_t *c = fdata.c;
@@ -88,7 +85,21 @@ void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
+	real_t *rho = fdata.rho;
 
+	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+
+#if __VENDOR_SUBMMIT__
+	CheckGPUErrors(vendorSetDevice(Fs.DeviceSelect[2]));
+	dim3 local_block(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	dim3 global_grid((bl.X_inner + local_block.x - 1) / local_block.x,
+					 (bl.Y_inner + local_block.y - 1) / local_block.y,
+					 (bl.Z_inner + local_block.z - 1) / local_block.z);
+	static bool dummy = (GetKernelAttributes((const void *)ChemeODEQ2SolverKernelVendorWrapper, "ChemeODEQ2SolverKernelVendorWrapper"), true); // call only once
+	ChemeODEQ2SolverKernelVendorWrapper<<<global_grid, local_block>>>(bl, thermal, react, UI, fdata.y, rho, T, fdata.e, dt);
+	CheckGPUErrors(vendorDeviceSynchronize());
+#else
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
@@ -98,4 +109,5 @@ void ChemeODEQ2Solver(sycl::queue &q, Block bl, Thermal thermal, FlowData &fdata
 								  int k = index.get_global_id(2) + bl.Bwidth_Z;
 								  ChemeODEQ2SolverKernel( i, j, k, bl, thermal, react, UI, fdata.y, rho, T, fdata.e, dt); }); })
 		.wait();
+#endif
 }

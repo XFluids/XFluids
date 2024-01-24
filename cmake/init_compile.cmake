@@ -41,6 +41,10 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 		set(ARCH "host")
 	ELSE()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
+
+		if(VENDOR_SUBMMIT)
+			add_compile_options(-D__VENDOR_SUBMMIT__)
+		endif()
 	ENDIF()
 
 # // =======================================================

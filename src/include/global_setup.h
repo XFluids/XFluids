@@ -14,6 +14,7 @@
 
 #include "global_undef.h"
 #include "compile_sycl.h"
+#include "marcos/marco_global.h"
 
 // #define Emax 13
 // #define NUM_COP 8
