@@ -1,6 +1,4 @@
-#pragma once
-
-#include "global_setup.h"
+#include "Ini_block.h"
 #include "ini_sample.hpp"
 
 void InitializeFluidStates(sycl::queue &q, Block bl, IniShape ini, MaterialProperty material, Thermal thermal, FlowData &fdata, real_t *U, real_t *U1, real_t *LU,

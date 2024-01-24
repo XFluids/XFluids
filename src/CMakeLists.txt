@@ -24,14 +24,16 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
     PUBLIC
     ${CMAKE_SOURCE_DIR}/src/include
   )
-
+  target_link_libraries(${INIT_SAMPLE}
+    PUBLIC
+    solver_Ini
+  )
   IF(USE_MPI)
     target_link_libraries(${INIT_SAMPLE}
       PUBLIC
       mpiPacks
     )
   ENDIF()
-
   IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
     add_sycl_to_target(TARGET ${INIT_SAMPLE})
   ENDIF()
@@ -41,6 +43,10 @@ ELSE()
   add_library(${INIT_SAMPLE} STATIC IMPORTED GLOBAL)
   set_property(TARGET ${INIT_SAMPLE}
     PROPERTY IMPORTED_LOCATION ${${INIT_SAMPLE}})
+  target_link_libraries(${solver_Ini}
+    INTERFACE
+    solver_Ini
+  )
 ENDIF()
 
 # # add main implementation

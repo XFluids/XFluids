@@ -1,7 +1,7 @@
 #include "global_class.h"
 
 #include "sycl_kernels.hpp"
-#include "solver_Ini/Ini_block.hpp"
+#include "solver_Ini/Ini_block.h"
 #include "solver_BCs/BCs_block.hpp"
 #include "solver_GetDt/GlobalDt_block.hpp"
 #include "solver_Reaction/Reaction_block.hpp"
