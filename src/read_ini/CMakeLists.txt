@@ -17,6 +17,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         ${CMAKE_CURRENT_SOURCE_DIR}/setupini.h
         PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/setup_ini.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/outformat/outformat.cpp
     )
     target_include_directories(readini
         PUBLIC

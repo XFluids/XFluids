@@ -4,9 +4,9 @@
 #include "global_setup.h"
 // // internal header
 #include "options.hpp"
-#include "outvars.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
+#include "outformat/outformat.h"
 // // external header
 #ifdef USE_MPI
 #include "../mpiPacks/mpiPacks.h"
