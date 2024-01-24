@@ -43,8 +43,9 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     mpiTrans = new MpiTrans(BlSz, Boundarys);
     mpiTrans->communicator->synchronize();
 #endif // end USE_MPI
-    std::cout << "Selected Device: " << middle::DevInfo(q) << "  of rank: " << myRank << std::endl;
-
+    {
+        std::cout << "Selected Device: " << middle::DevInfo(q) << "  of rank: " << myRank << std::endl;
+    }
     CpyToGPU();
 } // Setup::Setup end
 
@@ -1327,6 +1328,19 @@ void Setup::CpyToGPU()
     if (0 == myRank)
 #endif // end USE_MPI
     {
+#ifdef __VENDOR_SUBMMIT__
+        vendorDeviceProp prop;
+        CheckGPUErrors(vendorGetDeviceProperties(&prop, DeviceSelect[2]));
+        printf("  Warp Size= %d ", prop.warpSize);
+        printf("  multiProcessorCount= %d \n", prop.multiProcessorCount);
+        printf("  Global Memory size= %2.1f GB;  clock freqency= %d khz;  ECC= %d \n", double(prop.totalGlobalMem >> 20) / 1024.0, prop.memoryClockRate / 1000, prop.ECCEnabled);
+        printf("  Global memory bus width= %d bits;  L2 cache size= %d MB \n", prop.memoryBusWidth, prop.l2CacheSize / 1024 / 1024);
+        printf("  Shared Memory per block: %ld KB\n", prop.sharedMemPerBlock / 1024);
+        printf("  32bit register number per block= %d\n", prop.regsPerBlock);
+        printf("  Max threads per block= %d;   Max Threads in 3D= %d x %d x %d\n", prop.maxThreadsPerBlock, prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+        printf("  Max Grid Size : %d x %d x %d.\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+        printf("  PCI Bus ID= %d; PCI Device ID= %d; PCI domain ID= %d \n", prop.pciBusID, prop.pciDeviceID, prop.pciDomainID);
+#endif
         std::cout << "<---------------------------------------------------> \n";
         std::cout << "Setup_ini is copying buffers into Device . ";
     }

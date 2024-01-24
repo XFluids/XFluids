@@ -21,12 +21,17 @@
 // // OpenSYCL HIP Target
 #ifdef __HIPSYCL_ENABLE_HIP_TARGET__
 using vendorError_t = hipError_t;
+using vendorDeviceProp = hipDeviceProp_t;
 using vendorFuncAttributes = hipFuncAttributes;
+
+#define _VENDOR_KERNEL_ __global__ __launch_bounds__(256, 1)
+
 #define vendorSuccess hipSuccess;
 #define vendorSetDevice(A) hipSetDevice(A)
 #define vendorGetLastError() hipGetLastError()
 #define vendorDeviceSynchronize() hipDeviceSynchronize()
 #define vendorFuncGetAttributes(A, B) hipFuncGetAttributes(A, B)
+#define vendorGetDeviceProperties(A, B) hipGetDeviceProperties(A, B)
 
 #define CheckGPUErrors(call)                                                             \
     {                                                                                    \
@@ -46,12 +51,17 @@ using vendorFuncAttributes = hipFuncAttributes;
 // // OpenSYCL CUDA Target
 #elif defined(__HIPSYCL_ENABLE_CUDA_TARGET__)
 using vendorError_t = cudaError_t;
+using vendorDeviceProp = cudaDeviceProp;
 using vendorFuncAttributes = cudaFuncAttributes;
+
+#define _VENDOR_KERNEL_ __global__
+
 #define vendorSuccess cudaSuccess;
 #define vendorSetDevice(A) cudaSetDevice(A)
 #define vendorGetLastError() cudaGetLastError()
 #define vendorDeviceSynchronize() cudaDeviceSynchronize()
 #define vendorFuncGetAttributes(A, B) cudaFuncGetAttributes(A, B)
+#define vendorGetDeviceProperties(A, B) cudaGetDeviceProperties(A, B)
 
 #define CheckGPUErrors(call)                                                                \
     {                                                                                       \
