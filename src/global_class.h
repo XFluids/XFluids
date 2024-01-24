@@ -3,7 +3,7 @@
 // program headers
 #include "utils/diskinfo.hpp"
 #include "read_ini/setupini.h"
-#include "marcos/marco_global.h"
+#include "include/global_setup.h"
 
 //-------------------------------------------------------------------------------------------------
 //								Pre-claimer

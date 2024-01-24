@@ -1,7 +1,6 @@
 #pragma once
 
 #include "global_setup.h"
-#include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 
 real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t *uvw_c_max)

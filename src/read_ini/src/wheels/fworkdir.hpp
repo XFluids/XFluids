@@ -1,8 +1,7 @@
 #pragma once
 
 #include <unistd.h>
-
-#include "global_setup.h"
+#include "../../../include/global_setup.h"
 
 #if USE_CXX_BOOST
 #include <boost/filesystem.hpp>

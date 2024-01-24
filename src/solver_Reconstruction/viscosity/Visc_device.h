@@ -1,7 +1,6 @@
 #pragma once
 
-#include "global_setup.h"
-#include "marcos/marco_global.h"
+#include "../../include/global_setup.h"
 
 /**
  * @brief get viscosity at temperature T(unit:K)(fit)

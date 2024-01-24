@@ -1,3 +1,4 @@
+add_subdirectory(src)
 add_subdirectory(inishape)
 add_subdirectory(settings)
 add_subdirectory(strsplit)
@@ -7,24 +8,19 @@ find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
-
-    IF(BOOST_CXX)
-        target_compile_options(readini PUBLIC -DUSE_CXX_BOOST=1)
-    ENDIF(BOOST_CXX)
-
-    target_sources(readini
-        PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/setupini.h
-        PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/setup_ini.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/outformat/outformat.cpp
-    )
-    target_include_directories(readini
-        PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/include
-    )
+    target_include_directories(readini PUBLIC ${CMAKE_SOURCE_DIR}/src/include)
 
     # #add libs
+    target_link_libraries(readini
+        PUBLIC
+        readini_cos
+        readini_set
+        readini_rea
+        readini_visc
+        readini_them
+        readini_copy
+        readini_print
+    )
     target_link_libraries(readini
         PUBLIC
         inishape

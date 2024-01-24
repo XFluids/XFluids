@@ -1,7 +1,6 @@
 #pragma once
 
 #include "global_setup.h"
-#include "marcos/marco_global.h"
 
 const real_t _six = _DF(1.0) / _DF(6.0);
 // TODO: NO std::cmath functions used if schemes function referenced, use sycl::math_function<real_t>

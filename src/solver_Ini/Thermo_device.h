@@ -1,6 +1,6 @@
 #pragma once
 
-#include "global_setup.h"
+#include "../include/global_setup.h"
 
 /**
  * @brief calculate Cpi of the specie at given point using NASA9

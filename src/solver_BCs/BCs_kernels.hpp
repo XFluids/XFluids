@@ -1,7 +1,6 @@
 #pragma once
 
 #include "global_setup.h"
-#include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 
 extern void FluidBCKernel(BoundaryRange &BC, Block &bl, real_t *d_UI)

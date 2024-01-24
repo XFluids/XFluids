@@ -1,10 +1,8 @@
 #pragma once
 
-#include "Flux_discrete.h"
 #include "global_setup.h"
-#include "marcos/marco_global.h"
-
 #include "Visc_device.h"
+#include "Flux_discrete.h"
 
 extern void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {

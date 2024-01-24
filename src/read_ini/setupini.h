@@ -1,12 +1,12 @@
 #pragma once
 
 // // global header
-#include "global_setup.h"
+#include "../include/global_setup.h"
 // // internal header
 #include "options.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
-#include "outformat/outformat.h"
+#include "src/outformat/outformat.h"
 // // external header
 #ifdef USE_MPI
 #include "../mpiPacks/mpiPacks.h"
