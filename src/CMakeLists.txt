@@ -27,6 +27,7 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   target_link_libraries(${INIT_SAMPLE}
     PUBLIC
     solver_Ini
+    solver_BCs
   )
   IF(USE_MPI)
     target_link_libraries(${INIT_SAMPLE}
@@ -46,6 +47,7 @@ ELSE()
   target_link_libraries(${solver_Ini}
     INTERFACE
     solver_Ini
+    solver_BCs
   )
 ENDIF()
 
