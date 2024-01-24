@@ -1,7 +1,5 @@
 #pragma once
 
-#include "global_setup.h"
-#include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 
 extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool *error_org, bool *error_nan, real_t *UI, real_t *rho, real_t *y)
@@ -102,7 +100,7 @@ extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool
 }
 
 extern void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2, real_t *UI, real_t *rho,
-													 real_t *u, real_t *v, real_t *w, real_t *p, real_t *T, real_t *y, real_t *H, real_t *e, real_t *gamma, real_t *c)
+									   real_t *u, real_t *v, real_t *w, real_t *p, real_t *T, real_t *y, real_t *H, real_t *e, real_t *gamma, real_t *c)
 { // numPte: number of Vars need be posoitive; numVars: length of *Vars(numbers of all Vars need to be estimed).
 	int Xmax = bl.Xmax;
 	int Ymax = bl.Ymax;
@@ -159,28 +157,4 @@ extern void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal th
 	// ngatve = true;
 	if (ngatve) // add condition to avoid rewrite by other threads
 		*error1 = true, error_pos[3 + NUM_SPECIES] = i, error_pos[4 + NUM_SPECIES] = j, error_pos[5 + NUM_SPECIES] = k;
-}
-
-extern void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error) //, sycl::stream stream_ct1
-{
-	int Xmax = bl.Xmax;
-	int Ymax = bl.Ymax;
-	if (i >= Xmax - bl.Bwidth_X)
-		return;
-	if (j >= Ymax - bl.Bwidth_Y)
-		return;
-	if (k >= bl.Zmax - bl.Bwidth_Z)
-		return;
-	int id = (Xmax * Ymax * k + Xmax * j + i) * Emax;
-
-	bool tempnegv = UI[0 + id] < 0 ? true : false, tempnans[Emax];
-	for (size_t ii = 0; ii < Emax; ii++)
-	{
-		tempnans[ii] = (sycl::isnan(UI[ii + id]) || sycl::isinf(UI[ii + id])) || (sycl::isnan(LUI[ii + id]) || sycl::isinf(LUI[ii + id]));
-		tempnegv = tempnegv || tempnans[ii];
-		if (tempnans[ii])
-			error_pos[ii] = 1;
-	}
-	if (tempnegv)
-		*error = true, error_pos[Emax + 1] = i, error_pos[Emax + 2] = j, error_pos[Emax + 3] = k;
 }

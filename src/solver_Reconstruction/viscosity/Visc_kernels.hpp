@@ -1,10 +1,8 @@
 #pragma once
 
-#include "Flux_discrete.h"
 #include "global_setup.h"
-#include "marcos/marco_global.h"
-
 #include "Visc_device.h"
+#include "Flux_discrete.h"
 
 extern void CenterDerivativeBCKernelX(int i, int j, int k, Block bl, BConditions const BC, real_t *const *Vde, int const mirror_offset, int const index_inner, int const sign)
 {
@@ -216,8 +214,8 @@ extern void CenterDerivativeBCKernelZ(int i, int j, int k, Block bl, BConditions
 	}
 }
 
-extern void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
-												  real_t *Dkm_aver, real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T, real_t *Ertemp1, real_t *Ertemp2)
+extern SYCL_KERNEL void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver,
+												real_t *Dkm_aver, real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T, real_t *Ertemp1, real_t *Ertemp2)
 {
 	if (i >= bl.Xmax)
 		return;
@@ -240,3 +238,16 @@ extern void Gettransport_coeff_aver(int i, int j, int k, Block bl, Thermal therm
 	Get_transport_coeff_aver(i, j, k, thermal, &(Dkm_aver[NUM_SPECIES * id]), viscosity_aver[id], thermal_conduct_aver[id],
 							 X, rho[id], p[id], T[id], C_total, &(Ertemp1[NUM_SPECIES * id]), &(Ertemp2[NUM_SPECIES * id]));
 }
+
+#if __VENDOR_SUBMIT__
+_VENDOR_KERNEL_LB_(256, 1)
+void Gettransport_coeff_averVendorWrapper(Block bl, Thermal thermal, real_t *viscosity_aver, real_t *thermal_conduct_aver, real_t *Dkm_aver,
+										  real_t *y, real_t *hi, real_t *rho, real_t *p, real_t *T, real_t *Ertemp1, real_t *Ertemp2)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
+	int k = blockIdx.z * blockDim.z + threadIdx.z;
+
+	Gettransport_coeff_aver(i, j, k, bl, thermal, viscosity_aver, thermal_conduct_aver, Dkm_aver, y, hi, rho, p, T, Ertemp1, Ertemp2);
+}
+#endif

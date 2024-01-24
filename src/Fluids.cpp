@@ -1,11 +1,90 @@
 #include "global_class.h"
 
 #include "sycl_kernels.hpp"
-#include "solver_Ini/Ini_block.hpp"
-#include "solver_BCs/BCs_block.hpp"
+#include "solver_Ini/Ini_block.h"
+#include "solver_BCs/BCs_block.h"
 #include "solver_GetDt/GlobalDt_block.hpp"
 #include "solver_Reaction/Reaction_block.hpp"
 #include "solver_Reconstruction/Reconstruction_block.hpp"
+
+extern void YDirThetaItegralKernel(int i, int k, Block bl, real_t *y, real_t *ThetaXe, real_t *ThetaN2, real_t *ThetaXN)
+{
+	MARCO_DOMAIN_GHOST();
+	if (i >= X_inner + Bwidth_X)
+		return;
+	if (k >= Z_inner + Bwidth_Z)
+		return;
+
+	int ii = i - Bwidth_X, kk = k - Bwidth_Z;
+	ThetaXe[X_inner * kk + ii] = _DF(0.0), ThetaN2[X_inner * kk + ii] = _DF(0.0), ThetaXN[X_inner * kk + ii] = _DF(0.0);
+	for (size_t j = bl.Bwidth_Y; j < bl.Ymax - bl.Bwidth_Y; j++)
+	{
+		int id = Xmax * Ymax * k + Xmax * j + i;
+		real_t *yi = &(y[NUM_SPECIES * id]);
+		ThetaXe[X_inner * kk + ii] += yi[bl.Xe_id];
+		ThetaN2[X_inner * kk + ii] += yi[bl.N2_id];
+		ThetaXN[X_inner * kk + ii] += yi[bl.Xe_id] * yi[bl.N2_id];
+	}
+}
+
+// extern void XDirThetaItegralKernel(int k, Block bl, real_t *ThetaXeIn, real_t *ThetaN2In, real_t *ThetaXNIn,
+//                                                  real_t *ThetaXeOut, real_t *ThetaN2Out, real_t *ThetaXNOut)
+// {
+//     MARCO_DOMAIN_GHOST();
+//     if (k >= Z_inner + Bwidth_Z)
+//         return;
+
+//     ThetaXeOut[k] = _DF(0.0), ThetaN2Out[k] = _DF(0.0), ThetaXNOut[k] = _DF(0.0);
+//     for (size_t i = bl.Bwidth_Y; i < bl.Ymax; i++)
+//     {
+//         int id = Xmax * Ymax * k + Xmax * j + i + 1;
+//         ThetaXe[Xmax * k + i] += bl.dx * yi[NUM_SPECIES * id - 2];
+//         ThetaN2[Xmax * k + i] += bl.dx * yi[NUM_SPECIES * id - 1];
+//         ThetaXN[Xmax * k + i] += bl.dx * yi[NUM_SPECIES * id - 2] * yi[NUM_SPECIES * id - 1];
+//     }
+// }
+
+extern void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error) //, sycl::stream stream_ct1
+{
+	int Xmax = bl.Xmax;
+	int Ymax = bl.Ymax;
+	if (i >= Xmax - bl.Bwidth_X)
+		return;
+	if (j >= Ymax - bl.Bwidth_Y)
+		return;
+	if (k >= bl.Zmax - bl.Bwidth_Z)
+		return;
+	int id = (Xmax * Ymax * k + Xmax * j + i) * Emax;
+
+	bool tempnegv = UI[0 + id] < 0 ? true : false;
+	if (tempnegv)
+		error_pos[0] += 10000;
+	for (size_t ii = 0; ii < Emax; ii++)
+	{
+		bool thtemp = false;
+		thtemp = sycl::isnan(UI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 1100;
+		tempnegv = tempnegv || thtemp;
+
+		thtemp = sycl::isinf(UI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 1200;
+		tempnegv = tempnegv || thtemp;
+
+		thtemp = sycl::isnan(LUI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 21;
+		tempnegv = tempnegv || thtemp;
+
+		thtemp = sycl::isinf(LUI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 22;
+		tempnegv = tempnegv || thtemp;
+	}
+	if (tempnegv)
+		*error = true, error_pos[Emax + 1] = i, error_pos[Emax + 2] = j, error_pos[Emax + 3] = k;
+}
 
 Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
 {
@@ -58,20 +137,24 @@ Fluid::~Fluid()
 	sycl::free(h_fstate.y, q);
 	sycl::free(h_fstate.e, q);
 	sycl::free(h_fstate.gamma, q);
+	sycl::free(d_fstate.hi, q);
+	sycl::free(d_fstate.Cp, q);
+	sycl::free(d_fstate.Ri, q);
 
+#if Visc // free viscous Vars
+	sycl::free(d_fstate.viscosity_aver, q);
 	sycl::free(d_fstate.vx, q), sycl::free(h_fstate.vx, q);
 	for (size_t i = 0; i < 3; i++)
 		sycl::free(d_fstate.vxs[i], q), sycl::free(h_fstate.vxs[i], q);
 	for (size_t i = 0; i < 9; i++)
 		sycl::free(d_fstate.Vde[i], q);
-
-#if Visc // free viscous Vars
-	sycl::free(d_fstate.viscosity_aver, q);
 #if Visc_Heat
 	sycl::free(d_fstate.thermal_conduct_aver, q);
 #endif // end Visc_Heat
 #if Visc_Diffu
-	sycl::free(d_fstate.hi, q), sycl::free(d_fstate.Dkm_aver, q);
+	sycl::free(yi_min, q), sycl::free(yi_max, q);
+	sycl::free(Dim_min, q), sycl::free(Dim_max, q);
+	sycl::free(d_fstate.Dkm_aver, q);
 #endif // end Visc_Diffu
 #endif // end Visc
 
@@ -229,20 +312,25 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.u = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
 		d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.Ri = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.Cp = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		this_msize = double(Kbytes >> 10) * (10.0 + NUM_SPECIES), MemMbSize += this_msize;
+		d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+		d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+		this_msize = double(Kbytes >> 10) * (12.0 + NUM_SPECIES * 2.0), MemMbSize += this_msize;
 		if (0 == rank)
 			std::cout << "Device memory malloced(primitive variables): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
+#if Visc
+	// allocate mem viscous Vars
 	// // vrotex
 	{
 		for (size_t i = 0; i < 9; i++)
@@ -260,8 +348,6 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
-#if Visc
-	// allocate mem viscous Vars
 	{
 		// // kinematic viscosity
 		d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
@@ -271,14 +357,13 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 #endif
 #if Visc_Diffu
 		// // mass diffusion
-		yi_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
-		yi_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
-		Dim_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
-		Dim_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
-		d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
+		yi_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
+		yi_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
+		Dim_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
+		Dim_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
 		d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 #endif
-		this_msize = double(Kbytes >> 10) * 2.0 * (1.0 + NUM_SPECIES), MemMbSize += this_msize;
+		this_msize = double(Kbytes >> 10) * 2.0 * (NUM_SPECIES), MemMbSize += this_msize;
 		if (0 == rank)
 			std::cout << "Device memory malloced(viscosity): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
@@ -451,7 +536,6 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 void Fluid::InitialU(sycl::queue &q)
 {
 	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
-	GetCellCenterDerivative(q, Fs.BlSz, d_fstate, Fs.Boundarys);
 }
 
 void Fluid::AllCountsHeader()
@@ -575,13 +659,13 @@ void Fluid::GetTheta(sycl::queue &q)
 	real_t *smyN2 = d_fstate.thetaN2; // get (Y_N2)^bar of each rank
 	real_t *smyXN = d_fstate.thetaXN; // get (Y_Xe*Y_N2)^bar of each rank
 
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<2>(sycl::range<2>(bl.X_inner, bl.Z_inner), sycl::range<2>(bl.dim_block_x, bl.dim_block_z)), [=](nd_item<2> index)
-				   {	
-				int i = index.get_global_id(0) + bl.Bwidth_X;
-				int k = index.get_global_id(1) + bl.Bwidth_Z;
-				YDirThetaItegralKernel(i, k, bl, yi, smyXe, smyN2, smyXN); }); })
+	q.submit([&](sycl::handler &h) {																													   //
+		 h.parallel_for(sycl::nd_range<2>(sycl::range<2>(bl.X_inner, bl.Z_inner), sycl::range<2>(bl.dim_block_x, bl.dim_block_z)), [=](nd_item<2> index) { //
+			 int i = index.get_global_id(0) + bl.Bwidth_X;
+			 int k = index.get_global_id(1) + bl.Bwidth_Z;
+			 YDirThetaItegralKernel(i, k, bl, yi, smyXe, smyN2, smyXN);
+		 });
+	 })
 		.wait();
 
 	// 	// #ifdef USE_MPI
@@ -618,13 +702,15 @@ void Fluid::GetTheta(sycl::queue &q)
 	auto Sum_YXeN2 = sycl_reduction_plus(theta[1]); // sycl::reduction(&(theta[1]), sycl::plus<real_t>());					 // (Y_Xe)^bar*(Y_N2)^bar
 	auto Sum_YXe = sycl_reduction_plus(theta[2]);	// sycl::reduction(&(theta[2]), sycl::plus<real_t>());	 // (Y_Xe)^bar*(Y_N2)^bar
 	real_t _RomY = _DF(1.0) / real_t(bl.Y_inner);
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<1>(sycl::range<1>(bl.X_inner * bl.Z_inner), sycl::range<1>(bl.BlockSize)), Sum_YXN, Sum_YXeN2, Sum_YXe, [=](nd_item<1> index, auto &tSum_YXN, auto &tSum_YXeN2, auto &tSum_YXe)
-				   { auto id = index.get_global_id(0);
-				tSum_YXN += smyXN[id];
-				tSum_YXeN2 += smyXe[id]  * smyN2[id];
-				tSum_YXe += smyXe[id]; }); })
+	q.submit([&](sycl::handler &h) { //
+		 h.parallel_for(sycl::nd_range<1>(sycl::range<1>(bl.X_inner * bl.Z_inner), sycl::range<1>(bl.BlockSize)),
+						Sum_YXN, Sum_YXeN2, Sum_YXe, [=](nd_item<1> index, auto &tSum_YXN, auto &tSum_YXeN2, auto &tSum_YXe) { //
+							auto id = index.get_global_id(0);
+							tSum_YXN += smyXN[id];
+							tSum_YXeN2 += smyXe[id] * smyN2[id];
+							tSum_YXe += smyXe[id];
+						});
+	 })
 		.wait();
 
 	auto local_ndrange3d = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
@@ -647,16 +733,18 @@ void Fluid::GetTheta(sycl::queue &q)
 
 	auto Rdif_Ymin = sycl_reduction_min(interface_point[2]); // reduction(&(interface_point[2]), sycl::minimum<real_t>());
 	auto Rdif_Ymax = sycl_reduction_max(interface_point[3]); // reduction(&(interface_point[3]), sycl::maximum<real_t>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax)
-							  {
-						int i = index.get_global_id(0) + bl.Bwidth_X;
-						int j = index.get_global_id(1) + bl.Bwidth_Y;
-						int k = index.get_global_id(2) + bl.Bwidth_Z;
-						real_t y = j * bl.dy + bl.offy;
-						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-						if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
-							temp_Ymin.combine(y), temp_Ymax.combine(y); }); });
+	q.submit([&](sycl::handler &h) {						 //
+		h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d),
+					   Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax) { //
+						   int i = index.get_global_id(0) + bl.Bwidth_X;
+						   int j = index.get_global_id(1) + bl.Bwidth_Y;
+						   int k = index.get_global_id(2) + bl.Bwidth_Z;
+						   real_t y = j * bl.dy + bl.offy;
+						   int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+						   if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
+							   temp_Ymin.combine(y), temp_Ymax.combine(y);
+					   });
+	});
 
 	// 	// 	auto Rdif_Zmin = reduction(&(interface_point[4]), sycl::minimum<real_t>());
 	// 	// 	auto Rdif_Zmax = reduction(&(interface_point[5]), sycl::maximum<real_t>());
@@ -671,6 +759,8 @@ void Fluid::GetTheta(sycl::queue &q)
 	// 	// 					if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
 	// 	// 						temp_Zmin.combine(z), temp_Zmax.combine(z); }); });
 
+	q.wait();
+
 	if (ReactSources)
 	{
 		int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
@@ -680,36 +770,44 @@ void Fluid::GetTheta(sycl::queue &q)
 			pVar_max[n] = _DF(0.0);
 		// Tmax
 		real_t *T = d_fstate.T;
-		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_T = sycl_reduction_max(pVar_max[0]);//reduction(&(pVar_max[0]), sycl::maximum<real_t>());
-				h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
-								   auto id = index.get_global_id();
-								   temp_max_T.combine(T[id]);}); });
+		q.submit([&](sycl::handler &h) {																								//
+			auto reduction_max_T = sycl_reduction_max(pVar_max[0]);																		// reduction(&(pVar_max[0]), sycl::maximum<real_t>());
+			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T) { //
+				auto id = index.get_global_id();
+				temp_max_T.combine(T[id]);
+			});
+		});
 		//	reactants
 		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
 		{
-			q.submit([&](sycl::handler &h)
-					 {	auto reduction_max_Yi = sycl_reduction_max(pVar_max[n]);//reduction(&(pVar_max[n]), sycl::maximum<real_t>());
-					h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
-									   auto id = index.get_global_id();
-									   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
+			q.submit([&](sycl::handler &h) {																								  //
+				auto reduction_max_Yi = sycl_reduction_max(pVar_max[n]);																	  // reduction(&(pVar_max[n]), sycl::maximum<real_t>());
+				h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi) { //
+					auto id = index.get_global_id();
+					temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]);
+				});
+			});
 		}
+		q.wait();
 	}
 
 	sigma[0] = _DF(0.0), sigma[1] = _DF(0.0);
+#if Visc
 	auto Sum_Sigma = sycl_reduction_plus(sigma[0]);	 // sycl::reduction(&(sigma[0]), sycl::plus<real_t>());
 	auto Sum_Sigma1 = sycl_reduction_plus(sigma[1]); // sycl::reduction(&(sigma[1]), sycl::plus<real_t>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, Sum_Sigma1, [=](nd_item<3> index, auto &temp_Sum_Sigma, auto &temp_Sum_Sigma1)
-				   {
-					int i = index.get_global_id(0) + bl.Bwidth_X;
-					int j = index.get_global_id(1) + bl.Bwidth_Y;
-					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-					temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
-					temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz; }); });
+	q.submit([&](sycl::handler &h) {				 //
+		h.parallel_for(
+			sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, Sum_Sigma1, [=](nd_item<3> index, auto &temp_Sum_Sigma, auto &temp_Sum_Sigma1) { //
+				int i = index.get_global_id(0) + bl.Bwidth_X;
+				int j = index.get_global_id(1) + bl.Bwidth_Y;
+				int k = index.get_global_id(2) + bl.Bwidth_Z;
+				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+				temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
+				temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz;
+			});
+	});
 	q.wait();
+#endif // Visc
 
 #ifdef USE_MPI
 	real_t Xmin, Xmax, Ymin, Ymax, Zmin, Zmax, Sumsigma, Sumsigma1, thetaYXN, thetaYXeN2, thetaYXe;
@@ -786,7 +884,7 @@ void Fluid::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 	MPI_BCs_time += std::chrono::duration<float, std::milli>(end_time_x - start_time_x).count() * 1.0e-3f;
 }
 
-bool Fluid::UpdateFluidStates(sycl::queue &q, int flag)
+std::pair<bool, std::vector<float>> Fluid::UpdateFluidStates(sycl::queue &q, int flag)
 {
 	real_t *UI = NULL;
 	if (flag == 0)
@@ -794,7 +892,7 @@ bool Fluid::UpdateFluidStates(sycl::queue &q, int flag)
 	else
 		UI = d_U1;
 
-	return UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma, error_patched_times, rank);
+	return UpdateFluidStateFlux(q, Fs, Fs.d_thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma, error_patched_times, rank);
 }
 
 void Fluid::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
@@ -802,16 +900,16 @@ void Fluid::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
 	UpdateURK3rd(q, Fs.BlSz, d_U, d_U1, d_LU, dt, flag);
 }
 
-void Fluid::ComputeFluidLU(sycl::queue &q, int flag)
+std::vector<float> Fluid::ComputeFluidLU(sycl::queue &q, int flag)
 {
 	if (flag == 0)
-		GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
-			  d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
+		return GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+					 material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
+					 d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
 	else
-		GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
-			  d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
+		return GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+					 material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
+					 d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
 }
 
 bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
@@ -852,13 +950,13 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 		error_pos[n] = 0;
 	*error = false;
 
-	q.submit([&](sycl::handler &h) { // sycl::stream error_out(64 * 1024, 10, h);
-		 h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
-						{
-    		int i = index.get_global_id(0) + x_offset;
-			int j = index.get_global_id(1) + y_offset;
-			int k = index.get_global_id(2) + z_offset;
-			EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, error_pos, UI, LU, error); });
+	q.submit([&](sycl::handler &h) {																		// sycl::stream error_out(64 * 1024, 10, h);
+		 h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0) + x_offset;
+			 int j = index.get_global_id(1) + y_offset;
+			 int k = index.get_global_id(2) + z_offset;
+			 EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, error_pos, UI, LU, error);
+		 });
 	 })
 		.wait(); //, error_out
 
@@ -873,7 +971,12 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 			std::cout << ") inside the step " << flag << " of RungeKutta";
 		else
 			std::cout << ") after the Reaction solver";
-		std::cout << " captured.\n";
+		std::cout << " captured.\n  ERROR Code:\n";
+		std::cout << "    10000: negative value of U[0].\n";
+		std::cout << "    1100: nanumber value of U[ii].\n";
+		std::cout << "    1200: infinite value of U[ii].\n";
+		std::cout << "    21: nanumber value of LU[ii].\n";
+		std::cout << "    22: infinite value of LU[ii].\n";
 		return true;
 	}
 
@@ -894,5 +997,5 @@ void Fluid::ZeroDimensionalFreelyFlame()
 
 void Fluid::ODESolver(sycl::queue &q, real_t Time)
 {
-	ChemeODEQ2Solver(q, Fs.BlSz, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
+	ChemeODEQ2Solver(q, Fs, Fs.d_thermal, d_fstate, d_U, Fs.d_react, Time);
 }

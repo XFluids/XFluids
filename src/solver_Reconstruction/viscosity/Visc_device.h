@@ -1,13 +1,12 @@
 #pragma once
 
-#include "global_setup.h"
-#include "marcos/marco_global.h"
+#include "../../include/global_setup.h"
 
 /**
  * @brief get viscosity at temperature T(unit:K)(fit)
  * @return real_t,unit: Pa.s=kg/(m.s)
  */
-inline real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const real_t T0)
+SYCL_DEVICE inline real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted], const real_t T0)
 {
 	// real_t Tref = Reference_params[3], visref = Reference_params[5];
 	real_t T = T0; //* Tref; // nondimension==>dimension
@@ -30,7 +29,7 @@ inline real_t Viscosity(real_t fitted_coefficients_visc[order_polynominal_fitted
  * @brief get viscosity at temperature T(unit:K)
  * @return real_t,unit: Pa.s=kg/(m.s)
  */
-inline real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const real_t T)
+SYCL_DEVICE inline real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], const real_t T)
 {
 	real_t phi = _DF(0.0);
 	phi = sycl::pow(specie_j[Wi] / specie_k[Wi], _DF(0.25)) * sycl::pow(Viscosity(fcv[int(specie_k[SID])], T) / Viscosity(fcv[int(specie_j[SID])], T), _DF(0.5));
@@ -43,7 +42,7 @@ inline real_t PHI(real_t *specie_k, real_t *specie_j, real_t *fcv[NUM_SPECIES], 
  * @brief get thermal conductivity at temperature T(unit:K)
  * @return real_t,unit: W/(m.K)
  */
-inline real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polynominal_fitted], const real_t T0)
+SYCL_DEVICE inline real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polynominal_fitted], const real_t T0)
 {
 	// real_t rhoref = Reference_params[1], pref = Reference_params[2];
 	// real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
@@ -71,7 +70,7 @@ inline real_t Thermal_conductivity(real_t fitted_coefficients_therm[order_polyno
  * @para TT temperature unit:K
  * @para PP pressure unit:Pa
  */
-inline real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, const real_t T0, const real_t P0)
+SYCL_DEVICE inline real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, const real_t T0, const real_t P0)
 {
 	// real_t rhoref = Reference_params[1], pref = Reference_params[2];
 	// real_t Tref = Reference_params[3], W0ref = Reference_params[6], visref = Reference_params[7];
@@ -100,9 +99,9 @@ inline real_t GetDkj(real_t *specie_k, real_t *specie_j, real_t **Dkj_matrix, co
  * @brief get average transport coefficient
  * @param chemi is set to get species information
  */
-inline void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Thermal thermal,
-									 real_t *Dkm_aver_id, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
-									 const real_t rho, const real_t p, const real_t T, const real_t C_total, real_t *Ertemp1, real_t *Ertemp2)
+SYCL_DEVICE inline void Get_transport_coeff_aver(const int i_id, const int j_id, const int k_id, Thermal thermal,
+												 real_t *Dkm_aver_id, real_t &viscosity_aver, real_t &thermal_conduct_aver, real_t const X[NUM_SPECIES],
+												 const real_t rho, const real_t p, const real_t T, const real_t C_total, real_t *Ertemp1, real_t *Ertemp2)
 {
 	real_t **fcv = thermal.fitted_coefficients_visc;
 	real_t **fct = thermal.fitted_coefficients_therm;

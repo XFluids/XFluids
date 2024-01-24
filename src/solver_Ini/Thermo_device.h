@@ -1,12 +1,12 @@
 #pragma once
 
-#include "global_setup.h"
+#include "../include/global_setup.h"
 
 /**
  * @brief calculate Cpi of the specie at given point using NASA9
  * unit: J/kg/K
  */
-inline real_t HeatCapacity_NASA(real_t *Hia, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t HeatCapacity_NASA(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
 	real_t T = sycl::max(T0, _DF(200.0));
 	real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
@@ -25,7 +25,7 @@ inline real_t HeatCapacity_NASA(real_t *Hia, const real_t T0, const real_t Ri, c
  * @brief calculate Cpi of the specie at given point using NASA7/JANAF
  * unit: J/kg/K
  */
-inline real_t HeatCapacity_JANAF(real_t *Hia, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t HeatCapacity_JANAF(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
 	real_t T = sycl::max(T0, _DF(200.0)); /*T0;*/ /*sycl::max(T0, _DF(200.0));*/
 	real_t Cpi = _DF(0.0), _T = _DF(1.0) / T;
@@ -42,7 +42,7 @@ inline real_t HeatCapacity_JANAF(real_t *Hia, const real_t T0, const real_t Ri, 
  * @brief calculate Cpi of the specie at given point
  * unit: J/kg/K
  */
-inline real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const int n)
 {
 	real_t Cpi = _DF(0.0);
 #if Thermo
@@ -58,7 +58,7 @@ inline real_t HeatCapacity(real_t *Hia, const real_t T0, const real_t Ri, const 
  * @brief calculate Hi of every compoent at given point	using NASA9
  * unit:J/kg/K
  */
-inline real_t get_Enthalpy_NASA(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t get_Enthalpy_NASA(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	real_t hi = _DF(0.0), TT = T0, T = sycl::max(T0, _DF(200.0));
 
@@ -82,7 +82,7 @@ inline real_t get_Enthalpy_NASA(real_t *Hia, real_t *Hib, const real_t T0, const
  * @brief calculate Hi of every compoent at given point	using NASA7/JANAF
  * unit:J/kg/K
  */
-inline real_t get_Enthalpy_JANAF(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t get_Enthalpy_JANAF(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	real_t hi = _DF(0.0), TT = T0, T = sycl::max(T0, _DF(200.0));
 
@@ -103,7 +103,7 @@ inline real_t get_Enthalpy_JANAF(real_t *Hia, real_t *Hib, const real_t T0, cons
 /**
  * @brief calculate Hi of every compoent at given point	unit:J/kg/K // get_hi
  */
-inline real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	real_t hi = _DF(0.0);
 #if Thermo
@@ -118,7 +118,7 @@ inline real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real
 /**
  * @brief get_Entropy //S using NASA9
  */
-inline real_t get_Entropy_NASA(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t get_Entropy_NASA(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	real_t T = sycl::max(T0, _DF(200.0));
 	real_t S = _DF(0.0), _T = _DF(1.0) / T;
@@ -136,7 +136,7 @@ inline real_t get_Entropy_NASA(real_t *Hia, real_t *Hib, const real_t T0, const 
 /**
  * @brief get_Entropy //S using NASA7/JANAF
  */
-inline real_t get_Entropy_JANAF(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t get_Entropy_JANAF(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	real_t T = sycl::max(T0, _DF(200.0));
 	real_t S = _DF(0.0), _T = _DF(1.0) / T;
@@ -152,7 +152,7 @@ inline real_t get_Entropy_JANAF(real_t *Hia, real_t *Hib, const real_t T0, const
 /**
  * @brief get_Entropy //S
  */
-inline real_t get_Entropy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t get_Entropy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
 	real_t S = _DF(0.0);
 
@@ -168,7 +168,7 @@ inline real_t get_Entropy(real_t *Hia, real_t *Hib, const real_t T0, const real_
 /**
  * @brief get_Gibson
  */
-inline real_t get_Gibson(real_t *Hia, real_t *Hib, const real_t T, const real_t Ri, const int n)
+SYCL_DEVICE inline real_t get_Gibson(real_t *Hia, real_t *Hib, const real_t T, const real_t Ri, const int n)
 {
 	real_t temp = _DF(0.0);
 	temp += get_Entropy(Hia, Hib, T, _DF(1.0), n);

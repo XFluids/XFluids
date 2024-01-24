@@ -4,7 +4,7 @@
 /**
  *@brief debug for array
  */
-inline void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
+SYCL_DEVICE inline void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
 {
 	for (size_t i = 0; i < Length; i++)
 	{
@@ -15,7 +15,7 @@ inline void get_Array(real_t *Ori, real_t *Out, const int Length, const int id)
 /**
  *@brief calculate yi : mass fraction from xi : mole fraction.
  */
-inline void get_yi(real_t *xi, real_t const *Wi)
+SYCL_DEVICE inline void get_yi(real_t *xi, real_t const *Wi)
 {
 	real_t W_mix = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -28,7 +28,7 @@ inline void get_yi(real_t *xi, real_t const *Wi)
 /**
  *@brief calculate xi : mole fraction
  */
-inline real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real_t rho)
+SYCL_DEVICE inline real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real_t rho)
 {
 	real_t C_total = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
@@ -46,7 +46,7 @@ inline real_t get_xi(real_t *xi, real_t const *yi, real_t const *_Wi, const real
 /**
  *@brief calculate R for every cell
  */
-inline real_t get_CopR(const real_t *_Wi, const real_t *yi)
+SYCL_DEVICE inline real_t get_CopR(const real_t *_Wi, const real_t *yi)
 {
 	real_t R = _DF(0.0);
 	for (size_t n = 0; n < NUM_SPECIES; n++)
@@ -58,7 +58,7 @@ inline real_t get_CopR(const real_t *_Wi, const real_t *yi)
 /**
  * @brief Compute the Cp of the mixture at given point unit:J/kg/K
  */
-inline real_t get_CopCp(Thermal thermal, const real_t *yi, const real_t T)
+SYCL_DEVICE inline real_t get_CopCp(Thermal thermal, const real_t *yi, const real_t T)
 {
 	real_t _CopCp = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -70,7 +70,7 @@ inline real_t get_CopCp(Thermal thermal, const real_t *yi, const real_t T)
 /**
  * @brief calculate W of the mixture at given point
  */
-inline real_t get_CopW(Thermal thermal, const real_t *yi)
+SYCL_DEVICE inline real_t get_CopW(Thermal thermal, const real_t *yi)
 {
 	real_t _W = _DF(0.0);
 	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
@@ -81,7 +81,7 @@ inline real_t get_CopW(Thermal thermal, const real_t *yi)
 /**
  * @brief calculate Gamma of the mixture at given point
  */
-inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t T)
+SYCL_DEVICE inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t T)
 {
 	real_t Cp = get_CopCp(thermal, yi, T);
 	real_t CopW = get_CopW(thermal, yi);
@@ -97,9 +97,26 @@ inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t T)
 }
 
 /**
+ * @brief calculate Gamma of the mixture at given point
+ */
+SYCL_DEVICE inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t Cp, const real_t T)
+{
+	real_t CopW = get_CopW(thermal, yi);
+	real_t _CopGamma = Cp / (Cp - Ru / CopW);
+	if (_CopGamma > _DF(1.0))
+	{
+		return _CopGamma;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+/**
  * @brief calculate Hi of Mixture at given point	unit:J/kg/K
  */
-inline real_t get_Coph(Thermal thermal, const real_t *yi, const real_t T)
+SYCL_DEVICE inline real_t get_Coph(Thermal thermal, const real_t *yi, const real_t T)
 {
 	real_t h = _DF(0.0);
 	for (size_t i = 0; i < NUM_SPECIES; i++)
@@ -113,7 +130,7 @@ inline real_t get_Coph(Thermal thermal, const real_t *yi, const real_t T)
 /**
  *@brief sub_function_Steps of update T
  */
-inline void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t *yi, const real_t e, const real_t T)
+SYCL_DEVICE inline void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t *yi, const real_t e, const real_t T)
 {
 	real_t h = get_Coph(thermal, yi, T);   // J/kg/K
 	real_t R = get_CopR(thermal._Wi, yi);  // J/kg/K
@@ -125,7 +142,7 @@ inline void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const re
 /**
  *@brief update T through Newtonian dynasty
  */
-inline real_t get_T(Thermal thermal, const real_t *yi, const real_t e, const real_t T0)
+SYCL_DEVICE inline real_t get_T(Thermal thermal, const real_t *yi, const real_t e, const real_t T0)
 {
 	real_t T = T0;
 	real_t tol = _DF(1.0e-6), T_dBdr = _DF(100.0), T_uBdr = _DF(1.0e4), x_eps = _DF(1.0e-3);

@@ -7,7 +7,7 @@
  *                  Balsara et al., An efficient class of WENO schemes with adaptive order. (2016)
  *                  Kumar et al., Simple smoothness indicator and multi-level adaptive order WENO scheme for hyperbolic conservation laws. (2018)
  */
-inline real_t WENOAO53_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOAO53_P(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5;
@@ -60,7 +60,7 @@ inline real_t WENOAO53_P(real_t *f, real_t delta)
 	return u0 + u1 * 1.0 / 2.0 + u2 * 1.0 / 6.0 + u3 * 1.0 / 20.0 + u4 * 1.0 / 70.0;
 }
 
-inline real_t WENOAO53_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOAO53_M(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5;
@@ -116,7 +116,7 @@ inline real_t WENOAO53_M(real_t *f, real_t delta)
 /**
  * @brief  WENO-AO(7,3) scheme from Balsara (2016)
  */
-inline real_t WENOAO73_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOAO73_P(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6, v7;
@@ -177,7 +177,7 @@ inline real_t WENOAO73_P(real_t *f, real_t delta)
 	return u0 + u1 * 1.0 / 2.0 + u2 * 1.0 / 6.0 + u3 * 1.0 / 20.0 + u4 * 1.0 / 70.0 + u5 * 1.0 / 252.0 + u6 * 1.0 / 924.0;
 }
 
-inline real_t WENOAO73_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOAO73_M(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6, v7;
@@ -241,7 +241,7 @@ inline real_t WENOAO73_M(real_t *f, real_t delta)
 /**
  * @brief  WENO-AO(7,5,3) scheme from Balsara (2016)
  */
-inline real_t WENOAO753_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOAO753_P(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6, v7;
@@ -346,7 +346,7 @@ inline real_t WENOAO753_P(real_t *f, real_t delta)
 	return (w_ao_7 / 2.0e-16) * (polynomial_7 - (1 - 2.0e-16) * polynomial_5) + w_ao_5 * polynomial_5;
 }
 
-inline real_t WENOAO753_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOAO753_M(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6, v7;

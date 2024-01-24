@@ -7,9 +7,9 @@
  * @param k:  k = _DF(0.5) * (u * u + v * v + w * w)
  * @param X:  X=b2-b1*ht=b2-b1*(h+k), h=sum(yi[i]*hi[i])
  */
-inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi,
-							 real_t const c, real_t const u, real_t const v, real_t const w, real_t const k,
-							 real_t const b1, real_t const b2, real_t const X)
+SYCL_DEVICE inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi,
+										 real_t const c, real_t const u, real_t const v, real_t const w, real_t const k,
+										 real_t const b1, real_t const b2, real_t const X)
 { // the n th row of Left Eigen matrix
 	real_t _c = _DF(1.0) / c;
 	if (0 == n)
@@ -108,8 +108,8 @@ inline void RoeAverageLeft_x(int n, real_t *eigen_l, real_t &eigen_value, real_t
 /**
  * @param c: artificial sound speed at the point of mesh(i+1/2)
  */
-inline void RoeAverageRight_x(int n, real_t *eigen_r, real_t *z, const real_t *yi,
-							  real_t const c, real_t const u, real_t const v, real_t const w, real_t const k, real_t const ht)
+SYCL_DEVICE inline void RoeAverageRight_x(int n, real_t *eigen_r, real_t *z, const real_t *yi,
+										  real_t const c, real_t const u, real_t const v, real_t const w, real_t const k, real_t const ht)
 {
 	real_t zn = _DF(1.0) / z[NUM_SPECIES - 1];
 	if (0 == n)
@@ -200,9 +200,9 @@ inline void RoeAverageRight_x(int n, real_t *eigen_r, real_t *z, const real_t *y
 	}
 }
 
-inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi,
-							 real_t const c, real_t const u, real_t const v, real_t const w, real_t const k,
-							 real_t const b1, real_t const b2, real_t const X)
+SYCL_DEVICE inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi,
+										 real_t const c, real_t const u, real_t const v, real_t const w, real_t const k,
+										 real_t const b1, real_t const b2, real_t const X)
 {
 	// 	if (0 == n)
 	// 	{
@@ -278,8 +278,8 @@ inline void RoeAverageLeft_y(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	// 	}
 }
 
-inline void RoeAverageRight_y(int n, real_t *eigen_r, real_t *z, const real_t *yi,
-							  real_t const c, real_t const u, real_t const v, real_t const w, real_t const k, real_t const ht)
+SYCL_DEVICE inline void RoeAverageRight_y(int n, real_t *eigen_r, real_t *z, const real_t *yi,
+										  real_t const c, real_t const u, real_t const v, real_t const w, real_t const k, real_t const ht)
 {
 	// 	if (0 == n)
 	// 	{
@@ -355,9 +355,9 @@ inline void RoeAverageRight_y(int n, real_t *eigen_r, real_t *z, const real_t *y
 	// 	}
 }
 
-inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi,
-							 real_t const c, real_t const u, real_t const v, real_t const w, real_t const k,
-							 real_t const b1, real_t const b2, real_t const X)
+SYCL_DEVICE inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t *z, const real_t *yi,
+										 real_t const c, real_t const u, real_t const v, real_t const w, real_t const k,
+										 real_t const b1, real_t const b2, real_t const X)
 {
 	// 	if (0 == n)
 	// 	{
@@ -433,8 +433,8 @@ inline void RoeAverageLeft_z(int n, real_t *eigen_l, real_t &eigen_value, real_t
 	// 	}
 }
 
-inline void RoeAverageRight_z(int n, real_t *eigen_r, real_t *z, const real_t *yi,
-							  real_t const c, real_t const u, real_t const v, real_t const w, real_t const k, real_t const ht)
+SYCL_DEVICE inline void RoeAverageRight_z(int n, real_t *eigen_r, real_t *z, const real_t *yi,
+										  real_t const c, real_t const u, real_t const v, real_t const w, real_t const k, real_t const ht)
 {
 	// 	if (0 == n)
 	// 	{

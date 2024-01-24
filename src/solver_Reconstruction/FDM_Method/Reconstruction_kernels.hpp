@@ -5,9 +5,9 @@
 #include "../Recon_device.hpp"
 #include "../schemes/schemes_device.hpp"
 
-extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
-										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
-										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
+extern SYCL_KERNEL void ReconstructFluxX(int i, int j, int k, real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+										 real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
+										 real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= X_inner + Bwidth_X)
@@ -19,7 +19,6 @@ extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, rea
 
 	size_t id_l = Xmax * Ymax * k + Xmax * j + i;
 	size_t id_r = Xmax * Ymax * k + Xmax * j + i + 1;
-	real_t dl = bl.dx;
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
@@ -35,11 +34,11 @@ extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, rea
 //     // construct the right value & the left value scalar equations by characteristic reduction
 //     // at i+1/2 in x direction
 #if 0 == EIGEN_ALLOC
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
     MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_LEFTX, MARCO_ROEAVERAGE_RIGHTX, i + m, j, k, i + m - stencil_P, j, k);
 #elif SCHEME_ORDER <= 6
-
     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTX, MARCO_ROEAVERAGE_RIGHTX, i + m, j, k, i + m, j, k);
 
 	// 	real_t uf[10], ff[10], pp[10], mm[10], f_flux, _p[Emax][Emax], eigen_lr[Emax], eigen_value, artificial_viscosity;                   
@@ -90,11 +89,10 @@ extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, rea
 	// 	}                                                                                                                               
 	// 	Fwall[Emax * id_l + n] = fluxl;                                                                                                 
 	// }
-
 #endif
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #elif 1 == EIGEN_ALLOC
+
 	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
@@ -110,9 +108,9 @@ extern void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, rea
 	// real_t de_fx[Emax];
 }
 
-extern void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
-										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
-										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
+extern SYCL_KERNEL void ReconstructFluxY(int i, int j, int k, real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+										 real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
+										 real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= X_inner + Bwidth_X)
@@ -124,7 +122,6 @@ extern void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, rea
 
 	size_t id_l = Xmax * Ymax * k + Xmax * j + i;
 	size_t id_r = Xmax * Ymax * k + Xmax * (j + 1) + i;
-	real_t dl = bl.dy;
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
@@ -140,15 +137,16 @@ extern void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, rea
 	//     // // construct the right value & the left value scalar equations by characteristic reduction
 	//     // // at i+1/2 in x direction
 #if 0 == EIGEN_ALLOC
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
     MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_LEFTY, MARCO_ROEAVERAGE_RIGHTY, i, j + m, k, i, j + m - stencil_P, k);
 #elif SCHEME_ORDER <= 6
     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTY, MARCO_ROEAVERAGE_RIGHTY, i, j + m, k, i, j + m, k);
 #endif
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #elif 1 == EIGEN_ALLOC
+
 	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
@@ -164,9 +162,9 @@ extern void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, rea
 	//     // real_t de_fx[Emax];
 }
 
-extern void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
-										   real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
-										   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
+extern SYCL_KERNEL void ReconstructFluxZ(int i, int j, int k, real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+										 real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
+										 real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= X_inner + Bwidth_X)
@@ -178,7 +176,6 @@ extern void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, rea
 
 	size_t id_l = Xmax * Ymax * k + Xmax * j + i;
 	size_t id_r = Xmax * Ymax * (k + 1) + Xmax * j + i;
-	real_t dl = bl.dz;
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
@@ -194,15 +191,16 @@ extern void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, rea
 	//     // // construct the right value & the left value scalar equations by characteristic reduction
 	//     // // at i+1/2 in x direction
 #if 0 == EIGEN_ALLOC
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
     MARCO_FLUXWALL_WENO7(MARCO_ROEAVERAGE_LEFTZ, MARCO_ROEAVERAGE_RIGHTZ, i, j, k + m, i, j, k + m - stencil_P);
 #elif SCHEME_ORDER <= 6
     MARCO_FLUXWALL_WENO5(MARCO_ROEAVERAGE_LEFTZ, MARCO_ROEAVERAGE_RIGHTZ, i, j, k + m, i, j, k + m);
 #endif
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #elif 1 == EIGEN_ALLOC
+
 	real_t eigen_l[Emax][Emax], eigen_r[Emax][Emax], eigen_value[Emax];
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SCHEME_ORDER == 7
@@ -217,3 +215,76 @@ extern void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, rea
 	//     // get_Array(Fwall, de_fw, Emax, id_l);
 	//     // real_t de_fx[Emax];
 }
+
+extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
+{
+	MARCO_DOMAIN();
+	if (i >= bl.Xmax)
+		return;
+	if (j >= bl.Ymax)
+		return;
+	if (k >= bl.Zmax)
+		return;
+	int id = Xmax * Ymax * k + Xmax * j + i;
+	int id_im = Xmax * Ymax * k + Xmax * j + i - 1;
+	int id_jm = Xmax * Ymax * k + Xmax * (j - 1) + i;
+	int id_km = Xmax * Ymax * (k - 1) + Xmax * j + i;
+
+	for (int n = 0; n < Emax; n++)
+	{
+		real_t LU0 = _DF(0.0);
+
+		if (bl.DimX)
+			LU0 += (FluxFw[Emax * id_im + n] - FluxFw[Emax * id + n]) * bl._dx;
+
+		if (bl.DimY)
+			LU0 += (FluxGw[Emax * id_jm + n] - FluxGw[Emax * id + n]) * bl._dy;
+
+		if (bl.DimZ)
+			LU0 += (FluxHw[Emax * id_km + n] - FluxHw[Emax * id + n]) * bl._dz;
+
+		LU[Emax * id + n] = LU0;
+	}
+
+	// real_t de_LU[Emax];
+	// get_Array(LU, de_LU, Emax, id);
+	// real_t de_XU[Emax];
+}
+
+#if __VENDOR_SUBMIT__
+_VENDOR_KERNEL_LB_(256, 1)
+void ReconstructFluxXVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
+								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
+								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x + bl.Bwidth_X - 1;
+	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y;
+	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z;
+
+	ReconstructFluxX(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
+}
+
+_VENDOR_KERNEL_LB_(256, 1)
+void ReconstructFluxYVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
+								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
+								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x + bl.Bwidth_X;
+	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y - 1;
+	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z;
+
+	ReconstructFluxY(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
+}
+
+_VENDOR_KERNEL_LB_(256, 1)
+void ReconstructFluxZVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
+								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
+								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x + bl.Bwidth_X;
+	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y;
+	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z - 1;
+
+	ReconstructFluxZ(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
+}
+#endif

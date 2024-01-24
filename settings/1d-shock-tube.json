@@ -27,14 +27,14 @@
 	"equations": {
 		"Fluid_Names": [],
 		"Species_Name": [],
-		"if_overdetermined_eigen": 0
+		"if_overdetermined_eigen": false
 	},
 	"sources": {},
 	"mesh": {
 		"DOMAIN_Size": [
 			0.1,
-			0.02,
-			0.02
+			0.1,
+			0.1
 		],
 		"Resolution": [
 			100,

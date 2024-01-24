@@ -1,7 +1,6 @@
 #pragma once
 
 #include "global_setup.h"
-#include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 
 real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t *uvw_c_max)
@@ -24,40 +23,40 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	for (int n = 0; n < 6; n++)
 		uvw_c_max[n] = _DF(0.0);
 
-		// define reduction objects for sum, min, max reduction
-		// auto reduction_sum = reduction(sum, sycl::plus<real_t>());
+	// define reduction objects for sum, min, max reduction
+	// auto reduction_sum = reduction(sum, sycl::plus<real_t>());
 	if (bl.DimX)
 	{
 		uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dx * bl._dx);
-		q.submit([&](sycl::handler &h)
-				 {
-    	auto reduction_max_x = sycl_reduction_max(uvw_c_max[0]);//reduction(&(uvw_c_max[0]), sycl::maximum<real_t>());
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, [=](nd_item<1> index, auto &temp_max_x)
-					   {
-			auto id = index.get_global_id();
-			temp_max_x.combine(sycl::fabs(u[id]) + c[id]); }); });
+		q.submit([&](sycl::handler &h) { //
+			auto reduction_max_x = sycl_reduction_max(uvw_c_max[0]);
+			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, [=](nd_item<1> index, auto &temp_max_x) { //
+				auto id = index.get_global_id();
+				temp_max_x.combine(sycl::fabs(u[id]) + c[id]);
+			});
+		});
 	}
 	if (bl.DimY)
 	{
 		uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dy * bl._dy);
-		q.submit([&](sycl::handler &h)
-				 {	
-		auto reduction_max_y = sycl_reduction_max(uvw_c_max[1]);//reduction(&(uvw_c_max[1]), sycl::maximum<real_t>());
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y)
-					   {
-			auto id = index.get_global_id();
-			temp_max_y.combine(sycl::fabs(v[id]) + c[id]); }); });
+		q.submit([&](sycl::handler &h) {																								//
+			auto reduction_max_y = sycl_reduction_max(uvw_c_max[1]);																	// reduction(&(uvw_c_max[1]), sycl::maximum<real_t>());
+			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y) { //
+				auto id = index.get_global_id();
+				temp_max_y.combine(sycl::fabs(v[id]) + c[id]);
+			});
+		});
 	}
 	if (bl.DimZ)
 	{
 		uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dz * bl._dz);
-		q.submit([&](sycl::handler &h)
-				 {	
-		auto reduction_max_z = sycl_reduction_max(uvw_c_max[2]);//reduction(&(uvw_c_max[2]), sycl::maximum<real_t>());
-		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z)
-					   {
-			auto id = index.get_global_id();
-			temp_max_z.combine(sycl::fabs(w[id]) + c[id]); }); });
+		q.submit([&](sycl::handler &h) {																								//
+			auto reduction_max_z = sycl_reduction_max(uvw_c_max[2]);																	// reduction(&(uvw_c_max[2]), sycl::maximum<real_t>());
+			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z) { //
+				auto id = index.get_global_id();
+				temp_max_z.combine(sycl::fabs(w[id]) + c[id]);
+			});
+		});
 	}
 
 	q.wait();

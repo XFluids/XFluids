@@ -58,7 +58,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
     set(Visc_Diffu "ON")
     set(COP_CHEME "OFF")
     set(POSITIVITY_PRESERVING "OFF")
-    set(MIXTURE_MODEL "1d-mc-diffusion")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
     set(INI_FILE "settings/1d-diffusion.json")
 
@@ -99,6 +98,7 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-layer")
     set(MIXTURE_MODEL "Reaction/H2O-N2_21_reaction")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion-layer")
     set(INI_FILE "settings/1d-diffusion-layer.json")
+
 # // =======================================================
 # #### 2d sample
 # // =======================================================
@@ -169,51 +169,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-mixing-layer")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/mixing-layer")
     set(INI_FILE "settings/2d-mixing-layer.json")
 
-ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble-without-fuel")
-    set(COP "ON")
-    set(DIM_X "ON")
-    set(DIM_Y "ON")
-    set(DIM_Z "OFF")
-    set(Visc "ON")
-    set(Visc_Heat "ON")
-    set(Visc_Diffu "ON") # depends on COP=ON
-    set(THERMAL "NASA") # NASA fit of Xe
-    set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
-    set(COP_CHEME "OFF")
-    set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
-    set(POSITIVITY_PRESERVING "ON")
-    set(ARTIFICIAL_VISC_TYPE "GLF")
-    add_compile_options(-DSBICounts=1)
-    set(MIXTURE_MODEL "Insert-SBI-without-fuel")
-    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "settings/shock-bubble.json")
-
-ELSEIF(INIT_SAMPLE STREQUAL "2d-shock-bubble")
-    set(COP "ON")
-    set(DIM_X "ON")
-    set(DIM_Y "ON")
-    set(DIM_Z "OFF")
-    set(Visc "ON")
-    set(Visc_Heat "ON")
-    set(Visc_Diffu "ON") # depends on COP=ON
-    set(THERMAL "NASA") # NASA fit of Xe
-    set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
-    set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
-    set(POSITIVITY_PRESERVING "ON")
-    set(ARTIFICIAL_VISC_TYPE "GLF")
-    add_compile_options(-DSBICounts=1)
-
-    if((MIXTURE_MODEL STREQUAL "Reaction/RSBI-18REA") OR(MIXTURE_MODEL STREQUAL "Reaction/RSBI-19REA"))
-        set(COP_CHEME ON)
-    elseif(MIXTURE_MODEL STREQUAL "Insert-SBI")
-        set(COP_CHEME OFF)
-    else()
-        message(FATAL_ERROR " Not suitable MIXTURE_MODEL opened: checkout option MIXTURE_MODEL for RSBI: RSBI-18REA, RSBI-19REA")
-    endif()
-
-    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
-    set(INI_FILE "settings/shock-bubble.json")
-
 ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
     set(COP "ON")
     set(DIM_X "ON")
@@ -225,26 +180,26 @@ ELSEIF(INIT_SAMPLE STREQUAL "2d-under-expanded-jet")
 # // =======================================================
 # #### 3d sample
 # // =======================================================
-ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble-without-fuel")
+ELSEIF(INIT_SAMPLE STREQUAL "shock-bubble-without-fuel")
     set(COP "ON")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "ON")
-    set(Visc "OFF")
+    set(Visc "ON")
     set(Visc_Heat "ON")
     set(Visc_Diffu "ON") # depends on COP=ON
     set(THERMAL "NASA") # NASA fit of Xe
     set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
     set(COP_CHEME "OFF")
     set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
+    set(POSITIVITY_PRESERVING "ON")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(POSITIVITY_PRESERVING "OFF")
     add_compile_options(-DSBICounts=1)
     set(MIXTURE_MODEL "Insert-SBI-without-fuel")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
     set(INI_FILE "settings/shock-bubble.json")
 
-ELSEIF(INIT_SAMPLE STREQUAL "3d-shock-bubble")
+ELSEIF(INIT_SAMPLE STREQUAL "shock-bubble")
     set(COP "ON")
     set(DIM_X "ON")
     set(DIM_Y "ON")
@@ -283,7 +238,11 @@ ENDIF()
 
 IF(COP)
     add_compile_options(-DCOP)
-
+    IF(POSITIVITY_PRESERVING)
+        add_compile_options(-DPOSP=1)
+    ELSE()
+        add_compile_options(-DPOSP=0)
+    ENDIF()
     IF(COP_CHEME)
         add_compile_options(-DCOP_CHEME=1)
     ELSE()
@@ -298,7 +257,7 @@ ELSE(COP)
     add_compile_options(-DNCOP_Gamma=${Gamma})
 ENDIF(COP)
 
-set(MIXTURE_MODEL "/runtime.dat/${MIXTURE_MODEL}") 
+set(MIXTURE_MODEL "/runtime.dat/${MIXTURE_MODEL}")
 message(STATUS "Solvers' settings: ")
 
 if(USE_DOUBLE)

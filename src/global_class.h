@@ -3,7 +3,7 @@
 // program headers
 #include "utils/diskinfo.hpp"
 #include "read_ini/setupini.h"
-#include "marcos/marco_global.h"
+#include "include/global_setup.h"
 
 //-------------------------------------------------------------------------------------------------
 //								Pre-claimer
@@ -40,17 +40,19 @@ public:
     void initialize(int n);
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
+    bool EstimateFluidNAN(sycl::queue &q, int flag);
+    std::vector<float> ComputeFluidLU(sycl::queue &q, int flag);
+    void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag);
-    bool UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime);
+    std::pair<bool, std::vector<float>> UpdateFluidStates(sycl::queue &q, int flag);
+    // Counts
     void AllCountsHeader();
     void GetTheta(sycl::queue &q);
     void AllCountsPush(sycl::queue &q, const size_t Iter, const real_t time);
-    void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
-    void ComputeFluidLU(sycl::queue &q, int flag);
-    bool EstimateFluidNAN(sycl::queue &q, int flag);
+    // ChemQ2 or CVODE-of-Sundials in this function
     void ZeroDimensionalFreelyFlame();
-    void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
+    void ODESolver(sycl::queue &q, real_t Time);
 };
 
 class XFLUIDS
@@ -65,11 +67,20 @@ public:
     float duration, duration_backup;
     float MPI_trans_time, MPI_BCs_time;
     float runtime_boundary, runtime_updatestates, runtime_getdt;
-    float runtime_computelu, runtime_updateu, runtime_estimatenan;
+    float runtime_computelu, runtime_updateu, runtime_estimatenan, runtime_rea;
 
     OutFmt OutAtThis;
     BConditions *d_BCs; // boundary condition indicators
     std::vector<Fluid *> fluids{NumFluid};
+    /**
+     * @brief LU_rt
+     * runtime_eigenxyz, runtime_eigenmpi
+     * runtime_fluxxyz,runtime_preservexyz
+     * runtime_GetCellCenterDerivative
+     * runtime_transport, runtime_viscxyz
+     * runtime_updatelu
+     */
+    std::vector<float> LU_rt, UD_rt;
 
     XFLUIDS(Setup &setup);
     virtual ~XFLUIDS();
@@ -88,7 +99,6 @@ public:
     void InitialCondition(sycl::queue &q);
     real_t ComputeTimeStep(sycl::queue &q);
     void BoundaryCondition(sycl::queue &q, int flag = 0);
-    float OutThisTime(std::chrono::high_resolution_clock::time_point start_time);
     bool UpdateStates(sycl::queue &q, int flag = 0, const real_t Time = 0, const int Step = 0, std::string RkStep = "_Ini");
     bool SinglePhaseSolverRK3rd(sycl::queue &q, int rank, int Step, real_t physicalTime);
     bool RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, int flag);

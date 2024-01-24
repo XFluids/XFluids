@@ -52,6 +52,9 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
 
 #ifdef COP
     real_t *xi = &(_y[NUM_SPECIES * id]);
+    for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+        xi[nn] = _DF(.0);
+
     // for 2D/3D shock-bubble interactive
     real_t dy_ = _DF(0.0), tmp = _DF(0.0);
 

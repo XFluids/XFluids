@@ -1,9 +1,9 @@
 {
 	"run": {
-		"blockSize_x": 4,
-		"blockSize_y": 4,
+		"blockSize_x": 8,
+		"blockSize_y": 8,
 		"blockSize_z": 4,
-		"DtBlockSize": 4,
+		"DtBlockSize": 16,
 		"nStepMax": 100000000,
 		"nOutMax": 2500,
 		"OutDAT": 0,
@@ -38,26 +38,29 @@
 		]
 	},
 	"mpi": {
-		"mx": 4,
+		"mx": 1,
 		"my": 1,
 		"mz": 1,
 		"DeviceSelect": [
-			1,
-			1,
+			4,
+			0,
 			0
 		]
 	},
 	"equations": {
 		"Fluid_Names": [],
 		"Species_Name": [],
-		"Sources_React": 1
+		"Sources_React": true,
+		"if_ODReactionTest": false,
+		"PositivityPreserving": true,
+		"if_overdetermined_eigen": false
 	},
 	"sources": {},
 	"mesh": {
-		"Yil_limiter": 1.0,
-		"Dim_limiter": 1.0,
+		"Yil_limiter": 0.01,
+		"Dim_limiter": 2.0E-6,
 		"DOMAIN_Size": [
-			0.2,
+			0.1,
 			0.05,
 			0.05
 		],
@@ -67,9 +70,9 @@
 			0.0
 		],
 		"Resolution": [
-			20,
-			4,
-			4
+			80,
+			40,
+			40
 		],
 		"Boundarys": [
 			0,

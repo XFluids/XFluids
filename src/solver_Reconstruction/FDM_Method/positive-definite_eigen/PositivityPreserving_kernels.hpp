@@ -2,9 +2,9 @@
 
 #include "Recon_device.hpp"
 
-extern void PositivityPreservingKernel(int i, int j, int k, int id_l, int id_r, Block bl, Thermal thermal,
-													 real_t *UI, real_t *Fl, real_t *Fwall, real_t *T,
-													 const real_t lambda_0, const real_t lambda, const real_t *epsilon) // , sycl::stream stream epsilon[NUM_SPECIES+2]={rho, e, y(0), ..., y(n)}
+extern void PositivityPreservingKernel(int i, int j, int k, int id_l, int id_r, MeshSize bl, Thermal thermal,
+									   real_t *UI, real_t *Fl, real_t *Fwall, real_t *T,
+									   const real_t lambda_0, const real_t lambda, const real_t *epsilon) // , sycl::stream stream epsilon[NUM_SPECIES+2]={rho, e, y(0), ..., y(n)}
 {
 	if (i >= bl.Xmax - bl.Bwidth_X)
 		return;

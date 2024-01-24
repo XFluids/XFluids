@@ -30,7 +30,10 @@
     "equations": {
         "Fluid_Names": [],
         "Species_Name": [],
-        "if_overdetermined_eigen": 0
+        "Sources_React": true,
+        "if_ODReactionTest": false,
+        "PositivityPreserving": false,
+        "if_overdetermined_eigen": false
     },
     "sources": {},
     "mesh": {

@@ -5,7 +5,7 @@
 //-----------------------------------------------------------------------------------------
 //		the 7th WENO Scheme
 //-----------------------------------------------------------------------------------------
-inline real_t weno7_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno7_P(real_t *f, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 0;
@@ -66,7 +66,7 @@ inline real_t weno7_P(real_t *f, real_t delta)
 	return W0 * q0 + W1 * q1 + W2 * q2 + W3 * q3;
 }
 
-inline real_t weno7_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno7_M(real_t *f, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 1;
@@ -127,7 +127,7 @@ inline real_t weno7_M(real_t *f, real_t delta)
 	return W0 * q0 + W1 * q1 + W2 * q2 + W3 * q3;
 }
 
-inline real_t weno7Z_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno7Z_P(real_t *f, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 0;
@@ -184,7 +184,7 @@ inline real_t weno7Z_P(real_t *f, real_t delta)
 	return W0 * q0 + W1 * q1 + W2 * q2 + W3 * q3;
 }
 
-inline real_t weno7Z_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno7Z_M(real_t *f, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 1;

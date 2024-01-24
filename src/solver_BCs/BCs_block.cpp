@@ -1,3 +1,4 @@
+#include "BCs_block.h"
 #include "BCs_kernels.hpp"
 
 float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], real_t *d_UI)
@@ -48,8 +49,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 	if (bl.DimX)
 	{
-		auto local_ndrange_x = range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
-		auto global_ndrange_x = range<3>(bl.Bwidth_X, bl.Ymax, bl.Zmax);
+		auto local_ndrange_x = sycl::range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+		auto global_ndrange_x = sycl::range<3>(bl.Bwidth_X,
+											   (bl.Ymax + local_ndrange_x[1] - 1) / local_ndrange_x[1] * local_ndrange_x[1],
+											   (bl.Zmax + local_ndrange_x[2] - 1) / local_ndrange_x[2] * local_ndrange_x[2]);
 
 #if USE_MPI
 
@@ -100,8 +103,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 	if (bl.DimY)
 	{
-		auto local_ndrange_y = range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
-		auto global_ndrange_y = range<3>(bl.Xmax, bl.Bwidth_Y, bl.Zmax);
+		auto local_ndrange_y = sycl::range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
+		auto global_ndrange_y = sycl::range<3>((bl.Xmax + local_ndrange_y[0] - 1) / local_ndrange_y[0] * local_ndrange_y[0],
+											   bl.Bwidth_Y,
+											   (bl.Zmax + local_ndrange_y[2] - 1) / local_ndrange_y[2] * local_ndrange_y[2]);
 
 #if USE_MPI
 
@@ -153,8 +158,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 	if (bl.DimZ)
 	{
-		auto local_ndrange_z = range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
-		auto global_ndrange_z = range<3>(bl.Xmax, bl.Ymax, bl.Bwidth_Z);
+		auto local_ndrange_z = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
+		auto global_ndrange_z = sycl::range<3>((bl.Xmax + local_ndrange_z[0] - 1) / local_ndrange_z[0] * local_ndrange_z[0],
+											   (bl.Ymax + local_ndrange_z[1] - 1) / local_ndrange_z[1] * local_ndrange_z[1],
+											   bl.Bwidth_Z);
 
 #if USE_MPI
 

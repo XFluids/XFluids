@@ -1,12 +1,12 @@
 #pragma once
 
 // // global header
-#include "global_setup.h"
+#include "../include/global_setup.h"
 // // internal header
 #include "options.hpp"
-#include "outvars.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
+#include "src/outformat/outformat.h"
 // // external header
 #ifdef USE_MPI
 #include "../mpiPacks/mpiPacks.h"
@@ -27,8 +27,8 @@ public:
 	//--for-Running--------------------------
 	AppendParas apa;
 	std::string WorkDir;
-	int nStepmax;		   // running steps
-	int bytes, cellbytes;  // memory allocate
+	int nStepmax;		  // running steps
+	int bytes, cellbytes; // memory allocate
 	std::vector<OutFmt> OutTimeStamps;
 
 	//--for-Mesh-----------------------------

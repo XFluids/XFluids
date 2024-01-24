@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../include/global_setup.h"
+#include "../../include/global_setup.h"
 
 // ================================================================================
 // // // class Criterion Member function definitions
@@ -33,8 +33,10 @@ public:
 			var = h_data.w;
 		else if (0 == svar.compare("Gamma"))
 			var = h_data.gamma;
+#if Visc
 		else if (0 == svar.compare("vorticity"))
 			var = h_data.vx;
+#endif // end Visc
 		else if (svar.find("yi[") != std::string::npos)
 		{
 			var = h_data.y;

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "global_setup.h"
-#include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
+#include "../solver_Ini/Mixing_device.h"
+#include "../solver_Ini/Mixing_device.h"
 
-void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
+SYCL_DEVICE void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
 {
 	rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
@@ -30,21 +30,20 @@ void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
 /**
  * @brief Obtain state at a grid point
  */
-void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
-			   real_t &gamma, real_t &T, real_t &e, Thermal thermal, real_t *yi)
+SYCL_DEVICE void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
+						   real_t &gamma, real_t &T, real_t &e, real_t &Cp, real_t &R, Thermal thermal, real_t *yi)
 {
 	// rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
-	u = UI[1] * rho1;
-	v = UI[2] * rho1;
-	w = UI[3] * rho1;
+	u = UI[1] * rho1, v = UI[2] * rho1, w = UI[3] * rho1;
 	real_t tme = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 
 #ifdef COP
-	real_t R = get_CopR(thermal._Wi, yi);
+	real_t R_ = get_CopR(thermal._Wi, yi);
 	T = get_T(thermal, yi, tme, T);
-	p = rho * R * T; // 对所有气体都适用
-	gamma = get_CopGamma(thermal, yi, T);
+	p = rho * R_ * T, R = R_; // 对所有气体都适用
+	Cp = get_CopCp(thermal, yi, T);
+	gamma = get_CopGamma(thermal, yi, Cp, T);
 #else
 	gamma = NCOP_Gamma;
 	p = (NCOP_Gamma - _DF(1.0)) * rho * tme; //(UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
@@ -54,8 +53,8 @@ void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t &w, real_t 
 	e = tme;
 }
 
-void ReGetStates(Thermal thermal, real_t *yi, real_t *U, real_t &rho, real_t &u, real_t &v, real_t &w,
-				 real_t &p, real_t &T, real_t &H, real_t &c, real_t &e, real_t &gamma)
+SYCL_DEVICE void ReGetStates(Thermal thermal, real_t *yi, real_t *U, real_t &rho, real_t &u, real_t &v, real_t &w,
+							 real_t &p, real_t &T, real_t &H, real_t &c, real_t &e, real_t &gamma)
 {
 	// real_t h = get_Coph(thermal, yi, T);
 	// U[4] = rho * (h + _DF(0.5) * (u * u + v * v + w * w)) - p;
@@ -79,8 +78,8 @@ void ReGetStates(Thermal thermal, real_t *yi, real_t *U, real_t &rho, real_t &u,
 /**
  * @brief  Obtain fluxes at a grid point
  */
-void GetPhysFlux(real_t *UI, real_t const *yi, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-				 real_t const rho, real_t const u, real_t const v, real_t const w, real_t const p, real_t const H, real_t const c)
+SYCL_DEVICE void GetPhysFlux(real_t *UI, real_t const *yi, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const rho,
+							 real_t const u, real_t const v, real_t const w, real_t const p, real_t const H, real_t const c)
 {
 	FluxF[0] = UI[1];
 	FluxF[1] = UI[1] * u + p;

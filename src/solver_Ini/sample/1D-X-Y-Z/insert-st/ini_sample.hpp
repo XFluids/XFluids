@@ -42,20 +42,15 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
     for (size_t n = 0; n < NUM_SPECIES; n++)
         yi[n] = thermal.species_ratio_out[n];
 
-#ifdef COP // to be 1d shock without define React
-           // for (size_t i = 0; i < NUM_SPECIES; i++)
-           //     _y[i][id] = thermal.species_ratio_out[i];
-#endif // end COP
-
     // // 1D multicomponent insert shock tube
     if (bl.DimX)
         T[id] = x < 0.05 ? 400 : 1200, p[id] = x < 0.05 ? 8000 : 80000;
 
-    // if (bl.DimY)
-    //     T[id] = y < 0.05 ? 400 : 1200, p[id] = y < 0.05 ? 8000 : 80000;
+    if (bl.DimY)
+        T[id] = y < 0.05 ? 400 : 1200, p[id] = y < 0.05 ? 8000 : 80000;
 
-    // if (bl.DimZ)
-    //     T[id] = z < 0.05 ? 400 : 1200, p[id] = z < 0.05 ? 8000 : 80000;
+    if (bl.DimZ)
+        T[id] = z < 0.05 ? 400 : 1200, p[id] = z < 0.05 ? 8000 : 80000;
 
     // Get R of mixture
     real_t R = get_CopR(thermal._Wi, yi);

@@ -14,6 +14,7 @@
 
 #include "global_undef.h"
 #include "compile_sycl.h"
+#include "global_marco.h"
 
 // #define Emax 13
 // #define NUM_COP 8
@@ -151,6 +152,13 @@ enum MpiCpyType
 
 typedef struct
 {
+	int Xmax, Ymax, Zmax;
+	int X_inner, Y_inner, Z_inner;
+	int Bwidth_X, Bwidth_Y, Bwidth_Z;
+} MeshSize;
+
+typedef struct
+{
 	//--for-Computational-dimensions---------
 	size_t DimS;
 	bool DimX, DimY, DimZ;
@@ -162,6 +170,7 @@ typedef struct
 	//--for-Chemical-sources-----------------
 	bool RSources;
 	//--for-Mesh-----------------------------
+	MeshSize Ms;
 	int Bwidth_X, Bwidth_Y, Bwidth_Z; // Bounadry Width
 	int Xmax, Ymax, Zmax, X_inner, Y_inner, Z_inner;
 	//--for-Domain-size----------------------
@@ -185,8 +194,8 @@ typedef struct
 {
 	real_t *species_chara, *Ri, *Wi, *_Wi, *Hia, *Hib;
 	real_t *Hia_NASA, *Hib_NASA, *Hia_JANAF, *Hib_JANAF;
-	real_t *species_ratio_in, *species_ratio_out, *xi_in, *xi_out;											   // Ri=Ru/Wi;
-	real_t **Dkj_matrix, **fitted_coefficients_visc, **fitted_coefficients_therm;							   // length: order_polynominal_fitted
+	real_t *species_ratio_in, *species_ratio_out, *xi_in, *xi_out;				  // Ri=Ru/Wi;
+	real_t **Dkj_matrix, **fitted_coefficients_visc, **fitted_coefficients_therm; // length: order_polynominal_fitted
 } Thermal;
 
 typedef struct
@@ -213,9 +222,13 @@ struct BoundaryRange
 typedef struct
 {
 	// primitive variables
-	real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma, *e;
-	// cop(y) and vis variables
-	real_t *y, *thetaXe, *thetaN2, *thetaXN, *Vde[9], *vxs[3], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+	real_t *rho, *p, *u, *v, *w, *e, *y, *hi, *gamma, *T, *H, *Cp, *Ri;
+	// sound speed at cell surfaces for Eigen System and Flux Reconstruction
+	real_t *c, *_cx, *_cy, *_cz;
+	// for GetTheta
+	real_t *thetaXe, *thetaN2, *thetaXN;
+	//  vis variables
+	real_t *Vde[9], *vxs[3], *vx, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
 	// Error out: varibles of eigen system
 	real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
 	// Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving
@@ -234,3 +247,52 @@ typedef struct
 	real_t Gamma, A, B, rho0; // Eos Parameters and maxium sound speed
 	real_t R_0, lambda_0;	  // gas constant and heat conductivity
 } MaterialProperty;
+
+typedef struct
+{
+	// // box range
+	real_t xmin_coor, xmax_coor, ymin_coor, ymax_coor, zmin_coor, zmax_coor;
+	// // states inside box
+	real_t rho, P, T, u, v, w, gamma, c, *yi, *hi, *ei, e, h, H;
+} IniBox;
+
+typedef struct
+{
+	// // bubble center
+	real_t center_x, center_y, center_z;
+	// // bubble shape
+	real_t C, _xa2, _yb2, _zc2;
+	// // states inside bubble
+	real_t rho, P, T, u, v, w, gamma, c, *yi, *hi, *ei, e, h, H;
+} IniBubble;
+
+struct IniShape
+{
+	// // cop_type: 0 for 1d set, 1 for bubble of cop
+	// // blast_type: 0 for 1d shock, 1 for circular shock
+	int cop_type, blast_type, bubble_type;
+	// // blast position
+	real_t blast_center_x, blast_center_y, blast_center_z;
+	// // shock much number
+	real_t Ma, tau_H;
+	// // blast  states
+	real_t blast_density_in, blast_pressure_in, blast_T_in, blast_u_in, blast_v_in, blast_w_in, blast_c_in, blast_gamma_in;
+	real_t blast_density_out, blast_pressure_out, blast_T_out, blast_u_out, blast_v_out, blast_w_out, blast_c_out, blast_gamma_out;
+	// // bubble position
+	real_t cop_center_x, cop_center_y, cop_center_z;
+	// // bubble states
+	real_t cop_density_in, cop_pressure_in, cop_T_in;
+	// // bubble position; NOTE: Domain_length may be the max value of the Domain size
+	real_t bubble_center_x, bubble_center_y, bubble_center_z;
+	// // bubble shape
+	real_t xa, yb, zc, C, _xa2, _yb2, _zc2;
+
+	// // Utils initializing model
+	size_t num_box, num_bubble;
+	IniBox *iboxs;
+	IniBubble *ibubbles;
+
+	// IniShape(){};
+	// ~IniShape(){};
+	// IniShape(sycl::queue &q, size_t num_box, size_t num_bubble);
+};

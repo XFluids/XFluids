@@ -11,7 +11,7 @@
  * @param
  * @return real_t
  */
-real_t get_DpDrho(const real_t hN, const real_t RN, const real_t q2, const real_t Cp, const real_t R, const real_t T, const real_t e, const real_t gamma)
+SYCL_DEVICE inline real_t get_DpDrho(const real_t hN, const real_t RN, const real_t q2, const real_t Cp, const real_t R, const real_t T, const real_t e, const real_t gamma)
 {
 	real_t RNT = RN * T; // unit: J/kg
 	return (gamma - _DF(1.0)) * (_DF(0.5) * q2 - hN + Cp * RNT / R);
@@ -26,7 +26,7 @@ real_t get_DpDrho(const real_t hN, const real_t RN, const real_t q2, const real_
  * @param R: get_CopR for mixture
  * @return real_t
  */
-real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const real_t RiN, const real_t T, const real_t Cp, const real_t R, const real_t gamma)
+SYCL_DEVICE inline real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const real_t RiN, const real_t T, const real_t Cp, const real_t R, const real_t gamma)
 {
 	real_t hN_minus_hi = -hin + hiN;  // unit: J/kg
 	real_t Ri_minus_RN = (Rin - RiN); // unit: J/kg/K
@@ -39,8 +39,8 @@ real_t get_DpDrhoi(const real_t hin, const real_t Rin, const real_t hiN, const r
  * @param zi: for eigen matrix
  * @return real_t c*c
  */
-real_t SoundSpeedMultiSpecies(real_t *zi, real_t &b1, real_t &b3, real_t *_Yi, real_t *_dpdrhoi, real_t *drhoi, const real_t _dpdrho, const real_t _dpde,
-							  const real_t _dpdE, const real_t _prho, const real_t dp, const real_t drho, const real_t de, const real_t _rho)
+SYCL_DEVICE inline real_t SoundSpeedMultiSpecies(real_t *zi, real_t &b1, real_t &b3, real_t *_Yi, real_t *_dpdrhoi, real_t *drhoi, const real_t _dpdrho, const real_t _dpde,
+												 const real_t _dpdE, const real_t _prho, const real_t dp, const real_t drho, const real_t de, const real_t _rho)
 {
 	// sum
 	real_t _dpdrhoi_new[NUM_COP], Sum_dpdrhoi = _DF(0.0), Sum_drhoi = _DF(0.0), Sum_dpdrhoi2 = _DF(0.0), Sum_Yidpdrhoi = _DF(0.0);
@@ -83,8 +83,8 @@ real_t SoundSpeedMultiSpecies(real_t *zi, real_t &b1, real_t &b3, real_t *_Yi, r
  * ref.High Accuracy Numerical Methods for Thermally Perfect Gas Flows with Chemistry.https://doi.org/10.1006/jcph.1996.5622
  * // NOTE: realted with yn=yi[0] or yi[N] : hi[] Ri[]
  */
-real_t get_CopC2(real_t *z, real_t &b1, real_t &b3, real_t const *Ri, real_t const *yi, real_t const *hi,
-				 const real_t gamma, const real_t R, const real_t Cp, const real_t T)
+SYCL_DEVICE inline real_t get_CopC2(real_t *z, real_t &b1, real_t &b3, real_t const *Ri, real_t const *yi, real_t const *hi,
+									const real_t gamma, const real_t R, const real_t Cp, const real_t T)
 {
 	size_t NUM_LOOP = NUM_SPECIES - 1;
 	real_t _R = _DF(1.0) / R, _dpdrhoi[NUM_SPECIES], _CopC2 = gamma * R * T, temp = _DF(0.0);
@@ -99,10 +99,10 @@ real_t get_CopC2(real_t *z, real_t &b1, real_t &b3, real_t const *Ri, real_t con
 
 // =======================================================
 //    get c2 #ifdef COP inside Reconstructflux
-inline real_t ReconstructSoundSpeed(Thermal thermal, size_t const id_l, size_t const id_r,
-									real_t const D, real_t const D1, real_t const _rho, real_t const _P,
-									real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *p, real_t *T, real_t *H,
-									real_t *_yi, real_t *z, real_t &b1, real_t &b3, real_t &k, real_t &_ht, real_t &Gamma)
+SYCL_DEVICE inline real_t ReconstructSoundSpeed(Thermal thermal, size_t const id_l, size_t const id_r,
+												real_t const D, real_t const D1, real_t const _rho, real_t const _P,
+												real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *p, real_t *T, real_t *H,
+												real_t *_yi, real_t *z, real_t &b1, real_t &b3, real_t &k, real_t &_ht, real_t &Gamma)
 {
 	real_t *yi_l = &(y[NUM_SPECIES * id_l]), *yi_r = &(y[NUM_SPECIES * id_r]);
 	real_t hi_l[MAX_SPECIES], hi_r[MAX_SPECIES], _dpdrhoi[MAX_SPECIES], drhoi[MAX_SPECIES];

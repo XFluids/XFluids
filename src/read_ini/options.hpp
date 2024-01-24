@@ -1,6 +1,5 @@
 #pragma once
 
-#include "global_setup.h"
 #include "strsplit/strsplit.h"
 // ================================================================================
 // // // class AppendParas Member function definitions

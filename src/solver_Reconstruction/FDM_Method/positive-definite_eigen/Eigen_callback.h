@@ -1,7 +1,6 @@
 #pragma once
 
 #include "global_setup.h"
-#include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 #include "../include/sycl_devices.hpp"
 

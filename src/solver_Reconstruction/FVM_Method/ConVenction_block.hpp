@@ -1,14 +1,13 @@
 #pragma once
 
 #include "global_setup.h"
-#include "marcos/marco_global.h"
 #include "../read_ini/setupini.h"
 #include "../include/sycl_devices.hpp"
 
 #include "Reconstruction_kernels.hpp"
 #include "PositivityPreserving_kernels.hpp"
 #include "../viscosity/Visc_block.hpp"
-#include "../../solver_UpdateStates/UpdateStates_block.hpp"
+#include "../../solver_UpdateStates/UpdateStates_block.h"
 
 void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal thermal, real_t *UI, real_t *LU,
 		   real_t *FluxFw, real_t *FluxGw, real_t *FluxHw, real_t const Gamma, FlowData &fdata, real_t *face_vector)

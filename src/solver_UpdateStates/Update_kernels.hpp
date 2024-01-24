@@ -1,12 +1,8 @@
 #pragma once
 
-#include "global_setup.h"
-#include "marcos/marco_global.h"
-#include "../read_ini/setupini.h"
-
 #include "Update_device.hpp"
 
-extern void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, real_t *_y)
+extern void Updaterhoyi(int i, int j, int k, MeshSize bl, real_t *UI, real_t *rho, real_t *_y)
 {
 	if (i >= bl.Xmax)
 		return;
@@ -21,9 +17,9 @@ extern void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, 
 	Getrhoyi(U, rho[id], yi);
 }
 
-extern void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-								   real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y,
-								   real_t *gamma, real_t *T, real_t *e, real_t const Gamma) //, const sycl::stream &stream_ct1
+extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, MeshSize bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+											   real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma, real_t *e, real_t *H,
+											   real_t *T, real_t *_y, real_t *Ri, real_t *Cp)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= Xmax)
@@ -37,7 +33,7 @@ extern void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal therma
 	real_t *U = &(UI[Emax * id]), *yi = &(_y[NUM_SPECIES * id]);
 
 	// Getrhoyi(U, rho[id], yi);
-	GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], e[id], thermal, yi);
+	GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], e[id], Cp[id], Ri[id], thermal, yi);
 
 	real_t *Fx = &(FluxF[Emax * id]);
 	real_t *Fy = &(FluxG[Emax * id]);
@@ -51,9 +47,29 @@ extern void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal therma
 	// // get_Array(FluxH, de_fz, Emax, id);
 }
 
-extern void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
+#if __VENDOR_SUBMIT__
+_VENDOR_KERNEL_LB_(256, 1)
+void UpdateFuidStatesKernelVendorWrapper(MeshSize bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+										 real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma,
+										 real_t *e, real_t *H, real_t *T, real_t *_y, real_t *Ri, real_t *Cp)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
+	int k = blockIdx.z * blockDim.z + threadIdx.z;
+
+	UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, gamma, e, H, T, _y, Ri, Cp);
+}
+#endif
+
+extern void UpdateURK3rdKernel(int i, int j, int k, MeshSize bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
 	MARCO_DOMAIN();
+	if (i >= bl.Xmax)
+		return;
+	if (j >= bl.Ymax)
+		return;
+	if (k >= bl.Zmax)
+		return;
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
 	// real_t de_U[Emax], de_U1[Emax], de_LU[Emax];
@@ -75,33 +91,4 @@ extern void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t 
 	// get_Array(U, de_U, Emax, id);
 	// get_Array(U1, de_U1, Emax, id);
 	// get_Array(LU, de_LU, Emax, id);
-}
-
-extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
-{
-	MARCO_DOMAIN();
-	int id = Xmax * Ymax * k + Xmax * j + i;
-	int id_im = Xmax * Ymax * k + Xmax * j + i - 1;
-	int id_jm = Xmax * Ymax * k + Xmax * (j - 1) + i;
-	int id_km = Xmax * Ymax * (k - 1) + Xmax * j + i;
-
-	for (int n = 0; n < Emax; n++)
-	{
-		real_t LU0 = _DF(0.0);
-
-		if (bl.DimX)
-			LU0 += (FluxFw[Emax * id_im + n] - FluxFw[Emax * id + n]) * bl._dx;
-
-		if (bl.DimY)
-			LU0 += (FluxGw[Emax * id_jm + n] - FluxGw[Emax * id + n]) * bl._dy;
-
-		if (bl.DimZ)
-			LU0 += (FluxHw[Emax * id_km + n] - FluxHw[Emax * id + n]) * bl._dz;
-
-		LU[Emax * id + n] = LU0;
-	}
-
-	// real_t de_LU[Emax];
-	// get_Array(LU, de_LU, Emax, id);
-	// real_t de_XU[Emax];
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "json.hpp"
-#include "global_setup.h"
+#include "../../include/global_setup.h"
 
 // compute Dmin_json
 extern real_t ComputeDminJson();
