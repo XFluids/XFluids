@@ -1,4 +1,5 @@
 # # add external submodule
+add_subdirectory(timer)
 add_subdirectory(read_grid)
 add_subdirectory(read_ini)
 add_subdirectory(mpiPacks)
@@ -26,15 +27,18 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   )
   target_link_libraries(${INIT_SAMPLE}
     PUBLIC
+    timer
     solver_Ini
     solver_BCs
   )
+
   IF(USE_MPI)
     target_link_libraries(${INIT_SAMPLE}
       PUBLIC
       mpiPacks
     )
   ENDIF()
+
   IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
     add_sycl_to_target(TARGET ${INIT_SAMPLE})
   ENDIF()
@@ -46,6 +50,7 @@ ELSE()
     PROPERTY IMPORTED_LOCATION ${${INIT_SAMPLE}})
   target_link_libraries(${solver_Ini}
     INTERFACE
+    timer
     solver_Ini
     solver_BCs
   )

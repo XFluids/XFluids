@@ -71,6 +71,8 @@ Fluid::~Fluid()
 	sycl::free(d_fstate.thermal_conduct_aver, q);
 #endif // end Visc_Heat
 #if Visc_Diffu
+	sycl::free(yi_min, q), sycl::free(yi_max, q);
+	sycl::free(Dim_min, q), sycl::free(Dim_max, q);
 	sycl::free(d_fstate.hi, q), sycl::free(d_fstate.Dkm_aver, q);
 #endif // end Visc_Diffu
 #endif // end Visc
@@ -271,10 +273,10 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 #endif
 #if Visc_Diffu
 		// // mass diffusion
-		yi_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
-		yi_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
-		Dim_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
-		Dim_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * 2, q));
+		yi_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
+		yi_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
+		Dim_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
+		Dim_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
 		d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 		d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 #endif
@@ -802,16 +804,16 @@ void Fluid::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)
 	UpdateURK3rd(q, Fs.BlSz, d_U, d_U1, d_LU, dt, flag);
 }
 
-void Fluid::ComputeFluidLU(sycl::queue &q, int flag)
+std::vector<float> Fluid::ComputeFluidLU(sycl::queue &q, int flag)
 {
 	if (flag == 0)
-		GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
-			  d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
+		return GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+					 material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
+					 d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
 	else
-		GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
-			  material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
-			  d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
+		return GetLU(q, Fs, Fs.BlSz, Fs.Boundarys, Fs.d_thermal, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH,
+					 material_property.Gamma, material_property.Mtrl_ind, d_fstate, d_eigen_local_x, d_eigen_local_y, d_eigen_local_z,
+					 d_eigen_l, d_eigen_r, uvw_c_max, eigen_block_x, eigen_block_y, eigen_block_z, yi_min, yi_max, Dim_min, Dim_max);
 }
 
 bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)

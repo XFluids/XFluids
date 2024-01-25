@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "timer/timer.h"
 #include "global_class.h"
 
 XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0), nranks(1), physicalTime(0.0)
@@ -14,8 +15,10 @@ XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0),
 	rank = Ss.mpiTrans->myRank;
 	nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
+
+	// initial runtime_check_all;
 	runtime_boundary = 0.0f, runtime_updatestates = 0.0f, runtime_getdt = 0.0f;
-	runtime_computelu = 0.0f, runtime_updateu = 0.0f, runtime_estimatenan = 0.0f;
+	runtime_computelu = 0.0f, runtime_updateu = 0.0f, runtime_estimatenan = 0.0f, runtime_rea = 0.0f;
 	MPI_trans_time = 0.0, MPI_BCs_time = 0.0, duration = 0.0f, duration_backup = 0.0f;
 	for (int n = 0; n < NumFluid; n++)
 	{
@@ -92,16 +95,6 @@ XFLUIDS::~XFLUIDS()
 {
 	for (size_t n = 0; n < NumFluid; n++)
 		fluids[n]->~Fluid();
-}
-
-float XFLUIDS::OutThisTime(std::chrono::high_resolution_clock::time_point start_time)
-{
-	float duration = 0.0f;
-	{
-		std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
-		duration = std::chrono::duration<float, std::milli>(end_time - start_time).count() / 1000.0f;
-	}
-	return duration;
 }
 
 void XFLUIDS::Evolution(sycl::queue &q)
@@ -254,17 +247,73 @@ void XFLUIDS::EndProcess()
 #endif
 	{
 		std::cout << "Times of error patched: " << error_times_patched << std::endl;
-		float runtime_check_sum = runtime_estimatenan + runtime_boundary + runtime_updatestates + runtime_computelu + runtime_updateu + runtime_getdt;
-		std::cout << "<--------------------------------------------------->\n"
-				  << "DETAILED RUNTIME CHECK(s)\n"
-				  << "runtime of BoundaryCondition: " << runtime_boundary << "\n"
-				  << "runtime of UpdateStates:      " << runtime_updatestates << "\n"
-				  << "runtime of ComputeLU:         " << runtime_computelu << "\n"
-				  << "runtime of UpdateU:           " << runtime_updateu << "\n"
-				  << "runtime of GetDt:             " << runtime_getdt << "\n"
-				  << "runtime of EstimateNAN:       " << runtime_estimatenan << "\n"
-				  << "runtime check SUM:            " << runtime_check_sum << "\n"
-				  << "<--------------------------------------------------->\n";
+		float runtime_check_sum = runtime_boundary + runtime_updatestates + runtime_getdt;
+		runtime_check_sum += runtime_computelu + runtime_updateu + runtime_estimatenan + runtime_rea;
+		float runtime_LU_sync_sum = 0.0f, runtime_LU_async_sum = 0.0f;
+		for (size_t i = 0; i < LU_rt.size(); i++)
+		{
+#if __SYNC_TIMER_
+			if (!(3 == i || 7 == i || 11 == i || 15 == i || 21 == i))
+				runtime_LU_sync_sum += LU_rt[i];
+			if (3 == i || 7 == i || 11 == i || 15 == i || 16 == i || 17 == i || 21 == i || 22 == i)
+				runtime_LU_async_sum += LU_rt[i];
+#else
+			if (3 == i || 7 == i || 11 == i || 15 == i || 16 == i || 17 == i || 21 == i || 22 == i)
+				runtime_LU_sync_sum += LU_rt[i];
+#endif
+		}
+		float _runtime_check_sum = 100.f / runtime_check_sum, _runtime_LU_check_sum = 100.f / runtime_LU_sync_sum;
+
+		// TODO: in RUNTIME CHECK, MPI need to be contain; Then write RUNTIME CHECK of UpdateStates;
+		// RUNTIME CHECK BEGIN
+		std::cout << "<--------------------------------------------------->"
+				  << "\n"
+				  << "DETAILED RUNTIME CHECK(seconds)"
+				  << "\n"
+				  << "runtime of DoBCs:       " << runtime_boundary << "(" << runtime_boundary * _runtime_check_sum << "%)\n"
+				  << "runtime of GetDt:       " << runtime_getdt << "(" << runtime_getdt * _runtime_check_sum << "%)\n"
+				  << "runtime of GetLU:       " << runtime_computelu << "(" << runtime_computelu * _runtime_check_sum << "%)\n"
+				  << "runtime of UpdateU:     " << runtime_updateu << "(" << runtime_updateu * _runtime_check_sum << "%)\n"
+				  << "runtime of UpdateState: " << runtime_updatestates << "(" << runtime_updatestates * _runtime_check_sum << "%)\n"
+				  << "runtime of EstimateNAN: " << runtime_estimatenan << "(" << runtime_estimatenan * _runtime_check_sum << "%)\n"
+				  << "runtime of ReactionIntegral: " << runtime_rea << "(" << runtime_rea * _runtime_check_sum << "%)\n"
+				  << "runtime check SUMMATION>>>>: " << runtime_check_sum << "\n"
+				  << "<--------------------------------------------------->"
+				  << "\n"
+				  << "DETAILED RUNTIME CHECK of GetLU(seconds)"
+				  << "\n"
+#if __SYNC_TIMER_
+				  << "runtime of SyncGetLocalEigenX:    " << LU_rt[0] << "(" << LU_rt[0] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncGetLocalEigenY:    " << LU_rt[1] << "(" << LU_rt[1] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncGetLocalEigenZ:    " << LU_rt[2] << "(" << LU_rt[2] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncGetGlobalEigenX:   " << LU_rt[4] << "(" << LU_rt[4] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncGetGlobalEigenY:   " << LU_rt[5] << "(" << LU_rt[5] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncGetGlocalEigenZ:   " << LU_rt[6] << "(" << LU_rt[6] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncReconstructWallFluxX:    " << LU_rt[8] << "(" << LU_rt[8] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncReconstructWallFluxY:    " << LU_rt[9] << "(" << LU_rt[9] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncReconstructWallFluxZ:    " << LU_rt[10] << "(" << LU_rt[10] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncPositivityPreservingX:    " << LU_rt[12] << "(" << LU_rt[12] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncPositivityPreservingY:    " << LU_rt[13] << "(" << LU_rt[13] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncPositivityPreservingZ:    " << LU_rt[14] << "(" << LU_rt[14] * _runtime_LU_check_sum << "%)\n"
+#else
+				  << "runtime of AsyncGetLocalEigen>>:  " << LU_rt[3] << "(" << LU_rt[3] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of AsyncGetGlocalEigen>>: " << LU_rt[7] << "(" << LU_rt[7] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of AsyncReconstructWallFlux>>:  " << LU_rt[11] << "(" << LU_rt[11] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of AsyncPositivityPreserving>>:  " << LU_rt[15] << "(" << LU_rt[15] * _runtime_LU_check_sum << "%)\n"
+#endif
+				  << "runtime of GetVelocityDerivatives:       " << LU_rt[16] << "(" << LU_rt[16] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of GetViscousCoefficients:       " << LU_rt[17] << "(" << LU_rt[17] * _runtime_LU_check_sum << "%)\n"
+#if __SYNC_TIMER_
+				  << "runtime of SyncGetViscousWallFluxX:      " << LU_rt[18] << "(" << LU_rt[18] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncGetViscousWallFluxY:      " << LU_rt[19] << "(" << LU_rt[19] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime of SyncGetViscousWallFluxZ:      " << LU_rt[20] << "(" << LU_rt[20] * _runtime_LU_check_sum << "%)\n"
+#else
+				  << "runtime of AsyncGetViscousWallFlux>>:    " << LU_rt[21] << "(" << LU_rt[21] * _runtime_LU_check_sum << "%)\n"
+#endif
+				  << "runtime of CalculateLU(RHS)FromFluxes:   " << LU_rt[22] << "(" << LU_rt[22] * _runtime_LU_check_sum << "%)\n"
+				  << "runtime check GetLU(RHS) SUMMATION>>>>:  " << runtime_LU_sync_sum << "\n"
+				  << "<--------------------------------------------------->"
+				  << "\n";
 	}
 }
 
@@ -435,7 +484,12 @@ real_t XFLUIDS::ComputeTimeStep(sycl::queue &q)
 
 void XFLUIDS::ComputeLU(sycl::queue &q, int flag)
 {
-	fluids[0]->ComputeFluidLU(q, flag);
+	// TODO	LU_rt need to be initial , otherwise it will be Segmentation fault(core dumped)
+	// vector.resize() has to do only once, maybe have better methods
+	std::vector<float> LU_rt_temp = fluids[0]->ComputeFluidLU(q, flag);
+	static bool dummy = (LU_rt.resize(LU_rt_temp.size()), LU_rt.assign(LU_rt.size(), 0), true);
+	for (size_t i = 0; i < LU_rt.size(); i++)
+		LU_rt[i] += LU_rt_temp[i];
 }
 
 void XFLUIDS::UpdateU(sycl::queue &q, int flag)
@@ -506,6 +560,8 @@ void XFLUIDS::InitialCondition(sycl::queue &q)
 
 bool XFLUIDS::Reaction(sycl::queue &q, const real_t dt, const real_t Time, const int Step)
 {
+	std::chrono::high_resolution_clock::time_point runtime_reation = std::chrono::high_resolution_clock::now();
+
 	BoundaryCondition(q, 0);
 	if (UpdateStates(q, 0, Time, Step, "_React"))
 		return true;
@@ -514,6 +570,8 @@ bool XFLUIDS::Reaction(sycl::queue &q, const real_t dt, const real_t Time, const
 	if (SlipOrder == std::string("Strang"))
 		tem_dt *= _DF(0.5);
 	fluids[0]->ODESolver(q, tem_dt);
+
+	runtime_rea += OutThisTime(runtime_reation);
 
 	return EstimateNAN(q, Time, Step, rank, 4);
 
