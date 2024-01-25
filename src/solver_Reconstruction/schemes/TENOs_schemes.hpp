@@ -2,7 +2,7 @@
 
 #include "Utils_schemes.hpp"
 
-inline real_t TENO5_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t TENO5_P(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5;
@@ -51,7 +51,7 @@ inline real_t TENO5_P(real_t *f, real_t delta)
 	return 1.0 / 6.0 * (w1 * Variation1 + w2 * Variation2 + w3 * Variation3);
 }
 
-inline real_t TENO5_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t TENO5_M(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5;
@@ -100,7 +100,7 @@ inline real_t TENO5_M(real_t *f, real_t delta)
 	return 1.0 / 6.0 * (w1 * Variation1 + w2 * Variation2 + w3 * Variation3);
 }
 
-inline real_t TENO6_OPT_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t TENO6_OPT_P(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6;
@@ -159,7 +159,7 @@ inline real_t TENO6_OPT_P(real_t *f, real_t delta)
 	return v3 + w1 * Variation1 + w2 * Variation2 + w3 * Variation3 + w4 * Variation4;
 }
 
-inline real_t TENO6_OPT_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t TENO6_OPT_M(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6;

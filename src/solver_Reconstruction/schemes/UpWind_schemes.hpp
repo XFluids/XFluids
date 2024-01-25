@@ -9,16 +9,16 @@
  * @param delta
  * @return real_t
  */
-inline real_t upwind_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t upwind_P(real_t *f, real_t delta)
 {
 	return *f;
 }
-inline real_t upwind_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t upwind_M(real_t *f, real_t delta)
 {
 	return *(f + 1);
 }
 
-inline real_t linear_3rd_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t linear_3rd_P(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 2);
 	real_t v2 = *(f - 1);
@@ -30,7 +30,7 @@ inline real_t linear_3rd_P(real_t *f, real_t delta)
 
 	return vv;
 }
-inline real_t linear_3rd_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t linear_3rd_M(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 2);
 	real_t v2 = *(f - 1);
@@ -43,7 +43,7 @@ inline real_t linear_3rd_M(real_t *f, real_t delta)
 	return vv;
 }
 
-inline real_t linear_5th_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t linear_5th_P(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 2);
 	real_t v2 = *(f - 1);
@@ -56,7 +56,7 @@ inline real_t linear_5th_P(real_t *f, real_t delta)
 	return vv;
 }
 
-inline real_t linear_5th_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t linear_5th_M(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 2);
 	real_t v2 = *(f - 1);
@@ -69,7 +69,7 @@ inline real_t linear_5th_M(real_t *f, real_t delta)
 	return vv;
 }
 
-inline real_t linear_2th(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t linear_2th(real_t *f, real_t delta)
 {
 	real_t v1 = *f;
 	real_t v2 = *(f + 1);
@@ -78,7 +78,7 @@ inline real_t linear_2th(real_t *f, real_t delta)
 	return vv;
 }
 
-inline real_t linear_4th(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t linear_4th(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 1);
 	real_t v2 = *f;
@@ -89,7 +89,7 @@ inline real_t linear_4th(real_t *f, real_t delta)
 	return vv;
 }
 
-inline real_t linear_6th(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t linear_6th(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 2);
 	real_t v2 = *(f - 1);
@@ -105,7 +105,7 @@ inline real_t linear_6th(real_t *f, real_t delta)
 //-------------------------------------------------------------------------------------------------
 //  linear scheme for hybrid method
 //-------------------------------------------------------------------------------------------------
-inline real_t du_upwind5(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t du_upwind5(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 2);
 	real_t v2 = *(f - 1);
@@ -118,7 +118,7 @@ inline real_t du_upwind5(real_t *f, real_t delta)
 //-------------------------------------------------------------------------------------------------
 //  linear scheme for hybrid method
 //-------------------------------------------------------------------------------------------------
-inline real_t f2_upwind5(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t f2_upwind5(real_t *f, real_t delta)
 {
 	real_t v1 = *(f - 2);
 	real_t v2 = *(f - 1);

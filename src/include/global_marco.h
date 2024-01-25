@@ -87,6 +87,7 @@ using vendorFuncAttributes = cudaFuncAttributes;
 #if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
 #define SYCL_KERNEL __host__ __device__
 #define SYCL_DEVICE __host__ __device__
+#define _VENDOR_KERNEL_LB_(A, B) __global__ __launch_bounds__(A, B)
 #endif
 
 #endif // end oneAPI or OpenSYCL

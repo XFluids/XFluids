@@ -2,7 +2,7 @@
 
 #include "Utils_schemes.hpp"
 
-inline real_t WENOCU6_BODYGPU(const real_t v1, const real_t v2, const real_t v3, const real_t v4, const real_t v5, const real_t v6, const real_t epsilon)
+SYCL_DEVICE inline real_t WENOCU6_BODYGPU(const real_t v1, const real_t v2, const real_t v3, const real_t v4, const real_t v5, const real_t v6, const real_t epsilon)
 { // smoothness indicator // real_t epsilon = 1.e-8 * delta * delta;
 	real_t s11 = v1 - _DF(2.0) * v2 + v3;
 	real_t s12 = v1 - _DF(4.0) * v2 + _DF(3.0) * v3;
@@ -50,7 +50,7 @@ inline real_t WENOCU6_BODYGPU(const real_t v1, const real_t v2, const real_t v3,
 }
 
 // this is WENOCU6
-inline real_t WENOCU6_GPU(real_t *f, real_t *m, real_t delta)
+SYCL_DEVICE inline real_t WENOCU6_GPU(real_t *f, real_t *m, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 0;
@@ -77,7 +77,7 @@ inline real_t WENOCU6_GPU(real_t *f, real_t *m, real_t delta)
 	return (temf + temm) * _six;
 }
 
-// inline real_t WENOCU6_P(real_t *f, real_t delta)
+// SYCL_DEVICE inline real_t WENOCU6_P(real_t *f, real_t delta)
 // {
 //     // assign value to v1, v2,...
 //     int k = 0;
@@ -131,7 +131,7 @@ inline real_t WENOCU6_GPU(real_t *f, real_t *m, real_t delta)
 // }
 
 // // this is WENOCU6
-// inline real_t WENOCU6_M(real_t *f, real_t delta)
+// SYCL_DEVICE inline real_t WENOCU6_M(real_t *f, real_t delta)
 // {
 //     // assign value to v1, v2,...
 //     int k = 1;
@@ -183,7 +183,7 @@ inline real_t WENOCU6_GPU(real_t *f, real_t *m, real_t delta)
 //     return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 // }
 
-inline real_t WENOCU6M1_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOCU6M1_P(real_t *f, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 0;
@@ -237,7 +237,7 @@ inline real_t WENOCU6M1_P(real_t *f, real_t delta)
 }
 
 // this is WENOCU6_M
-inline real_t WENOCU6M1_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOCU6M1_M(real_t *f, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 1;
@@ -289,7 +289,7 @@ inline real_t WENOCU6M1_M(real_t *f, real_t delta)
 	return (w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) + w3 * (2.0 * v3 + 5.0 * v4 - v5) + w4 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
 
-inline real_t WENOCU6M2_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOCU6M2_P(real_t *f, real_t delta)
 {
 	real_t epsilon = 1.0e-8;
 	int k = 0;
@@ -332,7 +332,7 @@ inline real_t WENOCU6M2_P(real_t *f, real_t delta)
 	return (w0 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w1 * (-v2 + 5.0 * v3 + 2.0 * v4) + w2 * (2.0 * v3 + 5.0 * v4 - v5) + w3 * (11.0 * v4 - 7.0 * v5 + 2.0 * v6)) / 6.0;
 }
 
-inline real_t WENOCU6M2_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t WENOCU6M2_M(real_t *f, real_t delta)
 {
 	// assign value to v1, v2,...
 	int k = 1;

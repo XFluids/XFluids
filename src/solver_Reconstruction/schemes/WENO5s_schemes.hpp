@@ -9,7 +9,7 @@
  * @param delta
  * @return real_t
  */
-inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, const real_t v4, const real_t v5)
+SYCL_DEVICE inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, const real_t v4, const real_t v5)
 {
 	real_t a1, a2, a3;
 	real_t dtwo = _DF(2.0), dtre = _DF(3.0);
@@ -68,7 +68,7 @@ inline real_t weno5old_BODY(const real_t v1, const real_t v2, const real_t v3, c
 	return (s1 + s2 + s3);
 }
 
-inline real_t weno5old_GPU(real_t *f, real_t *m)
+SYCL_DEVICE inline real_t weno5old_GPU(real_t *f, real_t *m)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, temf, temm;
@@ -94,7 +94,7 @@ inline real_t weno5old_GPU(real_t *f, real_t *m)
 	return (temf + temm) * _six;
 }
 
-inline real_t weno5_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno5_P(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5;
@@ -127,7 +127,7 @@ inline real_t weno5_P(real_t *f, real_t delta)
 	return w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) / 6.0 + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) / 6.0 + w3 * (2.0 * v3 + 5.0 * v4 - v5) / 6.0;
 }
 
-inline real_t weno5_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno5_M(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5;
@@ -160,7 +160,7 @@ inline real_t weno5_M(real_t *f, real_t delta)
 	return w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) / 6.0 + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) / 6.0 + w3 * (2.0 * v3 + 5.0 * v4 - v5) / 6.0;
 }
 
-inline real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda)
+SYCL_DEVICE inline real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda)
 {
 	// assign value to v1, v2,...
 	int k = 0;
@@ -204,7 +204,7 @@ inline real_t Weno5L2_P(real_t *f, real_t delta, real_t lambda)
 	return (w3 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (2.0 * v3 + 5.0 * v4 - v5) + w1 * (-3.0 * v2 + 9.0 * v3) + w0 * (3.0 * v3 + 3.0 * v4)) / 6.0;
 }
 
-inline real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda)
+SYCL_DEVICE inline real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda)
 {
 	// assign value to v1, v2,...
 	int k = 1;
@@ -243,7 +243,7 @@ inline real_t Weno5L2_M(real_t *f, real_t delta, real_t lambda)
 	return (w3 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) + w2 * (2.0 * v3 + 5.0 * v4 - v5) + w1 * (-3.0 * v2 + 9.0 * v3) + w0 * (3.0 * v3 + 3.0 * v4)) / 6.0;
 }
 
-inline real_t weno5Z_P(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno5Z_P(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6;
@@ -279,7 +279,7 @@ inline real_t weno5Z_P(real_t *f, real_t delta)
 	return w1 * (2.0 * v1 - 7.0 * v2 + 11.0 * v3) / 6.0 + w2 * (-v2 + 5.0 * v3 + 2.0 * v4) / 6.0 + w3 * (2.0 * v3 + 5.0 * v4 - v5) / 6.0;
 }
 
-inline real_t weno5Z_M(real_t *f, real_t delta)
+SYCL_DEVICE inline real_t weno5Z_M(real_t *f, real_t delta)
 {
 	int k;
 	real_t v1, v2, v3, v4, v5, v6;

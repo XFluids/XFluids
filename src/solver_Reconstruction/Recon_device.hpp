@@ -11,7 +11,7 @@
  * @param D
  * @return real_t
  */
-real_t get_RoeAverage(const real_t left, const real_t right, const real_t D, const real_t D1)
+SYCL_DEVICE real_t get_RoeAverage(const real_t left, const real_t right, const real_t D, const real_t D1)
 {
 	return (left + D * right) * D1;
 }
