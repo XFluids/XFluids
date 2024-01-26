@@ -1,11 +1,10 @@
-target_include_directories(${INIT_SAMPLE}
-	PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR})
+# target_include_directories(${INIT_SAMPLE}
+# 	PUBLIC
+# 	${CMAKE_CURRENT_SOURCE_DIR})
 
-include_directories(BEFORE
-	${CMAKE_SOURCE_DIR}/src/include
-)
-
+# include_directories(BEFORE
+# 	${CMAKE_SOURCE_DIR}/src/include
+# )
 # # add sample lib
 find_library(solver_Ini NAMES libsolver_Ini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 

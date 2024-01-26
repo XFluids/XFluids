@@ -1,3 +1,4 @@
+add_subdirectory(outformat)
 # # constructor
 find_library(readini_cos NAMES libreadini_cos.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
@@ -51,7 +52,6 @@ IF("${readini_set}" STREQUAL "readini_set-NOTFOUND")
     target_sources(readini_set
         PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/iniset.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/outformat/outformat.cpp
     )
 
     IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")

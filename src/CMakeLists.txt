@@ -3,6 +3,8 @@ add_subdirectory(timer)
 add_subdirectory(read_grid)
 add_subdirectory(read_ini)
 add_subdirectory(mpiPacks)
+add_subdirectory(solver_Ini)
+add_subdirectory(solver_BCs)
 
 # # add sample lib
 find_library(${INIT_SAMPLE} NAMES lib${INIT_SAMPLE}.a HINTS "${LIBRARY_OUTPUT_PATH}")
@@ -15,8 +17,6 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   )
 
   # # add program sub-solvers
-  add_subdirectory(solver_Ini)
-  add_subdirectory(solver_BCs)
   add_subdirectory(solver_GetDt)
   add_subdirectory(solver_Reaction)
   add_subdirectory(solver_UpdateStates)
@@ -48,7 +48,7 @@ ELSE()
   add_library(${INIT_SAMPLE} STATIC IMPORTED GLOBAL)
   set_property(TARGET ${INIT_SAMPLE}
     PROPERTY IMPORTED_LOCATION ${${INIT_SAMPLE}})
-  target_link_libraries(${solver_Ini}
+  target_link_libraries(${INIT_SAMPLE}
     INTERFACE
     timer
     solver_Ini

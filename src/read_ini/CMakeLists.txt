@@ -13,6 +13,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
     # #add libs
     target_link_libraries(readini
         PUBLIC
+        outFmt
         readini_cos
         readini_set
         readini_rea
@@ -44,6 +45,17 @@ ELSE()
     add_library(readini STATIC IMPORTED GLOBAL)
     set_property(TARGET readini
         PROPERTY IMPORTED_LOCATION ${readini})
+    target_link_libraries(readini
+        INTERFACE
+        outFmt
+        readini_cos
+        readini_set
+        readini_rea
+        readini_visc
+        readini_them
+        readini_copy
+        readini_print
+    )
     target_link_libraries(readini
         INTERFACE
         inishape
