@@ -23,8 +23,7 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # 2d-riemann(-shocks/-interruptions-reduce/-interruptions-plus/-shock-interruption) 		## no-cop sample
 # # 1d-diffusion-layer		# # 2d-mixing-layer
 # # 2d-under-expanded-jet	# # 3d-under-expanded-jet
-# # 2d-shock-bubble			# # 2d-shock-bubble-without-fuel
-# # 3d-shock-bubble			# # 3d-shock-bubble-without-fuel
+# # shock-bubble			# # shock-bubble-without-fuel
 # # // // == MIXTURE_MODEL settings =========================================
 # # // // // == insert MIXURE_MODEL settings ================================
 # #	NO-COP
@@ -36,7 +35,7 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 # # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
 # # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
 # # Reaction/RSBI-18REA			# # Reaction/RSBI-19REA			# # modified for RSBI samples
-set(INIT_SAMPLE "2d-shock-bubble") # set INIT_SAMPLE for Initializing settings
+set(INIT_SAMPLE "shock-bubble") # set INIT_SAMPLE for Initializing settings
 set(MIXTURE_MODEL "Reaction/RSBI-18REA") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================

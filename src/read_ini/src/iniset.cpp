@@ -83,7 +83,11 @@ void Setup::ReadIni()
     /* initialize React sources  */
     BlSz.RSources = ReactSources;
     /* initialize MPI parameters */
+#ifdef USE_MPI
     BlSz.mx = mx_json, BlSz.my = my_json, BlSz.mz = mz_json;
+#else
+    BlSz.mx = 1, BlSz.my = 1, BlSz.mz = 1;
+#endif
     // initial rank postion to zero, will be changed in MpiTrans
     BlSz.myMpiPos_x = 0, BlSz.myMpiPos_y = 0, BlSz.myMpiPos_z = 0;
     // for sycl::queue construction and device select

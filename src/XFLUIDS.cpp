@@ -1046,11 +1046,7 @@ void XFLUIDS::Output_vti(std::vector<OutVar> error_vars, OutString &osr, size_t 
 				pieceFormat.width(5);
 				pieceFormat.fill('0');
 				pieceFormat << iPiece;
-				std::string pieceFilename = temp_name;
-#ifdef USE_MPI
-				pieceFilename += "_rank_" + pieceFormat.str();
-#endif
-				pieceFilename += +".vti";
+				std::string pieceFilename = temp_name + "_rank_" + pieceFormat.str() + ".vti";
 				// get MPI coords corresponding to MPI rank iPiece
 				int coords[3] = {0, 0, 0};
 #ifdef USE_MPI
@@ -1191,9 +1187,9 @@ void XFLUIDS::Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &c
 			outHeader << "<?xml version=\"1.0\"?>" << std::endl;
 			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
 			outHeader << "  <PImageData WholeExtent=\"";
-			outHeader << minMpiPos_x * VTI.nbX << " " << (maxMpiPos_x + 1) * VTI.nbX << " ";
-			outHeader << minMpiPos_y * VTI.nbY << " " << (maxMpiPos_y + 1) * VTI.nbY << " ";
-			outHeader << minMpiPos_z * VTI.nbZ << " " << (maxMpiPos_z + 1) * VTI.nbZ << "\" GhostLevel=\"0\" "
+			outHeader << minMpiPos_x * VTI.nbX << " " << (maxMpiPos_x + 1) * VTI.nbX * int(Ss.BlSz.DimX) << " ";
+			outHeader << minMpiPos_y * VTI.nbY << " " << (maxMpiPos_y + 1) * VTI.nbY * int(Ss.BlSz.DimY) << " ";
+			outHeader << minMpiPos_z * VTI.nbZ << " " << (maxMpiPos_z + 1) * VTI.nbZ * int(Ss.BlSz.DimZ) << "\" GhostLevel=\"0\" "
 					  << "Origin=\""
 					  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
 					  << "Spacing=\""
