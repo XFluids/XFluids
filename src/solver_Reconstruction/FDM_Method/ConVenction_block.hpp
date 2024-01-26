@@ -380,13 +380,15 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	// 	// 	q.memcpy(fdata.preFwz, FluxHw, cellsize);
 	// 	// 	q.wait();
 
-	runtime_lu_astart = std::chrono::high_resolution_clock::now();
-	GetCellCenterDerivative(q, bl, fdata, BCs); // get Vortex
-	runtime_velDeri = OutThisTime(runtime_lu_astart);
 #if Visc // NOTE: calculate and add viscous wall Flux to physical convection Flux
 	/* Viscous LU including physical visc(切应力),Visc_Heat transfer(传热), mass Diffusion(质量扩散)
 	 * Physical Visc must be included, Visc_Heat is alternative, Visc_Diffu depends on compent
 	 */
+
+	runtime_lu_astart = std::chrono::high_resolution_clock::now();
+	GetCellCenterDerivative(q, bl, fdata, BCs); // get Vortex
+	runtime_velDeri = OutThisTime(runtime_lu_astart);
+
 	real_t *va = fdata.viscosity_aver;
 	real_t *tca = fdata.thermal_conduct_aver;
 	real_t *Da = fdata.Dkm_aver;
@@ -493,12 +495,12 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 					int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
 					GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, yi_max, Dim_max, fdata.visFwz, fdata.Dim_wallz, fdata.hi_wallz, fdata.Yi_wallz, fdata.Yil_wallz); }); }); //.wait()
 	}
-#endif // end Visc
 	q.wait();
 #if __SYNC_TIMER_
 	runtime_viscz = OutThisTime(runtime_lu_start);
 #endif // end __SYNC_TIMER_
 	runtime_visc = OutThisTime(runtime_lu_astart);
+#endif // end Visc
 
 	runtime_lu_start = std::chrono::high_resolution_clock::now();
 	q.submit([&](sycl::handler &h)

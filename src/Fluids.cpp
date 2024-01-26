@@ -59,14 +59,13 @@ Fluid::~Fluid()
 	sycl::free(h_fstate.e, q);
 	sycl::free(h_fstate.gamma, q);
 
+#if Visc // free viscous Vars
+	sycl::free(d_fstate.viscosity_aver, q);
 	sycl::free(d_fstate.vx, q), sycl::free(h_fstate.vx, q);
 	for (size_t i = 0; i < 3; i++)
 		sycl::free(d_fstate.vxs[i], q), sycl::free(h_fstate.vxs[i], q);
 	for (size_t i = 0; i < 9; i++)
 		sycl::free(d_fstate.Vde[i], q);
-
-#if Visc // free viscous Vars
-	sycl::free(d_fstate.viscosity_aver, q);
 #if Visc_Heat
 	sycl::free(d_fstate.thermal_conduct_aver, q);
 #endif // end Visc_Heat
@@ -245,6 +244,8 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
+#if Visc
+	// allocate mem viscous Vars
 	// // vrotex
 	{
 		for (size_t i = 0; i < 9; i++)
@@ -262,8 +263,6 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
-#if Visc
-	// allocate mem viscous Vars
 	{
 		// // kinematic viscosity
 		d_fstate.viscosity_aver = static_cast<real_t *>(sycl::malloc_device(bytes, q));
@@ -453,7 +452,6 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 void Fluid::InitialU(sycl::queue &q)
 {
 	InitializeFluidStates(q, Fs.BlSz, Fs.ini, material_property, Fs.d_thermal, d_fstate, d_U, d_U1, d_LU, d_FluxF, d_FluxG, d_FluxH, d_wallFluxF, d_wallFluxG, d_wallFluxH);
-	GetCellCenterDerivative(q, Fs.BlSz, d_fstate, Fs.Boundarys);
 }
 
 void Fluid::AllCountsHeader()

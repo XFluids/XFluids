@@ -676,12 +676,14 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 		q.memcpy(fluids[n]->h_fstate.T, fluids[n]->d_fstate.T, bytes);
 		q.memcpy(fluids[n]->h_fstate.e, fluids[n]->d_fstate.e, bytes);
 		q.memcpy(fluids[n]->h_fstate.gamma, fluids[n]->d_fstate.gamma, bytes);
-		q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
-		for (size_t i = 0; i < 3; i++)
-			q.memcpy(fluids[n]->h_fstate.vxs[i], fluids[n]->d_fstate.vxs[i], bytes).wait();
 #ifdef COP
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
+#if Visc
+		q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
+		for (size_t i = 0; i < 3; i++)
+			q.memcpy(fluids[n]->h_fstate.vxs[i], fluids[n]->d_fstate.vxs[i], bytes).wait();
+#endif // end Visc
 
 		if (error)
 		{
@@ -1673,10 +1675,12 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 					OutPoint[9] = fluids[0]->h_fstate.gamma[id];
 					OutPoint[10] = fluids[0]->h_fstate.T[id];
 					OutPoint[11] = fluids[0]->h_fstate.e[id];
+#if Visc
 					OutPoint[12] = sqrt(fluids[0]->h_fstate.vx[id]);
 					OutPoint[13] = fluids[0]->h_fstate.vxs[0][id];
 					OutPoint[14] = fluids[0]->h_fstate.vxs[1][id];
 					OutPoint[15] = fluids[0]->h_fstate.vxs[2][id];
+#endif // end Visc
 #if COP
 					for (int n = 0; n < Ss.BlSz.num_species; n++)
 						OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];

@@ -30,6 +30,9 @@
     "equations": {
         "Fluid_Names": [],
         "Species_Name": [],
+        "Sources_React": 1,
+        "if_ODReactionTest": 0,
+        "PositivityPreserving": 1,
         "if_overdetermined_eigen": 0
     },
     "sources": {},
