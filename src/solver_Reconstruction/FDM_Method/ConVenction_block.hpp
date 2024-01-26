@@ -393,6 +393,16 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	real_t *hi = fdata.hi;
 
 	runtime_lu_astart = std::chrono::high_resolution_clock::now();
+#if __VENDOR_SUBMMIT__
+	CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
+	dim3 local_block_v(local_ndrange[0], local_ndrange[1], local_ndrange[2]);
+	dim3 global_grid_v((global_ndrange_max[0] + local_ndrange[0] - 1) / local_ndrange[0],
+					   (global_ndrange_max[1] + local_ndrange[1] - 1) / local_ndrange[1],
+					   (global_ndrange_max[2] + local_ndrange[2] - 1) / local_ndrange[2]);
+	static bool dummv = (GetKernelAttributes((const void *)Gettransport_coeff_averVendorWrapper, "Gettransport_coeff_averVendorWrapper"), true); // call only once
+	Gettransport_coeff_averVendorWrapper<<<global_grid_v, local_block_v>>>(bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
+	CheckGPUErrors(vendorDeviceSynchronize());
+#else
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
 							  {
@@ -401,6 +411,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 					int k = index.get_global_id(2);
 					Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2); }); })
 		.wait();
+#endif
 	runtime_transport = OutThisTime(runtime_lu_astart);
 
 	// // get visc robust limiter
