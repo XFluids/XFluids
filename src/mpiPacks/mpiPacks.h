@@ -1,7 +1,7 @@
 #pragma once
 
-#include "global_setup.h"
 #include "mpiUtils/MpiCommCart.h"
+#include "../include/global_setup.h"
 using namespace mpiUtils;
 
 typedef struct
