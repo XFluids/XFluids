@@ -32,7 +32,7 @@
         "Species_Name": [],
         "Sources_React": 1,
         "if_ODReactionTest": 0,
-        "PositivityPreserving": 1,
+        "PositivityPreserving": 0,
         "if_overdetermined_eigen": 0
     },
     "sources": {},

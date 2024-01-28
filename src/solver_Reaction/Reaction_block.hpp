@@ -87,12 +87,12 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 	real_t *T = fdata.T;
 	real_t *rho = fdata.rho;
 
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
-	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange = sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 #if __VENDOR_SUBMMIT__
 	CheckGPUErrors(vendorSetDevice(Fs.DeviceSelect[2]));
-	dim3 local_block(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
+	dim3 local_block(4, 4, 4);
 	dim3 global_grid((bl.X_inner + local_block.x - 1) / local_block.x,
 					 (bl.Y_inner + local_block.y - 1) / local_block.y,
 					 (bl.Z_inner + local_block.z - 1) / local_block.z);

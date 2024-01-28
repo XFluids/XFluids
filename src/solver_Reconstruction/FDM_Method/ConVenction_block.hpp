@@ -214,7 +214,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		{
 #if __VENDOR_SUBMMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-			dim3 local_block_x(local_ndrange[0], local_ndrange[1], local_ndrange[2]);
+			dim3 local_block_x(32, 8, 1);
 			dim3 global_grid_x((global_ndrange_x[0] + local_ndrange[0] - 1) / local_ndrange[0],
 							   (global_ndrange_x[1] + local_ndrange[1] - 1) / local_ndrange[1],
 							   (global_ndrange_x[2] + local_ndrange[2] - 1) / local_ndrange[2]);
@@ -244,7 +244,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		{
 #if __VENDOR_SUBMMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-			dim3 local_block_y(local_ndrange[0], local_ndrange[1], local_ndrange[2]);
+			dim3 local_block_y(32, 8, 1);
 			dim3 global_grid_y((global_ndrange_y[0] + local_ndrange[0] - 1) / local_ndrange[0],
 							   (global_ndrange_y[1] + local_ndrange[1] - 1) / local_ndrange[1],
 							   (global_ndrange_y[2] + local_ndrange[2] - 1) / local_ndrange[2]);
@@ -274,7 +274,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		{
 #if __VENDOR_SUBMMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-			dim3 local_block_z(local_ndrange[0], local_ndrange[1], local_ndrange[2]);
+			dim3 local_block_z(32, 8, 1);
 			dim3 global_grid_z((global_ndrange_z[0] + local_ndrange[0] - 1) / local_ndrange[0],
 							   (global_ndrange_z[1] + local_ndrange[1] - 1) / local_ndrange[1],
 							   (global_ndrange_z[2] + local_ndrange[2] - 1) / local_ndrange[2]);
@@ -397,7 +397,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	runtime_lu_astart = std::chrono::high_resolution_clock::now();
 #if __VENDOR_SUBMMIT__
 	CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-	dim3 local_block_v(local_ndrange[0], local_ndrange[1], local_ndrange[2]);
+	dim3 local_block_v(32, 8, 1);
 	dim3 global_grid_v((global_ndrange_max[0] + local_ndrange[0] - 1) / local_ndrange[0],
 					   (global_ndrange_max[1] + local_ndrange[1] - 1) / local_ndrange[1],
 					   (global_ndrange_max[2] + local_ndrange[2] - 1) / local_ndrange[2]);
