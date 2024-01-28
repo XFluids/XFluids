@@ -210,18 +210,18 @@ void Setup::VisCoeffsAccuracyTest(real_t Tmin, real_t Tmax)
     theo << "variables= Temperature(K)";
     for (size_t k = 0; k < species_name.size(); k++)
     {
-        theo << "," << species_name[k] << "_Cp_NASA,";
-        theo << "," << species_name[k] << "_Cp_JANAF,";
+        theo << "," << species_name[k] << "_Cp_NASA";
+        theo << "," << species_name[k] << "_Cp_JANAF";
     }
     for (size_t k = 0; k < species_name.size(); k++)
     {
-        theo << "," << species_name[k] << "_hi_NASA,";
-        theo << "," << species_name[k] << "_hi_JANAF,";
+        theo << "," << species_name[k] << "_hi_NASA";
+        theo << "," << species_name[k] << "_hi_JANAF";
     }
     for (size_t k = 0; k < species_name.size(); k++)
     {
-        theo << "," << species_name[k] << "_S_NASA,";
-        theo << "," << species_name[k] << "_S_JANAF,";
+        theo << "," << species_name[k] << "_S_NASA";
+        theo << "," << species_name[k] << "_S_JANAF";
     }
     for (size_t i = 1; i <= reso; i++)
     {
@@ -257,8 +257,8 @@ void Setup::VisCoeffsAccuracyTest(real_t Tmin, real_t Tmax)
     out << "variables= Temperature(K)";
     for (size_t k = 0; k < species_name.size(); k++)
     {
-        out << ",visc_" << species_name[k] << ",";
-        out << ",furier_" << species_name[k] << ",";
+        out << ",visc_" << species_name[k];
+        out << ",furier_" << species_name[k];
         for (size_t j = 0; j <= k; j++)
             out << ",Dkj_" << species_name[k] << "-" << species_name[j];
     }

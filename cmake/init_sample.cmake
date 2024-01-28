@@ -58,7 +58,6 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
     set(Visc_Diffu "ON")
     set(COP_CHEME "OFF")
     set(POSITIVITY_PRESERVING "OFF")
-    set(MIXTURE_MODEL "1d-mc-diffusion")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
     set(INI_FILE "settings/1d-diffusion.json")
 
