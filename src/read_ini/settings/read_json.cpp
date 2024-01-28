@@ -80,7 +80,7 @@ const std::string ODESolver = j_conf.at("equations").value("ODESolver", "Q2");
  * @param ODETestRange[4]: time step /delta t to evolution test
  * @param ODETestRange[5]: max evolution steps to end test
  * */
-const bool ODETest_json = j_conf.at("equations").value("if_ODReactionTest", 0);
+const bool ODETest_json = j_conf.at("equations").value("if_ODReactionTest", ReactSources);
 const std::vector<real_t> ODETestRange = j_conf.at("equations").value("ODETestRange", std::vector<real_t>{101325.0, 1150, 1.0E-5, 0.2, 1.0E-5, 10000});
 
 /*** @brief params of Viscosity_coefficients-Temperature sample  test
@@ -88,7 +88,7 @@ const std::vector<real_t> ODETestRange = j_conf.at("equations").value("ODETestRa
  * @param ViscosityTestRange[0]: beginning Temperature: T
  * @param ViscosityTestRange[1]: Ending Temperature: T
  * */
-const bool ViscosityTest_json = j_conf.at("equations").value("if_ViscosityTest", COP_CHEME) > 0;
+const bool ViscosityTest_json = j_conf.at("equations").value("if_ViscosityTest", Visc);
 const std::vector<real_t> ViscosityTestRange = j_conf.at("equations").value("ViscosityTestRange", std::vector<real_t>{0, 5000});
 
 // Mesh setup
