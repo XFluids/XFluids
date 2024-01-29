@@ -19,8 +19,11 @@ void Setup::ReadSpecies()
     // NOTE: Xe_id and N2_id depends on species_list
     BlSz.Xe_id = NUM_SPECIES - 3, BlSz.N2_id = NUM_SPECIES - 2;
 #ifdef COP
+    std::string line;
+    getline(fins, line);
     for (int n = 0; n < NUM_SPECIES; n++) // molar ratio
         fins >> h_thermal.species_ratio_out[n];
+    getline(fins, line);
     for (int n = 0; n < NUM_SPECIES; n++)      // species_ratio in bubble if exsit
         fins >> h_thermal.species_ratio_in[n]; // molar ratio
     fins.close();
