@@ -435,18 +435,22 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 						real_t *yi = &(fdata.y[NUM_SPECIES * id]);
 						temp_Ymin.combine(yi[nn]), temp_Ymax.combine(yi[nn]);
-						real_t *Dkm = &(Da[NUM_SPECIES * id]);
-						temp_Dmin.combine(Dkm[nn]), temp_Dmax.combine(Dkm[nn]); }); })
+						// real_t *Dkm = &(Da[NUM_SPECIES * id]);
+						// temp_Dmin.combine(Dkm[nn]), temp_Dmax.combine(Dkm[nn]); 
+						//
+						}); })
 			.wait();
 #ifdef USE_MPI
 		real_t mpi_Ymin = _DF(0.0), mpi_Ymax = _DF(0.0), mpi_Dmin = _DF(0.0), mpi_Dmax = _DF(0.0);
 		setup.mpiTrans->communicator->synchronize();
 		setup.mpiTrans->communicator->allReduce(&(yi_min[nn]), &(mpi_Ymin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
 		setup.mpiTrans->communicator->allReduce(&(yi_max[nn]), &(mpi_Ymax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-		setup.mpiTrans->communicator->allReduce(&(Dim_min[nn]), &(mpi_Dmin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-		setup.mpiTrans->communicator->allReduce(&(Dim_max[nn]), &(mpi_Dmax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+		// setup.mpiTrans->communicator->allReduce(&(Dim_min[nn]), &(mpi_Dmin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+		// setup.mpiTrans->communicator->allReduce(&(Dim_max[nn]), &(mpi_Dmax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
 		setup.mpiTrans->communicator->synchronize();
-		yi_min[nn] = mpi_Ymin, yi_max[nn] = mpi_Ymin, Dim_min[nn] = mpi_Dmin, Dim_max[nn] = mpi_Dmax;
+		yi_min[nn] = mpi_Ymin, yi_max[nn] = mpi_Ymin;
+		Dim_min[nn] = _DF(1.0), Dim_max[nn] = _DF(1.0);
+		// Dim_min[nn] = mpi_Dmin, Dim_max[nn] = mpi_Dmax;
 #endif // end USE_MPI
 		yi_max[nn] -= yi_min[nn];
 		yi_max[nn] *= setup.BlSz.Yil_limiter;				// // yil limiter

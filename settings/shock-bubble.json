@@ -50,15 +50,15 @@
 	"equations": {
 		"Fluid_Names": [],
 		"Species_Name": [],
-		"Sources_React": 1,
-		"if_ODReactionTest": 0,
-		"PositivityPreserving": 1,
-		"if_overdetermined_eigen": 0
+		"Sources_React": true,
+		"if_ODReactionTest": false,
+		"PositivityPreserving": true,
+		"if_overdetermined_eigen": false
 	},
 	"sources": {},
 	"mesh": {
 		"Yil_limiter": 1.0,
-		"Dim_limiter": 1.0,
+		"Dim_limiter": 2.0E-4,
 		"DOMAIN_Size": [
 			0.2,
 			0.05,

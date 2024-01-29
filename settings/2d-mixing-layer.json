@@ -28,7 +28,7 @@
 	"equations": {
 		"Fluid_Names": [],
 		"Species_Name": [],
-		"if_overdetermined_eigen": 0
+		"if_overdetermined_eigen": false
 	},
 	"sources": {},
 	"mesh": {
