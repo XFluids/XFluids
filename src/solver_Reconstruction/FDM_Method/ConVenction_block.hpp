@@ -215,9 +215,9 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #if __VENDOR_SUBMMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 			dim3 local_block_x(32, 8, 1);
-			dim3 global_grid_x((global_ndrange_x[0] + local_ndrange[0] - 1) / local_ndrange[0],
-							   (global_ndrange_x[1] + local_ndrange[1] - 1) / local_ndrange[1],
-							   (global_ndrange_x[2] + local_ndrange[2] - 1) / local_ndrange[2]);
+			dim3 global_grid_x((global_ndrange_x[0] + local_block_x.x - 1) / local_block_x.x,
+							   (global_ndrange_x[1] + local_block_x.y - 1) / local_block_x.y,
+							   (global_ndrange_x[2] + local_block_x.z - 1) / local_block_x.z);
 			static bool dummx = (GetKernelAttributes((const void *)ReconstructFluxXVendorWrapper, "ReconstructFluxXVendorWrapper"), true); // call only once
 			ReconstructFluxXVendorWrapper<<<global_grid_x, local_block_x>>>(bl, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x,
 																			fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x);
@@ -245,9 +245,9 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #if __VENDOR_SUBMMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 			dim3 local_block_y(32, 8, 1);
-			dim3 global_grid_y((global_ndrange_y[0] + local_ndrange[0] - 1) / local_ndrange[0],
-							   (global_ndrange_y[1] + local_ndrange[1] - 1) / local_ndrange[1],
-							   (global_ndrange_y[2] + local_ndrange[2] - 1) / local_ndrange[2]);
+			dim3 global_grid_y((global_ndrange_y[0] + local_block_y.x - 1) / local_block_y.x,
+							   (global_ndrange_y[1] + local_block_y.y - 1) / local_block_y.y,
+							   (global_ndrange_y[2] + local_block_y.z - 1) / local_block_y.z);
 			static bool dummy = (GetKernelAttributes((const void *)ReconstructFluxYVendorWrapper, "ReconstructFluxYVendorWrapper"), true); // call only once
 			ReconstructFluxYVendorWrapper<<<global_grid_y, local_block_y>>>(bl, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y,
 																			fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y);
@@ -275,9 +275,9 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #if __VENDOR_SUBMMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 			dim3 local_block_z(32, 8, 1);
-			dim3 global_grid_z((global_ndrange_z[0] + local_ndrange[0] - 1) / local_ndrange[0],
-							   (global_ndrange_z[1] + local_ndrange[1] - 1) / local_ndrange[1],
-							   (global_ndrange_z[2] + local_ndrange[2] - 1) / local_ndrange[2]);
+			dim3 global_grid_z((global_ndrange_z[0] + local_block_z.x - 1) / local_block_z.x,
+							   (global_ndrange_z[1] + local_block_z.y - 1) / local_block_z.y,
+							   (global_ndrange_z[2] + local_block_z.z - 1) / local_block_z.z);
 			static bool dummz = (GetKernelAttributes((const void *)ReconstructFluxZVendorWrapper, "ReconstructFluxZVendorWrapper"), true); // call only once
 			ReconstructFluxZVendorWrapper<<<global_grid_z, local_block_z>>>(bl, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, fdata.b1z,
 																			fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z);
@@ -398,9 +398,9 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #if __VENDOR_SUBMMIT__
 	CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 	dim3 local_block_v(32, 8, 1);
-	dim3 global_grid_v((global_ndrange_max[0] + local_ndrange[0] - 1) / local_ndrange[0],
-					   (global_ndrange_max[1] + local_ndrange[1] - 1) / local_ndrange[1],
-					   (global_ndrange_max[2] + local_ndrange[2] - 1) / local_ndrange[2]);
+	dim3 global_grid_v((global_ndrange_max[0] + local_block_v.x - 1) / local_block_v.x,
+					   (global_ndrange_max[1] + local_block_v.y - 1) / local_block_v.y,
+					   (global_ndrange_max[2] + local_block_v.z - 1) / local_block_v.z);
 	static bool dummv = (GetKernelAttributes((const void *)Gettransport_coeff_averVendorWrapper, "Gettransport_coeff_averVendorWrapper"), true); // call only once
 	Gettransport_coeff_averVendorWrapper<<<global_grid_v, local_block_v>>>(bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
 	CheckGPUErrors(vendorDeviceSynchronize());

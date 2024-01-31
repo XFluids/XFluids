@@ -18,9 +18,9 @@
 
 real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 {
-	real_t xi[NUM_SPECIES], yi[NUM_SPECIES];		  // molecular concentration; mass fraction
+	real_t xi[NUM_SPECIES], yi[NUM_SPECIES];										  // molecular concentration; mass fraction
 	real_t p0 = ODETestRange[0], T0 = ODETestRange[1], equilibrium = ODETestRange[2]; // initial Temperature and Pressure
-#ifdef ZeroMassFraction								  // initial Mass Fraction
+#ifdef ZeroMassFraction																  // initial Mass Fraction
 	std::memcpy(yi, ZeroMassFraction.data(), NUM_SPECIES * sizeof(real_t));
 #else
 	std::memcpy(yi, Ss.h_thermal.species_ratio_in, NUM_SPECIES * sizeof(real_t));
@@ -93,9 +93,9 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 #if __VENDOR_SUBMMIT__
 	CheckGPUErrors(vendorSetDevice(Fs.DeviceSelect[2]));
 	dim3 local_block(4, 4, 4);
-	dim3 global_grid((bl.X_inner + local_block.x - 1) / local_block.x,
-					 (bl.Y_inner + local_block.y - 1) / local_block.y,
-					 (bl.Z_inner + local_block.z - 1) / local_block.z);
+	dim3 global_grid((global_ndrange[0] + local_block.x - 1) / local_block.x,
+					 (global_ndrange[1] + local_block.y - 1) / local_block.y,
+					 (global_ndrange[2] + local_block.z - 1) / local_block.z);
 	static bool dummy = (GetKernelAttributes((const void *)ChemeODEQ2SolverKernelVendorWrapper, "ChemeODEQ2SolverKernelVendorWrapper"), true); // call only once
 	ChemeODEQ2SolverKernelVendorWrapper<<<global_grid, local_block>>>(bl, thermal, react, UI, fdata.y, rho, T, fdata.e, dt);
 	CheckGPUErrors(vendorDeviceSynchronize());
