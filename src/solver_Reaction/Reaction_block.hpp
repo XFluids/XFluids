@@ -1,4 +1,5 @@
 #include "Reaction_kernels.hpp"
+#include "../utils/atttribute/attribute.h"
 
 #ifndef ZeroDTemperature
 #define ZeroDTemperature 1150.0

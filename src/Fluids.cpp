@@ -7,6 +7,67 @@
 #include "solver_Reaction/Reaction_block.hpp"
 #include "solver_Reconstruction/Reconstruction_block.hpp"
 
+extern void YDirThetaItegralKernel(int i, int k, Block bl, real_t *y, real_t *ThetaXe, real_t *ThetaN2, real_t *ThetaXN)
+{
+	MARCO_DOMAIN_GHOST();
+	if (i >= X_inner + Bwidth_X)
+		return;
+	if (k >= Z_inner + Bwidth_Z)
+		return;
+
+	int ii = i - Bwidth_X, kk = k - Bwidth_Z;
+	ThetaXe[X_inner * kk + ii] = _DF(0.0), ThetaN2[X_inner * kk + ii] = _DF(0.0), ThetaXN[X_inner * kk + ii] = _DF(0.0);
+	for (size_t j = bl.Bwidth_Y; j < bl.Ymax - bl.Bwidth_Y; j++)
+	{
+		int id = Xmax * Ymax * k + Xmax * j + i;
+		real_t *yi = &(y[NUM_SPECIES * id]);
+		ThetaXe[X_inner * kk + ii] += yi[bl.Xe_id];
+		ThetaN2[X_inner * kk + ii] += yi[bl.N2_id];
+		ThetaXN[X_inner * kk + ii] += yi[bl.Xe_id] * yi[bl.N2_id];
+	}
+}
+
+// extern void XDirThetaItegralKernel(int k, Block bl, real_t *ThetaXeIn, real_t *ThetaN2In, real_t *ThetaXNIn,
+//                                                  real_t *ThetaXeOut, real_t *ThetaN2Out, real_t *ThetaXNOut)
+// {
+//     MARCO_DOMAIN_GHOST();
+//     if (k >= Z_inner + Bwidth_Z)
+//         return;
+
+//     ThetaXeOut[k] = _DF(0.0), ThetaN2Out[k] = _DF(0.0), ThetaXNOut[k] = _DF(0.0);
+//     for (size_t i = bl.Bwidth_Y; i < bl.Ymax; i++)
+//     {
+//         int id = Xmax * Ymax * k + Xmax * j + i + 1;
+//         ThetaXe[Xmax * k + i] += bl.dx * yi[NUM_SPECIES * id - 2];
+//         ThetaN2[Xmax * k + i] += bl.dx * yi[NUM_SPECIES * id - 1];
+//         ThetaXN[Xmax * k + i] += bl.dx * yi[NUM_SPECIES * id - 2] * yi[NUM_SPECIES * id - 1];
+//     }
+// }
+
+extern void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error) //, sycl::stream stream_ct1
+{
+	int Xmax = bl.Xmax;
+	int Ymax = bl.Ymax;
+	if (i >= Xmax - bl.Bwidth_X)
+		return;
+	if (j >= Ymax - bl.Bwidth_Y)
+		return;
+	if (k >= bl.Zmax - bl.Bwidth_Z)
+		return;
+	int id = (Xmax * Ymax * k + Xmax * j + i) * Emax;
+
+	bool tempnegv = UI[0 + id] < 0 ? true : false, tempnans[Emax];
+	for (size_t ii = 0; ii < Emax; ii++)
+	{
+		tempnans[ii] = (sycl::isnan(UI[ii + id]) || sycl::isinf(UI[ii + id])) || (sycl::isnan(LUI[ii + id]) || sycl::isinf(LUI[ii + id]));
+		tempnegv = tempnegv || tempnans[ii];
+		if (tempnans[ii])
+			error_pos[ii] = 1;
+	}
+	if (tempnegv)
+		*error = true, error_pos[Emax + 1] = i, error_pos[Emax + 2] = j, error_pos[Emax + 3] = k;
+}
+
 Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIter(0)
 {
 	MPI_BCs_time = 0.0;
@@ -230,15 +291,18 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.rho = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.p = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.c = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.u = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.v = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.w = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
 		d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		// d_fstate.Ri = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		// d_fstate.Cp = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		this_msize = double(Kbytes >> 10) * (10.0 + NUM_SPECIES), MemMbSize += this_msize;
+		d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+		// d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+		this_msize = double(Kbytes >> 10) * (12.0 + NUM_SPECIES * 2.0), MemMbSize += this_msize;
 		if (0 == rank)
 			std::cout << "Device memory malloced(primitive variables): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
@@ -794,7 +858,7 @@ std::pair<bool, std::vector<float>> Fluid::UpdateFluidStates(sycl::queue &q, int
 	else
 		UI = d_U1;
 
-	return UpdateFluidStateFlux(q, Fs.BlSz, Fs.d_thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma, error_patched_times, rank);
+	return UpdateFluidStateFlux(q, Fs, Fs.d_thermal, UI, d_fstate, d_FluxF, d_FluxG, d_FluxH, material_property.Gamma, error_patched_times, rank);
 }
 
 void Fluid::UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt)

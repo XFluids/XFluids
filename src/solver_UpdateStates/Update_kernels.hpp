@@ -72,32 +72,3 @@ extern void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t 
 	// get_Array(U1, de_U1, Emax, id);
 	// get_Array(LU, de_LU, Emax, id);
 }
-
-extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
-{
-	MARCO_DOMAIN();
-	int id = Xmax * Ymax * k + Xmax * j + i;
-	int id_im = Xmax * Ymax * k + Xmax * j + i - 1;
-	int id_jm = Xmax * Ymax * k + Xmax * (j - 1) + i;
-	int id_km = Xmax * Ymax * (k - 1) + Xmax * j + i;
-
-	for (int n = 0; n < Emax; n++)
-	{
-		real_t LU0 = _DF(0.0);
-
-		if (bl.DimX)
-			LU0 += (FluxFw[Emax * id_im + n] - FluxFw[Emax * id + n]) * bl._dx;
-
-		if (bl.DimY)
-			LU0 += (FluxGw[Emax * id_jm + n] - FluxGw[Emax * id + n]) * bl._dy;
-
-		if (bl.DimZ)
-			LU0 += (FluxHw[Emax * id_km + n] - FluxHw[Emax * id + n]) * bl._dz;
-
-		LU[Emax * id + n] = LU0;
-	}
-
-	// real_t de_LU[Emax];
-	// get_Array(LU, de_LU, Emax, id);
-	// real_t de_XU[Emax];
-}

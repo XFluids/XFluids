@@ -1,9 +1,14 @@
+#include "../timer/timer.h"
 #include "Update_kernels.hpp"
 #include "Estimate_kernels.hpp"
-#include "../include/sycl_kernels.hpp"
+#include "UpdateStates_block.h"
+#include "../utils/atttribute/attribute.h"
 
-std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Block bl, Thermal thermal, real_t *UI, FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH, real_t const Gamma, int &error_patched_times, const int rank)
+std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup Ss, Thermal thermal, real_t *UI,
+														 FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+														 real_t const Gamma, int &error_patched_times, const int rank)
 {
+	Block bl = Ss.BlSz;
 	real_t *rho = fdata.rho;
 	real_t *p = fdata.p;
 	real_t *H = fdata.H;
@@ -11,15 +16,19 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Block b
 	real_t *u = fdata.u;
 	real_t *v = fdata.v;
 	real_t *w = fdata.w;
+	real_t *e = fdata.e;
+	real_t *g = fdata.gamma;
 	real_t *T = fdata.T;
+	// real_t *Ri = fdata.Ri;
+	// real_t *Cp = fdata.Cp;
 
 	std::vector<float> timer_UD;
 	float runtime_emyi = 0.0f, runtime_empv = 0.0f;
 	float runtime_rhoyi = 0.0f, runtime_states = 0.0f;
 	std::chrono::high_resolution_clock::time_point runtime_ud_start;
 
-	auto global_ndrange = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange = sycl::range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
+	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 
 	// // update rho and yi
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
@@ -112,7 +121,7 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Block b
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
-				   sycl::nd_range<3>(range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner), local_ndrange), [=](sycl::nd_item<3> index) { //
+				   sycl::nd_range<3>(sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner), local_ndrange), [=](sycl::nd_item<3> index) { //
 					   int i = index.get_global_id(0) + bl.Bwidth_X;
 					   int j = index.get_global_id(1) + bl.Bwidth_Y;
 					   int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -163,8 +172,8 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Block b
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
-	auto global_ndrange = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+	auto global_ndrange = sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(

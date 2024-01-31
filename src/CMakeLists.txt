@@ -1,10 +1,12 @@
 # # add external submodule
 add_subdirectory(timer)
+add_subdirectory(utils)
 add_subdirectory(read_grid)
 add_subdirectory(read_ini)
 add_subdirectory(mpiPacks)
 add_subdirectory(solver_Ini)
 add_subdirectory(solver_BCs)
+add_subdirectory(solver_UpdateStates)
 
 # # add sample lib
 find_library(${INIT_SAMPLE} NAMES lib${INIT_SAMPLE}.a HINTS "${LIBRARY_OUTPUT_PATH}")
@@ -19,7 +21,6 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   # # add program sub-solvers
   add_subdirectory(solver_GetDt)
   add_subdirectory(solver_Reaction)
-  add_subdirectory(solver_UpdateStates)
   add_subdirectory(solver_Reconstruction)
   target_include_directories(${INIT_SAMPLE}
     PUBLIC
@@ -28,8 +29,10 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   target_link_libraries(${INIT_SAMPLE}
     PUBLIC
     timer
+    utils
     solver_Ini
     solver_BCs
+    solver_Update
   )
 
   IF(USE_MPI)
@@ -51,8 +54,10 @@ ELSE()
   target_link_libraries(${INIT_SAMPLE}
     INTERFACE
     timer
+    utils
     solver_Ini
     solver_BCs
+    solver_Update
   )
 ENDIF()
 

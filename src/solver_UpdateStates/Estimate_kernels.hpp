@@ -158,27 +158,3 @@ extern void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal th
 	if (ngatve) // add condition to avoid rewrite by other threads
 		*error1 = true, error_pos[3 + NUM_SPECIES] = i, error_pos[4 + NUM_SPECIES] = j, error_pos[5 + NUM_SPECIES] = k;
 }
-
-extern void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offset, int z_offset, Block bl, int *error_pos, real_t *UI, real_t *LUI, bool *error) //, sycl::stream stream_ct1
-{
-	int Xmax = bl.Xmax;
-	int Ymax = bl.Ymax;
-	if (i >= Xmax - bl.Bwidth_X)
-		return;
-	if (j >= Ymax - bl.Bwidth_Y)
-		return;
-	if (k >= bl.Zmax - bl.Bwidth_Z)
-		return;
-	int id = (Xmax * Ymax * k + Xmax * j + i) * Emax;
-
-	bool tempnegv = UI[0 + id] < 0 ? true : false, tempnans[Emax];
-	for (size_t ii = 0; ii < Emax; ii++)
-	{
-		tempnans[ii] = (sycl::isnan(UI[ii + id]) || sycl::isinf(UI[ii + id])) || (sycl::isnan(LUI[ii + id]) || sycl::isinf(LUI[ii + id]));
-		tempnegv = tempnegv || tempnans[ii];
-		if (tempnans[ii])
-			error_pos[ii] = 1;
-	}
-	if (tempnegv)
-		*error = true, error_pos[Emax + 1] = i, error_pos[Emax + 2] = j, error_pos[Emax + 3] = k;
-}

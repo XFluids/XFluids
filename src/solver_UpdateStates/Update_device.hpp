@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../read_ini/setupini.h"
+#include "../solver_Ini/Mixing_device.h"
 
 SYCL_DEVICE void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
 {
