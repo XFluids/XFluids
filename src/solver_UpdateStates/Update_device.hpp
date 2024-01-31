@@ -1,6 +1,5 @@
 #pragma once
 
-#include "global_setup.h"
 #include "../read_ini/setupini.h"
 
 SYCL_DEVICE void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)

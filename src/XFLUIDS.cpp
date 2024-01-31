@@ -226,9 +226,9 @@ void XFLUIDS::EndProcess()
 #else
 	std::cout << "<--------------------------------------------------->\n";
 #endif // end USE_MPI
-		std::cout << SelectDv << " runtime(s):  " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
-		std::cout << "Device Memory Usage(GB)   :  " << fluids[0]->MemMbSize / 1024.0 << std::endl;
+		std::cout << SelectDv << " runtime(s)   :  " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
 #ifdef USE_MPI
+		std::cout << "Device Memory Usage(GB)   :  " << fluids[0]->MemMbSize / 1024.0 << std::endl;
 		std::cout << "MPI trans Memory Size(GB) :  " << fluids[0]->MPIMbSize / 1024.0 << std::endl;
 		std::cout << "Fluids do BCs time(s)     :  " << std::setw(8) << std::setprecision(6) << BCsTtemp / float(nranks) << std::endl;
 		std::cout << "MPI buffers Trans time(s) :  " << std::setw(8) << std::setprecision(6) << TransTtemp / float(nranks) << std::endl;
@@ -246,7 +246,7 @@ void XFLUIDS::EndProcess()
 	if (rank == 0)
 #endif
 	{
-		std::cout << "Times of error patched: " << error_times_patched << std::endl;
+		// std::cout << "Times of error patched: " << error_times_patched << std::endl;
 		float runtime_check_sum = runtime_boundary + runtime_updatestates + runtime_getdt;
 		runtime_check_sum += runtime_computelu + runtime_updateu + runtime_estimatenan + runtime_rea;
 		float runtime_LU_sync_sum = 0.0f, runtime_LU_async_sum = 0.0f;
@@ -264,40 +264,53 @@ void XFLUIDS::EndProcess()
 		}
 		float _runtime_check_sum = 100.f / runtime_check_sum, _runtime_LU_check_sum = 100.f / runtime_LU_sync_sum;
 
+		float runtime_UD_sum = 0.0f;
+		for (size_t i = 0; i < UD_rt.size(); i++)
+			runtime_UD_sum += UD_rt[i];
+		float _runtime_UD_sum = 100.f / runtime_UD_sum;
 		// TODO: in RUNTIME CHECK, MPI need to be contain; Then write RUNTIME CHECK of UpdateStates;
 		// RUNTIME CHECK BEGIN
 		std::cout << "<--------------------------------------------------->"
 				  << "\n"
 				  << "DETAILED RUNTIME,Time(seconds),Time Percent(%)"
 				  << "\n"
-				  << "runtime of DoBCs,       " << runtime_boundary << "," << runtime_boundary * _runtime_check_sum << "\n"
-				  << "runtime of GetDt,       " << runtime_getdt << "," << runtime_getdt * _runtime_check_sum << "\n"
-				  << "runtime of GetLU,       " << runtime_computelu << "," << runtime_computelu * _runtime_check_sum << "\n"
-				  << "runtime of UpdateU,     " << runtime_updateu << "," << runtime_updateu * _runtime_check_sum << "\n"
-				  << "runtime of UpdateState, " << runtime_updatestates << "," << runtime_updatestates * _runtime_check_sum << "\n"
-				  << "runtime of EstimateNAN, " << runtime_estimatenan << "," << runtime_estimatenan * _runtime_check_sum << "\n"
-				  << "runtime of ReactionIntegral, " << runtime_rea << "," << runtime_rea * _runtime_check_sum << "\n"
-				  << "runtime check SUMMATION>>>>, " << runtime_check_sum << "\n"
+				  << "runtime of DoBCs,               " << runtime_boundary << "," << runtime_boundary * _runtime_check_sum << "\n"
+				  << "runtime of GetDt,               " << runtime_getdt << "," << runtime_getdt * _runtime_check_sum << "\n"
+				  << "runtime of GetLU,               " << runtime_computelu << "," << runtime_computelu * _runtime_check_sum << "\n"
+				  << "runtime of UpdateU,             " << runtime_updateu << "," << runtime_updateu * _runtime_check_sum << "\n"
+				  << "runtime of UpdateState,         " << runtime_updatestates << "," << runtime_updatestates * _runtime_check_sum << "\n"
+				  << "runtime of EstimateNAN,         " << runtime_estimatenan << "," << runtime_estimatenan * _runtime_check_sum << "\n"
+				  << "runtime of ReactionIntegral,    " << runtime_rea << "," << runtime_rea * _runtime_check_sum << "\n"
+				  << "runtime check SUMMATION>>>>,    " << runtime_check_sum << "\n"
+				  << "<--------------------------------------------------->"
+				  << "\n"
+				  << "DETAILED RUNTIME of UpdateStates,Time(seconds),Time Percent(%)"
+				  << "\n"
+				  << "runtime of Estimate Yi,                  " << UD_rt[0] << "," << UD_rt[0] * _runtime_UD_sum << "\n"
+				  << "runtime of Get rho and Yi,               " << UD_rt[2] << "," << UD_rt[2] * _runtime_UD_sum << "\n"
+				  << "runtime of Estimate Primitive,           " << UD_rt[1] << "," << UD_rt[1] * _runtime_UD_sum << "\n"
+				  << "runtime of Get States and Fluxes,        " << UD_rt[3] << "," << UD_rt[3] * _runtime_UD_sum << "\n"
+				  << "runtime check Update SUMMATION>>>>,      " << runtime_UD_sum << "\n"
 				  << "<--------------------------------------------------->"
 				  << "\n"
 				  << "DETAILED RUNTIME of GetLU,Time(seconds),Time Percent(%)"
 				  << "\n"
 #if __SYNC_TIMER_
-				  << "runtime of SyncGetLocalEigenX,    " << LU_rt[0] << "," << LU_rt[0] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncGetLocalEigenY,    " << LU_rt[1] << "," << LU_rt[1] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncGetLocalEigenZ,    " << LU_rt[2] << "," << LU_rt[2] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncGetGlobalEigenX,   " << LU_rt[4] << "," << LU_rt[4] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncGetGlobalEigenY,   " << LU_rt[5] << "," << LU_rt[5] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncGetGlocalEigenZ,   " << LU_rt[6] << "," << LU_rt[6] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncReconstructWallFluxX,    " << LU_rt[8] << "," << LU_rt[8] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncReconstructWallFluxY,    " << LU_rt[9] << "," << LU_rt[9] * _runtime_LU_check_sum << "\n"
-				  << "runtime of SyncReconstructWallFluxZ,    " << LU_rt[10] << "," << LU_rt[10] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetLocalEigenX,           " << LU_rt[0] << "," << LU_rt[0] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetLocalEigenY,           " << LU_rt[1] << "," << LU_rt[1] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetLocalEigenZ,           " << LU_rt[2] << "," << LU_rt[2] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetGlobalEigenX,          " << LU_rt[4] << "," << LU_rt[4] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetGlobalEigenY,          " << LU_rt[5] << "," << LU_rt[5] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetGlocalEigenZ,          " << LU_rt[6] << "," << LU_rt[6] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncReconstructWallFluxX,     " << LU_rt[8] << "," << LU_rt[8] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncReconstructWallFluxY,     " << LU_rt[9] << "," << LU_rt[9] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncReconstructWallFluxZ,     " << LU_rt[10] << "," << LU_rt[10] * _runtime_LU_check_sum << "\n"
 				  << "runtime of SyncPositivityPreservingX,    " << LU_rt[12] << "," << LU_rt[12] * _runtime_LU_check_sum << "\n"
 				  << "runtime of SyncPositivityPreservingY,    " << LU_rt[13] << "," << LU_rt[13] * _runtime_LU_check_sum << "\n"
 				  << "runtime of SyncPositivityPreservingZ,    " << LU_rt[14] << "," << LU_rt[14] * _runtime_LU_check_sum << "\n"
 #else
-				  << "runtime of AsyncGetLocalEigen>>,  " << LU_rt[3] << "," << LU_rt[3] * _runtime_LU_check_sum << "\n"
-				  << "runtime of AsyncGetGlocalEigen>>, " << LU_rt[7] << "," << LU_rt[7] * _runtime_LU_check_sum << "\n"
+				  << "runtime of AsyncGetLocalEigen>>,         " << LU_rt[3] << "," << LU_rt[3] * _runtime_LU_check_sum << "\n"
+				  << "runtime of AsyncGetGlocalEigen>>,        " << LU_rt[7] << "," << LU_rt[7] * _runtime_LU_check_sum << "\n"
 				  << "runtime of AsyncReconstructWallFlux>>,   " << LU_rt[11] << "," << LU_rt[11] * _runtime_LU_check_sum << "\n"
 				  << "runtime of AsyncPositivityPreserving>>,  " << LU_rt[15] << "," << LU_rt[15] * _runtime_LU_check_sum << "\n"
 #endif
@@ -311,9 +324,7 @@ void XFLUIDS::EndProcess()
 				  << "runtime of AsyncGetViscousWallFlux>>,    " << LU_rt[21] << "," << LU_rt[21] * _runtime_LU_check_sum << "\n"
 #endif
 				  << "runtime of CalculateLU,RHS)FromFluxes,   " << LU_rt[22] << "," << LU_rt[22] * _runtime_LU_check_sum << "\n"
-				  << "runtime check GetLU,RHS) SUMMATION>>>>,  " << runtime_LU_sync_sum << "\n"
-				  << "<--------------------------------------------------->"
-				  << "\n";
+				  << "runtime check GetLU,RHS) SUMMATION>>>>,  " << runtime_LU_sync_sum << "\n";
 	}
 }
 
@@ -484,9 +495,8 @@ real_t XFLUIDS::ComputeTimeStep(sycl::queue &q)
 
 void XFLUIDS::ComputeLU(sycl::queue &q, int flag)
 {
-	// TODO	LU_rt need to be initial , otherwise it will be Segmentation fault(core dumped)
-	// vector.resize() has to do only once, maybe have better methods
 	std::vector<float> LU_rt_temp = fluids[0]->ComputeFluidLU(q, flag);
+	// vector.resize() has to do only once:
 	static bool dummy = (LU_rt.resize(LU_rt_temp.size()), LU_rt.assign(LU_rt.size(), 0), true);
 	for (size_t i = 0; i < LU_rt.size(); i++)
 		LU_rt[i] += LU_rt_temp[i];
@@ -507,13 +517,17 @@ void XFLUIDS::BoundaryCondition(sycl::queue &q, int flag)
 bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const int Step, std::string RkStep)
 {
 	bool error_t = false;
-	std::vector<bool> error(NumFluid);
-	for (int n = 0; n < NumFluid; n++)
+
+	// for (int n = 0; n < NumFluid; n++)
 	{
-		error[n] = fluids[n]->UpdateFluidStates(q, flag);
+		std::pair temp_pair = fluids[0]->UpdateFluidStates(q, flag);
 		// if (Time > 1.0E-6 && rank == 1)
 		// 	error[n] = true;
-		error_t = error_t || error[n]; // rank error
+		error_t = error_t || temp_pair.first; // rank error
+		static bool dummy = (UD_rt.resize(temp_pair.second.size()), UD_rt.assign(UD_rt.size(), 0), true);
+		if (std::string::npos != RkStep.find("_RK")) // Only Timer UpdateStates inside GetLU
+			for (size_t i = 0; i < UD_rt.size(); i++)
+				UD_rt[i] += temp_pair.second[i];
 	}
 
 	{
@@ -1334,150 +1348,150 @@ void XFLUIDS::Output_cvti(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 	GetCPT_OutRanks(OutRanks, CVTI, pos);
 	file_name = file_name + "_rank_" + osr.rankFormat.str();
 #endif
-		file_name += ".vti";
+	file_name += ".vti";
 
-		std::string headerfile_name = OutputDir + "/CVTI_" + outputPrefix + "_Time_" + osr.timeFormat.str() + ".pvti";
-		mx = (pos.OutDirX) ? Ss.BlSz.mx : 0;
-		my = (pos.OutDirY) ? Ss.BlSz.my : 0;
-		mz = (pos.OutDirZ) ? Ss.BlSz.mz : 0;
-		if (0 == rank) // write header
-		{
-			std::fstream outHeader;
-			std::string compressor("");
-			// open pvti header file
-			outHeader.open(headerfile_name.c_str(), std::ios_base::out);
-			outHeader << "<?xml version=\"1.0\"?>" << std::endl;
-			outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
-			outHeader << "  <PImageData WholeExtent=\"";
-			outHeader << 0 << " " << mx * VTI.nbX << " ";
-			outHeader << 0 << " " << my * VTI.nbY << " ";
-			outHeader << 0 << " " << mz * VTI.nbZ << "\" GhostLevel=\"0\" "
-					  << "Origin=\""
-					  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
-					  << "Spacing=\""
-					  << dx << " " << dy << " " << dz << "\">"
-					  << std::endl;
-			outHeader << "    <PCellData Scalars=\"Scalars_\">" << std::endl;
-			for (int iVar = 0; iVar < varout.size(); iVar++)
-				outHeader << "      <PDataArray type=\"Float" << sizeof(T) * 8 << "\" Name=\"" << varout[iVar].name << "\"/>" << std::endl;
-			outHeader << "    </PCellData>" << std::endl;
+	std::string headerfile_name = OutputDir + "/CVTI_" + outputPrefix + "_Time_" + osr.timeFormat.str() + ".pvti";
+	mx = (pos.OutDirX) ? Ss.BlSz.mx : 0;
+	my = (pos.OutDirY) ? Ss.BlSz.my : 0;
+	mz = (pos.OutDirZ) ? Ss.BlSz.mz : 0;
+	if (0 == rank) // write header
+	{
+		std::fstream outHeader;
+		std::string compressor("");
+		// open pvti header file
+		outHeader.open(headerfile_name.c_str(), std::ios_base::out);
+		outHeader << "<?xml version=\"1.0\"?>" << std::endl;
+		outHeader << "<VTKFile type=\"PImageData\" version=\"0.1\" byte_order=\"LittleEndian\"" << compressor << ">" << std::endl;
+		outHeader << "  <PImageData WholeExtent=\"";
+		outHeader << 0 << " " << mx * VTI.nbX << " ";
+		outHeader << 0 << " " << my * VTI.nbY << " ";
+		outHeader << 0 << " " << mz * VTI.nbZ << "\" GhostLevel=\"0\" "
+				  << "Origin=\""
+				  << Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
+				  << "Spacing=\""
+				  << dx << " " << dy << " " << dz << "\">"
+				  << std::endl;
+		outHeader << "    <PCellData Scalars=\"Scalars_\">" << std::endl;
+		for (int iVar = 0; iVar < varout.size(); iVar++)
+			outHeader << "      <PDataArray type=\"Float" << sizeof(T) * 8 << "\" Name=\"" << varout[iVar].name << "\"/>" << std::endl;
+		outHeader << "    </PCellData>" << std::endl;
 
-			// Out put for 2D && 3D;
-			for (int iPiece = 0; iPiece < Ss.nRanks; ++iPiece)
-				if (OutRanks[iPiece] >= 0)
-				{
-					std::ostringstream pieceFormat;
-					pieceFormat.width(5);
-					pieceFormat.fill('0');
-					pieceFormat << iPiece;
-					std::string pieceFilename = temp_name;
+		// Out put for 2D && 3D;
+		for (int iPiece = 0; iPiece < Ss.nRanks; ++iPiece)
+			if (OutRanks[iPiece] >= 0)
+			{
+				std::ostringstream pieceFormat;
+				pieceFormat.width(5);
+				pieceFormat.fill('0');
+				pieceFormat << iPiece;
+				std::string pieceFilename = temp_name;
 #ifdef USE_MPI
-					pieceFilename += "_rank_" + pieceFormat.str();
+				pieceFilename += "_rank_" + pieceFormat.str();
 #endif
-					pieceFilename += +".vti";
+				pieceFilename += +".vti";
 
-					// get MPI coords corresponding to MPI rank iPiece
-					int coords[3] = {0, 0, 0};
-					int OnbX = (pos.OutDirX) ? VTI.nbX : 0, OnbY = (pos.OutDirY) ? VTI.nbY : 0, OnbZ = (pos.OutDirZ) ? VTI.nbZ : 0;
+				// get MPI coords corresponding to MPI rank iPiece
+				int coords[3] = {0, 0, 0};
+				int OnbX = (pos.OutDirX) ? VTI.nbX : 0, OnbY = (pos.OutDirY) ? VTI.nbY : 0, OnbZ = (pos.OutDirZ) ? VTI.nbZ : 0;
 #ifdef USE_MPI
-					Ss.mpiTrans->communicator->getCoords(iPiece, Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ, coords);
+				Ss.mpiTrans->communicator->getCoords(iPiece, Ss.BlSz.DimX + Ss.BlSz.DimY + Ss.BlSz.DimZ, coords);
 #endif // end USE_MPI
 
-					outHeader << " <Piece Extent=\"";
-					// pieces in first line of column are different (due to the special
-					// pvti file format with overlapping by 1 cell)
-					if (Ss.BlSz.DimX)
-					{
-						if (coords[0] == 0)
-							outHeader << 0 << " " << OnbX << " ";
-						else
-							outHeader << coords[0] * OnbX << " " << coords[0] * OnbX + OnbX << " ";
-					}
+				outHeader << " <Piece Extent=\"";
+				// pieces in first line of column are different (due to the special
+				// pvti file format with overlapping by 1 cell)
+				if (Ss.BlSz.DimX)
+				{
+					if (coords[0] == 0)
+						outHeader << 0 << " " << OnbX << " ";
 					else
-						outHeader << 0 << " " << 0;
-
-					if (Ss.BlSz.DimY)
-					{
-						if (coords[1] == 0)
-							outHeader << 0 << " " << OnbY << " ";
-						else
-							outHeader << coords[1] * OnbY << " " << coords[1] * OnbY + OnbY << " ";
-					}
-					else
-						outHeader << 0 << " " << 0;
-
-					if (Ss.BlSz.DimZ)
-					{
-						if (coords[2] == 0)
-							outHeader << 0 << " " << OnbZ << " ";
-						else
-							outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
-					}
-					else
-						outHeader << 0 << " " << 0;
-					outHeader << "\" Source=\"";
-					outHeader << pieceFilename << "\"/>" << std::endl;
+						outHeader << coords[0] * OnbX << " " << coords[0] * OnbX + OnbX << " ";
 				}
-			outHeader << "</PImageData>" << std::endl;
-			outHeader << "</VTKFile>" << std::endl;
-			// close header file
-			outHeader.close();
-		} // end writing pvti header
+				else
+					outHeader << 0 << " " << 0;
 
-		if (OutRanks[rank] >= 0)
+				if (Ss.BlSz.DimY)
+				{
+					if (coords[1] == 0)
+						outHeader << 0 << " " << OnbY << " ";
+					else
+						outHeader << coords[1] * OnbY << " " << coords[1] * OnbY + OnbY << " ";
+				}
+				else
+					outHeader << 0 << " " << 0;
+
+				if (Ss.BlSz.DimZ)
+				{
+					if (coords[2] == 0)
+						outHeader << 0 << " " << OnbZ << " ";
+					else
+						outHeader << coords[2] * OnbZ << " " << coords[2] * OnbZ + OnbZ << " ";
+				}
+				else
+					outHeader << 0 << " " << 0;
+				outHeader << "\" Source=\"";
+				outHeader << pieceFilename << "\"/>" << std::endl;
+			}
+		outHeader << "</PImageData>" << std::endl;
+		outHeader << "</VTKFile>" << std::endl;
+		// close header file
+		outHeader.close();
+	} // end writing pvti header
+
+	if (OutRanks[rank] >= 0)
+	{
+		int num = 0;
+		for (size_t ni = 0; ni < nranks; ni++)
 		{
-			int num = 0;
-			for (size_t ni = 0; ni < nranks; ni++)
-			{
-				if (OutRanks[rank] >= 0)
-					num += 1;
-			}
-			unsigned long long need = num * varout.size() * (CVTI.nbX * CVTI.nbY * CVTI.nbZ * sizeof(T) + 4); // Bytes
-			if (disk_avail<disk::B>(Ss.WorkDir, need, "Compress output of rank: " + std::to_string(rank)))
-			{
-				std::fstream outFile;
-				outFile.open(file_name.c_str(), std::ios_base::out);
-				// write xml data header
-				outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
-				outFile << "  <ImageData WholeExtent=\""
-						<< xmin << " " << xmax << " " << ymin << " " << ymax << " " << zmin << " " << zmax << "\" "
-						<< "Origin=\""
-						<< Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
-						<< "Spacing=\""
-						<< dx << " " << dy << " " << dz << "\">" << std::endl;
-				outFile << "  <Piece Extent=\""
-						<< xmin << " " << xmax << " " << ymin << " " << ymax << " " << zmin << " " << zmax << "\">" << std::endl;
-				outFile << "    <PointData>\n";
-				outFile << "    </PointData>\n";
-				// write data in binary format
-				outFile << "    <CellData>" << std::endl;
-				for (int iVar = 0; iVar < varout.size(); iVar++)
-				{
-					outFile << "     <DataArray type=\"Float" << sizeof(T) * 8 << "\" Name=\"";
-					outFile << varout[iVar].name << "\" format=\"appended\" offset=\""
-							<< iVar * CVTI.nbX * CVTI.nbY * CVTI.nbZ * sizeof(T) + iVar * sizeof(unsigned int)
-							<< "\" />" << std::endl;
-				}
-				outFile << "    </CellData>" << std::endl;
-				outFile << "  </Piece>" << std::endl;
-				outFile << "  </ImageData>" << std::endl;
-				outFile << "  <AppendedData encoding=\"raw\">" << std::endl;
-				// write the leading undescore
-				outFile << "_";
-
-				// then write heavy data (column major format)
-				{
-					for (size_t iv = 0; iv < varout.size(); iv++)
-						varout[iv].vti_binary<T>(Ss.BlSz, outFile, CVTI);
-				} // End Var Output
-
-				outFile << "  </AppendedData>" << std::endl;
-				outFile << "</VTKFile>" << std::endl;
-				outFile.close();
-			}
+			if (OutRanks[rank] >= 0)
+				num += 1;
 		}
+		unsigned long long need = num * varout.size() * (CVTI.nbX * CVTI.nbY * CVTI.nbZ * sizeof(T) + 4); // Bytes
+		if (disk_avail<disk::B>(Ss.WorkDir, need, "Compress output of rank: " + std::to_string(rank)))
+		{
+			std::fstream outFile;
+			outFile.open(file_name.c_str(), std::ios_base::out);
+			// write xml data header
+			outFile << "<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+			outFile << "  <ImageData WholeExtent=\""
+					<< xmin << " " << xmax << " " << ymin << " " << ymax << " " << zmin << " " << zmax << "\" "
+					<< "Origin=\""
+					<< Ss.BlSz.Domain_xmin << " " << Ss.BlSz.Domain_ymin << " " << Ss.BlSz.Domain_zmin << "\" "
+					<< "Spacing=\""
+					<< dx << " " << dy << " " << dz << "\">" << std::endl;
+			outFile << "  <Piece Extent=\""
+					<< xmin << " " << xmax << " " << ymin << " " << ymax << " " << zmin << " " << zmax << "\">" << std::endl;
+			outFile << "    <PointData>\n";
+			outFile << "    </PointData>\n";
+			// write data in binary format
+			outFile << "    <CellData>" << std::endl;
+			for (int iVar = 0; iVar < varout.size(); iVar++)
+			{
+				outFile << "     <DataArray type=\"Float" << sizeof(T) * 8 << "\" Name=\"";
+				outFile << varout[iVar].name << "\" format=\"appended\" offset=\""
+						<< iVar * CVTI.nbX * CVTI.nbY * CVTI.nbZ * sizeof(T) + iVar * sizeof(unsigned int)
+						<< "\" />" << std::endl;
+			}
+			outFile << "    </CellData>" << std::endl;
+			outFile << "  </Piece>" << std::endl;
+			outFile << "  </ImageData>" << std::endl;
+			outFile << "  <AppendedData encoding=\"raw\">" << std::endl;
+			// write the leading undescore
+			outFile << "_";
 
-		delete[] OutRanks;
+			// then write heavy data (column major format)
+			{
+				for (size_t iv = 0; iv < varout.size(); iv++)
+					varout[iv].vti_binary<T>(Ss.BlSz, outFile, CVTI);
+			} // End Var Output
+
+			outFile << "  </AppendedData>" << std::endl;
+			outFile << "</VTKFile>" << std::endl;
+			outFile.close();
+		}
+	}
+
+	delete[] OutRanks;
 }
 
 void XFLUIDS::Output_plt(int rank, OutString &osr, bool error)
@@ -1701,7 +1715,7 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 					if (Ss.BlSz.DimZ) // w
 						out << OutPoint[8] << " ";
 
-					out << OutPoint[9] << " " << OutPoint[10] << " " << OutPoint[11] << " ";						 // gamma, T, e
+					out << OutPoint[9] << " " << OutPoint[10] << " " << OutPoint[11] << " "; // gamma, T, e
 
 					if (Visc && (Ss.BlSz.DimS > 1))
 						out << OutPoint[12] << " " << OutPoint[13] << " " << OutPoint[14] << " " << OutPoint[15] << " "; // Vorticity

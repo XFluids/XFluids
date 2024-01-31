@@ -40,17 +40,19 @@ public:
     void initialize(int n);
     void InitialU(sycl::queue &q);
     void AllocateFluidMemory(sycl::queue &q);
+    bool EstimateFluidNAN(sycl::queue &q, int flag);
+    std::vector<float> ComputeFluidLU(sycl::queue &q, int flag);
+    void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag);
-    bool UpdateFluidStates(sycl::queue &q, int flag);
     real_t GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime);
+    std::pair<bool, std::vector<float>> UpdateFluidStates(sycl::queue &q, int flag);
+    // Counts
     void AllCountsHeader();
     void GetTheta(sycl::queue &q);
     void AllCountsPush(sycl::queue &q, const size_t Iter, const real_t time);
-    void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
-    std::vector<float> ComputeFluidLU(sycl::queue &q, int flag);
-    bool EstimateFluidNAN(sycl::queue &q, int flag);
+    // ChemQ2 or CVODE-of-Sundials in this function
     void ZeroDimensionalFreelyFlame();
-    void ODESolver(sycl::queue &q, real_t Time); // ChemQ2 or CVODE-of-Sundials in this function
+    void ODESolver(sycl::queue &q, real_t Time);
 };
 
 class XFLUIDS

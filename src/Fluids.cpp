@@ -786,7 +786,7 @@ void Fluid::BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag)
 	MPI_BCs_time += std::chrono::duration<float, std::milli>(end_time_x - start_time_x).count() * 1.0e-3f;
 }
 
-bool Fluid::UpdateFluidStates(sycl::queue &q, int flag)
+std::pair<bool, std::vector<float>> Fluid::UpdateFluidStates(sycl::queue &q, int flag)
 {
 	real_t *UI = NULL;
 	if (flag == 0)

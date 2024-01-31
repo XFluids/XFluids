@@ -1,8 +1,5 @@
 #pragma once
 
-#include "global_setup.h"
-#include "../read_ini/setupini.h"
-
 #include "Update_device.hpp"
 
 extern void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, real_t *_y)
