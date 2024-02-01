@@ -41,8 +41,9 @@ SYCL_DEVICE void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t
 #ifdef COP
 	real_t R_ = get_CopR(thermal._Wi, yi);
 	T = get_T(thermal, yi, tme, T);
-	p = rho * R_ * T; // 对所有气体都适用
-	gamma = get_CopGamma(thermal, yi, T);
+	p = rho * R_ * T, R = R_; // 对所有气体都适用
+	Cp = get_CopCp(thermal, yi, T);
+	gamma = get_CopGamma(thermal, yi, Cp, T);
 #else
 	gamma = NCOP_Gamma;
 	p = (NCOP_Gamma - _DF(1.0)) * rho * tme; //(UI[4] - _DF(0.5) * rho * (u * u + v * v + w * w));
