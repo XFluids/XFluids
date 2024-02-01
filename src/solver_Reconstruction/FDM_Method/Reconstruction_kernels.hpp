@@ -5,7 +5,7 @@
 #include "../Recon_device.hpp"
 #include "../schemes/schemes_device.hpp"
 
-extern SYCL_KERNEL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+extern SYCL_KERNEL void ReconstructFluxX(int i, int j, int k, real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										 real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 										 real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
@@ -19,7 +19,6 @@ extern SYCL_KERNEL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal 
 
 	size_t id_l = Xmax * Ymax * k + Xmax * j + i;
 	size_t id_r = Xmax * Ymax * k + Xmax * j + i + 1;
-	real_t dl = bl.dx;
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
@@ -109,7 +108,7 @@ extern SYCL_KERNEL void ReconstructFluxX(int i, int j, int k, Block bl, Thermal 
 	// real_t de_fx[Emax];
 }
 
-extern SYCL_KERNEL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+extern SYCL_KERNEL void ReconstructFluxY(int i, int j, int k, real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										 real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 										 real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
@@ -123,7 +122,6 @@ extern SYCL_KERNEL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal 
 
 	size_t id_l = Xmax * Ymax * k + Xmax * j + i;
 	size_t id_r = Xmax * Ymax * k + Xmax * (j + 1) + i;
-	real_t dl = bl.dy;
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
@@ -164,7 +162,7 @@ extern SYCL_KERNEL void ReconstructFluxY(int i, int j, int k, Block bl, Thermal 
 	//     // real_t de_fx[Emax];
 }
 
-extern SYCL_KERNEL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
+extern SYCL_KERNEL void ReconstructFluxZ(int i, int j, int k, real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall,
 										 real_t *eigen_local, real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 										 real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
@@ -178,7 +176,6 @@ extern SYCL_KERNEL void ReconstructFluxZ(int i, int j, int k, Block bl, Thermal 
 
 	size_t id_l = Xmax * Ymax * k + Xmax * j + i;
 	size_t id_r = Xmax * Ymax * (k + 1) + Xmax * j + i;
-	real_t dl = bl.dz;
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
@@ -250,7 +247,7 @@ extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *Flu
 
 #if __VENDOR_SUBMMIT__
 _VENDOR_KERNEL_LB_(256, 1)
-void ReconstructFluxXVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
+void ReconstructFluxXVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
 								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
@@ -258,11 +255,11 @@ void ReconstructFluxXVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t
 	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y;
 	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z;
 
-	ReconstructFluxX(i, j, k, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
+	ReconstructFluxX(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
 }
 
 _VENDOR_KERNEL_LB_(256, 1)
-void ReconstructFluxYVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
+void ReconstructFluxYVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
 								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
@@ -270,11 +267,11 @@ void ReconstructFluxYVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t
 	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y - 1;
 	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z;
 
-	ReconstructFluxY(i, j, k, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
+	ReconstructFluxY(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
 }
 
 _VENDOR_KERNEL_LB_(256, 1)
-void ReconstructFluxZVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
+void ReconstructFluxZVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
 								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
 {
@@ -282,6 +279,6 @@ void ReconstructFluxZVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t
 	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y;
 	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z - 1;
 
-	ReconstructFluxZ(i, j, k, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
+	ReconstructFluxZ(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
 }
 #endif

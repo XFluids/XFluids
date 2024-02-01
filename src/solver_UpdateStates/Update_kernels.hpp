@@ -2,7 +2,7 @@
 
 #include "Update_device.hpp"
 
-extern void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, real_t *_y)
+extern void Updaterhoyi(int i, int j, int k, MeshSize bl, real_t *UI, real_t *rho, real_t *_y)
 {
 	if (i >= bl.Xmax)
 		return;
@@ -17,7 +17,7 @@ extern void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, 
 	Getrhoyi(U, rho[id], yi);
 }
 
-extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, MeshSize bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
 											   real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma, real_t *e, real_t *H,
 											   real_t *T, real_t *_y, real_t *Ri, real_t *Cp)
 {
@@ -49,7 +49,7 @@ extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Th
 
 #if __VENDOR_SUBMMIT__
 _VENDOR_KERNEL_LB_(256, 1)
-void UpdateFuidStatesKernelVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+void UpdateFuidStatesKernelVendorWrapper(MeshSize bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
 										 real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma,
 										 real_t *e, real_t *H, real_t *T, real_t *_y, real_t *Ri, real_t *Cp)
 {
@@ -61,7 +61,7 @@ void UpdateFuidStatesKernelVendorWrapper(Block bl, Thermal thermal, real_t *UI, 
 }
 #endif
 
-extern void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
+extern void UpdateURK3rdKernel(int i, int j, int k, MeshSize bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
 	MARCO_DOMAIN();
 	int id = Xmax * Ymax * k + Xmax * j + i;

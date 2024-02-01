@@ -14,6 +14,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 						 real_t *uvw_c_max, real_t *eigen_block_x, real_t *eigen_block_y, real_t *eigen_block_z,
 						 real_t *yi_min, real_t *yi_max, real_t *Dim_min, real_t *Dim_max)
 {
+	MeshSize ms = bl.Ms;
 	real_t *rho = fdata.rho;
 	real_t *p = fdata.p;
 	real_t *H = fdata.H;
@@ -56,7 +57,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	    		int i = index.get_global_id(0);
 	    		int j = index.get_global_id(1);
 				int k = index.get_global_id(2);
-				GetLocalEigen(i, j, k, bl, _DF(1.0), _DF(0.0), _DF(0.0), eigen_local_x, u, v, w, c); }); });
+				GetLocalEigen(i, j, k, ms, _DF(1.0), _DF(0.0), _DF(0.0), eigen_local_x, u, v, w, c); }); });
 		}
 #if __SYNC_TIMER_
 		q.wait();
@@ -78,7 +79,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		    		int i = index.get_global_id(0);
 		    		int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
-					GetLocalEigen(i, j, k, bl, _DF(0.0), _DF(1.0), _DF(0.0), eigen_local_y, u, v, w, c); }); });
+					GetLocalEigen(i, j, k, ms, _DF(0.0), _DF(1.0), _DF(0.0), eigen_local_y, u, v, w, c); }); });
 		}
 #if __SYNC_TIMER_
 		q.wait();
@@ -100,7 +101,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
-					GetLocalEigen(i, j, k, bl, _DF(0.0), _DF(0.0), _DF(1.0), eigen_local_z, u, v, w, c); }); });
+					GetLocalEigen(i, j, k, ms, _DF(0.0), _DF(0.0), _DF(1.0), eigen_local_z, u, v, w, c); }); });
 		}
 	}
 	q.wait();
@@ -219,17 +220,17 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 							   (global_ndrange_x[1] + local_block_x.y - 1) / local_block_x.y,
 							   (global_ndrange_x[2] + local_block_x.z - 1) / local_block_x.z);
 			static bool dummx = (GetKernelAttributes((const void *)ReconstructFluxXVendorWrapper, "ReconstructFluxXVendorWrapper"), true); // call only once
-			ReconstructFluxXVendorWrapper<<<global_grid_x, local_block_x>>>(bl, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x,
+			ReconstructFluxXVendorWrapper<<<global_grid_x, local_block_x>>>(bl.dx, ms, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x,
 																			fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x);
 #else
 			q.submit([&](sycl::handler &h)
 					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
 									  {
-						int i = index.get_global_id(0) + bl.Bwidth_X - 1;
-						int j = index.get_global_id(1) + bl.Bwidth_Y;
-						int k = index.get_global_id(2) + bl.Bwidth_Z;
-						ReconstructFluxX(i, j, k, bl, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, 
-						fdata.b1x, fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x); }); });
+						int i = index.get_global_id(0) + ms.Bwidth_X - 1;
+						int j = index.get_global_id(1) + ms.Bwidth_Y;
+						int k = index.get_global_id(2) + ms.Bwidth_Z;
+						ReconstructFluxX(i, j, k, bl.dx, ms, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r,
+										 fdata.b1x, fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x); }); });
 #endif
 		}
 #if __SYNC_TIMER_
@@ -249,16 +250,16 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 							   (global_ndrange_y[1] + local_block_y.y - 1) / local_block_y.y,
 							   (global_ndrange_y[2] + local_block_y.z - 1) / local_block_y.z);
 			static bool dummy = (GetKernelAttributes((const void *)ReconstructFluxYVendorWrapper, "ReconstructFluxYVendorWrapper"), true); // call only once
-			ReconstructFluxYVendorWrapper<<<global_grid_y, local_block_y>>>(bl, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y,
+			ReconstructFluxYVendorWrapper<<<global_grid_y, local_block_y>>>(bl.dy, ms, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y,
 																			fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y);
 #else
 			q.submit([&](sycl::handler &h)
 					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
 									  {
-						int i = index.get_global_id(0) + bl.Bwidth_X;
-						int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
-						int k = index.get_global_id(2) + bl.Bwidth_Z;
-						ReconstructFluxY(i, j, k, bl, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, 
+						int i = index.get_global_id(0) + ms.Bwidth_X;
+						int j = index.get_global_id(1) + ms.Bwidth_Y - 1;
+						int k = index.get_global_id(2) + ms.Bwidth_Z;
+						ReconstructFluxY(i, j, k, bl.dy, ms, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, 
 						fdata.b1y, fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y); }); });
 #endif
 		}
@@ -279,17 +280,17 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 							   (global_ndrange_z[1] + local_block_z.y - 1) / local_block_z.y,
 							   (global_ndrange_z[2] + local_block_z.z - 1) / local_block_z.z);
 			static bool dummz = (GetKernelAttributes((const void *)ReconstructFluxZVendorWrapper, "ReconstructFluxZVendorWrapper"), true); // call only once
-			ReconstructFluxZVendorWrapper<<<global_grid_z, local_block_z>>>(bl, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, fdata.b1z,
+			ReconstructFluxZVendorWrapper<<<global_grid_z, local_block_z>>>(bl.dz, ms, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, fdata.b1z,
 																			fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z);
 #else
 			q.submit([&](sycl::handler &h)
 					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
 									  {
-						int i = index.get_global_id(0) + bl.Bwidth_X;
-						int j = index.get_global_id(1) + bl.Bwidth_Y;
-						int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-						ReconstructFluxZ(i, j, k, bl, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, 
-						fdata.b1z, fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z); }); });
+						int i = index.get_global_id(0) + ms.Bwidth_X;
+						int j = index.get_global_id(1) + ms.Bwidth_Y;
+						int k = index.get_global_id(2) + ms.Bwidth_Z - 1;
+						ReconstructFluxZ(i, j, k, bl.dz, ms, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r,
+										 fdata.b1z, fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z); }); });
 #endif
 		}
 	}
@@ -325,12 +326,12 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			q.submit([&](sycl::handler &h)
 					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
 									  {
-					int i = index.get_global_id(0) + bl.Bwidth_X;
-					int j = index.get_global_id(1) + bl.Bwidth_Y;
-					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
-					int id_r = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1);
-					PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxF, FluxFw, T, lambda_x0, lambda_x, epsilon); }); });
+					int i = index.get_global_id(0) + ms.Bwidth_X;
+					int j = index.get_global_id(1) + ms.Bwidth_Y;
+					int k = index.get_global_id(2) + ms.Bwidth_Z;
+					int id_l = (ms.Xmax * ms.Ymax * k + ms.Xmax * j + i);
+					int id_r = (ms.Xmax * ms.Ymax * k + ms.Xmax * j + i + 1);
+					PositivityPreservingKernel(i, j, k, id_l, id_r, ms, thermal, UI, FluxF, FluxFw, T, lambda_x0, lambda_x, epsilon); }); });
 		}
 #if __SYNC_TIMER_
 		q.wait();
@@ -342,12 +343,12 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			q.submit([&](sycl::handler &h)
 					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
 									  {
-	   				int i = index.get_global_id(0) + bl.Bwidth_X;
-	   				int j = index.get_global_id(1) + bl.Bwidth_Y;
-	   				int k = index.get_global_id(2) + bl.Bwidth_Z;
-	   				int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
-	   				int id_r = (bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i);
-	   				PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxG, FluxGw, T, lambda_y0, lambda_y, epsilon); }); });
+	   				int i = index.get_global_id(0) + ms.Bwidth_X;
+	   				int j = index.get_global_id(1) + ms.Bwidth_Y;
+	   				int k = index.get_global_id(2) + ms.Bwidth_Z;
+	   				int id_l = (ms.Xmax * ms.Ymax * k + ms.Xmax * j + i);
+	   				int id_r = (ms.Xmax * ms.Ymax * k + ms.Xmax * (j + 1) + i);
+	   				PositivityPreservingKernel(i, j, k, id_l, id_r, ms, thermal, UI, FluxG, FluxGw, T, lambda_y0, lambda_y, epsilon); }); });
 		}
 #if __SYNC_TIMER_
 		q.wait();
@@ -359,12 +360,12 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			q.submit([&](sycl::handler &h)
 					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index)
 									  {
-	   				int i = index.get_global_id(0) + bl.Bwidth_X;
-	   				int j = index.get_global_id(1) + bl.Bwidth_Y;
-	   				int k = index.get_global_id(2) + bl.Bwidth_Z;
-	   				int id_l = (bl.Xmax * bl.Ymax * k + bl.Xmax * j + i);
-	   				int id_r = (bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i);
-	   				PositivityPreservingKernel(i, j, k, id_l, id_r, bl, thermal, UI, FluxH, FluxHw, T, lambda_z0, lambda_z, epsilon); }); });
+	   				int i = index.get_global_id(0) + ms.Bwidth_X;
+	   				int j = index.get_global_id(1) + ms.Bwidth_Y;
+	   				int k = index.get_global_id(2) + ms.Bwidth_Z;
+	   				int id_l = (ms.Xmax * ms.Ymax * k + ms.Xmax * j + i);
+	   				int id_r = (ms.Xmax * ms.Ymax * (k + 1) + ms.Xmax * j + i);
+	   				PositivityPreservingKernel(i, j, k, id_l, id_r, ms, thermal, UI, FluxH, FluxHw, T, lambda_z0, lambda_z, epsilon); }); });
 		}
 		q.wait();
 #if __SYNC_TIMER_
@@ -429,10 +430,10 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), Yi_min, Yi_max, Dkm_min, Dkm_max,
 								  [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax, auto &temp_Dmin, auto &temp_Dmax)
 								  {
-						int i = index.get_global_id(0) + bl.Bwidth_X;
-						int j = index.get_global_id(1) + bl.Bwidth_Y;
-						int k = index.get_global_id(2) + bl.Bwidth_Z;
-						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+						int i = index.get_global_id(0) + ms.Bwidth_X;
+						int j = index.get_global_id(1) + ms.Bwidth_Y;
+						int k = index.get_global_id(2) + ms.Bwidth_Z;
+						int id = ms.Xmax * ms.Ymax * k + ms.Xmax * j + i;
 						real_t *yi = &(fdata.y[NUM_SPECIES * id]);
 						temp_Ymin.combine(yi[nn]), temp_Ymax.combine(yi[nn]);
 						// real_t *Dkm = &(Da[NUM_SPECIES * id]);

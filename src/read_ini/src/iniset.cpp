@@ -211,9 +211,9 @@ void Setup::init()
     BlSz.Bwidth_Y = BlSz.DimY ? BlSz.Bwidth_Y : 0;
     BlSz.Bwidth_Z = BlSz.DimZ ? BlSz.Bwidth_Z : 0;
 
-    BlSz.dim_block_x = BlSz.DimX ? BlSz.dim_block_x : 1;
-    BlSz.dim_block_y = BlSz.DimY ? BlSz.dim_block_y : 1;
-    BlSz.dim_block_z = BlSz.DimZ ? BlSz.dim_block_z : 1;
+    BlSz.dim_block_x = BlSz.DimX ? std::max<size_t>(BlSz.dim_block_x, 2) : 1;
+    BlSz.dim_block_y = BlSz.DimY ? std::max<size_t>(BlSz.dim_block_y, 2) : 1;
+    BlSz.dim_block_z = BlSz.DimZ ? std::max<size_t>(BlSz.dim_block_z, 2) : 1;
 
     BlSz.Domain_length = BlSz.DimX ? BlSz.Domain_length : 1.0;
     BlSz.Domain_width = BlSz.DimY ? BlSz.Domain_width : 1.0;
@@ -273,4 +273,8 @@ void Setup::init()
     // // Initialize shock base mach number
     if (0 == myRank)
         print();
+
+    BlSz.Ms.Bwidth_X = BlSz.Bwidth_X, BlSz.Ms.X_inner = BlSz.X_inner, BlSz.Ms.Xmax = BlSz.Xmax;
+    BlSz.Ms.Bwidth_Y = BlSz.Bwidth_Y, BlSz.Ms.Y_inner = BlSz.Y_inner, BlSz.Ms.Ymax = BlSz.Ymax;
+    BlSz.Ms.Bwidth_Z = BlSz.Bwidth_Z, BlSz.Ms.Z_inner = BlSz.Z_inner, BlSz.Ms.Zmax = BlSz.Zmax;
 } // Setup::init

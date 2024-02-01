@@ -9,6 +9,7 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 														 real_t const Gamma, int &error_patched_times, const int rank)
 {
 	Block bl = Ss.BlSz;
+	MeshSize ms = bl.Ms;
 	real_t *rho = fdata.rho;
 	real_t *p = fdata.p;
 	real_t *H = fdata.H;
@@ -38,7 +39,7 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 					   int i = index.get_global_id(0);
 					   int j = index.get_global_id(1);
 					   int k = index.get_global_id(2);
-					   Updaterhoyi(i, j, k, bl, UI, rho, fdata.y);
+					   Updaterhoyi(i, j, k, ms, UI, rho, fdata.y);
 				   }); })
 		.wait();
 	runtime_rhoyi = OutThisTime(runtime_ud_start);
@@ -58,9 +59,9 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index) { //
-					   int i = index.get_global_id(0) + bl.Bwidth_X;
-					   int j = index.get_global_id(1) + bl.Bwidth_Y;
-					   int k = index.get_global_id(2) + bl.Bwidth_Z;
+					   int i = index.get_global_id(0) + ms.Bwidth_X;
+					   int j = index.get_global_id(1) + ms.Bwidth_Y;
+					   int k = index.get_global_id(2) + ms.Bwidth_Z;
 					   EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y);
 				   }); })
 		.wait();
@@ -105,7 +106,7 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 					 (global_ndrange[1] + local_block.y - 1) / local_block.y,
 					 (global_ndrange[2] + local_block.z - 1) / local_block.z);
 	static bool dummy = (GetKernelAttributes((const void *)UpdateFuidStatesKernelVendorWrapper, "UpdateFuidStatesKernelVendorWrapper"), true); // call only once
-	UpdateFuidStatesKernelVendorWrapper<<<global_grid, local_block>>>(bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
+	UpdateFuidStatesKernelVendorWrapper<<<global_grid, local_block>>>(ms, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
 	CheckGPUErrors(vendorDeviceSynchronize());
 #else
 	q.submit([&](sycl::handler &h)
@@ -114,7 +115,7 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 					   int i = index.get_global_id(0);
 					   int j = index.get_global_id(1);
 					   int k = index.get_global_id(2);
-					   UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
+					   UpdateFuidStatesKernel(i, j, k, ms, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
 				   }); }) //, stream_ct1
 		.wait();
 #endif
@@ -132,10 +133,10 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
-				   sycl::nd_range<3>(sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner), local_ndrange), [=](sycl::nd_item<3> index) { //
-					   int i = index.get_global_id(0) + bl.Bwidth_X;
-					   int j = index.get_global_id(1) + bl.Bwidth_Y;
-					   int k = index.get_global_id(2) + bl.Bwidth_Z;
+				   sycl::nd_range<3>(sycl::range<3>(ms.X_inner, ms.Y_inner, ms.Z_inner), local_ndrange), [=](sycl::nd_item<3> index) { //
+					   int i = index.get_global_id(0) + ms.Bwidth_X;
+					   int j = index.get_global_id(1) + ms.Bwidth_Y;
+					   int k = index.get_global_id(2) + ms.Bwidth_Z;
 					   EstimatePrimitiveVarKernel(i, j, k, bl, thermal, error_pos, error_nga, error_yi,
 												  UI, rho, u, v, w, p, T, fdata.y, H, fdata.e, fdata.gamma, c);
 				   }); })
@@ -183,6 +184,7 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
+	MeshSize ms = bl.Ms;
 	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
@@ -190,9 +192,9 @@ void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, r
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 				   {
-    		int i = index.get_global_id(0) + bl.Bwidth_X;
-			int j = index.get_global_id(1) + bl.Bwidth_Y;
-			int k = index.get_global_id(2) + bl.Bwidth_Z;
-			UpdateURK3rdKernel(i, j, k, bl, U, U1, LU, dt, flag); }); })
+    		int i = index.get_global_id(0) + ms.Bwidth_X;
+			int j = index.get_global_id(1) + ms.Bwidth_Y;
+			int k = index.get_global_id(2) + ms.Bwidth_Z;
+			UpdateURK3rdKernel(i, j, k, ms, U, U1, LU, dt, flag); }); })
 		.wait();
 }

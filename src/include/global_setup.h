@@ -152,6 +152,13 @@ enum MpiCpyType
 
 typedef struct
 {
+	int Xmax, Ymax, Zmax;
+	int X_inner, Y_inner, Z_inner;
+	int Bwidth_X, Bwidth_Y, Bwidth_Z;
+} MeshSize;
+
+typedef struct
+{
 	//--for-Computational-dimensions---------
 	size_t DimS;
 	bool DimX, DimY, DimZ;
@@ -163,6 +170,7 @@ typedef struct
 	//--for-Chemical-sources-----------------
 	bool RSources;
 	//--for-Mesh-----------------------------
+	MeshSize Ms;
 	int Bwidth_X, Bwidth_Y, Bwidth_Z; // Bounadry Width
 	int Xmax, Ymax, Zmax, X_inner, Y_inner, Z_inner;
 	//--for-Domain-size----------------------
