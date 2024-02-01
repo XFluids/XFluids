@@ -150,12 +150,18 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			{ // a advance time step
 				// // strang slipping
 				if ((ReactSources) && (SlipOrder == std::string("Strang")))
+				{
 					error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
+					std::cout << "<<<<<<<<<<<<<< " << SlipOrder << "Split First step has been done" << std::endl;
+				}
 				// // solved the fluid with 3rd order Runge-Kutta method
 				error_out = error_out || SinglePhaseSolverRK3rd(q, rank, Iteration, physicalTime);
 				// // reaction sources
 				if (ReactSources)
+				{
 					error_out = error_out || Reaction(q, dt, physicalTime, Iteration);
+					std::cout << "<<<<<<<<<<<<<< Reaction step has been done" << std::endl;
+				}
 			}
 
 			// // if stop based error captured
@@ -166,7 +172,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				duration = OutThisTime(start_time) + duration_backup;
 				if (rank == 0)
 				{
-					std::cout << "         runtime: " << std::setw(10) << duration;
+					std::cout << "           runtime: " << std::setw(10) << duration;
 					time_t timestamp_s = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 					std::cout << ", at: " << std::string(ctime(&timestamp_s));
 				}
@@ -471,6 +477,8 @@ bool XFLUIDS::RungeKuttaSP3rd(sycl::queue &q, int rank, int Step, real_t Time, i
 		runtime_updateu += OutThisTime(runtime_start_time);
 		break;
 	}
+	std::cout << "<<<<<<<<<<<<<< NS time advancing RungeKutta Step " << flag << " has been done" << std::endl;
+
 	return false;
 }
 
