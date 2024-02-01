@@ -19,8 +19,8 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 	real_t *e = fdata.e;
 	real_t *g = fdata.gamma;
 	real_t *T = fdata.T;
-	// real_t *Ri = fdata.Ri;
-	// real_t *Cp = fdata.Cp;
+	real_t *Ri = fdata.Ri;
+	real_t *Cp = fdata.Cp;
 
 	std::vector<float> timer_UD;
 	float runtime_emyi = 0.0f, runtime_empv = 0.0f;
@@ -98,15 +98,26 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 
 	// sycl::stream stream_ct1(64 * 1024, 80, h);// for output error: sycl::stream decline running
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
+#if __VENDOR_SUBMMIT__
+	CheckGPUErrors(vendorSetDevice(Ss.DeviceSelect[2]));
+	dim3 local_block(32, 8, 1);
+	dim3 global_grid((global_ndrange[0] + local_block.x - 1) / local_block.x,
+					 (global_ndrange[1] + local_block.y - 1) / local_block.y,
+					 (global_ndrange[2] + local_block.z - 1) / local_block.z);
+	static bool dummy = (GetKernelAttributes((const void *)UpdateFuidStatesKernelVendorWrapper, "UpdateFuidStatesKernelVendorWrapper"), true); // call only once
+	UpdateFuidStatesKernelVendorWrapper<<<global_grid, local_block>>>(bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
+	CheckGPUErrors(vendorDeviceSynchronize());
+#else
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index) { //
 					   int i = index.get_global_id(0);
 					   int j = index.get_global_id(1);
 					   int k = index.get_global_id(2);
-					   UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, c, H, u, v, w, fdata.y, fdata.gamma, T, fdata.e, Gamma);
+					   UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
 				   }); }) //, stream_ct1
 		.wait();
+#endif
 	runtime_states = OutThisTime(runtime_ud_start);
 
 #if ESTIM_NAN

@@ -297,11 +297,11 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.e = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.T = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.H = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		// d_fstate.Ri = static_cast<real_t *>(sycl::malloc_device(bytes, q));
-		// d_fstate.Cp = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.Ri = static_cast<real_t *>(sycl::malloc_device(bytes, q));
+		d_fstate.Cp = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
-		// d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+		d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
 		this_msize = double(Kbytes >> 10) * (12.0 + NUM_SPECIES * 2.0), MemMbSize += this_msize;
 		if (0 == rank)
 			std::cout << "Device memory malloced(primitive variables): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "

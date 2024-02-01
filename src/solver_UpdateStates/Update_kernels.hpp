@@ -17,9 +17,9 @@ extern void Updaterhoyi(int i, int j, int k, Block bl, real_t *UI, real_t *rho, 
 	Getrhoyi(U, rho[id], yi);
 }
 
-extern void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
-								   real_t *rho, real_t *p, real_t *c, real_t *H, real_t *u, real_t *v, real_t *w, real_t *_y,
-								   real_t *gamma, real_t *T, real_t *e, real_t const Gamma) //, const sycl::stream &stream_ct1
+extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+											   real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma, real_t *e, real_t *H,
+											   real_t *T, real_t *_y, real_t *Ri, real_t *Cp)
 {
 	MARCO_DOMAIN_GHOST();
 	if (i >= Xmax)
@@ -33,7 +33,7 @@ extern void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal therma
 	real_t *U = &(UI[Emax * id]), *yi = &(_y[NUM_SPECIES * id]);
 
 	// Getrhoyi(U, rho[id], yi);
-	GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], e[id], thermal, yi);
+	GetStates(U, rho[id], u[id], v[id], w[id], p[id], H[id], c[id], gamma[id], T[id], e[id], Cp[id], Ri[id], thermal, yi);
 
 	real_t *Fx = &(FluxF[Emax * id]);
 	real_t *Fy = &(FluxG[Emax * id]);
@@ -46,6 +46,20 @@ extern void UpdateFuidStatesKernel(int i, int j, int k, Block bl, Thermal therma
 	// // get_Array(FluxG, de_fy, Emax, id);
 	// // get_Array(FluxH, de_fz, Emax, id);
 }
+
+#if __VENDOR_SUBMMIT__
+_VENDOR_KERNEL_LB_(256, 1)
+void UpdateFuidStatesKernelVendorWrapper(Block bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+										 real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma,
+										 real_t *e, real_t *H, real_t *T, real_t *_y, real_t *Ri, real_t *Cp)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
+	int k = blockIdx.z * blockDim.z + threadIdx.z;
+
+	UpdateFuidStatesKernel(i, j, k, bl, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, gamma, e, H, T, _y, Ri, Cp);
+}
+#endif
 
 extern void UpdateURK3rdKernel(int i, int j, int k, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {

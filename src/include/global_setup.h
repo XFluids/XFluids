@@ -186,8 +186,8 @@ typedef struct
 {
 	real_t *species_chara, *Ri, *Wi, *_Wi, *Hia, *Hib;
 	real_t *Hia_NASA, *Hib_NASA, *Hia_JANAF, *Hib_JANAF;
-	real_t *species_ratio_in, *species_ratio_out, *xi_in, *xi_out;											   // Ri=Ru/Wi;
-	real_t **Dkj_matrix, **fitted_coefficients_visc, **fitted_coefficients_therm;							   // length: order_polynominal_fitted
+	real_t *species_ratio_in, *species_ratio_out, *xi_in, *xi_out;				  // Ri=Ru/Wi;
+	real_t **Dkj_matrix, **fitted_coefficients_visc, **fitted_coefficients_therm; // length: order_polynominal_fitted
 } Thermal;
 
 typedef struct
@@ -214,9 +214,13 @@ struct BoundaryRange
 typedef struct
 {
 	// primitive variables
-	real_t *rho, *p, *c, *H, *u, *v, *w, *T, *gamma, *e;
-	// cop(y) and vis variables
-	real_t *y, *thetaXe, *thetaN2, *thetaXN, *Vde[9], *vxs[3], *vx, *hi, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
+	real_t *rho, *p, *u, *v, *w, *e, *y, *hi, *gamma, *T, *H, *Cp, *Ri;
+	// sound speed at cell surfaces for Eigen System and Flux Reconstruction
+	real_t *c, *_cx, *_cy, *_cz;
+	// for GetTheta
+	real_t *thetaXe, *thetaN2, *thetaXN;
+	//  vis variables
+	real_t *Vde[9], *vxs[3], *vx, *viscosity_aver, *thermal_conduct_aver, *Dkm_aver;
 	// Error out: varibles of eigen system
 	real_t *b1x, *b3x, *c2x, *zix, *b1y, *b3y, *c2y, *ziy, *b1z, *b3z, *c2z, *ziz;
 	// Error out: prev for Flux_wall before vis addation; pstv for Flux_wall after vis addation and positive preserving

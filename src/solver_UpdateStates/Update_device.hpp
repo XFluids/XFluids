@@ -2,6 +2,7 @@
 
 #include "../read_ini/setupini.h"
 #include "../solver_Ini/Mixing_device.h"
+#include "../solver_Ini/Mixing_device.h"
 
 SYCL_DEVICE void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
 {
@@ -29,20 +30,18 @@ SYCL_DEVICE void Getrhoyi(real_t *UI, real_t &rho, real_t *yi)
 /**
  * @brief Obtain state at a grid point
  */
-SYCL_DEVICE void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H,
-						   real_t &c, real_t &gamma, real_t &T, real_t &e, Thermal thermal, real_t *yi)
+SYCL_DEVICE void GetStates(real_t *UI, real_t &rho, real_t &u, real_t &v, real_t &w, real_t &p, real_t &H, real_t &c,
+						   real_t &gamma, real_t &T, real_t &e, real_t &Cp, real_t &R, Thermal thermal, real_t *yi)
 {
 	// rho = UI[0];
 	real_t rho1 = _DF(1.0) / rho;
-	u = UI[1] * rho1;
-	v = UI[2] * rho1;
-	w = UI[3] * rho1;
+	u = UI[1] * rho1, v = UI[2] * rho1, w = UI[3] * rho1;
 	real_t tme = UI[4] * rho1 - _DF(0.5) * (u * u + v * v + w * w);
 
 #ifdef COP
-	real_t R = get_CopR(thermal._Wi, yi);
+	real_t R_ = get_CopR(thermal._Wi, yi);
 	T = get_T(thermal, yi, tme, T);
-	p = rho * R * T; // 对所有气体都适用
+	p = rho * R_ * T; // 对所有气体都适用
 	gamma = get_CopGamma(thermal, yi, T);
 #else
 	gamma = NCOP_Gamma;

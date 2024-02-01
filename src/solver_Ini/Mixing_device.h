@@ -97,6 +97,23 @@ SYCL_DEVICE inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const 
 }
 
 /**
+ * @brief calculate Gamma of the mixture at given point
+ */
+SYCL_DEVICE inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t Cp, const real_t T)
+{
+	real_t CopW = get_CopW(thermal, yi);
+	real_t _CopGamma = Cp / (Cp - Ru / CopW);
+	if (_CopGamma > _DF(1.0))
+	{
+		return _CopGamma;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+/**
  * @brief calculate Hi of Mixture at given point	unit:J/kg/K
  */
 SYCL_DEVICE inline real_t get_Coph(Thermal thermal, const real_t *yi, const real_t T)
