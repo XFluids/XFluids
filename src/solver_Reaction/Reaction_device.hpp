@@ -162,7 +162,7 @@ SYCL_DEVICE void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, 
 	int itermax = 1;
 	real_t ymin = _DF(1.0e-20), dtmin = _DF(1.0e-7);
 	real_t eps, epsmin = _DF(1.0e-4), scrtch = _DF(1e-25);
-	real_t tfd = _DF(1.000008), sqreps = _DF(0.5), epsmax = _DF(1.0), epscl = _DF(1.0E2);
+	real_t tfd = _DF(1.0) + _DF(1.0e-10), sqreps = _DF(0.05), epsmax = _DF(1.0), epscl = _DF(1.0e4);
 	/**
 	 * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least
 	 * three corrector iterations are performed. For most problems, the stability check is not needed, and eliminating
