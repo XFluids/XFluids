@@ -737,6 +737,8 @@ void Fluid::GetTheta(sycl::queue &q)
 	// 	// 					if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
 	// 	// 						temp_Zmin.combine(z), temp_Zmax.combine(z); }); });
 
+	q.wait();
+
 	if (ReactSources)
 	{
 		int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
@@ -760,9 +762,11 @@ void Fluid::GetTheta(sycl::queue &q)
 									   auto id = index.get_global_id();
 									   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
 		}
+		q.wait();
 	}
 
 	sigma[0] = _DF(0.0), sigma[1] = _DF(0.0);
+#if Visc
 	auto Sum_Sigma = sycl_reduction_plus(sigma[0]);	 // sycl::reduction(&(sigma[0]), sycl::plus<real_t>());
 	auto Sum_Sigma1 = sycl_reduction_plus(sigma[1]); // sycl::reduction(&(sigma[1]), sycl::plus<real_t>());
 	q.submit([&](sycl::handler &h)
@@ -776,6 +780,7 @@ void Fluid::GetTheta(sycl::queue &q)
 					temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
 					temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz; }); });
 	q.wait();
+#endif // Visc
 
 #ifdef USE_MPI
 	real_t Xmin, Xmax, Ymin, Ymax, Zmin, Zmax, Sumsigma, Sumsigma1, thetaYXN, thetaYXeN2, thetaYXe;
