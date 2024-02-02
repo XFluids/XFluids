@@ -119,6 +119,9 @@ Fluid::~Fluid()
 	sycl::free(h_fstate.y, q);
 	sycl::free(h_fstate.e, q);
 	sycl::free(h_fstate.gamma, q);
+	sycl::free(d_fstate.hi, q);
+	sycl::free(d_fstate.Cp, q);
+	sycl::free(d_fstate.Ri, q);
 
 #if Visc // free viscous Vars
 	sycl::free(d_fstate.viscosity_aver, q);
@@ -133,7 +136,7 @@ Fluid::~Fluid()
 #if Visc_Diffu
 	sycl::free(yi_min, q), sycl::free(yi_max, q);
 	sycl::free(Dim_min, q), sycl::free(Dim_max, q);
-	sycl::free(d_fstate.hi, q), sycl::free(d_fstate.Dkm_aver, q);
+	sycl::free(d_fstate.Dkm_aver, q);
 #endif // end Visc_Diffu
 #endif // end Visc
 
@@ -340,10 +343,9 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		yi_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
 		Dim_min = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
 		Dim_max = static_cast<real_t *>(sycl::malloc_shared(NUM_SPECIES * sizeof(real_t), q));
-		d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 		d_fstate.Dkm_aver = static_cast<real_t *>(sycl::malloc_device(NUM_SPECIES * bytes, q));
 #endif
-		this_msize = double(Kbytes >> 10) * 2.0 * (1.0 + NUM_SPECIES), MemMbSize += this_msize;
+		this_msize = double(Kbytes >> 10) * 2.0 * (NUM_SPECIES), MemMbSize += this_msize;
 		if (0 == rank)
 			std::cout << "Device memory malloced(viscosity): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
