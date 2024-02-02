@@ -1,5 +1,5 @@
 set(THERMAL "NASA") # NASA or JANAF Thermal Fit
-set(EIGEN_ALLOC "RGIF") # Eigen memory allocate method used in FDM method
+set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
 # # OROC: calculate one row and column once in registers "for" loop(eigen_lr[Emax])
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
 option(COP "if enable compoent" ON)
