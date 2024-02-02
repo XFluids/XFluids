@@ -79,6 +79,7 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)
 {
 	Block bl = Fs.BlSz;
+	MeshSize ms = bl.Ms;
 	real_t *p = fdata.p;
 	real_t *H = fdata.H;
 	real_t *c = fdata.c;
@@ -98,17 +99,17 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 					 (global_ndrange[1] + local_block.y - 1) / local_block.y,
 					 (global_ndrange[2] + local_block.z - 1) / local_block.z);
 	static bool dummy = (GetKernelAttributes((const void *)ChemeODEQ2SolverKernelVendorWrapper, "ChemeODEQ2SolverKernelVendorWrapper"), true); // call only once
-	ChemeODEQ2SolverKernelVendorWrapper<<<global_grid, local_block>>>(bl, thermal, react, UI, fdata.y, rho, T, fdata.e, dt);
+	ChemeODEQ2SolverKernelVendorWrapper<<<global_grid, local_block>>>(ms, thermal, react, UI, fdata.y, rho, T, fdata.e, dt);
 	CheckGPUErrors(vendorDeviceSynchronize());
 #else
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
 				   {
-								  int i = index.get_global_id(0) + bl.Bwidth_X;
-								  int j = index.get_global_id(1) + bl.Bwidth_Y;
-								  int k = index.get_global_id(2) + bl.Bwidth_Z;
-								  ChemeODEQ2SolverKernel( i, j, k, bl, thermal, react, UI, fdata.y, rho, T, fdata.e, dt); }); })
+								  int i = index.get_global_id(0) + ms.Bwidth_X;
+								  int j = index.get_global_id(1) + ms.Bwidth_Y;
+								  int k = index.get_global_id(2) + ms.Bwidth_Z;
+								  ChemeODEQ2SolverKernel(i, j, k, ms, thermal, react, UI, fdata.y, rho, T, fdata.e, dt); }); })
 		.wait();
 #endif
 }

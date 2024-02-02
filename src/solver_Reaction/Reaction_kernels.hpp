@@ -5,7 +5,7 @@
 
 #include "Reaction_device.hpp"
 
-extern SYCL_KERNEL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
+extern SYCL_KERNEL void ChemeODEQ2SolverKernel(int i, int j, int k, MeshSize bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
 {
 	MARCO_DOMAIN();
 	if (i >= Xmax - bl.Bwidth_X)
@@ -17,7 +17,7 @@ extern SYCL_KERNEL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Th
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-	real_t Kf[NUM_REA], Kb[NUM_REA], U[Emax - NUM_COP], *yi = &(y[NUM_SPECIES * id]);
+	real_t Kf[NUM_REA], Kb[NUM_REA], *yi = &(y[NUM_SPECIES * id]);
 	get_KbKf(Kf, Kb, react.Rargus, thermal._Wi, thermal.Hia, thermal.Hib, react.Nu_d_, T[id]); // get_e
 	// for (size_t n = 0; n < Emax - NUM_COP; n++)
 	// {
@@ -38,7 +38,7 @@ extern SYCL_KERNEL void ChemeODEQ2SolverKernel(int i, int j, int k, Block bl, Th
 }
 
 #if __VENDOR_SUBMMIT__
-_VENDOR_KERNEL_ void ChemeODEQ2SolverKernelVendorWrapper(Block bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
+_VENDOR_KERNEL_ void ChemeODEQ2SolverKernelVendorWrapper(MeshSize bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x + bl.Bwidth_X;
 	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y;
