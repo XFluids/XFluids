@@ -162,7 +162,7 @@ SYCL_DEVICE void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, 
 	int itermax = 1;
 	real_t ymin = _DF(1.0e-20), dtmin = _DF(1.0e-7);
 	real_t eps, epsmin = _DF(1.0e-4), scrtch = _DF(1e-25);
-	real_t tfd = _DF(1.0) + _DF(1.0e-10), sqreps = _DF(0.5), epsmax = _DF(1.0), epscl = _DF(1.0e2);
+	real_t tfd = _DF(1.0) + _DF(1.0e-10), sqreps = _DF(0.05), epsmax = _DF(1.0), epscl = _DF(1.0e4);
 	/**
 	 * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least
 	 * three corrector iterations are performed. For most problems, the stability check is not needed, and eliminating
@@ -192,8 +192,12 @@ SYCL_DEVICE void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, 
 	real_t TTn = TT, TT0 = TTn, TTs;
 
 	// // // Initialize and limit y to the minimum value and save the initial yi inputs into y0
+	real_t sumy = _DF(0.0);
 	for (int i = 0; i < NUM_SPECIES; i++)
-		y[i] = sycl::max(y[i], ymin);
+		y[i] = sycl::max(y[i], ymin), sumy += y[i];
+	sumy = _DF(1.0) / sumy;
+	for (int i = 0; i < NUM_SPECIES; i++)
+		y[i] *= sumy;
 
 	//=========================================================
 	// // initial p and d before predicting
@@ -294,8 +298,8 @@ SYCL_DEVICE void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, 
 		// // Check for convergence
 		// // // The following section is used for the stability check
 		eps = eps * epscl;
-		real_t stab = _DF(0.0);
-		if (eps < epsmax && stab <= _DF(1.0))
+
+		if (eps < epsmax)
 		{
 			if (dtg <= (tn * tfd))
 			{
@@ -315,7 +319,7 @@ SYCL_DEVICE void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, 
 		dt = sycl::min(dt * (_DF(1.) / rteps + _DF(0.005)), tfd * (dtg - tn)); // new dt
 
 		// // // Rebegin the step if  this previous step not converged
-		if (eps > epsmax || stab > _DF(1.0))
+		if (eps > epsmax)
 		{
 			dt = sycl::min(dt, _DF(0.34) * dto); // add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
 			rcount++;
@@ -330,7 +334,7 @@ SYCL_DEVICE void Chemeq2(const int id, Thermal thermal, real_t *Kf, real_t *Kb, 
 		// // A valid time step has done
 		epsmax = _DF(1.0);
 		TTn = get_T(thermal, y, e, TTs); // new T
-		// get_KbKf(Kf, Kb, Rargus, thermal._Wi, Hia, Hib, Nu_d_, TTn);
+		get_KbKf(Kf, Kb, Rargus, thermal._Wi, thermal.Hia, thermal.Hib, Nu_d_, TTn);
 		QSSAFun(q, d, Kf, Kb, y, thermal, React_ThirdCoef, reaction_list, reactant_list, product_list, rns, rts, pls, Nu_b_, Nu_f_, third_ind, rho);
 		gcount++;
 	}
