@@ -185,15 +185,15 @@ ELSEIF(INIT_SAMPLE STREQUAL "shock-bubble-without-fuel")
     set(DIM_X "ON")
     set(DIM_Y "ON")
     set(DIM_Z "ON")
-    set(Visc "OFF")
+    set(Visc "ON")
     set(Visc_Heat "ON")
     set(Visc_Diffu "ON") # depends on COP=ON
     set(THERMAL "NASA") # NASA fit of Xe
     set(WENO_ORDER "6") # 5, 6 or 7: WENO5, WENOCU6 or WENO7 for High-Order FluxWall reconstruction
     set(COP_CHEME "OFF")
     set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
+    set(POSITIVITY_PRESERVING "ON")
     set(ARTIFICIAL_VISC_TYPE "GLF")
-    set(POSITIVITY_PRESERVING "OFF")
     add_compile_options(-DSBICounts=1)
     set(MIXTURE_MODEL "Insert-SBI-without-fuel")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/shock-bubble-intera")
@@ -238,7 +238,11 @@ ENDIF()
 
 IF(COP)
     add_compile_options(-DCOP)
-
+    IF(POSITIVITY_PRESERVING)
+        add_compile_options(-DPOSP=1)
+    ELSE()
+        add_compile_options(-DPOSP=0)
+    ENDIF()
     IF(COP_CHEME)
         add_compile_options(-DCOP_CHEME=1)
     ELSE()
