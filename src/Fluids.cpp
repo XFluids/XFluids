@@ -56,13 +56,31 @@ extern void EstimateFluidNANKernel(int i, int j, int k, int x_offset, int y_offs
 		return;
 	int id = (Xmax * Ymax * k + Xmax * j + i) * Emax;
 
-	bool tempnegv = UI[0 + id] < 0 ? true : false, tempnans[Emax];
+	bool tempnegv = UI[0 + id] < 0 ? true : false;
+	if (tempnegv)
+		error_pos[0] += 10000;
 	for (size_t ii = 0; ii < Emax; ii++)
 	{
-		tempnans[ii] = (sycl::isnan(UI[ii + id]) || sycl::isinf(UI[ii + id])) || (sycl::isnan(LUI[ii + id]) || sycl::isinf(LUI[ii + id]));
-		tempnegv = tempnegv || tempnans[ii];
-		if (tempnans[ii])
-			error_pos[ii] = 1;
+		bool thtemp = false;
+		thtemp = sycl::isnan(UI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 1100;
+		tempnegv = tempnegv || thtemp;
+
+		thtemp = sycl::isinf(UI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 1200;
+		tempnegv = tempnegv || thtemp;
+
+		thtemp = sycl::isnan(LUI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 21;
+		tempnegv = tempnegv || thtemp;
+
+		thtemp = sycl::isinf(LUI[ii + id]);
+		if (thtemp)
+			error_pos[ii] += 22;
+		tempnegv = tempnegv || thtemp;
 	}
 	if (tempnegv)
 		*error = true, error_pos[Emax + 1] = i, error_pos[Emax + 2] = j, error_pos[Emax + 3] = k;
@@ -944,7 +962,12 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 			std::cout << ") inside the step " << flag << " of RungeKutta";
 		else
 			std::cout << ") after the Reaction solver";
-		std::cout << " captured.\n";
+		std::cout << " captured.\n  ERROR Code:\n";
+		std::cout << "    10000: negative value of U[0].\n";
+		std::cout << "    1100: nanumber value of U[ii].\n";
+		std::cout << "    1200: infinite value of U[ii].\n";
+		std::cout << "    21: nanumber value of LU[ii].\n";
+		std::cout << "    22: infinite value of LU[ii].\n";
 		return true;
 	}
 
