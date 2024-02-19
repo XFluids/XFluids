@@ -37,7 +37,7 @@ extern SYCL_KERNEL void ChemeODEQ2SolverKernel(int i, int j, int k, MeshSize bl,
 	}
 }
 
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 _VENDOR_KERNEL_ void ChemeODEQ2SolverKernelVendorWrapper(MeshSize bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *e, const real_t dt)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x + bl.Bwidth_X;

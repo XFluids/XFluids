@@ -42,7 +42,7 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     if (0 == myRank)
 #endif // end USE_MPI
     {
-#ifdef __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
         vendorDeviceProp prop;
         CheckGPUErrors(vendorGetDeviceProperties(&prop, DeviceSelect[2]));
         // printf("  PCI Bus ID= %d; PCI Device ID= %d; PCI domain ID= %d; ECC= %d \n", prop.pciBusID, prop.pciDeviceID, prop.pciDomainID, prop.ECCEnabled);

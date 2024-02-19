@@ -99,7 +99,7 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 
 	// sycl::stream stream_ct1(64 * 1024, 80, h);// for output error: sycl::stream decline running
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorSetDevice(Ss.DeviceSelect[2]));
 	dim3 local_block(32, 8, 1);
 	dim3 global_grid((global_ndrange[0] + local_block.x - 1) / local_block.x,

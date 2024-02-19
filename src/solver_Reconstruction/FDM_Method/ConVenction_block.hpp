@@ -216,7 +216,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
 		if (bl.DimX)
 		{
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 			dim3 local_block_x(32, 8, 1);
 			dim3 global_grid_x((global_ndrange_x[0] + local_block_x.x - 1) / local_block_x.x,
@@ -238,7 +238,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #endif
 		}
 #if __SYNC_TIMER_
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 		CheckGPUErrors(vendorDeviceSynchronize());
 #endif
 		q.wait();
@@ -247,7 +247,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #endif // end __SYNC_TIMER_
 		if (bl.DimY)
 		{
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 			dim3 local_block_y(32, 8, 1);
 			dim3 global_grid_y((global_ndrange_y[0] + local_block_y.x - 1) / local_block_y.x,
@@ -269,7 +269,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #endif
 		}
 #if __SYNC_TIMER_
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 		CheckGPUErrors(vendorDeviceSynchronize());
 #endif
 		q.wait();
@@ -278,7 +278,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #endif // end __SYNC_TIMER_
 		if (bl.DimZ)
 		{
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 			dim3 local_block_z(32, 8, 1);
 			dim3 global_grid_z((global_ndrange_z[0] + local_block_z.x - 1) / local_block_z.x,
@@ -302,7 +302,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	}
 
 	q.wait();
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorDeviceSynchronize());
 #endif
 #if __SYNC_TIMER_
@@ -405,7 +405,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	real_t *hi = fdata.hi;
 
 	runtime_lu_astart = std::chrono::high_resolution_clock::now();
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
 	dim3 local_block_v(32, 8, 1);
 	dim3 global_grid_v((global_ndrange_max[0] + local_block_v.x - 1) / local_block_v.x,

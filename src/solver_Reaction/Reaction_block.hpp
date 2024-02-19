@@ -92,7 +92,7 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
-#if __VENDOR_SUBMMIT__
+#if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorSetDevice(Fs.DeviceSelect[2]));
 	dim3 local_block(4, 4, 4);
 	dim3 global_grid((global_ndrange[0] + local_block.x - 1) / local_block.x,
