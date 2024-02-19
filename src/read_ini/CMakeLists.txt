@@ -33,7 +33,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
     IF(BOOST_CXX)
         target_link_libraries(readini
             PUBLIC
-            boost_filesystem
+            ${boost_filesystem}
         )
     ENDIF(BOOST_CXX)
 
@@ -67,7 +67,7 @@ ELSE()
     IF(BOOST_CXX)
         target_link_libraries(readini
             INTERFACE
-            boost_filesystem
+            ${boost_filesystem}
         )
     ENDIF(BOOST_CXX)
 ENDIF()

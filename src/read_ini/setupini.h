@@ -27,8 +27,8 @@ public:
 	//--for-Running--------------------------
 	AppendParas apa;
 	std::string WorkDir;
-	int nStepmax;		   // running steps
-	int bytes, cellbytes;  // memory allocate
+	int nStepmax;		  // running steps
+	int bytes, cellbytes; // memory allocate
 	std::vector<OutFmt> OutTimeStamps;
 
 	//--for-Mesh-----------------------------
