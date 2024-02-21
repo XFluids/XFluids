@@ -194,6 +194,40 @@ void Setup::ReWrite()
 #else  // for oneAPI
     DeviceSelect[1] += myRank % DeviceSelect[0];
 #endif // end
+
+    // // adaptive range assignment init
+    adv_id = 0;
+    std::vector<sycl::range<3>> options;
+    options.clear();
+    std::vector<size_t> adv_ndx{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024};
+    size_t advx = BlSz.DimX ? adv_ndx.size() : 1;
+    size_t advy = BlSz.DimY ? adv_ndx.size() : 1;
+    size_t advz = BlSz.DimZ ? adv_ndx.size() : 1;
+    for (size_t zz = 0; zz < advz; zz++)
+        for (size_t yy = 0; yy < advy; yy++)
+            for (size_t xx = 0; xx < advx; xx++)
+                if (adv_ndx[xx] * adv_ndx[yy] * adv_ndx[zz] > 2)
+                    if (adv_ndx[xx] * adv_ndx[yy] * adv_ndx[zz] <= 1024)
+                    {
+                        if (adv_ndx[xx] < 2 && (adv_ndx[yy] > 256 || adv_ndx[zz] > 256))
+                            continue;
+
+                        int repeat = 0;
+                        sycl::range<3> temprg(adv_ndx[xx], adv_ndx[yy], adv_ndx[zz]);
+                        for (size_t dd = 0; dd < options.size(); dd++)
+                        {
+                            if (temprg == options[dd])
+                                repeat++;
+                        }
+                        if (!repeat)
+                            options.push_back(temprg);
+                    }
+    adv_nd.resize(options.size());
+    for (size_t dd = 0; dd < adv_nd.size(); dd++)
+    {
+        adv_nd[dd].clear();
+        adv_nd[dd].push_back(Assign(options[dd]));
+    }
 }
 
 // =======================================================

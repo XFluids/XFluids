@@ -4,7 +4,7 @@ set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
 option(COP "if enable compoent" ON)
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # ON: allocate device buffer and transfer. OFF: allocate struct ptr on host
-option(ASYNC_SUBMIT "if use CUDA or HIP original parallel submmision" OFF)
+option(ASYNC_SUBMIT "if use asynchronous submmission" OFF)
 option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" ON)
 option(ESTIM_NAN "estimate if primitive variable(rho,yi,P,T) is nan or <0 or inf." ON)
 option(ERROR_OUT "if out intermediate variables for Flux ((b1,b3,zi)[convention],Di[visc],...)." OFF)
