@@ -219,6 +219,12 @@ extern SYCL_KERNEL void ReconstructFluxZ(int i, int j, int k, real_t const dl, M
 extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *FluxFw, real_t *FluxGw, real_t *FluxHw)
 {
 	MARCO_DOMAIN();
+	if (i >= bl.Xmax)
+		return;
+	if (j >= bl.Ymax)
+		return;
+	if (k >= bl.Zmax)
+		return;
 	int id = Xmax * Ymax * k + Xmax * j + i;
 	int id_im = Xmax * Ymax * k + Xmax * j + i - 1;
 	int id_jm = Xmax * Ymax * k + Xmax * (j - 1) + i;

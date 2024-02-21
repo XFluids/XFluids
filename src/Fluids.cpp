@@ -659,13 +659,13 @@ void Fluid::GetTheta(sycl::queue &q)
 	real_t *smyN2 = d_fstate.thetaN2; // get (Y_N2)^bar of each rank
 	real_t *smyXN = d_fstate.thetaXN; // get (Y_Xe*Y_N2)^bar of each rank
 
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<2>(sycl::range<2>(bl.X_inner, bl.Z_inner), sycl::range<2>(bl.dim_block_x, bl.dim_block_z)), [=](nd_item<2> index)
-				   {	
-				int i = index.get_global_id(0) + bl.Bwidth_X;
-				int k = index.get_global_id(1) + bl.Bwidth_Z;
-				YDirThetaItegralKernel(i, k, bl, yi, smyXe, smyN2, smyXN); }); })
+	q.submit([&](sycl::handler &h) {																													   //
+		 h.parallel_for(sycl::nd_range<2>(sycl::range<2>(bl.X_inner, bl.Z_inner), sycl::range<2>(bl.dim_block_x, bl.dim_block_z)), [=](nd_item<2> index) { //
+			 int i = index.get_global_id(0) + bl.Bwidth_X;
+			 int k = index.get_global_id(1) + bl.Bwidth_Z;
+			 YDirThetaItegralKernel(i, k, bl, yi, smyXe, smyN2, smyXN);
+		 });
+	 })
 		.wait();
 
 	// 	// #ifdef USE_MPI
@@ -702,13 +702,15 @@ void Fluid::GetTheta(sycl::queue &q)
 	auto Sum_YXeN2 = sycl_reduction_plus(theta[1]); // sycl::reduction(&(theta[1]), sycl::plus<real_t>());					 // (Y_Xe)^bar*(Y_N2)^bar
 	auto Sum_YXe = sycl_reduction_plus(theta[2]);	// sycl::reduction(&(theta[2]), sycl::plus<real_t>());	 // (Y_Xe)^bar*(Y_N2)^bar
 	real_t _RomY = _DF(1.0) / real_t(bl.Y_inner);
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<1>(sycl::range<1>(bl.X_inner * bl.Z_inner), sycl::range<1>(bl.BlockSize)), Sum_YXN, Sum_YXeN2, Sum_YXe, [=](nd_item<1> index, auto &tSum_YXN, auto &tSum_YXeN2, auto &tSum_YXe)
-				   { auto id = index.get_global_id(0);
-				tSum_YXN += smyXN[id];
-				tSum_YXeN2 += smyXe[id]  * smyN2[id];
-				tSum_YXe += smyXe[id]; }); })
+	q.submit([&](sycl::handler &h) { //
+		 h.parallel_for(sycl::nd_range<1>(sycl::range<1>(bl.X_inner * bl.Z_inner), sycl::range<1>(bl.BlockSize)),
+						Sum_YXN, Sum_YXeN2, Sum_YXe, [=](nd_item<1> index, auto &tSum_YXN, auto &tSum_YXeN2, auto &tSum_YXe) { //
+							auto id = index.get_global_id(0);
+							tSum_YXN += smyXN[id];
+							tSum_YXeN2 += smyXe[id] * smyN2[id];
+							tSum_YXe += smyXe[id];
+						});
+	 })
 		.wait();
 
 	auto local_ndrange3d = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
@@ -731,16 +733,18 @@ void Fluid::GetTheta(sycl::queue &q)
 
 	auto Rdif_Ymin = sycl_reduction_min(interface_point[2]); // reduction(&(interface_point[2]), sycl::minimum<real_t>());
 	auto Rdif_Ymax = sycl_reduction_max(interface_point[3]); // reduction(&(interface_point[3]), sycl::maximum<real_t>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax)
-							  {
-						int i = index.get_global_id(0) + bl.Bwidth_X;
-						int j = index.get_global_id(1) + bl.Bwidth_Y;
-						int k = index.get_global_id(2) + bl.Bwidth_Z;
-						real_t y = j * bl.dy + bl.offy;
-						int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-						if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
-							temp_Ymin.combine(y), temp_Ymax.combine(y); }); });
+	q.submit([&](sycl::handler &h) {						 //
+		h.parallel_for(sycl::nd_range<3>(global_ndrange3d, local_ndrange3d),
+					   Rdif_Ymin, Rdif_Ymax, [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax) { //
+						   int i = index.get_global_id(0) + bl.Bwidth_X;
+						   int j = index.get_global_id(1) + bl.Bwidth_Y;
+						   int k = index.get_global_id(2) + bl.Bwidth_Z;
+						   real_t y = j * bl.dy + bl.offy;
+						   int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+						   if (yi[id * NUM_SPECIES + bl.Xe_id] > Interface_line)
+							   temp_Ymin.combine(y), temp_Ymax.combine(y);
+					   });
+	});
 
 	// 	// 	auto Rdif_Zmin = reduction(&(interface_point[4]), sycl::minimum<real_t>());
 	// 	// 	auto Rdif_Zmax = reduction(&(interface_point[5]), sycl::maximum<real_t>());
@@ -766,19 +770,23 @@ void Fluid::GetTheta(sycl::queue &q)
 			pVar_max[n] = _DF(0.0);
 		// Tmax
 		real_t *T = d_fstate.T;
-		q.submit([&](sycl::handler &h)
-				 {	auto reduction_max_T = sycl_reduction_max(pVar_max[0]);//reduction(&(pVar_max[0]), sycl::maximum<real_t>());
-				h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T){
-								   auto id = index.get_global_id();
-								   temp_max_T.combine(T[id]);}); });
+		q.submit([&](sycl::handler &h) {																								//
+			auto reduction_max_T = sycl_reduction_max(pVar_max[0]);																		// reduction(&(pVar_max[0]), sycl::maximum<real_t>());
+			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_T, [=](nd_item<1> index, auto &temp_max_T) { //
+				auto id = index.get_global_id();
+				temp_max_T.combine(T[id]);
+			});
+		});
 		//	reactants
 		for (size_t n = 1; n < NUM_SPECIES - 3; n++)
 		{
-			q.submit([&](sycl::handler &h)
-					 {	auto reduction_max_Yi = sycl_reduction_max(pVar_max[n]);//reduction(&(pVar_max[n]), sycl::maximum<real_t>());
-					h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi){
-									   auto id = index.get_global_id();
-									   temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]); }); });
+			q.submit([&](sycl::handler &h) {																								  //
+				auto reduction_max_Yi = sycl_reduction_max(pVar_max[n]);																	  // reduction(&(pVar_max[n]), sycl::maximum<real_t>());
+				h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_Yi, [=](nd_item<1> index, auto &temp_max_Yi) { //
+					auto id = index.get_global_id();
+					temp_max_Yi.combine(yi[n + 1 + NUM_SPECIES * id]);
+				});
+			});
 		}
 		q.wait();
 	}
@@ -787,16 +795,17 @@ void Fluid::GetTheta(sycl::queue &q)
 #if Visc
 	auto Sum_Sigma = sycl_reduction_plus(sigma[0]);	 // sycl::reduction(&(sigma[0]), sycl::plus<real_t>());
 	auto Sum_Sigma1 = sycl_reduction_plus(sigma[1]); // sycl::reduction(&(sigma[1]), sycl::plus<real_t>());
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, Sum_Sigma1, [=](nd_item<3> index, auto &temp_Sum_Sigma, auto &temp_Sum_Sigma1)
-				   {
-					int i = index.get_global_id(0) + bl.Bwidth_X;
-					int j = index.get_global_id(1) + bl.Bwidth_Y;
-					int k = index.get_global_id(2) + bl.Bwidth_Z;
-					int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
-					temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
-					temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz; }); });
+	q.submit([&](sycl::handler &h) {				 //
+		h.parallel_for(
+			sycl::nd_range<3>(global_ndrange3d, local_ndrange3d), Sum_Sigma, Sum_Sigma1, [=](nd_item<3> index, auto &temp_Sum_Sigma, auto &temp_Sum_Sigma1) { //
+				int i = index.get_global_id(0) + bl.Bwidth_X;
+				int j = index.get_global_id(1) + bl.Bwidth_Y;
+				int k = index.get_global_id(2) + bl.Bwidth_Z;
+				int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
+				temp_Sum_Sigma += vox_2[id] * bl.dx * bl.dy * bl.dz;
+				temp_Sum_Sigma1 += rho[id] * vox_2[id] * bl.dx * bl.dy * bl.dz;
+			});
+	});
 	q.wait();
 #endif // Visc
 
@@ -941,13 +950,13 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 		error_pos[n] = 0;
 	*error = false;
 
-	q.submit([&](sycl::handler &h) { // sycl::stream error_out(64 * 1024, 10, h);
-		 h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
-						{
-    		int i = index.get_global_id(0) + x_offset;
-			int j = index.get_global_id(1) + y_offset;
-			int k = index.get_global_id(2) + z_offset;
-			EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, error_pos, UI, LU, error); });
+	q.submit([&](sycl::handler &h) {																		// sycl::stream error_out(64 * 1024, 10, h);
+		 h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0) + x_offset;
+			 int j = index.get_global_id(1) + y_offset;
+			 int k = index.get_global_id(2) + z_offset;
+			 EstimateFluidNANKernel(i, j, k, x_offset, y_offset, z_offset, bl, error_pos, UI, LU, error);
+		 });
 	 })
 		.wait(); //, error_out
 

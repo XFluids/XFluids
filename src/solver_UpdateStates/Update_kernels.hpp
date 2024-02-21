@@ -64,6 +64,12 @@ void UpdateFuidStatesKernelVendorWrapper(MeshSize bl, Thermal thermal, real_t *U
 extern void UpdateURK3rdKernel(int i, int j, int k, MeshSize bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
 	MARCO_DOMAIN();
+	if (i >= bl.Xmax)
+		return;
+	if (j >= bl.Ymax)
+		return;
+	if (k >= bl.Zmax)
+		return;
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
 	// real_t de_U[Emax], de_U1[Emax], de_LU[Emax];

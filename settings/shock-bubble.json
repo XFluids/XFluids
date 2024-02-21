@@ -57,10 +57,10 @@
 	},
 	"sources": {},
 	"mesh": {
-		"Yil_limiter": 1.0,
-		"Dim_limiter": 2.0E-4,
+		"Yil_limiter": 0.01,
+		"Dim_limiter": 2.0E-6,
 		"DOMAIN_Size": [
-			0.4,
+			0.1,
 			0.05,
 			0.05
 		],
@@ -70,9 +70,9 @@
 			0.0
 		],
 		"Resolution": [
-			20,
-			400,
-			400
+			80,
+			40,
+			40
 		],
 		"Boundarys": [
 			0,

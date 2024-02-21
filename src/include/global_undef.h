@@ -12,14 +12,20 @@
 #define DIM_Z 1
 #endif
 
+#ifndef Emax
+#define Emax 6
+#endif
+#ifndef NUM_SPECIES
+#define NUM_SPECIES 1
+#endif
+#ifndef __SYNC_TIMER_
+#define __SYNC_TIMER_ 0
+#endif
 #ifndef SBICounts
 #define SBICounts 0
 #endif
 
-#ifndef NUM_SPECIES
-#define NUM_SPECIES 1
-#endif
-#ifndef POSP
+#ifndef POSP // PositivityPreserving
 #define POSP 0
 #endif
 
