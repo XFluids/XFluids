@@ -1,3 +1,4 @@
+add_subdirectory(ndassign)
 add_subdirectory(outformat)
 # # constructor
 find_library(readini_cos NAMES libreadini_cos.a HINTS "${LIBRARY_OUTPUT_PATH}")
@@ -57,11 +58,18 @@ IF("${readini_set}" STREQUAL "readini_set-NOTFOUND")
     IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
         add_sycl_to_target(TARGET readini_set)
     ENDIF()
-ELSE()
+
+    target_link_libraries(readini_set
+    PUBLIC
+        ndAssign)
+    ELSE()
     message(STATUS "${readini_set} is located at ${LIBRARY_OUTPUT_PATH}")
     add_library(readini_set STATIC IMPORTED GLOBAL)
     set_property(TARGET readini_set
         PROPERTY IMPORTED_LOCATION ${readini_set})
+    target_link_libraries(readini_set
+    INTERFACE
+        ndAssign)
 ENDIF()
 
 # # add readini_print lib

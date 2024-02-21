@@ -104,6 +104,8 @@ void XFLUIDS::Evolution(sycl::queue &q)
 	// timer beginning point definition
 	std::chrono::high_resolution_clock::time_point start_time;
 
+	Setup::adv_nd[0].resize(1), Setup::sbm_id = 0;
+	// Setup::adv_nd.resize(20);
 	while (TimeLoop < Ss.OutTimeStamps.size())
 	{
 		real_t tbak = _DF(0.0);
@@ -164,6 +166,37 @@ void XFLUIDS::Evolution(sycl::queue &q)
 					if (0 == rank)
 						std::cout << "<<<<<<<<<<<<<< Reaction step has been done" << std::endl;
 				}
+			}
+
+			{ // adaptive range assignmet step
+				for (size_t ii = 0; ii < Setup::adv_nd[0].size(); ii++)
+				{
+					if (!Setup::adv_id)
+						break;
+					if (Setup::adv_nd[0][ii].time > Setup::adv_nd[Ss.adv_id][ii].time)
+						Setup::adv_nd[0][ii] = Setup::adv_nd[Ss.adv_id][ii];
+				}
+				if ((0 == rank && Setup::adv_push) || Setup::adv_nd.size() == Iteration - 1)
+				{
+					std::cout << "<<<<<<<<<<<<<< Adaptive Range Assignment: " << std::endl;
+					for (size_t ii = 0; ii < Setup::adv_nd[Ss.adv_id].size(); ii++)
+						std::cout << "                 " << std::fixed << std::setprecision(10) << Setup::adv_nd[Ss.adv_id][ii].time
+								  << " s for: " << std::setw(30) << Setup::adv_nd[Ss.adv_id][ii].tag << "(" << std::defaultfloat
+								  << Setup::adv_nd[Ss.adv_id][ii].local_nd[0] << ", "
+								  << Setup::adv_nd[Ss.adv_id][ii].local_nd[1] << ", "
+								  << Setup::adv_nd[Ss.adv_id][ii].local_nd[2] << ")"
+								  << " submission." << std::endl;
+				}
+				Setup::sbm_id = 0;
+				Setup::adv_id = Iteration < Setup::adv_nd.size() ? Iteration : 0;
+				if (Setup::adv_push)
+				{
+					std::ofstream osData(OutputDir + "/" + INI_SAMPLE + "_AdaptiveRange", std::ios_base::out | std::ios_base::binary);
+					for (size_t ii = 0; ii < Setup::adv_nd.size(); ii++)
+						osData.write(reinterpret_cast<char *>(Setup::adv_nd[ii].data()), sizeof(Setup::adv_nd[ii]));
+					osData.close();
+				}
+				Setup::adv_push = Setup::adv_id;
 			}
 
 			// // if stop based error captured

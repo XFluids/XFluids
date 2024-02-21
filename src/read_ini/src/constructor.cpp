@@ -4,6 +4,11 @@
 // =======================================================
 // // // struct Setup Member function definitions
 // =======================================================
+size_t Setup::adv_id = 0;
+size_t Setup::sbm_id = 0;
+bool Setup::adv_push = true;
+std::vector<std::vector<Assign>> Setup::adv_nd;
+
 Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks(nranks), apa(argc, argv)
 {
 #ifdef USE_MPI // Create MPI session if MPI enabled
