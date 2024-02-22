@@ -89,27 +89,25 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 	real_t *T = fdata.T;
 	real_t *rho = fdata.rho;
 
-	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
-
+	Assign temk(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "ChemeODEQ2SolverKernel");
+	std::chrono::high_resolution_clock::time_point runtime_ef_start = std::chrono::high_resolution_clock::now();
 #if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorSetDevice(Fs.DeviceSelect[2]));
-	dim3 local_block(4, 4, 4);
-	dim3 global_grid((global_ndrange[0] + local_block.x - 1) / local_block.x,
-					 (global_ndrange[1] + local_block.y - 1) / local_block.y,
-					 (global_ndrange[2] + local_block.z - 1) / local_block.z);
 	static bool dummy = (GetKernelAttributes((const void *)ChemeODEQ2SolverKernelVendorWrapper, "ChemeODEQ2SolverKernelVendorWrapper"), true); // call only once
-	ChemeODEQ2SolverKernelVendorWrapper<<<global_grid, local_block>>>(ms, thermal, react, UI, fdata.y, rho, T, fdata.e, dt);
+	ChemeODEQ2SolverKernelVendorWrapper<<<temk.global_gd(global_ndrange), temk.local_blk>>>(ms, thermal, react, UI, fdata.y, rho, T, fdata.e, dt);
 	CheckGPUErrors(vendorDeviceSynchronize());
 #else
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-				   {
-								  int i = index.get_global_id(0) + ms.Bwidth_X;
-								  int j = index.get_global_id(1) + ms.Bwidth_Y;
-								  int k = index.get_global_id(2) + ms.Bwidth_Z;
-								  ChemeODEQ2SolverKernel(i, j, k, ms, thermal, react, UI, fdata.y, rho, T, fdata.e, dt); }); })
+	q.submit([&](sycl::handler &h) {																					//
+		 h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange), temk.local_nd), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0) + ms.Bwidth_X;
+			 int j = index.get_global_id(1) + ms.Bwidth_Y;
+			 int k = index.get_global_id(2) + ms.Bwidth_Z;
+			 ChemeODEQ2SolverKernel(i, j, k, ms, thermal, react, UI, fdata.y, rho, T, fdata.e, dt);
+		 });
+	 })
 		.wait();
 #endif
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temk.Time(OutThisTime(runtime_ef_start)));
 }

@@ -2,9 +2,10 @@
 
 Assign::Assign(sycl::range<3> lnd, std::string T) : Assign(lnd[0], lnd[1], lnd[2], T) {}
 
-Assign::Assign(size_t x, size_t y, size_t z, std::string T) : local_nd(sycl::range(x, y, z)), tag(T)
+Assign::Assign(size_t x, size_t y, size_t z, std::string T) : local_nd(sycl::range(x, y, z))
 {
 	time = 0;
+	strcpy(tag, T.c_str());
 #if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
 	local_blk = local_block();
 #endif

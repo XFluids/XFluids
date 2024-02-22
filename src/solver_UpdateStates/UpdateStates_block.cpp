@@ -32,17 +32,20 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 
 	// // update rho and yi
+	Assign temury(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "Updaterhoyi");
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index) { //
-					   int i = index.get_global_id(0);
-					   int j = index.get_global_id(1);
-					   int k = index.get_global_id(2);
-					   Updaterhoyi(i, j, k, ms, UI, rho, fdata.y);
-				   }); })
+	q.submit([&](sycl::handler &h) {																						//
+		 h.parallel_for(sycl::nd_range<3>(temury.global_nd(global_ndrange), temury.local_nd), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0);
+			 int j = index.get_global_id(1);
+			 int k = index.get_global_id(2);
+			 Updaterhoyi(i, j, k, ms, UI, rho, fdata.y);
+		 });
+	 })
 		.wait();
 	runtime_rhoyi = OutThisTime(runtime_ud_start);
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temury.Time(runtime_rhoyi));
 
 #if ESTIM_NAN
 	int *error_posyi;
@@ -55,17 +58,20 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 		error_posyi[i] = _DF(0.0);
 
 	// // update estimate negative or nan rho, yi
+	Assign temey(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "EstimateYiKernel");
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index) { //
-					   int i = index.get_global_id(0) + ms.Bwidth_X;
-					   int j = index.get_global_id(1) + ms.Bwidth_Y;
-					   int k = index.get_global_id(2) + ms.Bwidth_Z;
-					   EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y);
-				   }); })
+	q.submit([&](sycl::handler &h) {																					  //
+		 h.parallel_for(sycl::nd_range<3>(temey.global_nd(global_ndrange), temey.local_nd), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0) + ms.Bwidth_X;
+			 int j = index.get_global_id(1) + ms.Bwidth_Y;
+			 int k = index.get_global_id(2) + ms.Bwidth_Z;
+			 EstimateYiKernel(i, j, k, bl, error_posyi, error_org, error_nan, UI, rho, fdata.y);
+		 });
+	 })
 		.wait();
 	runtime_emyi = OutThisTime(runtime_ud_start);
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temey.Time(runtime_emyi));
 
 	int offsetx = OutBoundary ? 0 : bl.Bwidth_X;
 	int offsety = OutBoundary ? 0 : bl.Bwidth_Y;
@@ -98,28 +104,27 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 #endif // end ESTIM_NAN
 
 	// sycl::stream stream_ct1(64 * 1024, 80, h);// for output error: sycl::stream decline running
+	Assign temud(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "UpdateFuidStatesKernel");
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
 #if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorSetDevice(Ss.DeviceSelect[2]));
-	dim3 local_block(32, 8, 1);
-	dim3 global_grid((global_ndrange[0] + local_block.x - 1) / local_block.x,
-					 (global_ndrange[1] + local_block.y - 1) / local_block.y,
-					 (global_ndrange[2] + local_block.z - 1) / local_block.z);
 	static bool dummy = (GetKernelAttributes((const void *)UpdateFuidStatesKernelVendorWrapper, "UpdateFuidStatesKernelVendorWrapper"), true); // call only once
-	UpdateFuidStatesKernelVendorWrapper<<<global_grid, local_block>>>(ms, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
+	UpdateFuidStatesKernelVendorWrapper<<<temud.global_gd(global_ndrange), temud.local_blk>>>(ms, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
 	CheckGPUErrors(vendorDeviceSynchronize());
 #else
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index) { //
-					   int i = index.get_global_id(0);
-					   int j = index.get_global_id(1);
-					   int k = index.get_global_id(2);
-					   UpdateFuidStatesKernel(i, j, k, ms, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
-				   }); }) //, stream_ct1
+	q.submit([&](sycl::handler &h) {																					  //
+		 h.parallel_for(sycl::nd_range<3>(temud.global_nd(global_ndrange), temud.local_nd), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0);
+			 int j = index.get_global_id(1);
+			 int k = index.get_global_id(2);
+			 UpdateFuidStatesKernel(i, j, k, ms, thermal, UI, FluxF, FluxG, FluxH, rho, p, u, v, w, c, g, e, H, T, fdata.y, Ri, Cp);
+		 });
+	 }) //, stream_ct1
 		.wait();
 #endif
 	runtime_states = OutThisTime(runtime_ud_start);
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temud.Time(runtime_states));
 
 #if ESTIM_NAN
 	int *error_pos;
@@ -130,18 +135,21 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 	for (size_t n = 0; n < 6 + NUM_SPECIES; n++)
 		error_pos[n] = 0;
 
+	Assign temep(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "EstimatePrimitiveVarKernel");
 	runtime_ud_start = std::chrono::high_resolution_clock::now();
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(sycl::range<3>(ms.X_inner, ms.Y_inner, ms.Z_inner), local_ndrange), [=](sycl::nd_item<3> index) { //
-					   int i = index.get_global_id(0) + ms.Bwidth_X;
-					   int j = index.get_global_id(1) + ms.Bwidth_Y;
-					   int k = index.get_global_id(2) + ms.Bwidth_Z;
-					   EstimatePrimitiveVarKernel(i, j, k, bl, thermal, error_pos, error_nga, error_yi,
-												  UI, rho, u, v, w, p, T, fdata.y, H, fdata.e, fdata.gamma, c);
-				   }); })
+	q.submit([&](sycl::handler &h) {																										  //
+		 h.parallel_for(sycl::nd_range<3>(temep.global_nd(ms.X_inner, ms.Y_inner, ms.Z_inner), temep.local_nd), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0) + ms.Bwidth_X;
+			 int j = index.get_global_id(1) + ms.Bwidth_Y;
+			 int k = index.get_global_id(2) + ms.Bwidth_Z;
+			 EstimatePrimitiveVarKernel(i, j, k, bl, thermal, error_pos, error_nga, error_yi,
+										UI, rho, u, v, w, p, T, fdata.y, H, fdata.e, fdata.gamma, c);
+		 });
+	 })
 		.wait();
 	runtime_empv = OutThisTime(runtime_ud_start);
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temep.Time(runtime_empv));
 
 	if (*error_nga)
 	{
@@ -185,16 +193,19 @@ std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup S
 void UpdateURK3rd(sycl::queue &q, Block bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
 	MeshSize ms = bl.Ms;
-	auto local_ndrange = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z); // size of workgroup
 	auto global_ndrange = sycl::range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(
-				   sycl::nd_range<3>(global_ndrange, local_ndrange), [=](sycl::nd_item<3> index)
-				   {
-    		int i = index.get_global_id(0) + ms.Bwidth_X;
-			int j = index.get_global_id(1) + ms.Bwidth_Y;
-			int k = index.get_global_id(2) + ms.Bwidth_Z;
-			UpdateURK3rdKernel(i, j, k, ms, U, U1, LU, dt, flag); }); })
+	Assign temud(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "UpdateURK3rdKernel");
+	std::chrono::high_resolution_clock::time_point runtime_ud_start = std::chrono::high_resolution_clock::now();
+	q.submit([&](sycl::handler &h) {																					  //
+		 h.parallel_for(sycl::nd_range<3>(temud.global_nd(global_ndrange), temud.local_nd), [=](sycl::nd_item<3> index) { //
+			 int i = index.get_global_id(0) + ms.Bwidth_X;
+			 int j = index.get_global_id(1) + ms.Bwidth_Y;
+			 int k = index.get_global_id(2) + ms.Bwidth_Z;
+			 UpdateURK3rdKernel(i, j, k, ms, U, U1, LU, dt, flag);
+		 });
+	 })
 		.wait();
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temud.Time(OutThisTime(runtime_ud_start)));
 }

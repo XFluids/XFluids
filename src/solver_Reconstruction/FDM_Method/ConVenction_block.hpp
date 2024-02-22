@@ -34,12 +34,12 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	float runtime_geigenx = 0.0f, runtime_geigeny = 0.0f, runtime_geigenz = 0.0f, runtime_geigen = 0.0f;
 
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
-	auto global_ndrange_inner = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange_x = range<3>(bl.X_inner + local_ndrange[0], bl.Y_inner, bl.Z_inner);
-	auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + local_ndrange[1], bl.Z_inner);
-	auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + local_ndrange[2]);
+	auto global_ndrange_x = range<3>(bl.X_inner + 1, bl.Y_inner, bl.Z_inner);
+	auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + 1, bl.Z_inner);
+	auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + 1);
 
+	Assign temk(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetLocalEigen");
 	{ // get local eigen
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
 		if (bl.DimX)
@@ -50,8 +50,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			// #endif // end DEBUG
 			// proceed at x directiom and get F-flux terms at node wall
 
-			q.submit([&](sycl::handler &h) {																	   //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index) { //
+			q.submit([&](sycl::handler &h) {																					   //
+				h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
@@ -72,8 +72,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			// #endif // end DEBUG
 			// proceed at y directiom and get G-flux terms at node wall
 
-			q.submit([&](sycl::handler &h) {																	   //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index) { //
+			q.submit([&](sycl::handler &h) {																					   //
+				h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
@@ -94,8 +94,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			// #endif // end DEBUG
 			// proceed at y directiom and get G-flux terms at node wall
 
-			q.submit([&](sycl::handler &h) {																	   //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index) { //
+			q.submit([&](sycl::handler &h) {																					   //
+				h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
@@ -109,6 +109,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	runtime_eigenz = OutThisTime(runtime_lu_start);
 #endif
 	runtime_eigen = OutThisTime(runtime_lu_astart);
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temk.Time(runtime_eigen));
 
 	{ // get global LF eigen
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
@@ -213,21 +215,18 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	}
 
 	{ // // Reconstruction Physical Fluxes
+		Assign temfwx(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallFluxX");
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
 		if (bl.DimX)
 		{
 #if __VENDOR_SUBMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-			dim3 local_block_x(32, 8, 1);
-			dim3 global_grid_x((global_ndrange_x[0] + local_block_x.x - 1) / local_block_x.x,
-							   (global_ndrange_x[1] + local_block_x.y - 1) / local_block_x.y,
-							   (global_ndrange_x[2] + local_block_x.z - 1) / local_block_x.z);
 			static bool dummx = (GetKernelAttributes((const void *)ReconstructFluxXVendorWrapper, "ReconstructFluxXVendorWrapper"), true); // call only once
-			ReconstructFluxXVendorWrapper<<<global_grid_x, local_block_x>>>(bl.dx, ms, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x,
-																			fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x);
+			ReconstructFluxXVendorWrapper<<<temfwx.global_gd(global_ndrange_x), temfwx.local_blk>>>(bl.dx, ms, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x,
+																									fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x);
 #else
-			q.submit([&](sycl::handler &h) {																	 //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index) { //
+			q.submit([&](sycl::handler &h) {																						 //
+				h.parallel_for(sycl::nd_range<3>(temfwx.global_nd(global_ndrange_x), temfwx.local_nd), [=](sycl::nd_item<3> index) { //
 					int i = index.get_global_id(0) + ms.Bwidth_X - 1;
 					int j = index.get_global_id(1) + ms.Bwidth_Y;
 					int k = index.get_global_id(2) + ms.Bwidth_Z;
@@ -237,28 +236,31 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			});
 #endif
 		}
-#if __SYNC_TIMER_
+
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
 #if __VENDOR_SUBMIT__
-		CheckGPUErrors(vendorDeviceSynchronize());
+			CheckGPUErrors(vendorDeviceSynchronize());
+#else
+			q.wait();
 #endif
-		q.wait();
-		runtime_fluxx = OutThisTime(runtime_lu_astart);
-		runtime_lu_start = std::chrono::high_resolution_clock::now();
-#endif // end __SYNC_TIMER_
+			runtime_fluxx = OutThisTime(runtime_lu_astart);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temfwx.Time(runtime_fluxx));
+			runtime_lu_start = std::chrono::high_resolution_clock::now();
+		}
+
+		Assign temfwy(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallFluxY");
 		if (bl.DimY)
 		{
 #if __VENDOR_SUBMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-			dim3 local_block_y(32, 8, 1);
-			dim3 global_grid_y((global_ndrange_y[0] + local_block_y.x - 1) / local_block_y.x,
-							   (global_ndrange_y[1] + local_block_y.y - 1) / local_block_y.y,
-							   (global_ndrange_y[2] + local_block_y.z - 1) / local_block_y.z);
 			static bool dummy = (GetKernelAttributes((const void *)ReconstructFluxYVendorWrapper, "ReconstructFluxYVendorWrapper"), true); // call only once
-			ReconstructFluxYVendorWrapper<<<global_grid_y, local_block_y>>>(bl.dy, ms, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y,
-																			fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y);
+			ReconstructFluxYVendorWrapper<<<temfwy.global_gd(global_ndrange_y), temfwy.local_blk>>>(bl.dy, ms, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y,
+																									fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y);
 #else
-			q.submit([&](sycl::handler &h) {																	 //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index) { //
+			q.submit([&](sycl::handler &h) {																						 //
+				h.parallel_for(sycl::nd_range<3>(temfwy.global_nd(global_ndrange_y), temfwy.local_nd), [=](sycl::nd_item<3> index) { //
 					int i = index.get_global_id(0) + ms.Bwidth_X;
 					int j = index.get_global_id(1) + ms.Bwidth_Y - 1;
 					int k = index.get_global_id(2) + ms.Bwidth_Z;
@@ -268,28 +270,31 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			});
 #endif
 		}
-#if __SYNC_TIMER_
+
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
 #if __VENDOR_SUBMIT__
-		CheckGPUErrors(vendorDeviceSynchronize());
+			CheckGPUErrors(vendorDeviceSynchronize());
+#else
+			q.wait();
 #endif
-		q.wait();
-		runtime_fluxy = OutThisTime(runtime_lu_start);
-		runtime_lu_start = std::chrono::high_resolution_clock::now();
-#endif // end __SYNC_TIMER_
+			runtime_fluxy = OutThisTime(runtime_lu_start);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temfwy.Time(runtime_fluxy));
+			runtime_lu_start = std::chrono::high_resolution_clock::now();
+		}
+
+		Assign temfwz(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallFluxZ");
 		if (bl.DimZ)
 		{
 #if __VENDOR_SUBMIT__
 			CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-			dim3 local_block_z(32, 8, 1);
-			dim3 global_grid_z((global_ndrange_z[0] + local_block_z.x - 1) / local_block_z.x,
-							   (global_ndrange_z[1] + local_block_z.y - 1) / local_block_z.y,
-							   (global_ndrange_z[2] + local_block_z.z - 1) / local_block_z.z);
 			static bool dummz = (GetKernelAttributes((const void *)ReconstructFluxZVendorWrapper, "ReconstructFluxZVendorWrapper"), true); // call only once
-			ReconstructFluxZVendorWrapper<<<global_grid_z, local_block_z>>>(bl.dz, ms, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, fdata.b1z,
-																			fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z);
+			ReconstructFluxZVendorWrapper<<<temfwz.global_gd(global_ndrange_z), temfwz.local_blk>>>(bl.dz, ms, thermal, UI, FluxH, FluxHw, eigen_local_z, eigen_l, eigen_r, fdata.b1z,
+																									fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z);
 #else
-			q.submit([&](sycl::handler &h) {																	 //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index) { //
+			q.submit([&](sycl::handler &h) {																						 //
+				h.parallel_for(sycl::nd_range<3>(temfwz.global_nd(global_ndrange_z), temfwz.local_nd), [=](sycl::nd_item<3> index) { //
 					int i = index.get_global_id(0) + ms.Bwidth_X;
 					int j = index.get_global_id(1) + ms.Bwidth_Y;
 					int k = index.get_global_id(2) + ms.Bwidth_Z - 1;
@@ -299,15 +304,19 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			});
 #endif
 		}
-	}
 
-	q.wait();
 #if __VENDOR_SUBMIT__
-	CheckGPUErrors(vendorDeviceSynchronize());
+		CheckGPUErrors(vendorDeviceSynchronize());
+#else
+		q.wait();
 #endif
-#if __SYNC_TIMER_
-	runtime_fluxz = OutThisTime(runtime_lu_start);
-#endif // end __SYNC_TIMER_
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
+			runtime_fluxz = OutThisTime(runtime_lu_start);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temfwz.Time(runtime_fluxz));
+		}
+	}
 	runtime_flux = OutThisTime(runtime_lu_astart);
 
 	// 	// 	int cellsize = bl.Xmax * bl.Ymax * bl.Zmax * sizeof(real_t) * NUM_SPECIES;
@@ -317,6 +326,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	// 	// 	q.wait();
 
 	// NOTE: positive preserving
+	auto global_ndrange_inner = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
 	if (PositivityPreserving)
 	{
 		real_t lambda_x0 = uvw_c_max[0], lambda_y0 = uvw_c_max[1], lambda_z0 = uvw_c_max[2];
@@ -326,6 +336,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		for (size_t ii = 2; ii < NUM_SPECIES + 2; ii++)		  // for Yi
 			epsilon[ii] = _DF(0.0);							  // Ini epsilon for y1-yN(N species)
 
+		Assign temppx(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "PositivityPreservingKernelZ");
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
 		if (bl.DimX)
 		{																											 // sycl::stream error_out(1024 * 1024, 1024, h);
@@ -340,11 +351,17 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 				});
 			});
 		}
-#if __SYNC_TIMER_
-		q.wait();
-		runtime_ppx = OutThisTime(runtime_lu_astart);
-		runtime_lu_start = std::chrono::high_resolution_clock::now();
-#endif // end __SYNC_TIMER_
+
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
+			q.wait();
+			runtime_ppx = OutThisTime(runtime_lu_astart);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temppx.Time(runtime_ppx));
+			runtime_lu_start = std::chrono::high_resolution_clock::now();
+		}
+
+		Assign temppy(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "PositivityPreservingKernelY");
 		if (bl.DimY)
 		{																											 // sycl::stream error_out(1024 * 1024, 1024, h);
 			q.submit([&](sycl::handler &h) {																		 //
@@ -358,11 +375,17 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 				});
 			});
 		}
-#if __SYNC_TIMER_
-		q.wait();
-		runtime_ppy = OutThisTime(runtime_lu_start);
-		runtime_lu_start = std::chrono::high_resolution_clock::now();
-#endif // end __SYNC_TIMER_
+
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
+			q.wait();
+			runtime_ppy = OutThisTime(runtime_lu_start);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temppx.Time(runtime_ppy));
+			runtime_lu_start = std::chrono::high_resolution_clock::now();
+		}
+
+		Assign temppz(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "PositivityPreservingKernelZ");
 		if (bl.DimZ)
 		{
 			q.submit([&](sycl::handler &h) {																		 //
@@ -377,9 +400,12 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			});
 		}
 		q.wait();
-#if __SYNC_TIMER_
-		runtime_ppz = OutThisTime(runtime_lu_start);
-#endif // end __SYNC_TIMER_
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
+			runtime_ppz = OutThisTime(runtime_lu_start);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temppz.Time(runtime_ppz));
+		}
 		runtime_pp = OutThisTime(runtime_lu_astart);
 	}
 
@@ -404,19 +430,16 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	real_t *Da = fdata.Dkm_aver;
 	real_t *hi = fdata.hi;
 
+	Assign temcoeff(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "Gettransport_coeff_aver");
 	runtime_lu_astart = std::chrono::high_resolution_clock::now();
 #if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-	dim3 local_block_v(32, 8, 1);
-	dim3 global_grid_v((global_ndrange_max[0] + local_block_v.x - 1) / local_block_v.x,
-					   (global_ndrange_max[1] + local_block_v.y - 1) / local_block_v.y,
-					   (global_ndrange_max[2] + local_block_v.z - 1) / local_block_v.z);
 	static bool dummv = (GetKernelAttributes((const void *)Gettransport_coeff_averVendorWrapper, "Gettransport_coeff_averVendorWrapper"), true); // call only once
-	Gettransport_coeff_averVendorWrapper<<<global_grid_v, local_block_v>>>(bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
+	Gettransport_coeff_averVendorWrapper<<<temcoeff.global_gd(global_ndrange_max), temcoeff.local_blk>>>(bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
 	CheckGPUErrors(vendorDeviceSynchronize());
 #else
-	q.submit([&](sycl::handler &h) {																		//
-		 h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index) { //
+	q.submit([&](sycl::handler &h) {																								//
+		 h.parallel_for(sycl::nd_range<3>(temcoeff.global_nd(global_ndrange_max), temcoeff.local_nd), [=](sycl::nd_item<3> index) { //
 			 int i = index.get_global_id(0);
 			 int j = index.get_global_id(1);
 			 int k = index.get_global_id(2);
@@ -426,6 +449,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		.wait();
 #endif
 	runtime_transport = OutThisTime(runtime_lu_astart);
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temcoeff.Time(runtime_transport));
 
 // // get visc robust limiter
 #if Visc_Diffu
@@ -437,22 +462,27 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		auto Yi_max = sycl_reduction_max(yi_max[nn]);
 		auto Dkm_min = sycl_reduction_min(Dim_min[nn]);
 		auto Dkm_max = sycl_reduction_max(Dim_max[nn]);
+
+		Assign temDim(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetYiDimMaxMin[" + std::to_string(nn) + "]");
+		runtime_lu_astart = std::chrono::high_resolution_clock::now();
 		q.submit([&](sycl::handler &h) { //
-			 h.parallel_for(
-				 sycl::nd_range<3>(global_ndrange_inner, local_ndrange), Yi_min, Yi_max, Dkm_min, Dkm_max,
-				 [=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax, auto &temp_Dmin, auto &temp_Dmax) { //
-					 int i = index.get_global_id(0) + ms.Bwidth_X;
-					 int j = index.get_global_id(1) + ms.Bwidth_Y;
-					 int k = index.get_global_id(2) + ms.Bwidth_Z;
-					 int id = ms.Xmax * ms.Ymax * k + ms.Xmax * j + i;
-					 real_t *yi = &(fdata.y[NUM_SPECIES * id]);
-					 temp_Ymin.combine(yi[nn]), temp_Ymax.combine(yi[nn]);
-					 // real_t *Dkm = &(Da[NUM_SPECIES * id]);
-					 // temp_Dmin.combine(Dkm[nn]), temp_Dmax.combine(Dkm[nn]);
-					 //
-				 });
+			 h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), Yi_min, Yi_max, Dkm_min, Dkm_max,
+							[=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax, auto &temp_Dmin, auto &temp_Dmax) { //
+								int i = index.get_global_id(0) + ms.Bwidth_X;
+								int j = index.get_global_id(1) + ms.Bwidth_Y;
+								int k = index.get_global_id(2) + ms.Bwidth_Z;
+								int id = ms.Xmax * ms.Ymax * k + ms.Xmax * j + i;
+								real_t *yi = &(fdata.y[NUM_SPECIES * id]);
+								temp_Ymin.combine(yi[nn]), temp_Ymax.combine(yi[nn]);
+								// real_t *Dkm = &(Da[NUM_SPECIES * id]);
+								// temp_Dmin.combine(Dkm[nn]), temp_Dmax.combine(Dkm[nn]);
+								//
+							});
 		 })
 			.wait();
+		if (Setup::adv_push)
+			Setup::adv_nd[Setup::adv_id].push_back(temDim.Time(OutThisTime(runtime_lu_astart)));
+
 #ifdef USE_MPI
 		real_t mpi_Ymin = _DF(0.0), mpi_Ymax = _DF(0.0), mpi_Dmin = _DF(0.0), mpi_Dmax = _DF(0.0);
 		setup.mpiTrans->communicator->synchronize();
@@ -471,11 +501,12 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 #endif // Diffu
 
 	// // calculate viscous Fluxes
+	Assign temvFwx(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxX");
 	runtime_lu_astart = std::chrono::high_resolution_clock::now();
 	if (bl.DimX)
 	{
-		q.submit([&](sycl::handler &h) {																	 //
-			h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index) { //
+		q.submit([&](sycl::handler &h) {																									   //
+			h.parallel_for(sycl::nd_range<3>(temvFwx.global_nd(global_ndrange_x, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
 				int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -484,15 +515,21 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			});
 		}); //.wait()
 	}
-#if __SYNC_TIMER_
-	q.wait();
-	runtime_viscx = OutThisTime(runtime_lu_astart);
-	runtime_lu_start = std::chrono::high_resolution_clock::now();
-#endif // end __SYNC_TIMER_
+
+	if (Setup::adv_push || __SYNC_TIMER_)
+	{
+		q.wait();
+		runtime_viscx = OutThisTime(runtime_lu_astart);
+		if (Setup::adv_push)
+			Setup::adv_nd[Setup::adv_id].push_back(temvFwx.Time(runtime_viscx));
+		runtime_lu_start = std::chrono::high_resolution_clock::now();
+	}
+
+	Assign temvFwy(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxY");
 	if (bl.DimY)
 	{
-		q.submit([&](sycl::handler &h) {																	 //
-			h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index) { //
+		q.submit([&](sycl::handler &h) {																									   //
+			h.parallel_for(sycl::nd_range<3>(temvFwy.global_nd(global_ndrange_y, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -501,15 +538,21 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			});
 		}); //.wait()
 	}
-#if __SYNC_TIMER_
-	q.wait();
-	runtime_viscy = OutThisTime(runtime_lu_start);
-	runtime_lu_start = std::chrono::high_resolution_clock::now();
-#endif // end __SYNC_TIMER_
+
+	if (Setup::adv_push || __SYNC_TIMER_)
+	{
+		q.wait();
+		runtime_viscy = OutThisTime(runtime_lu_start);
+		if (Setup::adv_push)
+			Setup::adv_nd[Setup::adv_id].push_back(temvFwy.Time(runtime_viscy));
+		runtime_lu_start = std::chrono::high_resolution_clock::now();
+	}
+
+	Assign temvFwz(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxZ");
 	if (bl.DimZ)
 	{
-		q.submit([&](sycl::handler &h) {																	 //
-			h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index) { //
+		q.submit([&](sycl::handler &h) {																									   //
+			h.parallel_for(sycl::nd_range<3>(temvFwz.global_nd(global_ndrange_z, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
@@ -519,15 +562,19 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		}); //.wait()
 	}
 	q.wait();
-#if __SYNC_TIMER_
-	runtime_viscz = OutThisTime(runtime_lu_start);
-#endif // end __SYNC_TIMER_
+	if (Setup::adv_push || __SYNC_TIMER_)
+	{
+		runtime_viscz = OutThisTime(runtime_lu_start);
+		if (Setup::adv_push)
+			Setup::adv_nd[Setup::adv_id].push_back(temvFwz.Time(runtime_viscz));
+	}
 	runtime_visc = OutThisTime(runtime_lu_astart);
 #endif // end Visc
 
+	Assign temulu(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "UpdateFluidLU");
 	runtime_lu_start = std::chrono::high_resolution_clock::now();
-	q.submit([&](sycl::handler &h) {																		  //
-		 h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), [=](sycl::nd_item<3> index) { //
+	q.submit([&](sycl::handler &h) {																							  //
+		 h.parallel_for(sycl::nd_range<3>(temulu.global_nd(global_ndrange_inner), temulu.local_nd), [=](sycl::nd_item<3> index) { //
 			 int i = index.get_global_id(0) + bl.Bwidth_X;
 			 int j = index.get_global_id(1) + bl.Bwidth_Y;
 			 int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -536,6 +583,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	 })
 		.wait();
 	runtime_updatelu = OutThisTime(runtime_lu_start);
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(temulu.Time(runtime_updatelu));
 
 	timer_LU.push_back(runtime_eigenx);
 	timer_LU.push_back(runtime_eigeny);

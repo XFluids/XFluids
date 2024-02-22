@@ -252,7 +252,7 @@ extern void UpdateFluidLU(int i, int j, int k, Block bl, real_t *LU, real_t *Flu
 }
 
 #if __VENDOR_SUBMIT__
-_VENDOR_KERNEL_LB_(256, 1)
+_VENDOR_KERNEL_LB_(__LBMt, 1)
 void ReconstructFluxXVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
 								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
@@ -264,7 +264,7 @@ void ReconstructFluxXVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal
 	ReconstructFluxX(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
 }
 
-_VENDOR_KERNEL_LB_(256, 1)
+_VENDOR_KERNEL_LB_(__LBMt, 1)
 void ReconstructFluxYVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
 								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)
@@ -276,7 +276,7 @@ void ReconstructFluxYVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal
 	ReconstructFluxY(i, j, k, dl, bl, thermal, UI, Fl, Fwall, eigen_local, eigen_lt, eigen_rt, eb1, eb3, ec2, ezi, p, rho, u, v, w, y, T, H, eigen_block);
 }
 
-_VENDOR_KERNEL_LB_(256, 1)
+_VENDOR_KERNEL_LB_(__LBMt, 1)
 void ReconstructFluxZVendorWrapper(real_t const dl, MeshSize bl, Thermal thermal, real_t *UI, real_t *Fl, real_t *Fwall, real_t *eigen_local,
 								   real_t *eigen_lt, real_t *eigen_rt, real_t *eb1, real_t *eb3, real_t *ec2, real_t *ezi,
 								   real_t *p, real_t *rho, real_t *u, real_t *v, real_t *w, real_t *y, real_t *T, real_t *H, real_t *eigen_block)

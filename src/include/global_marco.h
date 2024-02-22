@@ -18,6 +18,7 @@
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
 
 // // OpenSYCL HIP Target
+#define __LBMt 1024
 #ifdef __HIPSYCL_ENABLE_HIP_TARGET__
 using vendorError_t = hipError_t;
 using vendorDeviceProp = hipDeviceProp_t;
@@ -115,14 +116,14 @@ using vendorFuncAttributes = cudaFuncAttributes;
 
 // =======================================================
 //    get Roe values insde Reconstructflux
-#define MARCO_ROE()                                       \
+#define MARCO_ROE()                               \
     real_t D = sycl::sqrt(rho[id_r] / rho[id_l]); \
-    real_t D1 = _DF(1.0) / (D + _DF(1.0));                \
-    real_t _u = (u[id_l] + D * u[id_r]) * D1;             \
-    real_t _v = (v[id_l] + D * v[id_r]) * D1;             \
-    real_t _w = (w[id_l] + D * w[id_r]) * D1;             \
-    real_t _H = (H[id_l] + D * H[id_r]) * D1;             \
-    real_t _P = (p[id_l] + D * p[id_r]) * D1;             \
+    real_t D1 = _DF(1.0) / (D + _DF(1.0));        \
+    real_t _u = (u[id_l] + D * u[id_r]) * D1;     \
+    real_t _v = (v[id_l] + D * v[id_r]) * D1;     \
+    real_t _w = (w[id_l] + D * w[id_r]) * D1;     \
+    real_t _H = (H[id_l] + D * H[id_r]) * D1;     \
+    real_t _P = (p[id_l] + D * p[id_r]) * D1;     \
     real_t _rho = sycl::sqrt(rho[id_r] * rho[id_l]);
 
 // =======================================================
