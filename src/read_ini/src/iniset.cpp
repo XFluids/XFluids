@@ -199,7 +199,7 @@ void Setup::ReWrite()
     adv_id = 0;
     std::vector<sycl::range<3>> options;
     options.clear();
-    std::vector<size_t> adv_ndx{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024};
+    std::vector<size_t> adv_ndx{1, 2, 4, 8, 16, 32, 64}; //, 128, 256, 512, 1024
     size_t advx = BlSz.DimX ? adv_ndx.size() : 1;
     size_t advy = BlSz.DimY ? adv_ndx.size() : 1;
     size_t advz = BlSz.DimZ ? adv_ndx.size() : 1;
@@ -207,7 +207,7 @@ void Setup::ReWrite()
         for (size_t yy = 0; yy < advy; yy++)
             for (size_t xx = 0; xx < advx; xx++)
                 if (adv_ndx[xx] * adv_ndx[yy] * adv_ndx[zz] > 2)
-                    if (adv_ndx[xx] * adv_ndx[yy] * adv_ndx[zz] <= 1024)
+                    if (adv_ndx[xx] * adv_ndx[yy] * adv_ndx[zz] <= __LBMt)
                     {
                         if (adv_ndx[xx] < 2 && (adv_ndx[yy] > 256 || adv_ndx[zz] > 256))
                             continue;

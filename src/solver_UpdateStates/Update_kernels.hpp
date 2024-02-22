@@ -48,7 +48,7 @@ extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, MeshSize bl,
 }
 
 #if __VENDOR_SUBMIT__
-_VENDOR_KERNEL_LB_(256, 1)
+_VENDOR_KERNEL_LB_(__LBMt, 1)
 void UpdateFuidStatesKernelVendorWrapper(MeshSize bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
 										 real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma,
 										 real_t *e, real_t *H, real_t *T, real_t *_y, real_t *Ri, real_t *Cp)

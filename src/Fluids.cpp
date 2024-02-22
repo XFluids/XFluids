@@ -935,9 +935,6 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 		break;
 	}
 
-	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
-	auto global_ndrange_max = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
-
 	int x_offset = OutBoundary ? 0 : bl.Bwidth_X;
 	int y_offset = OutBoundary ? 0 : bl.Bwidth_Y;
 	int z_offset = OutBoundary ? 0 : bl.Bwidth_Z;
@@ -950,8 +947,11 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 		error_pos[n] = 0;
 	*error = false;
 
-	q.submit([&](sycl::handler &h) {																		// sycl::stream error_out(64 * 1024, 10, h);
-		 h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index) { //
+	auto global_ndrange_max = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner);
+	Assign efk(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "EstimateFluidNANKernel");
+	std::chrono::high_resolution_clock::time_point runtime_ef_start = std::chrono::high_resolution_clock::now();
+	q.submit([&](sycl::handler &h) {																					  // sycl::stream error_out(64 * 1024, 10, h);
+		 h.parallel_for(sycl::nd_range<3>(efk.global_nd(global_ndrange_max), efk.local_nd), [=](sycl::nd_item<3> index) { //
 			 int i = index.get_global_id(0) + x_offset;
 			 int j = index.get_global_id(1) + y_offset;
 			 int k = index.get_global_id(2) + z_offset;
@@ -959,6 +959,8 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 		 });
 	 })
 		.wait(); //, error_out
+	if (Setup::adv_push)
+		Setup::adv_nd[Setup::adv_id].push_back(efk.Time(OutThisTime(runtime_ef_start)));
 
 	if (*error)
 	{
