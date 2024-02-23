@@ -57,8 +57,12 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
         printf("  32bit register number per block= %d = 256 x %d\n", prop.regsPerBlock, prop.regsPerBlock / 256);
         printf("  L2 cache size= %d MB;", prop.l2CacheSize / 1024 / 1024);
         printf("  Shared Memory per block: %ld KB\n", prop.sharedMemPerBlock / 1024);
+#if defined(__HIPSYCL_ENABLE_HIP_TARGET__)
+        printf("  maxThreadsPerMultiProcessor= %d;\n", prop.maxThreadsPerMultiProcessor);
+#elif defined(__HIPSYCL_ENABLE_CUDA_TARGET__)
         printf("  maxBlocksPerMultiProcessor= %d; maxThreadsPerMultiProcessor= %d= %d x %d;\n",
                prop.maxBlocksPerMultiProcessor, prop.maxThreadsPerMultiProcessor, prop.maxBlocksPerMultiProcessor, prop.maxThreadsPerMultiProcessor / prop.maxBlocksPerMultiProcessor);
+#endif
         printf("  Max threads per block= %d;  Max Threads in 3D= %d x %d x %d;", prop.maxThreadsPerBlock, prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
         printf("  Max Grid Size : %d x %d x %d.\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
 #endif

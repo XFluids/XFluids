@@ -108,10 +108,29 @@ void XFLUIDS::Evolution(sycl::queue &q)
 	std::vector<size_t> adv_size{0};
 	Setup::adv_nd[0].resize(1), Setup::sbm_id = 0;
 	// Setup::adv_nd.resize(2);
-	std::string adv_name = OutputDir + "/" + INI_SAMPLE + "_AdaptiveRange_(";
-	adv_name += std::to_string(Ss.BlSz.X_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_X) + ")x(";
-	adv_name += std::to_string(Ss.BlSz.Y_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_Y) + ")x(";
-	adv_name += std::to_string(Ss.BlSz.Z_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_Y) + ")";
+	std::string adv_name = OutputDir + "/" + INI_SAMPLE;
+	if (PositivityPreserving)
+		adv_name += "-pp(on)";
+	else
+		adv_name += "-pp(off)";
+	if (Visc)
+		adv_name += "-vis(on)";
+	else
+		adv_name += "-vis(off)";
+	if (ReactSources)
+	{
+		if (SlipOrder == std::string("Strang"))
+			adv_name += "-rode(strang)";
+		else
+			adv_name += "-rode(lie)";
+	}
+	else
+		adv_name += "-rode(off)";
+
+	adv_name += "_AdaptiveRange_(";
+	adv_name += std::to_string(Ss.BlSz.X_inner * int(Ss.BlSz.DimX)) + "+" + std::to_string(Ss.BlSz.Bwidth_X * int(Ss.BlSz.DimX)) + ")x(";
+	adv_name += std::to_string(Ss.BlSz.Y_inner * int(Ss.BlSz.DimY)) + "+" + std::to_string(Ss.BlSz.Bwidth_Y * int(Ss.BlSz.DimY)) + ")x(";
+	adv_name += std::to_string(Ss.BlSz.Z_inner * int(Ss.BlSz.DimZ)) + "+" + std::to_string(Ss.BlSz.Bwidth_Y * int(Ss.BlSz.DimZ)) + ")";
 	if (0 == rank)
 	{
 		std::ifstream advIn(adv_name, std::ios_base::in | std::ios_base::binary);
@@ -205,8 +224,18 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			{ // adaptive range assignmet step
 				for (size_t ii = 0; ii < Setup::adv_nd[0].size(); ii++)
 				{
-					if (!Setup::adv_id)
+					if (!Setup::adv_id && Setup::adv_push)
+					{
+						if (0 == rank)
+						{
+							std::ofstream advcsv(adv_name + ".csv", std::ios::out | std::ios::app);
+							advcsv << ", ";
+							for (size_t ii = 0; ii < Setup::adv_nd[Ss.adv_id].size() - 1; ii++)
+								advcsv << std::string(Setup::adv_nd[Ss.adv_id][ii].tag) << ", ";
+							advcsv << std::string(Setup::adv_nd[Ss.adv_id].back().tag) << std::endl;
+						}
 						break;
+					}
 					if (Setup::adv_nd[0][ii].time > Setup::adv_nd[Ss.adv_id][ii].time)
 						Setup::adv_nd[0][ii] = Setup::adv_nd[Ss.adv_id][ii];
 				}
@@ -221,6 +250,16 @@ void XFLUIDS::Evolution(sycl::queue &q)
 									  << Setup::adv_nd[Ss.adv_id][ii].local_nd[2] << ", "
 									  << std::fixed << std::setprecision(10) << Setup::adv_nd[Ss.adv_id][ii].time
 									  << std::defaultfloat << std::endl;
+						std::ofstream advcsv(adv_name + ".csv", std::ios::out | std::ios::app);
+						if (Setup::adv_push && advcsv.is_open())
+						{
+							advcsv << "(" << Setup::adv_nd[Ss.adv_id][0].local_nd[0] << " " << Setup::adv_nd[Ss.adv_id][0].local_nd[1] << " "
+								   << Setup::adv_nd[Ss.adv_id][0].local_nd[2] << "), " << std::fixed << std::setprecision(10);
+							for (size_t ii = 0; ii < Setup::adv_nd[Ss.adv_id].size() - 1; ii++)
+								advcsv << Setup::adv_nd[Ss.adv_id][ii].time << ", ";
+							advcsv << Setup::adv_nd[Ss.adv_id].back().time << std::defaultfloat << std::endl;
+						}
+						advcsv.close();
 					}
 				Setup::sbm_id = 0;
 				Setup::adv_id = (Iteration < Setup::adv_nd.size() && Setup::adv_push) ? Iteration : 0;
@@ -234,6 +273,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 						osData.write(reinterpret_cast<char *>(&Setup::adv_nd[ii][1]), ts_size);
 					}
 					osData.close();
+					Setup::adv_nd[0].erase(Setup::adv_nd[0].begin());
 				}
 				Setup::adv_push = Setup::adv_id;
 			}
@@ -660,7 +700,6 @@ bool XFLUIDS::Reaction(sycl::queue &q, const real_t dt, const real_t Time, const
 {
 	std::chrono::high_resolution_clock::time_point runtime_reation = std::chrono::high_resolution_clock::now();
 
-	BoundaryCondition(q, 0);
 	if (UpdateStates(q, 0, Time, Step, "_React"))
 		return true;
 
@@ -1090,7 +1129,16 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, size_t error)
 		if (rank == 0)
 			std::cout << "Partial Domain solution";
 	}
+	else
+	{
+		if (OutDAT)
+			Output_cplt(ctrl.out_vars, ctrl.pos, osr);
+		if (OutVTI)
+			Output_svti(ctrl.out_vars, ctrl.cri_list, osr);
 
+		if (rank == 0)
+			std::cout << "Common Domain solution";
+	}
 	if (rank == 0)
 		std::cout << " has been done at Step = " << ctrl.inter << ", Time = " << ctrl.time << std::endl;
 }

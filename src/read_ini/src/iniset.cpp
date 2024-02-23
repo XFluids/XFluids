@@ -157,6 +157,18 @@ void Setup::ReWrite()
             nStepmax = Inner_size[3];
     }
 
+    // // rewrite domain size
+    std::vector<real_t> Domain_size = apa.match<real_t>("-domain");
+    if (!std::empty(Domain_size))
+    {
+        if (Domain_size[0] > 0)
+            BlSz.Domain_length = Domain_size[0];
+        if (Domain_size[1] > 0)
+            BlSz.Domain_width = Domain_size[1];
+        if (Domain_size[2] > 0)
+            BlSz.Domain_height = Domain_size[2];
+    }
+
     // // rewrite dim_block_x, dim_block_y, dim_block_z
     std::vector<int> blkapa = apa.match<int>("-blk");
     if (!std::empty(blkapa))
@@ -170,6 +182,21 @@ void Setup::ReWrite()
     std::vector<int> mpiapa = apa.match<int>("-mpi");
     if (!std::empty(mpiapa))
         BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
+
+    std::vector<std::string> mpis = apa.match("-mpi-s");
+    if (!std::empty(mpis))
+    {
+        if (0 == mpis[0].compare("weak"))
+            if (!(BlSz.X_inner % BlSz.mx + BlSz.Y_inner % BlSz.my + BlSz.Z_inner % BlSz.mz))
+                BlSz.X_inner /= BlSz.mx, BlSz.Y_inner /= BlSz.my, BlSz.Z_inner /= BlSz.mz;
+            else
+            {
+                std::cout << "Error: the number of blocks in each direction is not divisible by the number of MPI processes in that direction!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        else if (0 == mpis[0].compare("strong"))
+            BlSz.Domain_length *= BlSz.mx, BlSz.Domain_width *= BlSz.my, BlSz.Domain_height *= BlSz.mz;
+    }
 
     // // open mpi threads debug;
     std::vector<int> mpidbg = apa.match<int>("-mpidbg");
@@ -220,7 +247,12 @@ void Setup::ReWrite()
                                 repeat++;
                         }
                         if (!repeat)
-                            options.push_back(temprg);
+                        {
+                            if ((BlSz.dim_block_x == adv_ndx[xx]) && (BlSz.dim_block_y == adv_ndx[yy]) && (BlSz.dim_block_z == adv_ndx[zz]))
+                                options.insert(options.begin(), temprg);
+                            else
+                                options.push_back(temprg);
+                        }
                     }
     adv_nd.resize(options.size());
     for (size_t dd = 0; dd < adv_nd.size(); dd++)

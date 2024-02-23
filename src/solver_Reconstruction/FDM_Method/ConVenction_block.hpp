@@ -336,7 +336,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 		for (size_t ii = 2; ii < NUM_SPECIES + 2; ii++)		  // for Yi
 			epsilon[ii] = _DF(0.0);							  // Ini epsilon for y1-yN(N species)
 
-		Assign temppx(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "PositivityPreservingKernelZ");
+		Assign temppx(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "PositivityPreservingKernelX");
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
 		if (bl.DimX)
 		{																											 // sycl::stream error_out(1024 * 1024, 1024, h);
@@ -381,7 +381,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			q.wait();
 			runtime_ppy = OutThisTime(runtime_lu_start);
 			if (Setup::adv_push)
-				Setup::adv_nd[Setup::adv_id].push_back(temppx.Time(runtime_ppy));
+				Setup::adv_nd[Setup::adv_id].push_back(temppy.Time(runtime_ppy));
 			runtime_lu_start = std::chrono::high_resolution_clock::now();
 		}
 

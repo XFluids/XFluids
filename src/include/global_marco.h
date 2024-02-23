@@ -11,6 +11,8 @@
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<>())
 
 #define SYCL_KERNEL SYCL_EXTERNAL
+#define SYCL_DEVICE
+#define __LBMt 256
 
 #else
 #define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<real_t>())
@@ -18,8 +20,8 @@
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
 
 // // OpenSYCL HIP Target
-#define __LBMt 1024
 #ifdef __HIPSYCL_ENABLE_HIP_TARGET__
+#define __LBMt 256 // <=256 for HIP
 using vendorError_t = hipError_t;
 using vendorDeviceProp = hipDeviceProp_t;
 using vendorFuncAttributes = hipFuncAttributes;
@@ -50,6 +52,7 @@ using vendorFuncAttributes = hipFuncAttributes;
 
 // // OpenSYCL CUDA Target
 #elif defined(__HIPSYCL_ENABLE_CUDA_TARGET__)
+#define __LBMt 256 // <=256 for HIP
 using vendorError_t = cudaError_t;
 using vendorDeviceProp = cudaDeviceProp;
 using vendorFuncAttributes = cudaFuncAttributes;
@@ -79,7 +82,7 @@ using vendorFuncAttributes = cudaFuncAttributes;
     while (0)
 
 #else
-
+#define __LBMt 256 // <=256 for HIP
 #define SYCL_KERNEL
 #define SYCL_DEVICE
 
@@ -127,13 +130,13 @@ using vendorFuncAttributes = cudaFuncAttributes;
     real_t _rho = sycl::sqrt(rho[id_r] * rho[id_l]);
 
 // =======================================================
-// //    Get c2
-// // #ifdef COP
-// // #define MARCO_GETC2() MARCO_COPC2()
-// // // MARCO_COPC2() //MARCO_COPC2_ROB()
-// // #else
-// // #define MARCO_GETC2() MARCO_NOCOPC2()
-// // #endif // end COP
+//    Get c2
+#ifdef COP
+#define MARCO_GETC2() MARCO_COPC2()
+// MARCO_COPC2() //MARCO_COPC2_ROB()
+#else
+#define MARCO_GETC2() MARCO_NOCOPC2()
+#endif // end COP
 
 // //    Get error out of c2 arguments
 #if ESTIM_OUT

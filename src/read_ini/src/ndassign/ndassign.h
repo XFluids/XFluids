@@ -8,7 +8,7 @@ struct Assign
 	char tag[40];
 	sycl::range<3> local_nd;
 
-	Assign(){};
+	Assign();
 	~Assign(){};
 	Assign(sycl::range<3> lnd, std::string T = "undefined block");
 	Assign(size_t x, size_t y, size_t z, std::string T = "undefined block");

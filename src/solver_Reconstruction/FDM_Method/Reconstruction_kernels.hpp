@@ -22,13 +22,7 @@ extern SYCL_KERNEL void ReconstructFluxX(int i, int j, int k, real_t const dl, M
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
-
-	// // MARCO_GETC2();
-	// /_hi[NUM_SPECIES],*/
-	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), _k = _DF(0.0), _ht = _DF(0.0), Gamma0 = _DF(1.4);
-	real_t c2 = ReconstructSoundSpeed(thermal, id_l, id_r, D, D1, _rho, _P, rho, u, v, w, y, p, T, H,
-									  _yi, z, b1, b3, _k, _ht, Gamma0);
-	real_t _c = sycl::sqrt(c2);
+	MARCO_GETC2();
 	MARCO_ERROR_OUT();
 
 //     // construct the right value & the left value scalar equations by characteristic reduction
@@ -125,13 +119,7 @@ extern SYCL_KERNEL void ReconstructFluxY(int i, int j, int k, real_t const dl, M
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
-
-	// // MARCO_GETC2();
-	// /_hi[NUM_SPECIES],*/
-	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), _k = _DF(0.0), _ht = _DF(0.0), Gamma0 = _DF(1.4);
-	real_t c2 = ReconstructSoundSpeed(thermal, id_l, id_r, D, D1, _rho, _P, rho, u, v, w, y, p, T, H,
-									  _yi, z, b1, b3, _k, _ht, Gamma0);
-	real_t _c = sycl::sqrt(c2);
+	MARCO_GETC2();
 	MARCO_ERROR_OUT();
 
 	//     // // construct the right value & the left value scalar equations by characteristic reduction
@@ -179,13 +167,7 @@ extern SYCL_KERNEL void ReconstructFluxZ(int i, int j, int k, real_t const dl, M
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
-
-	// // MARCO_GETC2();
-	// /_hi[NUM_SPECIES],*/
-	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), _k = _DF(0.0), _ht = _DF(0.0), Gamma0 = _DF(1.4);
-	real_t c2 = ReconstructSoundSpeed(thermal, id_l, id_r, D, D1, _rho, _P, rho, u, v, w, y, p, T, H,
-									  _yi, z, b1, b3, _k, _ht, Gamma0);
-	real_t _c = sycl::sqrt(c2);
+	MARCO_GETC2();
 	MARCO_ERROR_OUT();
 
 	//     // // construct the right value & the left value scalar equations by characteristic reduction

@@ -72,7 +72,7 @@ if(NOT BOOST_ROOT)
 endif()
 
 IF(BOOST_CXX)
-	find_library(boost_filesystem NAMES libboost_filesystem.a HINTS "${BOOST_ROOT}/lib")
+	find_library(boost_filesystem NAMES libboost_filesystem.so HINTS "${BOOST_ROOT}/lib")
 
 	IF("${boost_filesystem}" STREQUAL "boost_filesystem-NOTFOUND")
 		set(BOOST_CXX "OFF")
