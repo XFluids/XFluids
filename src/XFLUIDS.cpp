@@ -1090,7 +1090,16 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, size_t error)
 		if (rank == 0)
 			std::cout << "Partial Domain solution";
 	}
+	else
+	{
+		if (OutDAT)
+			Output_cplt(ctrl.out_vars, ctrl.pos, osr);
+		if (OutVTI)
+			Output_svti(ctrl.out_vars, ctrl.cri_list, osr);
 
+		if (rank == 0)
+			std::cout << "Common Domain solution";
+	}
 	if (rank == 0)
 		std::cout << " has been done at Step = " << ctrl.inter << ", Time = " << ctrl.time << std::endl;
 }

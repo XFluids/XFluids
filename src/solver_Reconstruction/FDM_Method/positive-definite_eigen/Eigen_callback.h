@@ -4,6 +4,12 @@
 #include "../read_ini/setupini.h"
 #include "../include/sycl_devices.hpp"
 
+#define MARCO_COPC2()                                                                                                                     \
+	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0), _k = _DF(0.0), _ht = _DF(0.0), Gamma0 = _DF(1.4); \
+	real_t c2 = ReconstructSoundSpeed(thermal, id_l, id_r, D, D1, _rho, _P, rho, u, v, w, y, p, T, H,                                     \
+									  _yi, z, b1, b3, _k, _ht, Gamma0);                                                                   \
+	real_t _c = sycl::sqrt(c2);
+
 // #define MARCO_COPC2()                                                                                                                                                                                                                              \
 // 	real_t _yi[MAX_SPECIES], z[MAX_SPECIES] = {_DF(0.0)}, b1 = _DF(0.0), b3 = _DF(0.0); /*_hi[NUM_SPECIES],*/                                                                                                                                      \
 // 	real_t hi_l[MAX_SPECIES], hi_r[MAX_SPECIES];                                                                                                                                                                                                   \

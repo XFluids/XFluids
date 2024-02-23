@@ -127,13 +127,13 @@ using vendorFuncAttributes = cudaFuncAttributes;
     real_t _rho = sycl::sqrt(rho[id_r] * rho[id_l]);
 
 // =======================================================
-// //    Get c2
-// // #ifdef COP
-// // #define MARCO_GETC2() MARCO_COPC2()
-// // // MARCO_COPC2() //MARCO_COPC2_ROB()
-// // #else
-// // #define MARCO_GETC2() MARCO_NOCOPC2()
-// // #endif // end COP
+//    Get c2
+#ifdef COP
+#define MARCO_GETC2() MARCO_COPC2()
+// MARCO_COPC2() //MARCO_COPC2_ROB()
+#else
+#define MARCO_GETC2() MARCO_NOCOPC2()
+#endif // end COP
 
 // //    Get error out of c2 arguments
 #if ESTIM_OUT

@@ -13,10 +13,13 @@
 #endif
 
 #ifndef Emax
-#define Emax 6
+#define Emax 5
 #endif
 #ifndef NUM_SPECIES
 #define NUM_SPECIES 1
+#endif
+#ifndef NUM_COP
+#define NUM_COP 0
 #endif
 #ifndef __SYNC_TIMER_
 #define __SYNC_TIMER_ 0
