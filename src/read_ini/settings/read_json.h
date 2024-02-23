@@ -23,6 +23,7 @@ extern const size_t OutInterval, POutInterval, RcalInterval; // PushInterval
 extern const std::vector<std::string> OutTimeArrays_json, OutTimeStamps_json;
 //--for-Thread-Allocation----------------
 extern const size_t BlockSize_json, dim_block_x_json, dim_block_y_json, dim_block_z_json;
+extern const size_t OutAdvRange_json;
 
 // MPI
 extern const size_t mx_json;
@@ -31,8 +32,8 @@ extern const size_t mz_json;
 extern const std::vector<int> DeviceSelect_json;
 
 // equations
-extern const size_t NumFluid;									 // NOTE: ignore
-extern const std::vector<std::string> Fluids_name;				 //, species_name; // Fluid_Names, Spiece_Names
+extern const size_t NumFluid;					   // NOTE: ignore
+extern const std::vector<std::string> Fluids_name; //, species_name; // Fluid_Names, Spiece_Names
 extern const size_t Equ_rho, Equ_energy;
 extern const std::vector<size_t> Equ_momentum;
 extern const std::string SlipOrder, ODESolver;
@@ -60,6 +61,6 @@ extern const bool Mach_Modified; // NOTE: ignore
 // Mach_Modified: if post-shock theroy in Ref0 used(rewrite the value from Devesh Ranjan's theroy in Ref1 used by default):
 // // Ref0:https://doi.org/10.1016/j.combustflame.2015.10.016 Ref1:https://www.annualreviews.org/doi/10.1146/annurev-fluid-122109-160744
 extern const size_t cop_type, blast_type;
-extern const real_t bubble_boundary, C_json;										   // bubble_boundary_cells;
-extern const real_t xa_json, yb_first_json, zc_first_json, yb_json, zc_json;		   // bubble_shape
+extern const real_t bubble_boundary, C_json;														 // bubble_boundary_cells;
+extern const real_t xa_json, yb_first_json, zc_first_json, yb_json, zc_json;						 // bubble_shape
 extern const std::vector<real_t> blast_pos, cop_pos, cop_instates, blast_upstates, blast_downstates; // states

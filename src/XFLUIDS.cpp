@@ -104,8 +104,42 @@ void XFLUIDS::Evolution(sycl::queue &q)
 	// timer beginning point definition
 	std::chrono::high_resolution_clock::time_point start_time;
 
+	bool reAdv = false;
+	std::vector<size_t> adv_size{0};
 	Setup::adv_nd[0].resize(1), Setup::sbm_id = 0;
-	// Setup::adv_nd.resize(20);
+	// Setup::adv_nd.resize(2);
+	std::string adv_name = OutputDir + "/" + INI_SAMPLE + "_AdaptiveRange_(";
+	adv_name += std::to_string(Ss.BlSz.X_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_X) + ")x(";
+	adv_name += std::to_string(Ss.BlSz.Y_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_Y) + ")x(";
+	adv_name += std::to_string(Ss.BlSz.Z_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_Y) + ")";
+	if (0 == rank)
+	{
+		std::ifstream advIn(adv_name, std::ios_base::in | std::ios_base::binary);
+		if (advIn.is_open())
+		{
+			Setup::adv_push = false, reAdv = true;
+			for (size_t ii = 0; ii < OutAdvRange_json; ii++)
+			{
+				size_t szie = 0;
+				advIn.read(reinterpret_cast<char *>(&szie), sizeof(size_t));
+				Setup::adv_nd[ii].resize(szie / sizeof(Assign)), adv_size.push_back(szie);
+				advIn.read(reinterpret_cast<char *>(Setup::adv_nd[ii].data()), szie);
+			}
+		}
+		else
+			std::cout << "AdaptiveRange-file not exist or open failed, AdaptiveRange recaluated." << std::endl;
+		advIn.close();
+	}
+#ifdef USE_MPI
+	reAdv = Ss.mpiTrans->BocastTrue(reAdv), Setup::adv_push = !reAdv;
+	for (size_t ii = 0; ii < OutAdvRange_json; ii++)
+	{
+		size_t temp_size = Setup::adv_nd[ii].size();
+		Ss.mpiTrans->communicator->bcast((char *)&temp_size, 4, mpiUtils::MpiComm::CHAR, 0), Setup::adv_nd[ii].resize(temp_size);
+		Ss.mpiTrans->communicator->bcast(reinterpret_cast<char *>(Setup::adv_nd[ii].data()), Setup::adv_nd[ii].size() * sizeof(Assign), mpiUtils::MpiComm::CHAR, 0);
+	}
+#endif
+
 	while (TimeLoop < Ss.OutTimeStamps.size())
 	{
 		real_t tbak = _DF(0.0);
@@ -122,7 +156,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				// 	Output_Ubak(rank, Iteration, physicalTime, duration, true);
 				Output(q, OutAtThis.Reinitialize(physicalTime, std::to_string(Iteration)));
 			}
-			if ((RcalOut % RcalInterval == 0) && RcalOut)
+			if ((RcalOut % RcalInterval == 0) && Iteration > Setup::adv_nd.size())
 				Output_Ubak(rank, Iteration, physicalTime, duration);
 			RcalOut++;
 			Iteration++;
@@ -176,24 +210,29 @@ void XFLUIDS::Evolution(sycl::queue &q)
 					if (Setup::adv_nd[0][ii].time > Setup::adv_nd[Ss.adv_id][ii].time)
 						Setup::adv_nd[0][ii] = Setup::adv_nd[Ss.adv_id][ii];
 				}
-				if ((0 == rank && Setup::adv_push) || Setup::adv_nd.size() == Iteration - 1)
-				{
-					std::cout << "<<<<<<<<<<<<<< Adaptive Range Assignment: " << std::endl;
-					for (size_t ii = 0; ii < Setup::adv_nd[Ss.adv_id].size(); ii++)
-						std::cout << "                 " << std::fixed << std::setprecision(10) << Setup::adv_nd[Ss.adv_id][ii].time
-								  << " s for: " << std::setw(30) << Setup::adv_nd[Ss.adv_id][ii].tag << "(" << std::defaultfloat
-								  << Setup::adv_nd[Ss.adv_id][ii].local_nd[0] << ", "
-								  << Setup::adv_nd[Ss.adv_id][ii].local_nd[1] << ", "
-								  << Setup::adv_nd[Ss.adv_id][ii].local_nd[2] << ")"
-								  << " submission." << std::endl;
-				}
+				if (0 == rank)
+					if ((!reAdv && Setup::adv_nd.size() == Iteration - 1) || Setup::adv_push || (1 == Iteration))
+					{
+						std::cout << "<<<<<<<<<<<<<< Adaptive Range Assignment(time: s): " << std::endl;
+						for (size_t ii = 0; ii < Setup::adv_nd[Ss.adv_id].size(); ii++)
+							std::cout << "    " << std::setw(30) << std::string(Setup::adv_nd[Ss.adv_id][ii].tag) << " submission, "
+									  << Setup::adv_nd[Ss.adv_id][ii].local_nd[0] << ", "
+									  << Setup::adv_nd[Ss.adv_id][ii].local_nd[1] << ", "
+									  << Setup::adv_nd[Ss.adv_id][ii].local_nd[2] << ", "
+									  << std::fixed << std::setprecision(10) << Setup::adv_nd[Ss.adv_id][ii].time
+									  << std::defaultfloat << std::endl;
+					}
 				Setup::sbm_id = 0;
-				Setup::adv_id = Iteration < Setup::adv_nd.size() ? Iteration : 0;
-				if (Setup::adv_push)
+				Setup::adv_id = (Iteration < Setup::adv_nd.size() && Setup::adv_push) ? Iteration : 0;
+				if (0 == rank && Setup::adv_nd.size() == Iteration && Setup::adv_push)
 				{
-					std::ofstream osData(OutputDir + "/" + INI_SAMPLE + "_AdaptiveRange", std::ios_base::out | std::ios_base::binary);
-					for (size_t ii = 0; ii < Setup::adv_nd.size(); ii++)
-						osData.write(reinterpret_cast<char *>(Setup::adv_nd[ii].data()), sizeof(Setup::adv_nd[ii]));
+					std::ofstream osData(adv_name, std::ios_base::out | std::ios_base::binary);
+					for (size_t ii = 0; ii < OutAdvRange_json; ii++)
+					{
+						size_t ts_size = (Setup::adv_nd[ii].size() - 1) * sizeof(Assign);
+						osData.write(reinterpret_cast<char *>(&ts_size), sizeof(size_t));
+						osData.write(reinterpret_cast<char *>(&Setup::adv_nd[ii][1]), ts_size);
+					}
 					osData.close();
 				}
 				Setup::adv_push = Setup::adv_id;

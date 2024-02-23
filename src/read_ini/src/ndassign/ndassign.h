@@ -5,7 +5,7 @@
 struct Assign
 {
 	float time;
-	std::string tag;
+	char tag[40];
 	sycl::range<3> local_nd;
 
 	Assign(){};

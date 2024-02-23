@@ -505,8 +505,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	runtime_lu_astart = std::chrono::high_resolution_clock::now();
 	if (bl.DimX)
 	{
-		q.submit([&](sycl::handler &h) {																	 //
-			h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index) { //
+		q.submit([&](sycl::handler &h) {																									   //
+			h.parallel_for(sycl::nd_range<3>(temvFwx.global_nd(global_ndrange_x, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
 				int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -528,8 +528,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	Assign temvFwy(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxY");
 	if (bl.DimY)
 	{
-		q.submit([&](sycl::handler &h) {																	 //
-			h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index) { //
+		q.submit([&](sycl::handler &h) {																									   //
+			h.parallel_for(sycl::nd_range<3>(temvFwy.global_nd(global_ndrange_y, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 				int k = index.get_global_id(2) + bl.Bwidth_Z;
@@ -551,8 +551,8 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	Assign temvFwz(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxZ");
 	if (bl.DimZ)
 	{
-		q.submit([&](sycl::handler &h) {																	 //
-			h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index) { //
+		q.submit([&](sycl::handler &h) {																									   //
+			h.parallel_for(sycl::nd_range<3>(temvFwz.global_nd(global_ndrange_z, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
 				int i = index.get_global_id(0) + bl.Bwidth_X;
 				int j = index.get_global_id(1) + bl.Bwidth_Y;
 				int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
