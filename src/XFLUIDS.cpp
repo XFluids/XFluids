@@ -234,6 +234,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 						osData.write(reinterpret_cast<char *>(&Setup::adv_nd[ii][1]), ts_size);
 					}
 					osData.close();
+					Setup::adv_nd[0].erase(Setup::adv_nd[0].begin());
 				}
 				Setup::adv_push = Setup::adv_id;
 			}
