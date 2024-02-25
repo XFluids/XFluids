@@ -18,8 +18,8 @@
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
 
 // // OpenSYCL HIP Target
-#define __LBMt 1024
 #ifdef __HIPSYCL_ENABLE_HIP_TARGET__
+#define __LBMt 256 // __LBMt<=256 for HIP
 using vendorError_t = hipError_t;
 using vendorDeviceProp = hipDeviceProp_t;
 using vendorFuncAttributes = hipFuncAttributes;
@@ -50,6 +50,7 @@ using vendorFuncAttributes = hipFuncAttributes;
 
 // // OpenSYCL CUDA Target
 #elif defined(__HIPSYCL_ENABLE_CUDA_TARGET__)
+#define __LBMt 1024 // __LBMt<=256 for HIP
 using vendorError_t = cudaError_t;
 using vendorDeviceProp = cudaDeviceProp;
 using vendorFuncAttributes = cudaFuncAttributes;
@@ -79,7 +80,7 @@ using vendorFuncAttributes = cudaFuncAttributes;
     while (0)
 
 #else
-
+#define __LBMt 1024 // __LBMt<=256 for HIP
 #define SYCL_KERNEL
 #define SYCL_DEVICE
 
