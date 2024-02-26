@@ -157,6 +157,18 @@ void Setup::ReWrite()
             nStepmax = Inner_size[3];
     }
 
+    // // rewrite domain size
+    std::vector<real_t> Domain_size = apa.match<real_t>("-domain");
+    if (!std::empty(Domain_size))
+    {
+        if (Domain_size[0] > 0)
+            BlSz.Domain_length = Domain_size[0];
+        if (Domain_size[1] > 0)
+            BlSz.Domain_width = Domain_size[1];
+        if (Domain_size[2] > 0)
+            BlSz.Domain_height = Domain_size[2];
+    }
+
     // // rewrite dim_block_x, dim_block_y, dim_block_z
     std::vector<int> blkapa = apa.match<int>("-blk");
     if (!std::empty(blkapa))
