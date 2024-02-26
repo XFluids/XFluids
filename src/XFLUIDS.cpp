@@ -206,7 +206,17 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				for (size_t ii = 0; ii < Setup::adv_nd[0].size(); ii++)
 				{
 					if (!Setup::adv_id)
+					{
+						if (0 == rank)
+						{
+							std::ofstream advcsv(adv_name + ".csv", std::ios::out | std::ios::app);
+							advcsv << ", ";
+							for (size_t ii = 0; ii < Setup::adv_nd[Ss.adv_id].size() - 1; ii++)
+								advcsv << std::string(Setup::adv_nd[Ss.adv_id][ii].tag) << ", ";
+							advcsv << std::string(Setup::adv_nd[Ss.adv_id].back().tag) << std::endl;
+						}
 						break;
+					}
 					if (Setup::adv_nd[0][ii].time > Setup::adv_nd[Ss.adv_id][ii].time)
 						Setup::adv_nd[0][ii] = Setup::adv_nd[Ss.adv_id][ii];
 				}
@@ -221,6 +231,16 @@ void XFLUIDS::Evolution(sycl::queue &q)
 									  << Setup::adv_nd[Ss.adv_id][ii].local_nd[2] << ", "
 									  << std::fixed << std::setprecision(10) << Setup::adv_nd[Ss.adv_id][ii].time
 									  << std::defaultfloat << std::endl;
+						std::ofstream advcsv(adv_name + ".csv", std::ios::out | std::ios::app);
+						if (Setup::adv_push && advcsv.is_open())
+						{
+							advcsv << "(" << Setup::adv_nd[Ss.adv_id][0].local_nd[0] << " " << Setup::adv_nd[Ss.adv_id][0].local_nd[1] << " "
+								   << Setup::adv_nd[Ss.adv_id][0].local_nd[2] << "), " << std::fixed << std::setprecision(10);
+							for (size_t ii = 0; ii < Setup::adv_nd[Ss.adv_id].size() - 1; ii++)
+								advcsv << Setup::adv_nd[Ss.adv_id][ii].time << ", ";
+							advcsv << Setup::adv_nd[Ss.adv_id].back().time << std::defaultfloat << std::endl;
+						}
+						advcsv.close();
 					}
 				Setup::sbm_id = 0;
 				Setup::adv_id = (Iteration < Setup::adv_nd.size() && Setup::adv_push) ? Iteration : 0;
