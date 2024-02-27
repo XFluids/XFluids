@@ -183,6 +183,21 @@ void Setup::ReWrite()
     if (!std::empty(mpiapa))
         BlSz.mx = mpiapa[0], BlSz.my = mpiapa[1], BlSz.mz = mpiapa[2];
 
+    std::vector<std::string> mpis = apa.match("-mpi-s");
+    if (!std::empty(mpis))
+    {
+        if (0 == mpis[0].compare("weak"))
+            if (!(BlSz.X_inner % BlSz.mx + BlSz.Y_inner % BlSz.my + BlSz.Z_inner % BlSz.mz))
+                BlSz.X_inner /= BlSz.mx, BlSz.Y_inner /= BlSz.my, BlSz.Z_inner /= BlSz.mz;
+            else
+            {
+                std::cout << "Error: the number of blocks in each direction is not divisible by the number of MPI processes in that direction!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        else if (0 == mpis[0].compare("strong"))
+            BlSz.Domain_length *= BlSz.mx, BlSz.Domain_width *= BlSz.my, BlSz.Domain_height *= BlSz.mz;
+    }
+
     // // open mpi threads debug;
     std::vector<int> mpidbg = apa.match<int>("-mpidbg");
     if (!std::empty(mpidbg))
