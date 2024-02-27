@@ -205,7 +205,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			{ // adaptive range assignmet step
 				for (size_t ii = 0; ii < Setup::adv_nd[0].size(); ii++)
 				{
-					if (!Setup::adv_id)
+					if (!Setup::adv_id && Setup::adv_push)
 					{
 						if (0 == rank)
 						{
