@@ -11,6 +11,8 @@
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<>())
 
 #define SYCL_KERNEL SYCL_EXTERNAL
+#define SYCL_DEVICE
+#define __LBMt 256
 
 #else
 #define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<real_t>())

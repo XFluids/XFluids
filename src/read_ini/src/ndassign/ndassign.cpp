@@ -1,5 +1,9 @@
 #include "ndassign.h"
 
+Assign::Assign() : local_nd(sycl::range<3>(0, 0, 0))
+{
+}
+
 Assign::Assign(sycl::range<3> lnd, std::string T) : Assign(lnd[0], lnd[1], lnd[2], T) {}
 
 Assign::Assign(size_t x, size_t y, size_t z, std::string T) : local_nd(sycl::range(x, y, z))
@@ -23,7 +27,7 @@ sycl::range<3> Assign::global_nd(size_t x, size_t y, size_t z)
 
 sycl::range<3> Assign::global_nd(sycl::range<3> gnd, sycl::range<3> lnd)
 {
-	sycl::range<3> temp;
+	sycl::range<3> temp(0, 0, 0);
 	temp[0] = (gnd[0] + lnd[0] - 1) / lnd[0] * lnd[0];
 	temp[1] = (gnd[1] + lnd[1] - 1) / lnd[1] * lnd[1];
 	temp[2] = (gnd[2] + lnd[2] - 1) / lnd[2] * lnd[2];
@@ -33,7 +37,7 @@ sycl::range<3> Assign::global_nd(sycl::range<3> gnd, sycl::range<3> lnd)
 
 sycl::range<3> Assign::global_nd(size_t x, size_t y, size_t z, sycl::range<3> lnd)
 {
-	sycl::range<3> temp;
+	sycl::range<3> temp(0, 0, 0);
 	temp[0] = (x + lnd[0] - 1) / lnd[0] * lnd[0];
 	temp[1] = (y + lnd[1] - 1) / lnd[1] * lnd[1];
 	temp[2] = (z + lnd[2] - 1) / lnd[2] * lnd[2];
