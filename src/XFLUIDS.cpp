@@ -108,10 +108,29 @@ void XFLUIDS::Evolution(sycl::queue &q)
 	std::vector<size_t> adv_size{0};
 	Setup::adv_nd[0].resize(1), Setup::sbm_id = 0;
 	// Setup::adv_nd.resize(2);
-	std::string adv_name = OutputDir + "/" + INI_SAMPLE + "_AdaptiveRange_(";
-	adv_name += std::to_string(Ss.BlSz.X_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_X) + ")x(";
-	adv_name += std::to_string(Ss.BlSz.Y_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_Y) + ")x(";
-	adv_name += std::to_string(Ss.BlSz.Z_inner) + "+" + std::to_string(Ss.BlSz.Bwidth_Y) + ")";
+	std::string adv_name = OutputDir + "/" + INI_SAMPLE;
+	if (PositivityPreserving)
+		adv_name += "-pp(on)";
+	else
+		adv_name += "-pp(off)";
+	if (Visc)
+		adv_name += "-vis(on)";
+	else
+		adv_name += "-vis(off)";
+	if (ReactSources)
+	{
+		if (SlipOrder == std::string("Strang"))
+			adv_name += "-rode(strang)";
+		else
+			adv_name += "-rode(lie)";
+	}
+	else
+		adv_name += "-rode(off)";
+
+	adv_name += "_AdaptiveRange_(";
+	adv_name += std::to_string(Ss.BlSz.X_inner * int(Ss.BlSz.DimX)) + "+" + std::to_string(Ss.BlSz.Bwidth_X * int(Ss.BlSz.DimX)) + ")x(";
+	adv_name += std::to_string(Ss.BlSz.Y_inner * int(Ss.BlSz.DimY)) + "+" + std::to_string(Ss.BlSz.Bwidth_Y * int(Ss.BlSz.DimY)) + ")x(";
+	adv_name += std::to_string(Ss.BlSz.Z_inner * int(Ss.BlSz.DimZ)) + "+" + std::to_string(Ss.BlSz.Bwidth_Y * int(Ss.BlSz.DimZ)) + ")";
 	if (0 == rank)
 	{
 		std::ifstream advIn(adv_name, std::ios_base::in | std::ios_base::binary);
