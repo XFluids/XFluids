@@ -247,7 +247,12 @@ void Setup::ReWrite()
                                 repeat++;
                         }
                         if (!repeat)
-                            options.push_back(temprg);
+                        {
+                            if ((BlSz.dim_block_x == adv_ndx[xx]) && (BlSz.dim_block_y == adv_ndx[yy]) && (BlSz.dim_block_z == adv_ndx[zz]))
+                                options.insert(options.begin(), temprg);
+                            else
+                                options.push_back(temprg);
+                        }
                     }
     adv_nd.resize(options.size());
     for (size_t dd = 0; dd < adv_nd.size(); dd++)
