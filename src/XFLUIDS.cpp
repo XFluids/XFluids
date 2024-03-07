@@ -700,7 +700,6 @@ bool XFLUIDS::Reaction(sycl::queue &q, const real_t dt, const real_t Time, const
 {
 	std::chrono::high_resolution_clock::time_point runtime_reation = std::chrono::high_resolution_clock::now();
 
-	BoundaryCondition(q, 0);
 	if (UpdateStates(q, 0, Time, Step, "_React"))
 		return true;
 
