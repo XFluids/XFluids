@@ -32,6 +32,7 @@ XFLUIDS
 # Cmake Build
 build
 build/*
+external/*
 
 # Output
 /output*

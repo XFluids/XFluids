@@ -1,0 +1,4 @@
+[submodule "external/AdaptiveCpp"]
+	path = external/AdaptiveCpp
+	url = https://github.com/AdaptiveCpp/AdaptiveCpp
+	branch = develop

@@ -3,23 +3,51 @@ IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 ENDIF()
 
 # // =======================================================
+# #### about external libs: boost
+SET(EXTERNAL_BOOST_ROOT ${CMAKE_SOURCE_DIR}/external/install/boost)
+SET(EXTERNAL_ADAPTIVECPP_ROOT ${CMAKE_SOURCE_DIR}/external/install/AdaptiveCpp)
+IF(NOT BOOST_ROOT)
+	set(BOOST_ROOT "$ENV{BOOST_ROOT}")
+ENDIF()
+find_library(boost_fiber NAMES libboost_fiber.so HINTS "${BOOST_ROOT}/lib" "${EXTERNAL_BOOST_ROOT}/lib")
+find_library(boost_context NAMES libboost_context.so HINTS "${BOOST_ROOT}/lib" "${EXTERNAL_BOOST_ROOT}/lib")
+find_library(boost_filesystem NAMES libboost_filesystem.so HINTS "${BOOST_ROOT}/lib" "${EXTERNAL_BOOST_ROOT}/lib")
+IF(("${boost_fiber}" STREQUAL "boost_fiber-NOTFOUND")OR
+	("${boost_context}" STREQUAL "boost_context-NOTFOUND")OR
+	("${boost_filesystem}" STREQUAL "boost_filesystem-NOTFOUND"))
+	EXECUTE_PROCESS(COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/build_boost.sh ${EXTERNAL_BOOST_ROOT})
+	set(BOOST_ROOT ${EXTERNAL_BOOST_ROOT})
+	message(STATUS "build boost libs located: ${BOOST_ROOT}")
+ELSE()
+	string(REGEX REPLACE "/lib/libboost_fiber.so" "/" BOOST_ROOT "${boost_fiber}")
+	message(STATUS "Find boost libs located: ${BOOST_ROOT}")
+ENDIF()
+
+# // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	# // =======================================================
-	if(NOT AdaptiveCpp_DIR)
-		set(AdaptiveCpp_DIR "$ENV{AdaptiveCpp_DIR}")
-	endif()
-
-	add_compile_options(-DDEFINED_OPENSYCL)
-	set(BOOST_CXX "ON") # use boost c++ library or std internal library
-	set(AdaptiveCpp_DIR "${AdaptiveCpp_DIR}")
-	find_package(AdaptiveCpp CONFIG REQUIRED)
-
+	# #### about external libs: ApdativeCpp
+	IF(NOT AdaptiveCpp_DIR)
+	set(AdaptiveCpp_DIR "$ENV{AdaptiveCpp_DIR}")
+	ENDIF()
+	find_package(AdaptiveCpp HINTS ${AdaptiveCpp_DIR} ${EXTERNAL_ADAPTIVECPP_ROOT}/lib/cmake/AdaptiveCpp)
 	if(AdaptiveCpp_FOUND)
 		message(STATUS "Find Package \"AdaptiveCpp\": ${AdaptiveCpp_DIR}")
 	else()
-		message(FATAL_ERROR "Cannot Find Package \"AdaptiveCpp\"")
+		message(STATUS "NO Finding installed Package \"AdaptiveCpp\"")
+		message(STATUS "Try Compiling external Package \"AdaptiveCpp\"")
+		EXECUTE_PROCESS(COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/build_adaptivecpp.sh ${BOOST_ROOT} ${EXTERNAL_ADAPTIVECPP_ROOT})
+		SET(AdaptiveCpp_DIR "${CMAKE_SOURCE_DIR}/external/install/AdaptiveCpp/lib/cmake/AdaptiveCpp")
+		find_package(AdaptiveCpp HINTS ${EXTERNAL_ADAPTIVECPP_ROOT}/lib/cmake/AdaptiveCpp CONFIG REQUIRED)
+		if(AdaptiveCpp_FOUND)
+			message(STATUS "Find Package \"AdaptiveCpp\": ${AdaptiveCpp_DIR}")
+		else()
+			message(FATAL_ERROR "Compiling Package \"AdaptiveCpp\" error at: ${AdaptiveCpp_DIR}")
+		endif()
 	endif()
 
+	add_compile_options(-DDEFINED_OPENSYCL)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pass-failed") # get samples from syclcc --help
 	IF(SelectDv STREQUAL "cuda-nvcxx")
 		set(ARCH "cc${ARCH}")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress=set_but_not_used,declared_but_not_referenced,used_before_set,code_is_unreachable,unsigned_compare_with_zero")
@@ -33,18 +61,14 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format")
 	ENDIF()
 
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pass-failed") # get samples from syclcc --help
-
-	# set(CMAKE_CXX_COMPILER "syclcc") # for OpenSYCL syclcc compiling system
 	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
 		set(ARCH "host")
 	ELSE()
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
-
 		if(VENDOR_SUBMIT)
 			add_compile_options(-D__VENDOR_SUBMIT__)
 		endif()
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
 	ENDIF()
 
 # // =======================================================
@@ -63,24 +87,6 @@ ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
 
 	include(oneAPIdevSelect/init_${SelectDv})
 ENDIF()
-
-# // =======================================================
-# #### about external boost libs
-# // =======================================================
-if(NOT BOOST_ROOT)
-	set(BOOST_ROOT "$ENV{BOOST_ROOT}")
-endif()
-
-IF(BOOST_CXX)
-	find_library(boost_filesystem NAMES libboost_filesystem.so HINTS "${BOOST_ROOT}/lib")
-
-	IF("${boost_filesystem}" STREQUAL "boost_filesystem-NOTFOUND")
-		set(BOOST_CXX "OFF")
-		message(WARNING "Cann't find boost_filesystem, set BOOST_CXX=OFF automaticlly using std interfaces, set cmake options or system env variable BOOST_ROOT for using boost interfaces")
-	ELSE()
-		message(STATUS "Find boost_filesystem: ${boost_filesystem}")
-	ENDIF()
-ENDIF(BOOST_CXX)
 
 # // =======================================================
 # #### about device select
