@@ -83,6 +83,10 @@ const real_t Reference_params[8] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 #define GLF_type _DF(1.0)
 #endif
 
+// =======================================================
+//    global static variables
+static std::string outputPrefix = "sample-undefined";
+
 // All kinds of Boundary Conditions
 enum BConditions
 {

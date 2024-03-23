@@ -16,6 +16,14 @@ XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0),
 	nranks = Ss.mpiTrans->nProcs;
 #endif // end USE_MPI
 
+	outputPrefix = "-" + std::string(SelectDv) + "-" + std::string(INI_SAMPLE);
+	if (Ss.BlSz.DimZ)
+		outputPrefix = "Z" + outputPrefix;
+	if (Ss.BlSz.DimY)
+		outputPrefix = "Y" + outputPrefix;
+	if (Ss.BlSz.DimX)
+		outputPrefix = "X" + outputPrefix;
+
 	// initial runtime_check_all;
 	runtime_boundary = 0.0f, runtime_updatestates = 0.0f, runtime_getdt = 0.0f;
 	runtime_computelu = 0.0f, runtime_updateu = 0.0f, runtime_estimatenan = 0.0f, runtime_rea = 0.0f;
@@ -108,7 +116,7 @@ void XFLUIDS::Evolution(sycl::queue &q)
 	std::vector<size_t> adv_size{0};
 	Setup::adv_nd[0].resize(1), Setup::sbm_id = 0;
 	// Setup::adv_nd.resize(2);
-	std::string adv_name = OutputDir + "/" + INI_SAMPLE;
+	std::string adv_name = OutputDir + "/" + outputPrefix;
 	if (PositivityPreserving)
 		adv_name += "-pp(on)";
 	else
@@ -731,7 +739,7 @@ void XFLUIDS::CopyToU(sycl::queue &q)
 
 void XFLUIDS::Output_Ubak(const int rank, const int Step, const real_t Time, const float Time_consumption, bool solution)
 {
-	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string file_name;
 	if (solution)
 		file_name = OutputDir + "/cal/" + outputPrefix + "_CheckingPoint";
 	else
@@ -763,7 +771,7 @@ void XFLUIDS::Output_Ubak(const int rank, const int Step, const real_t Time, con
 bool XFLUIDS::Read_Ubak(sycl::queue &q, const int rank, int *Step, real_t *Time, float *Time_consumption)
 {
 	int size = Ss.cellbytes, all_read = 1;
-	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string file_name;
 	file_name = OutputDir + "/" + outputPrefix + "_CheckingPoint";
 #ifdef USE_MPI
 	file_name += "_rank_" + std::to_string(rank);
@@ -816,11 +824,12 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 #ifdef COP
 		q.memcpy(fluids[n]->h_fstate.y, fluids[n]->d_fstate.y, bytes * NUM_SPECIES);
 #endif // COP
-#if Visc
-		q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
-		for (size_t i = 0; i < 3; i++)
-			q.memcpy(fluids[n]->h_fstate.vxs[i], fluids[n]->d_fstate.vxs[i], bytes).wait();
-#endif // end Visc
+		if (Visc)
+		{
+			q.memcpy(fluids[n]->h_fstate.vx, fluids[n]->d_fstate.vx, bytes);
+			for (size_t i = 0; i < 3; i++)
+				q.memcpy(fluids[n]->h_fstate.vxs[i], fluids[n]->d_fstate.vxs[i], bytes).wait();
+		}
 
 		if (error)
 		{
@@ -829,40 +838,43 @@ void XFLUIDS::CopyDataFromDevice(sycl::queue &q, bool error)
 			q.memcpy(fluids[n]->h_LU, fluids[n]->d_LU, cellbytes);
 
 #if ESTIM_OUT
-#if Visc // copy vosicous estimating Vars
-			if (Ss.BlSz.DimX)
-				q.memcpy(fluids[n]->h_fstate.visFwx, fluids[n]->d_fstate.visFwx, NUM_SPECIES * bytes);
-			if (Ss.BlSz.DimY)
-				q.memcpy(fluids[n]->h_fstate.visFwy, fluids[n]->d_fstate.visFwy, NUM_SPECIES * bytes);
-			if (Ss.BlSz.DimZ)
-				q.memcpy(fluids[n]->h_fstate.visFwz, fluids[n]->d_fstate.visFwz, NUM_SPECIES * bytes);
-#if Visc_Diffu
-			q.memcpy(fluids[n]->h_fstate.Ertemp1, fluids[n]->d_fstate.Ertemp1, NUM_SPECIES * bytes);
-			q.memcpy(fluids[n]->h_fstate.Ertemp2, fluids[n]->d_fstate.Ertemp2, NUM_SPECIES * bytes);
-			q.memcpy(fluids[n]->h_fstate.Dkm_aver, fluids[n]->d_fstate.Dkm_aver, NUM_SPECIES * bytes);
-			if (Ss.BlSz.DimX)
+			if (Visc) // copy vosicous estimating Vars
 			{
-				q.memcpy(fluids[n]->h_fstate.Dim_wallx, fluids[n]->d_fstate.Dim_wallx, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.hi_wallx, fluids[n]->d_fstate.hi_wallx, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.Yi_wallx, fluids[n]->d_fstate.Yi_wallx, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.Yil_wallx, fluids[n]->d_fstate.Yil_wallx, NUM_SPECIES * bytes);
+				if (Ss.BlSz.DimX)
+					q.memcpy(fluids[n]->h_fstate.visFwx, fluids[n]->d_fstate.visFwx, NUM_SPECIES * bytes);
+				if (Ss.BlSz.DimY)
+					q.memcpy(fluids[n]->h_fstate.visFwy, fluids[n]->d_fstate.visFwy, NUM_SPECIES * bytes);
+				if (Ss.BlSz.DimZ)
+					q.memcpy(fluids[n]->h_fstate.visFwz, fluids[n]->d_fstate.visFwz, NUM_SPECIES * bytes);
+
+				if (Visc_Diffu)
+				{
+					q.memcpy(fluids[n]->h_fstate.Ertemp1, fluids[n]->d_fstate.Ertemp1, NUM_SPECIES * bytes);
+					q.memcpy(fluids[n]->h_fstate.Ertemp2, fluids[n]->d_fstate.Ertemp2, NUM_SPECIES * bytes);
+					q.memcpy(fluids[n]->h_fstate.Dkm_aver, fluids[n]->d_fstate.Dkm_aver, NUM_SPECIES * bytes);
+					if (Ss.BlSz.DimX)
+					{
+						q.memcpy(fluids[n]->h_fstate.Dim_wallx, fluids[n]->d_fstate.Dim_wallx, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.hi_wallx, fluids[n]->d_fstate.hi_wallx, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.Yi_wallx, fluids[n]->d_fstate.Yi_wallx, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.Yil_wallx, fluids[n]->d_fstate.Yil_wallx, NUM_SPECIES * bytes);
+					}
+					if (Ss.BlSz.DimY)
+					{
+						q.memcpy(fluids[n]->h_fstate.Dim_wally, fluids[n]->d_fstate.Dim_wally, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.hi_wally, fluids[n]->d_fstate.hi_wally, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.Yi_wally, fluids[n]->d_fstate.Yi_wally, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.Yil_wally, fluids[n]->d_fstate.Yil_wally, NUM_SPECIES * bytes);
+					}
+					if (Ss.BlSz.DimZ)
+					{
+						q.memcpy(fluids[n]->h_fstate.Dim_wallz, fluids[n]->d_fstate.Dim_wallz, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.hi_wallz, fluids[n]->d_fstate.hi_wallz, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.Yi_wallz, fluids[n]->d_fstate.Yi_wallz, NUM_SPECIES * bytes);
+						q.memcpy(fluids[n]->h_fstate.Yil_wallz, fluids[n]->d_fstate.Yil_wallz, NUM_SPECIES * bytes);
+					}
+				}
 			}
-			if (Ss.BlSz.DimY)
-			{
-				q.memcpy(fluids[n]->h_fstate.Dim_wally, fluids[n]->d_fstate.Dim_wally, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.hi_wally, fluids[n]->d_fstate.hi_wally, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.Yi_wally, fluids[n]->d_fstate.Yi_wally, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.Yil_wally, fluids[n]->d_fstate.Yil_wally, NUM_SPECIES * bytes);
-			}
-			if (Ss.BlSz.DimZ)
-			{
-				q.memcpy(fluids[n]->h_fstate.Dim_wallz, fluids[n]->d_fstate.Dim_wallz, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.hi_wallz, fluids[n]->d_fstate.hi_wallz, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.Yi_wallz, fluids[n]->d_fstate.Yi_wallz, NUM_SPECIES * bytes);
-				q.memcpy(fluids[n]->h_fstate.Yil_wallz, fluids[n]->d_fstate.Yil_wallz, NUM_SPECIES * bytes);
-			}
-#endif // end Visc_Diffu
-#endif // end Visc
 
 			if (Ss.BlSz.DimX)
 			{
@@ -1046,47 +1058,45 @@ std::vector<OutVar> XFLUIDS::Output_variables(FlowData &data, std::vector<std::s
 			}
 		}
 
-#if Visc // Out name of viscous out estimating Vars
-		for (size_t mm = 0; mm < Emax; mm++)
-		{
-			if (Ss.BlSz.DimX)
-				vars.push_back(OutVar("E-Fw-vis-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwx, Emax, mm));
-			if (Ss.BlSz.DimY)
-				vars.push_back(OutVar("E-Fw-vis-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwy, Emax, mm));
-			if (Ss.BlSz.DimZ)
-				vars.push_back(OutVar("E-Fw-vis-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwz, Emax, mm));
-		}
+		if (Visc) // Out name of viscous out estimating Vars
+			for (size_t mm = 0; mm < Emax; mm++)
+			{
+				if (Ss.BlSz.DimX)
+					vars.push_back(OutVar("E-Fw-vis-x[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwx, Emax, mm));
+				if (Ss.BlSz.DimY)
+					vars.push_back(OutVar("E-Fw-vis-y[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwy, Emax, mm));
+				if (Ss.BlSz.DimZ)
+					vars.push_back(OutVar("E-Fw-vis-z[" + std::to_string(mm) + "]", fluids[0]->h_fstate.visFwz, Emax, mm));
 
-#if Visc_Diffu
-		for (size_t mm = 0; mm < sp.size(); mm++)
-		{
-			vars.push_back(OutVar("E-vis_Dim[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dkm_aver, sp.size(), mm));
-			vars.push_back(OutVar("E-vis_Dimtemp1[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp1, sp.size(), mm));
-			vars.push_back(OutVar("E-vis_Dimtemp2[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp2, sp.size(), mm));
-			if (Ss.BlSz.DimX)
-			{
-				vars.push_back(OutVar("E-vis_Dimwallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallx, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_hi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallx, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Yi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallx, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Yil_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallx, sp.size(), mm));
+				if (Visc_Diffu)
+					for (size_t mm = 0; mm < sp.size(); mm++)
+					{
+						vars.push_back(OutVar("E-vis_Dim[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dkm_aver, sp.size(), mm));
+						vars.push_back(OutVar("E-vis_Dimtemp1[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp1, sp.size(), mm));
+						vars.push_back(OutVar("E-vis_Dimtemp2[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Ertemp2, sp.size(), mm));
+						if (Ss.BlSz.DimX)
+						{
+							vars.push_back(OutVar("E-vis_Dimwallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallx, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_hi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallx, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_Yi_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallx, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_Yil_wallx[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallx, sp.size(), mm));
+						}
+						if (Ss.BlSz.DimY)
+						{
+							vars.push_back(OutVar("E-vis_Dimwally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wally, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_hi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wally, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_Yi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wally, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_Yil_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wally, sp.size(), mm));
+						}
+						if (Ss.BlSz.DimZ)
+						{
+							vars.push_back(OutVar("E-vis_Dimwallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallz, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_hi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallz, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_Yi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallz, sp.size(), mm));
+							vars.push_back(OutVar("E-vis_Yil_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallz, sp.size(), mm));
+						}
+					}
 			}
-			if (Ss.BlSz.DimY)
-			{
-				vars.push_back(OutVar("E-vis_Dimwally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wally, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_hi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wally, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Yi_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wally, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Yil_wally[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wally, sp.size(), mm));
-			}
-			if (Ss.BlSz.DimZ)
-			{
-				vars.push_back(OutVar("E-vis_Dimwallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Dim_wallz, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_hi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.hi_wallz, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Yi_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yi_wallz, sp.size(), mm));
-				vars.push_back(OutVar("E-vis_Yil_wallz[" + std::to_string(mm) + "]", fluids[0]->h_fstate.Yil_wallz, sp.size(), mm));
-			}
-		}
-#endif // Visc_Diffu
-#endif // Visc
 #endif // ESTIM_OUT
 	}
 
@@ -1155,7 +1165,7 @@ void XFLUIDS::Output_vti(std::vector<OutVar> error_vars, OutString &osr, size_t 
 	if (Ss.BlSz.DimZ)
 		zmin = Ss.BlSz.myMpiPos_z * VTI.nbZ, zmax = Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ, dz = Ss.BlSz.dz;
 
-	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string file_name;
 	std::string temp_name = "./VTI_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() + "." + osr.timeFormat.str();
 
 	std::string headerfile_name = OutputDir + "/VTI_" + outputPrefix + "_Step_" + osr.stepFormat.str() + ".pvti";
@@ -1294,7 +1304,7 @@ void XFLUIDS::Output_svti(std::vector<OutVar> &varout, std::vector<Criterion> &c
 	if (Ss.BlSz.DimZ)
 		zmin = Ss.BlSz.myMpiPos_z * VTI.nbZ, zmax = Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ, dz = Ss.BlSz.dz;
 
-	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string file_name;
 	std::string temp_name = "./VTI_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() + "." + osr.timeFormat.str();
 	file_name = OutputDir + "/" + temp_name;
 #ifdef USE_MPI
@@ -1470,7 +1480,7 @@ void XFLUIDS::Output_cvti(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 	if (pos.OutDirZ && Ss.BlSz.DimZ)
 		zmin = (Ss.BlSz.myMpiPos_z * VTI.nbZ), zmax = (Ss.BlSz.myMpiPos_z * VTI.nbZ + VTI.nbZ), dz = Ss.BlSz.dz;
 
-	std::string file_name, outputPrefix = INI_SAMPLE;
+	std::string file_name;
 	std::string temp_name = "./CVTI_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() + "." + osr.timeFormat.str();
 	file_name = OutputDir + "/" + temp_name;
 
@@ -1628,7 +1638,6 @@ void XFLUIDS::Output_cvti(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 
 void XFLUIDS::Output_plt(int rank, OutString &osr, bool error)
 {
-	std::string outputPrefix = INI_SAMPLE;
 	std::string file_name = OutputDir + "/PLT_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() + "." + osr.timeFormat.str();
 #ifdef USE_MPI
 	file_name += "_rank_" + osr.rankFormat.str();
@@ -1767,7 +1776,6 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 #endif // end USE_MPI
 	{
 		real_t *OutPoint = new real_t[Cnbvar]; // OutPoint: each point;
-		std::string outputPrefix = INI_SAMPLE;
 		std::string file_name = OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() +
 								"." + osr.timeFormat.str() + "_" + osr.rankFormat.str() + ".dat";
 		std::ofstream out(file_name);
@@ -1821,12 +1829,15 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 					OutPoint[9] = fluids[0]->h_fstate.gamma[id];
 					OutPoint[10] = fluids[0]->h_fstate.T[id];
 					OutPoint[11] = fluids[0]->h_fstate.e[id];
-#if Visc
-					OutPoint[12] = sqrt(fluids[0]->h_fstate.vx[id]);
-					OutPoint[13] = fluids[0]->h_fstate.vxs[0][id];
-					OutPoint[14] = fluids[0]->h_fstate.vxs[1][id];
-					OutPoint[15] = fluids[0]->h_fstate.vxs[2][id];
-#endif // end Visc
+
+					if (Visc)
+					{
+						OutPoint[12] = sqrt(fluids[0]->h_fstate.vx[id]);
+						OutPoint[13] = fluids[0]->h_fstate.vxs[0][id];
+						OutPoint[14] = fluids[0]->h_fstate.vxs[1][id];
+						OutPoint[15] = fluids[0]->h_fstate.vxs[2][id];
+					}
+
 #if COP
 					for (int n = 0; n < Ss.BlSz.num_species; n++)
 						OutPoint[Cnbvar - NUM_SPECIES + n] = fluids[0]->h_fstate.y[n + NUM_SPECIES * id];

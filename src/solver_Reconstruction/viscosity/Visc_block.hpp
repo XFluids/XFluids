@@ -1,6 +1,5 @@
 #pragma once
 
-#include "global_setup.h"
 #include "../read_ini/setupini.h"
 
 #include "Visc_kernels.hpp"

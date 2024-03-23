@@ -186,7 +186,7 @@ void Setup::ReWrite()
     std::vector<std::string> mpis = apa.match("-mpi-s");
     if (!std::empty(mpis))
     {
-        if (0 == mpis[0].compare("weak"))
+        if (0 == mpis[0].compare("strong")) // strong scaling
             if (!(BlSz.X_inner % BlSz.mx + BlSz.Y_inner % BlSz.my + BlSz.Z_inner % BlSz.mz))
                 BlSz.X_inner /= BlSz.mx, BlSz.Y_inner /= BlSz.my, BlSz.Z_inner /= BlSz.mz;
             else
@@ -194,7 +194,7 @@ void Setup::ReWrite()
                 std::cout << "Error: the number of blocks in each direction is not divisible by the number of MPI processes in that direction!" << std::endl;
                 exit(EXIT_FAILURE);
             }
-        else if (0 == mpis[0].compare("strong"))
+        else if (0 == mpis[0].compare("weak")) // weak scaling
             BlSz.Domain_length *= BlSz.mx, BlSz.Domain_width *= BlSz.my, BlSz.Domain_height *= BlSz.mz;
     }
 
@@ -260,14 +260,16 @@ void Setup::ReWrite()
         adv_nd[dd].clear();
         adv_nd[dd].push_back(Assign(options[dd]));
     }
+    if (!UseAdvRange_json)
+        adv_nd.resize(1);
 }
 
 // =======================================================
 // =======================================================
 void Setup::init()
 { // set other parameters
-    BlSz.DimS = BlSz.DimX + BlSz.DimY + BlSz.DimZ;
     BlSz.DimX_t = BlSz.DimX, BlSz.DimY_t = BlSz.DimY, BlSz.DimZ_t = BlSz.DimZ;
+    BlSz.DimS = BlSz.DimX_t + BlSz.DimY_t + BlSz.DimZ_t, BlSz.DimS_t = BlSz.DimS;
 
     BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1;
     BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1;

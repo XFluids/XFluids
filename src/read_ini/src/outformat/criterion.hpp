@@ -33,10 +33,8 @@ public:
 			var = h_data.w;
 		else if (0 == svar.compare("Gamma"))
 			var = h_data.gamma;
-#if Visc
-		else if (0 == svar.compare("vorticity"))
+		else if (0 == svar.compare("vorticity") && Visc)
 			var = h_data.vx;
-#endif // end Visc
 		else if (svar.find("yi[") != std::string::npos)
 		{
 			var = h_data.y;

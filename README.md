@@ -39,18 +39,39 @@ The following gpus have been tested:
 
 ## 1. Dependencies before cmake
 
+  1. [libboost_filesystem](https://www.boost.org/users/history/version_1_83_0.html) as external lib while gcc internal filesystem is missing
+  2. one of two SYCL implentation:
+     - [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)
+     - [Intel oneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline) as compiler
+  3. XFLUIDS automatically resolve boost and AdaptiveCpp dependencies, but oneAPI need to be installed manually if you use Intel oneAPI.
+
 ### 1.1. IF USE AdaptiveCpp(known as OpenSYCL/hipSYCL, recommended)
 
 - #### 1.1.1. install [boost-version-1.83](https://www.boost.org/users/history/version_1_83_0.html)(needed by AdaptiveCpp)
-- #### 1.1.2. install [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp), for how to install AdaptiveCpp: [different backends need different dependencies](https://github.com/jiuxiaocloud/uconfig/blob/master/3.7-opensycl(based%20boost).md)
+- #### 1.1.2. install [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)
 - #### 1.1.3. add bin, libs and includes of AdaptiveCpp and dependencies to ENV PATHs
 - #### 1.1.4. XFLUIDS use find_package(AdaptiveCpp) targetting AdaptiveCpp compile system, set cmake option AdaptiveCpp_DIR
 
   ````cmake
   cmake -DAdaptiveCpp_DIR=/path/to/AdaptiveCpp/lib/cmake/AdaptiveCpp ..
   ````
-- #### Device discovery: exec "acpp-info" in cmd for device counting
 
+### 1.2. IF USE Intel oneAPI (recommended for Intel GPU platform)
+
+- #### 1.1.1.[intel oneapi version &gt;= 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline) as compiler
+- #### 1.1.2.[codeplay Solutions for NVIDIA and AMD backends](https://codeplay.com/solutions/oneapi/) if GPU targets are needed
+- #### 1.1.3.1.activate environment for oneAPI appended codeplay sultion libs
+
+  ````bash
+  source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
+  ````
+- #### 1.2.3.2.or you can use the script files(only basic environments are included)
+
+  ````bash
+  source ./scripts/oneAPI/oneapi_base.sh
+  ````
+
+### 1.3.1.Device discovery: exec "acpp-info" in cmd for device counting
   ```cmd
   $ acpp-info
   =================Backend information===================
@@ -81,24 +102,7 @@ The following gpus have been tested:
     Is GPU: 1
   ```
 
-### 1.2. IF USE Intel oneAPI (recommended for Intel GPU platform)
-
-- #### 1.1.1.[intel oneapi version &gt;= 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline) as compiler
-- #### 1.1.2.[codeplay Solutions for NVIDIA and AMD backends](https://codeplay.com/solutions/oneapi/) if GPU targets are needed
-- #### 1.1.3.1.activate environment for oneAPI appended codeplay sultion libs
-
-  ````bash
-  source /opt/intel/oneapi/setvars.sh  --force --include-intel-llvm
-  ````
-- #### 1.2.3.2.or you can use the script files(only basic environments are included)
-
-  ````bash
-  source ./scripts/oneAPI/oneapi_base.sh
-  ````
-- #### 1.1.4.[libboost_filesystem](https://www.boost.org/users/history/version_1_83_0.html) as external lib while gcc internal filesystem is missing
-
-- #### Device discovery: exec "sycl-ls" in cmd for device counting
-
+### 1.3.2.Device discovery: exec "sycl-ls" in cmd for device counting
   ```cmd
   $ sycl-ls
   [opencl:acc:0] Intel(R) FPGA Emulation Platform for OpenCL(TM), Intel(R) FPGA Emulation Device 1.2

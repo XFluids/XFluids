@@ -47,20 +47,21 @@ void Setup::print()
                   << std::setw(15) << h_thermal.species_ratio_in[n] << std::setw(15) << h_thermal.species_ratio_out[n] << std::endl;
     }
 
-#if Visc
-    if (myRank == 0)
-        std::cout << "<---------------------------------------------------> \n";
-
-    printf("Viscisity characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): \n");
-    for (size_t n = 0; n < NUM_SPECIES; n++)
+    if (Visc)
     {
-        printf("species[%zd]: %s,    %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf\n", n,
-               species_name[n].c_str(), h_thermal.species_chara[n * SPCH_Sz + 0],
-               h_thermal.species_chara[n * SPCH_Sz + 1], h_thermal.species_chara[n * SPCH_Sz + 2],
-               h_thermal.species_chara[n * SPCH_Sz + 3], h_thermal.species_chara[n * SPCH_Sz + 4],
-               h_thermal.species_chara[n * SPCH_Sz + 5], h_thermal.species_chara[n * SPCH_Sz + 6]);
+        if (myRank == 0)
+            std::cout << "<---------------------------------------------------> \n";
+
+        printf("Viscisity characteristics(geo, epsilon_kB, L-J collision diameter, dipole moment, polarizability, Zort_298, molar mass): \n");
+        for (size_t n = 0; n < NUM_SPECIES; n++)
+        {
+            printf("species[%zd]: %s,    %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf,   %.6lf\n", n,
+                   species_name[n].c_str(), h_thermal.species_chara[n * SPCH_Sz + 0],
+                   h_thermal.species_chara[n * SPCH_Sz + 1], h_thermal.species_chara[n * SPCH_Sz + 2],
+                   h_thermal.species_chara[n * SPCH_Sz + 3], h_thermal.species_chara[n * SPCH_Sz + 4],
+                   h_thermal.species_chara[n * SPCH_Sz + 5], h_thermal.species_chara[n * SPCH_Sz + 6]);
+        }
     }
-#endif // Visc
 #endif // end COP
 
     if (myRank == 0)
