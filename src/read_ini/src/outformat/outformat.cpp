@@ -97,8 +97,7 @@ void OutFmt::Initialize_V(Block &Bl, std::vector<std::string> sp, FlowData &h_da
 				out_vars.push_back(OutVar("c", h_data.c));
 			if (0 == _V[ii].compare("Gamma"))
 				out_vars.push_back(OutVar("g", h_data.gamma));
-#if Visc
-			if (0 == _V[ii].compare("vorticity"))
+			if (0 == _V[ii].compare("vorticity") && Visc)
 			{
 				out_vars.push_back(OutVar("vorticity", h_data.vx));
 				if ((0 == _V[ii].compare("vorticity_x")) && (Bl.DimY) && (Bl.DimZ))
@@ -108,7 +107,7 @@ void OutFmt::Initialize_V(Block &Bl, std::vector<std::string> sp, FlowData &h_da
 				if ((0 == _V[ii].compare("vorticity_z")) && (Bl.DimX) && (Bl.DimY))
 					out_vars.push_back(OutVar("vorticity_z", h_data.vxs[2]));
 			}
-#endif // end Visc
+
 #ifdef COP
 			if (_V[ii].find("yi[") != std::string::npos)
 				for (size_t nn = 0; nn < sp.size(); nn++)

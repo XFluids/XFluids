@@ -32,9 +32,13 @@ XFLUIDS
 # Cmake Build
 build
 build/*
+external/*
 
 # Output
 /output*
+
+# external
+/external*
 
 # Hiden files
 ~$*

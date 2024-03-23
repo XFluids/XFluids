@@ -124,57 +124,59 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 
 	GetCellCenterDerivative(q, bl, fdata, BCs); // get Vortex
 
-#if Visc // NOTE: calculate and add viscous wall Flux to physical convection Flux
 	/**
+	 * NOTE: calculate and add viscous wall Flux to physical convection Flux
 	 * Viscous LU including physical visc(切应力),Visc_Heat transfer(传热), mass Diffusion(质量扩散)
-	 * Physical Visc must be included, Visc_Heat is alternative, Visc_Diffu depends on compent
+	 * Physical Visc must be included, Visc_Heat and Visc_Diffu depends on compent are alternative.
 	 */
-	real_t *va = fdata.viscosity_aver;
-	real_t *tca = fdata.thermal_conduct_aver;
-	real_t *Da = fdata.Dkm_aver;
-	real_t *hi = fdata.hi;
+	if (Visc)
+	{
+		real_t *va = fdata.viscosity_aver;
+		real_t *tca = fdata.thermal_conduct_aver;
+		real_t *Da = fdata.Dkm_aver;
+		real_t *hi = fdata.hi;
 
-	q.submit([&](sycl::handler &h)
-			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
-							  {
+		q.submit([&](sycl::handler &h)
+				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), [=](sycl::nd_item<3> index)
+								  {
 					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
 					int k = index.get_global_id(2);
 					Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2); }); })
-		.wait();
+			.wait();
 
-	if (bl.DimX)
-	{
-		q.submit([&](sycl::handler &h)
-				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
-								  {
+		if (bl.DimX)
+		{
+			q.submit([&](sycl::handler &h)
+					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange), [=](sycl::nd_item<3> index)
+									  {
 					int i = index.get_global_id(0) + bl.Bwidth_X - 1;
 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwx, fdata.Dim_wallx, fdata.hi_wallx, fdata.Yi_wallx, fdata.Yil_wallx); }); }); //.wait()
-	}
-	if (bl.DimY)
-	{
-		q.submit([&](sycl::handler &h)
-				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
-								  {
+		}
+		if (bl.DimY)
+		{
+			q.submit([&](sycl::handler &h)
+					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange), [=](sycl::nd_item<3> index)
+									  {
 					int i = index.get_global_id(0) + bl.Bwidth_X;
 					int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
 					int k = index.get_global_id(2) + bl.Bwidth_Z;
 					GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwy, fdata.Dim_wally, fdata.hi_wally, fdata.Yi_wally, fdata.Yil_wally); }); }); //.wait()
-	}
-	if (bl.DimZ)
-	{
-		q.submit([&](sycl::handler &h)
-				 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
-								  {
+		}
+		if (bl.DimZ)
+		{
+			q.submit([&](sycl::handler &h)
+					 { h.parallel_for(sycl::nd_range<3>(global_ndrange_z, local_ndrange), [=](sycl::nd_item<3> index)
+									  {
 					int i = index.get_global_id(0) + bl.Bwidth_X;
 					int j = index.get_global_id(1) + bl.Bwidth_Y;
 					int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
 					GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde, fdata.visFwz, fdata.Dim_wallz, fdata.hi_wallz, fdata.Yi_wallz, fdata.Yil_wallz); }); }); //.wait()
+		}
 	}
 
-#endif // end Visc
 	q.wait();
 
 	// NOTE: update LU from cell-face fluxes

@@ -26,10 +26,10 @@ public:
 	std::vector<int> DeviceSelect; // for Device counting and selecting
 
 	//--for-Running--------------------------
-	AppendParas apa;
-	std::string WorkDir;
+	AppendParas apa;	  // runtime options
 	int nStepmax;		  // running steps
 	int bytes, cellbytes; // memory allocate
+	std::string WorkDir;
 	std::vector<OutFmt> OutTimeStamps;
 
 	//--for-Mesh-----------------------------

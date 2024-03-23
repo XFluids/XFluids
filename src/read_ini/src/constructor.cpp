@@ -23,16 +23,15 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     // // NOTE: read_grid
     grid = Gridread(q, BlSz, WorkDir + "/" + std::string(INI_SAMPLE), myRank, nRanks);
 
-    // /*begin runtime read , fluid && compoent characteristics set*/
+    // begin runtime read , fluid && compoent characteristics set
     ReadSpecies();
     if (ReactSources)
         ReadReactions();
-        /*end runtime read*/
+    // end runtime read
 
-// read && caculate coffes for visicity
-#if Visc
-    GetFitCoefficient();
-#endif
+    // read && caculate coffes for visicity
+    if (Visc)
+        GetFitCoefficient();
 
     init(); // Ini
 #ifdef USE_MPI

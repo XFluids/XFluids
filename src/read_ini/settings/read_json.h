@@ -22,8 +22,9 @@ extern const size_t OutDAT, OutVTI, OutSTL, OutOverTime;
 extern const size_t OutInterval, POutInterval, RcalInterval; // PushInterval
 extern const std::vector<std::string> OutTimeArrays_json, OutTimeStamps_json;
 //--for-Thread-Allocation----------------
+extern const bool UseAdvRange_json;	  // if open ARA optimization method
+extern const size_t OutAdvRange_json; // if output ARA optimization binary file
 extern const size_t BlockSize_json, dim_block_x_json, dim_block_y_json, dim_block_z_json;
-extern const size_t OutAdvRange_json;
 
 // MPI
 extern const size_t mx_json;
