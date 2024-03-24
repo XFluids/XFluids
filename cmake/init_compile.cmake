@@ -47,29 +47,27 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 	endif()
 
 	add_compile_options(-DDEFINED_OPENSYCL)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pass-failed") # get samples from syclcc --help
 	IF(SelectDv STREQUAL "cuda-nvcxx")
-		set(ARCH "cc${ARCH}")
+		set(TARGET "cuda-nvcxx:cc${ARCH}")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress=set_but_not_used,declared_but_not_referenced,used_before_set,code_is_unreachable,unsigned_compare_with_zero")
-	ELSEIF(SelectDv STREQUAL "cuda")
-		set(ARCH "sm_${ARCH}")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-cuda-version -Wno-format")
-	ELSEIF(SelectDv STREQUAL "hip")
-		set(ARCH "gfx${ARCH}")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format")
-	ELSE()
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format")
-	ENDIF()
-
-	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='omp'") # get samples from syclcc --help
-		set(ARCH "host")
 	ELSE()
 		if(VENDOR_SUBMIT)
 			add_compile_options(-D__VENDOR_SUBMIT__)
 		endif()
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${SelectDv}:${ARCH}'") # get samples from syclcc --help
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pass-failed -Wno-format")
+		IF((SelectDv STREQUAL "generic"))
+			set(TARGET "generic")
+		ELSEIF(SelectDv STREQUAL "cuda")
+			set(TARGET "cuda:sm_${ARCH}")
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-cuda-version")
+		ELSEIF(SelectDv STREQUAL "hip")
+			set(TARGET "hip:gfx${ARCH}")
+		ELSEIF((SelectDv STREQUAL "omp") OR (SelectDv STREQUAL "host"))
+			set(TARGET "omp")
+		ENDIF()
 	ENDIF()
+
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --acpp-targets='${TARGET}'") 
 
 # // =======================================================
 ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
@@ -81,8 +79,6 @@ ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
 
 	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(SelectDv "host")
-		set(ARCH "")
-	ELSE()
 	ENDIF()
 
 	include(oneAPIdevSelect/init_${SelectDv})
