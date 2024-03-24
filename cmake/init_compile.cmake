@@ -12,8 +12,8 @@ ENDIF()
 find_library(boost_fiber NAMES libboost_fiber.so HINTS "${BOOST_ROOT}/lib" "${EXTERNAL_BOOST_ROOT}/lib")
 find_library(boost_context NAMES libboost_context.so HINTS "${BOOST_ROOT}/lib" "${EXTERNAL_BOOST_ROOT}/lib")
 find_library(boost_filesystem NAMES libboost_filesystem.so HINTS "${BOOST_ROOT}/lib" "${EXTERNAL_BOOST_ROOT}/lib")
-IF(("${boost_fiber}" STREQUAL "boost_fiber-NOTFOUND")OR
-	("${boost_context}" STREQUAL "boost_context-NOTFOUND")OR
+IF(("${boost_fiber}" STREQUAL "boost_fiber-NOTFOUND") OR
+	("${boost_context}" STREQUAL "boost_context-NOTFOUND") OR
 	("${boost_filesystem}" STREQUAL "boost_filesystem-NOTFOUND"))
 	EXECUTE_PROCESS(COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/build_boost.sh ${EXTERNAL_BOOST_ROOT})
 	set(BOOST_ROOT ${EXTERNAL_BOOST_ROOT})

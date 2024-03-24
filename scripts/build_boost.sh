@@ -13,6 +13,7 @@ mkdir -p $BOOST_INSTALL
 echo "-- Extract BOOST to:" $BOOST_SRC
 cd $WKDIR/external && tar --bzip2 -xf $WKDIR/external/boost_1_83_0.tar.bz2
 echo "-- Build BOOST into:" $BOOST_INSTALL
-cd $BOOST_BUILD && ./bootstrap.sh --prefix=$BOOST_INSTALL --with-libraries=context,fiber,filesystem
-cd $BOOST_BUILD && ./b2 -q install
+cd $BOOST_BUILD && ./bootstrap.sh --prefix=$BOOST_INSTALL --with-libraries=context,fiber,filesystem > $BOOST_INSTALL/../build_boost.log
+cd $BOOST_BUILD && ./b2 -q install >> $BOOST_INSTALL/../build_boost.log
 echo "-- End building BOOST"
+echo "-- BOOST buliding info written into:" $BOOST_INSTALL/../build_boost.log
