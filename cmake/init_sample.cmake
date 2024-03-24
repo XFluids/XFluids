@@ -264,9 +264,9 @@ set(MIXTURE_MODEL "/runtime.dat/${MIXTURE_MODEL}")
 message(STATUS "Solvers' settings: ")
 
 if(USE_DOUBLE)
-    message(STATUS "  Double Precision on: ${SYCL_COMPILE_SYSTEM}: ${ARCH}")
+    message(STATUS "  Double Precision running")
 else()
-    message(STATUS "  Float Precision on: ${SYCL_COMPILE_SYSTEM}: ${ARCH}")
+    message(STATUS "  Float  Precision running")
 endif()
 
 message(STATUS "  Multi-Component: ${COP}")

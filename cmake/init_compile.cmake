@@ -91,11 +91,11 @@ ENDIF()
 # // =======================================================
 # #### about device select
 # // =======================================================
+add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
 message(STATUS "CMAKE STATUS:")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDEBUG")
-message(STATUS "  CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
 message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "  CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
 message(STATUS "  CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "  CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
-add_compile_options(-DSelectDv="${SelectDv}") # device, add marco as string-value
+message(STATUS "  CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
