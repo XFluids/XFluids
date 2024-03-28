@@ -78,24 +78,6 @@ ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "GLF")
   add_compile_options(-DArtificial_type=3)
 ENDIF()
 
-IF(DIM_X)
-  add_compile_options(-DDIM_X=1)
-ELSE(DIM_X)
-  add_compile_options(-DDIM_X=0)
-ENDIF(DIM_X)
-
-IF(DIM_Y)
-  add_compile_options(-DDIM_Y=1)
-ELSE(DIM_Y)
-  add_compile_options(-DDIM_Y=0)
-ENDIF(DIM_Y)
-
-IF(DIM_Z)
-  add_compile_options(-DDIM_Z=1)
-ELSE(DIM_Z)
-  add_compile_options(-DDIM_Z=0)
-ENDIF(DIM_Z)
-
 IF(Visc)
   add_compile_options(-DVisc=1)
 

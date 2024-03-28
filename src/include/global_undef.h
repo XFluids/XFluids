@@ -1,17 +1,7 @@
 #pragma once
 
 // =======================================================
-//    Global Dimension settings
-#ifndef DIM_X
-#define DIM_X 1
-#endif
-#ifndef DIM_Y
-#define DIM_Y 1
-#endif
-#ifndef DIM_Z
-#define DIM_Z 1
-#endif
-
+//    Global marco settings
 #ifndef Emax
 #define Emax 5
 #endif

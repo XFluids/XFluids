@@ -1,5 +1,6 @@
 #pragma once
 
+#include "global_setup.h"
 #include "Flux_discrete.h"
 
 /**
@@ -23,55 +24,33 @@ extern void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, re
 
 	int id = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i;
 	real_t Dmp[9] = {_DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0), _DF(0.0)};
-#if DIM_X
+
 	real_t _dx = bl._dx;
 	int id_m1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 1;
 	int id_p1_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 1;
 	// int id_m2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i - 2;
 	// int id_p2_x = bl.Xmax * bl.Ymax * k + bl.Xmax * j + i + 2;
+	Dmp[ducx] = ((u[id_p1_x] - u[id_m1_x])) * _dx * _DF(0.5) * bl.DimX_t;
+	Dmp[dvcx] = ((v[id_p1_x] - v[id_m1_x])) * _dx * _DF(0.5) * bl.DimX_t * bl.DimY_t;
+	Dmp[dwcx] = ((w[id_p1_x] - w[id_m1_x])) * _dx * _DF(0.5) * bl.DimX_t * bl.DimZ_t;
 
-	Dmp[ducx] = ((u[id_p1_x] - u[id_m1_x])) * _dx * _DF(0.5);
-#if DIM_Y
-	Dmp[dvcx] = ((v[id_p1_x] - v[id_m1_x])) * _dx * _DF(0.5);
-#endif // DIM_Y
-#if DIM_Z
-	Dmp[dwcx] = ((w[id_p1_x] - w[id_m1_x])) * _dx * _DF(0.5);
-#endif // DIM_Z
-#endif // end DIM_X
-
-#if DIM_Y
 	real_t _dy = bl._dy;
 	int id_m1_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 1) + i;
 	int id_p1_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 1) + i;
 	// int id_m2_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j - 2) + i;
 	// int id_p2_y = bl.Xmax * bl.Ymax * k + bl.Xmax * (j + 2) + i;
+	Dmp[ducy] = ((u[id_p1_y] - u[id_m1_y])) * _dy * _DF(0.5) * bl.DimY_t * bl.DimX_t;
+	Dmp[dvcy] = ((v[id_p1_y] - v[id_m1_y])) * _dy * _DF(0.5) * bl.DimY_t;
+	Dmp[dwcy] = ((w[id_p1_y] - w[id_m1_y])) * _dy * _DF(0.5) * bl.DimY_t * bl.DimZ_t;
 
-#if DIM_X
-	Dmp[ducy] = ((u[id_p1_y] - u[id_m1_y])) * _dy * _DF(0.5);
-#endif // DIM_X
-	Dmp[dvcy] = ((v[id_p1_y] - v[id_m1_y])) * _dy * _DF(0.5);
-#if DIM_Z
-	Dmp[dwcy] = ((w[id_p1_y] - w[id_m1_y])) * _dy * _DF(0.5);
-#endif // DIM_Z
-
-#endif // end DIM_Y
-
-#if DIM_Z
 	real_t _dz = bl._dz;
 	int id_m1_z = bl.Xmax * bl.Ymax * (k - 1) + bl.Xmax * j + i;
 	int id_p1_z = bl.Xmax * bl.Ymax * (k + 1) + bl.Xmax * j + i;
 	// int id_m2_z = bl.Xmax * bl.Ymax * (k - 2) + bl.Xmax * j + i;
 	// int id_p2_z = bl.Xmax * bl.Ymax * (k + 2) + bl.Xmax * j + i;
-
-#if DIM_X
-	Dmp[ducz] = ((u[id_p1_z] - u[id_m1_z])) * _dz * _DF(0.5);
-#endif // DIM_X
-#if DIM_Y
-	Dmp[dvcz] = ((v[id_p1_z] - v[id_m1_z])) * _dz * _DF(0.5);
-#endif // DIM_Y
-	Dmp[dwcz] = ((w[id_p1_z] - w[id_m1_z])) * _dz * _DF(0.5);
-
-#endif // end DIM_Z
+	Dmp[ducz] = ((u[id_p1_z] - u[id_m1_z])) * _dz * _DF(0.5) * bl.DimZ_t * bl.DimX_t;
+	Dmp[dvcz] = ((v[id_p1_z] - v[id_m1_z])) * _dz * _DF(0.5) * bl.DimZ_t * bl.DimY_t;
+	Dmp[dwcz] = ((w[id_p1_z] - w[id_m1_z])) * _dz * _DF(0.5) * bl.DimZ_t;
 
 	Vde[ducx][id] = Dmp[ducx];
 	Vde[dvcx][id] = Dmp[dvcx];
@@ -85,7 +64,7 @@ extern void GetInnerCellCenterDerivativeKernel(int i, int j, int k, Block bl, re
 
 	real_t wx = Dmp[dwcy] - Dmp[dvcz], wy = Dmp[ducz] - Dmp[dwcx], wz = Dmp[dvcx] - Dmp[ducy]; // vorticity w=wx*i+wy*j+wz*k;
 	Voxs[0][id] = wx, Voxs[1][id] = wy, Voxs[2][id] = wz;
-	Vox[id] = wx * wx + wy * wy + wz * wz; // |w|, magnitude or the vorticity, w^2 used later, sqrt while output
+	Vox[id] = sycl::sqrt(wx * wx + wy * wy + wz * wz); // |w|, magnitude or the vorticity, w^2 used later, sqrt while output
 }
 
 /**
@@ -128,30 +107,16 @@ extern void GetWallViscousFluxX(int i, int j, int k, Block bl, real_t *Flux_wall
 
 	f_x = (_DF(2.0) * mue + lamada) * ((u[id_p1] - u[id])) * _dl;
 	f_x += lamada * ((Dvcy[id_p1] + Dvcy[id]) + (Dwcz[id_p1] + Dwcz[id])) * _DF(0.5);
-#if DIM_Y
-	f_y = mue * ((v[id_p1] - v[id])) * _dl;
-	f_y += mue * ((Ducy[id_p1] + Ducy[id])) * _DF(0.5);
-#else
-	f_y = _DF(0.0);
-#endif // DIM_Y
-#if DIM_Z
-	f_z = mue * ((w[id_p1] - w[id])) * _dl;
-	f_z += mue * ((Ducz[id_p1] + Ducz[id])) * _DF(0.5);
-#else
-	f_z = _DF(0.0);
-#endif // DIM_Z
+
+	f_y = mue * ((v[id_p1] - v[id])) * _dl * bl.DimY_t;
+	f_y += mue * ((Ducy[id_p1] + Ducy[id])) * _DF(0.5) * bl.DimY_t;
+
+	f_z = mue * ((w[id_p1] - w[id])) * _dl * bl.DimZ_t;
+	f_z += mue * ((Ducz[id_p1] + Ducz[id])) * _DF(0.5) * bl.DimZ_t;
 
 	u_hlf = ((u[id_p1] + u[id])) * _DF(0.5);
-#if DIM_Y
-	v_hlf = ((v[id_p1] + v[id])) * _DF(0.5);
-#else
-	v_hlf = _DF(0.0);
-#endif // DIM_Y
-#if DIM_Z
-	w_hlf = ((w[id_p1] + w[id])) * _DF(0.5);
-#else
-	w_hlf = _DF(0.0);
-#endif // DIM_Z
+	v_hlf = ((v[id_p1] + v[id])) * _DF(0.5) * bl.DimY_t;
+	w_hlf = ((w[id_p1] + w[id])) * _DF(0.5) * bl.DimZ_t;
 
 	MARCO_VISCFLUX();
 }
@@ -181,32 +146,18 @@ extern void GetWallViscousFluxY(int i, int j, int k, Block bl, real_t *Flux_wall
 
 	MARCO_PREVISCFLUX();
 
-#if DIM_X
-	f_x = mue * ((u[id_p1] - u[id])) * _dl;
-	f_x += mue * ((Dvcx[id_p1] + Dvcx[id])) * _DF(0.5);
-#else
-	f_x = _DF(0.0);
-#endif // DIM_X
+	f_x = mue * ((u[id_p1] - u[id])) * _dl * bl.DimX_t;
+	f_x += mue * ((Dvcx[id_p1] + Dvcx[id])) * _DF(0.5) * bl.DimX_t;
+
 	f_y = (_DF(2.0) * mue + lamada) * ((v[id_p1] - v[id])) * _dl;
 	f_y += lamada * ((Ducx[id_p1] + Ducx[id]) + (Dwcz[id_p1] + Dwcz[id])) * _DF(0.5);
-#if DIM_Z
-	f_z = mue * ((w[id_p1] - w[id])) * _dl;
-	f_z += mue * ((Dvcz[id_p1] + Dvcz[id])) * _DF(0.5);
-#else
-	f_z = _DF(0.0);
-#endif // DIM_Z
 
-#if DIM_X
-	u_hlf = ((u[id_p1] + u[id])) * _DF(0.5);
-#else
-	u_hlf = _DF(0.0);
-#endif // DIM_X
+	f_z = mue * ((w[id_p1] - w[id])) * _dl * bl.DimZ_t;
+	f_z += mue * ((Dvcz[id_p1] + Dvcz[id])) * _DF(0.5) * bl.DimZ_t;
+
+	u_hlf = ((u[id_p1] + u[id])) * _DF(0.5) * bl.DimX_t;
 	v_hlf = ((v[id_p1] + v[id])) * _DF(0.5);
-#if DIM_Z
-	w_hlf = ((w[id_p1] + w[id])) * _DF(0.5);
-#else
-	w_hlf = _DF(0.0);
-#endif // DIMZ
+	w_hlf = ((w[id_p1] + w[id])) * _DF(0.5) * bl.DimY_t;
 
 	MARCO_VISCFLUX();
 }
@@ -236,31 +187,17 @@ extern void GetWallViscousFluxZ(int i, int j, int k, Block bl, real_t *Flux_wall
 
 	MARCO_PREVISCFLUX();
 
-#if DIM_X
-	f_x = mue * ((u[id_p1] - u[id])) * _dl;
-	f_x += mue * ((Dwcx[id_p1] + Dwcx[id])) * _DF(0.5);
-#else
-	f_x = _DF(0.0);
-#endif // DIM_X
-#if DIM_Y
-	f_y = mue * ((v[id_p1] - v[id])) * _dl;
-	f_y += mue * ((Dwcy[id_p1] + Dwcy[id])) * _DF(0.5);
-#else
-	f_y = _DF(0.0);
-#endif
+	f_x = mue * ((u[id_p1] - u[id])) * _dl * bl.DimX_t;
+	f_x += mue * ((Dwcx[id_p1] + Dwcx[id])) * _DF(0.5) * bl.DimX_t;
+
+	f_y = mue * ((v[id_p1] - v[id])) * _dl * bl.DimY_t;
+	f_y += mue * ((Dwcy[id_p1] + Dwcy[id])) * _DF(0.5) * bl.DimY_t;
+
 	f_z = (_DF(2.0) * mue + lamada) * ((w[id_p1] - w[id])) * _dl;
 	f_z += lamada * ((Ducx[id_p1] + Ducx[id]) + (Dvcy[id_p1] + Dvcy[id])) * _DF(0.5);
 
-#if DIM_X
-	u_hlf = ((u[id_p1] + u[id])) * _DF(0.5);
-#else
-	u_hlf = _DF(0.0);
-#endif // DIM_X
-#if DIM_Y
-	v_hlf = ((v[id_p1] + v[id])) * _DF(0.5);
-#else
-	v_hlf = _DF(0.0);
-#endif // DIM_Y
+	u_hlf = ((u[id_p1] + u[id])) * _DF(0.5) * bl.DimX_t;
+	v_hlf = ((v[id_p1] + v[id])) * _DF(0.5) * bl.DimY_t;
 	w_hlf = ((w[id_p1] + w[id])) * _DF(0.5);
 
 	MARCO_VISCFLUX();

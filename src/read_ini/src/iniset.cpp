@@ -266,8 +266,8 @@ void Setup::ReWrite()
 // =======================================================
 void Setup::init()
 { // set other parameters
-    BlSz.DimS = BlSz.DimX + BlSz.DimY + BlSz.DimZ;
     BlSz.DimX_t = BlSz.DimX, BlSz.DimY_t = BlSz.DimY, BlSz.DimZ_t = BlSz.DimZ;
+    BlSz.DimS = BlSz.DimX_t + BlSz.DimY_t + BlSz.DimZ_t, BlSz.DimS_t = BlSz.DimS;
 
     BlSz.X_inner = BlSz.DimX ? BlSz.X_inner : 1;
     BlSz.Y_inner = BlSz.DimY ? BlSz.Y_inner : 1;
