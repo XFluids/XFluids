@@ -31,7 +31,6 @@ real_t ZeroDimensionalFreelyFlameBlock(Setup &Ss, const int rank = 0)
 	h = get_Coph(Ss.h_thermal, yi, T); // unit: J/kg
 	e = h - R * T;					   // enternal energy
 	// chemeq2 solver
-	std::string outputPrefix = INI_SAMPLE;
 	std::string file_name = OutputDir + "/0D-Detonation-" + outputPrefix + "-" + std::to_string(int(T0)) + "K-" + std::to_string(int(p0)) + "Pa" + ".dat";
 	std::ofstream out(file_name);
 	out << "variables= time(s),Temperature(K)";

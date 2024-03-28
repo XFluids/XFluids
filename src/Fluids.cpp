@@ -542,7 +542,6 @@ void Fluid::AllCountsHeader()
 {
 	if (OutOverTime)
 	{
-		outputPrefix = INI_SAMPLE;
 		file_name = OutputDir + "/AllCounts_" + outputPrefix + ".dat";
 		if (Fs.myRank == 0)
 		{
@@ -554,7 +553,6 @@ void Fluid::AllCountsHeader()
 				out.setf(std::ios::right);
 				// // defining header for tecplot(plot software)
 				out << "title='Time_NormalizedTime_Theta_Lambda_Sigma_NSigma";
-				//" << outputPrefix << "'\n"
 				// Sigma: Sum(Omega^2), NSigma(Nromalized Sigma): Sum(rho[id]*Omega^2)
 				if (ReactSources)
 				{

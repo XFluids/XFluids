@@ -64,6 +64,9 @@
 #ifndef IniFile
 #define IniFile "IniFile-undefined"
 #endif
+#ifndef SelectDv
+#define SelectDv "device-undefined"
+#endif
 #ifndef INI_SAMPLE
 #define INI_SAMPLE "sample-undefined"
 #endif

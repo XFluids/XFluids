@@ -15,7 +15,7 @@ class Fluid
 {
     Setup Fs;
     sycl::queue q;
-    std::string outputPrefix, file_name;
+    std::string file_name;
 
 public:
     long double MemMbSize, MPIMbSize;
