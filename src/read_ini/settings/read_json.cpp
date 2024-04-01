@@ -45,6 +45,9 @@ const size_t POutInterval = j_conf.at("run").value("PushInterval", 5);
 const size_t RcalInterval = j_conf.at("run").value("RcalInterval", 100);
 const std::vector<std::string> OutTimeArrays_json = j_conf.at("run").value("OutTimeArrays", std::vector<std::string>{});
 const std::vector<std::string> OutTimeStamps_json = j_conf.at("run").value("OutTimeStamps", std::vector<std::string>{});
+// // ARA method
+const bool UseAdvRange_json = j_conf.at("run").value("UseAdvRange", true);
+const size_t OutAdvRange_json = j_conf.at("run").value("OutAdvRange", 1);
 
 // MPI setup
 const size_t mx_json = j_conf.at("mpi").value("mx", 1);
@@ -109,7 +112,6 @@ const size_t BlockSize_json = j_conf.at("run").value("DtBlockSize", 4);
 const size_t dim_block_x_json = Dimensions[0] ? j_conf.at("run").value("blockSize_x", BlockSize_json) : 1;
 const size_t dim_block_y_json = Dimensions[1] ? j_conf.at("run").value("blockSize_y", BlockSize_json) : 1;
 const size_t dim_block_z_json = Dimensions[2] ? j_conf.at("run").value("blockSize_z", BlockSize_json) : 1;
-const size_t OutAdvRange_json = j_conf.at("run").value("OutAdvRange", 1);
 const std::vector<size_t> Bwidth = j_conf.at("mesh").value("Ghost_width", std::vector<size_t>{4, 4, 4}); // XYZ
 /* Simple Boundary settings */
 const std::vector<size_t> NBoundarys = j_conf.at("mesh").value("BoundaryBundles", std::vector<size_t>{2, 2, 2});		// BoundaryBundles

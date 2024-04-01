@@ -260,6 +260,8 @@ void Setup::ReWrite()
         adv_nd[dd].clear();
         adv_nd[dd].push_back(Assign(options[dd]));
     }
+    if (!UseAdvRange_json)
+        adv_nd.resize(1);
 }
 
 // =======================================================
