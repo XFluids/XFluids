@@ -40,7 +40,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	{
 		uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dy * bl._dy);
 		q.submit([&](sycl::handler &h) {																								//
-			auto reduction_max_y = sycl_reduction_max(uvw_c_max[1]);																	// reduction(&(uvw_c_max[1]), sycl::maximum<real_t>());
+			auto reduction_max_y = sycl_reduction_max(uvw_c_max[1]);																	//
 			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y) { //
 				auto id = index.get_global_id();
 				temp_max_y.combine(sycl::fabs(v[id]) + c[id]);
@@ -51,7 +51,7 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	{
 		uvw_c_max[5] = sycl::max(uvw_c_max[5], bl._dz * bl._dz);
 		q.submit([&](sycl::handler &h) {																								//
-			auto reduction_max_z = sycl_reduction_max(uvw_c_max[2]);																	// reduction(&(uvw_c_max[2]), sycl::maximum<real_t>());
+			auto reduction_max_z = sycl_reduction_max(uvw_c_max[2]);																	//
 			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z) { //
 				auto id = index.get_global_id();
 				temp_max_z.combine(sycl::fabs(w[id]) + c[id]);

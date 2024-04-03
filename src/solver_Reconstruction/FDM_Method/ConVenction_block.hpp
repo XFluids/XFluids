@@ -118,7 +118,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
 				q.submit([&](sycl::handler &h) {																											//
-					auto reduction_max_eigen = sycl_reduction_max(eigen_block_x[nn]);																		// reduction(&(eigen_block_x[nn]), sycl::maximum<real_t>());
+					auto reduction_max_eigen = sycl_reduction_max(eigen_block_x[nn]);																		//
 					h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen) { //
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
@@ -137,7 +137,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
 				q.submit([&](sycl::handler &h) {																											//
-					auto reduction_max_eigen = sycl_reduction_max(eigen_block_y[nn]);																		// reduction(&(eigen_block_y[nn]), sycl::maximum<real_t>());
+					auto reduction_max_eigen = sycl_reduction_max(eigen_block_y[nn]);																		//
 					h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen) { //
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
@@ -156,7 +156,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
 				q.submit([&](sycl::handler &h) {																											//
-					auto reduction_max_eigen = sycl_reduction_max(eigen_block_z[nn]);																		// reduction(&(eigen_block_z[nn]), sycl::maximum<real_t>());
+					auto reduction_max_eigen = sycl_reduction_max(eigen_block_z[nn]);																		//
 					h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen) { //
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
