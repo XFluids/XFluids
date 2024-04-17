@@ -22,6 +22,7 @@ ELSE()
 	string(REGEX REPLACE "/lib/libboost_fiber.so" "/" BOOST_ROOT "${boost_fiber}")
 	message(STATUS "Find boost libs located: ${BOOST_ROOT}")
 ENDIF()
+	set(BOOST_CXX "ON") # use external boost
 
 # // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
@@ -73,7 +74,6 @@ IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
 ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
 	# // =======================================================
 	add_compile_options(-DDEFINED_ONEAPI)
-	set(BOOST_CXX "OFF") # use boost c++ library or std internal library
 	set(CMAKE_CXX_COMPILER "clang++") # for Intel oneAPI compiling system
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 
