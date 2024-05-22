@@ -186,7 +186,7 @@ void Setup::ReWrite()
     std::vector<std::string> mpis = apa.match("-mpi-s");
     if (!std::empty(mpis))
     {
-        if (0 == mpis[0].compare("weak"))
+        if (0 == mpis[0].compare("strong")) // strong scaling
             if (!(BlSz.X_inner % BlSz.mx + BlSz.Y_inner % BlSz.my + BlSz.Z_inner % BlSz.mz))
                 BlSz.X_inner /= BlSz.mx, BlSz.Y_inner /= BlSz.my, BlSz.Z_inner /= BlSz.mz;
             else
@@ -194,7 +194,7 @@ void Setup::ReWrite()
                 std::cout << "Error: the number of blocks in each direction is not divisible by the number of MPI processes in that direction!" << std::endl;
                 exit(EXIT_FAILURE);
             }
-        else if (0 == mpis[0].compare("strong"))
+        else if (0 == mpis[0].compare("weak")) // weak scaling
             BlSz.Domain_length *= BlSz.mx, BlSz.Domain_width *= BlSz.my, BlSz.Domain_height *= BlSz.mz;
     }
 
