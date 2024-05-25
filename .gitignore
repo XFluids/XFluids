@@ -30,15 +30,12 @@
 XFLUIDS
 
 # Cmake Build
-build
 build/*
-external/*
+external/boost*
+external/install/*
 
 # Output
 /output*
-
-# external
-/external*
 
 # Hiden files
 ~$*

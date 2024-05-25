@@ -1,10 +1,3 @@
-# target_include_directories(${INIT_SAMPLE}
-# 	PUBLIC
-# 	${CMAKE_CURRENT_SOURCE_DIR})
-
-# include_directories(BEFORE
-# 	${CMAKE_SOURCE_DIR}/src/include
-# )
 # # add sample lib
 find_library(solver_BCs NAMES libsolver_BCs.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
@@ -12,10 +5,6 @@ IF("${solver_BCs}" STREQUAL "solver_BCs-NOTFOUND")
 	add_library(solver_BCs
 		STATIC
 		${CMAKE_CURRENT_SOURCE_DIR}/BCs_block.cpp
-	)
-	target_include_directories(solver_BCs
-		PUBLIC
-		${CMAKE_SOURCE_DIR}/src/include
 	)
 
 	IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")

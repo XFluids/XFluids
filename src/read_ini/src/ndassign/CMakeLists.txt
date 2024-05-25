@@ -3,8 +3,6 @@ find_library(ndAssign NAMES libndAssign.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${ndAssign}" STREQUAL "ndAssign-NOTFOUND")
     add_library(ndAssign "")
-    target_include_directories(ndAssign PUBLIC ${CMAKE_SOURCE_DIR}/src/include)
-
     target_sources(ndAssign
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/ndassign.h

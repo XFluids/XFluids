@@ -2,6 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug",
+            "cwd": "${workspaceFolder}",
+            "program": "${command:SelectScriptName}",
+            "args": ["/home/ljl/Apps/anaconda3", "Debug"]
+        },
+        {
             "name": "OpenSYCL C++: Launch & Run",
             "type": "lldb",
             "request": "launch",

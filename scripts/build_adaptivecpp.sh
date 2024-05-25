@@ -13,6 +13,6 @@ echo "-- External AdaptiveCpp SRC:" $AdaptiveCpp_SRC
 echo "-- External AdaptiveCpp BUILD:" $AdaptiveCpp_BUILD
 echo "-- External AdaptiveCpp INSTALL:" $AdaptiveCpp_INSTALL
 cmake -S $AdaptiveCpp_SRC -B $AdaptiveCpp_BUILD -DCMAKE_BUILD_TYPE=Release -DBOOST_ROOT=${BOOST_ROOT} -DCMAKE_INSTALL_PREFIX=$AdaptiveCpp_INSTALL
-cd $AdaptiveCpp_BUILD && make -j install >> $AdaptiveCpp_INSTALL/../build_adaptivecpp.log 2>&1
+cd $AdaptiveCpp_BUILD && make -j4 install >> $AdaptiveCpp_INSTALL/../build_adaptivecpp.log 2>&1
 echo "-- End building AdaptiveCpp"
 echo "-- AdaptiveCpp buliding info written into:" $INSTALL_DIR/build_adaptivecpp.log
