@@ -2,10 +2,6 @@ find_library(readgrid NAMES libreadgrid.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readgrid}" STREQUAL "readgrid-NOTFOUND")
   add_library(readgrid "")
-  target_include_directories(readgrid
-    PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/include
-  )
   target_sources(readgrid
     PRIVATE
     readgrid.cpp

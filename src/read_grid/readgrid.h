@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sycl/sycl.hpp>
 #include "../include/global_setup.h"
 
 typedef struct

@@ -1,34 +1,27 @@
 #pragma once
-
-// // SYCL headers
-#include <sycl/sycl.hpp>
-
-// //  using sample settings and
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+// //  using sample settings
 #ifdef COP
 #include "case_setup.h"
 #include "Eigen_global_definition.h"
 #endif
 
-// //  use middleware
-#include "middle.hpp"
-
 #include "global_undef.h"
-#include "compile_sycl.h"
 #include "global_marco.h"
 
-// #define Emax 13
-// #define NUM_COP 8
-// #define NUM_REA 18
-// #define NUM_SPECIES 9
 #define MAX_SPECIES NUM_SPECIES
 
 // =======================================================
 // //    Global Precision settings
 #ifdef USE_DOUBLE
-using real_t = double; // #define real_t double;
+#define real_t double // #define real_t double;
 #define _DF(a) a
 #else
-using real_t = float; // #define real_t float;
+#define real_t float // #define real_t float;
 #define _DF(a) a##f
 #endif //  USE_DOUBLE
 

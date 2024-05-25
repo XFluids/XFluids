@@ -93,6 +93,5 @@ ENDIF(Visc)
 # MPI libs
 IF(USE_MPI)
   include(init_mpi)
-  include_directories(AFTER ${CMAKE_SOURCE_DIR})
   add_subdirectory(mpiUtils)
 ENDIF() # sources

@@ -2,6 +2,7 @@
 
 #include "mpiUtils/MpiCommCart.h"
 #include "../include/global_setup.h"
+#include "../include/middle.hpp"
 using namespace mpiUtils;
 
 typedef struct

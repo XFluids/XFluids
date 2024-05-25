@@ -1,4 +1,5 @@
 add_subdirectory(src)
+add_subdirectory(cantera)
 add_subdirectory(inishape)
 add_subdirectory(settings)
 add_subdirectory(strsplit)
@@ -8,7 +9,6 @@ find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
-    target_include_directories(readini PUBLIC ${CMAKE_SOURCE_DIR}/src/include)
 
     # #add libs
     target_link_libraries(readini
@@ -28,6 +28,7 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         readgrid
         settings
         strsplit
+        cantera_interface
     )
 
     IF(BOOST_CXX)

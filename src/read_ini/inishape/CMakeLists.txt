@@ -2,10 +2,6 @@ find_library(inishape NAMES libinishape.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${inishape}" STREQUAL "inishape-NOTFOUND")
 	add_library(inishape "")
-	target_include_directories(inishape
-		PUBLIC
-		${CMAKE_SOURCE_DIR}/src/include
-	)
 	target_sources(inishape
 		PUBLIC
 		${CMAKE_CURRENT_SOURCE_DIR}/inishape.h
