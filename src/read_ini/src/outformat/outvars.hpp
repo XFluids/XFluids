@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fstream>
 #include "criterion.hpp"
 // ================================================================================
 // // // class OutVars Member function definitions

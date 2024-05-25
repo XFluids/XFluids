@@ -2,10 +2,14 @@
 
 // // global header
 #include "../include/global_setup.h"
+// //  use middleware
+#include "../include/middle.hpp"
+#include "../include/compile_sycl.h"
 // // internal header
 #include "options.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
+#include "cantera/cantera_interface.h"
 #include "src/ndassign/ndassign.h"
 #include "src/outformat/outformat.h"
 // // external header

@@ -2,3 +2,7 @@
 	path = external/AdaptiveCpp
 	url = https://github.com/AdaptiveCpp/AdaptiveCpp
 	branch = develop
+[submodule "external/cantera"]
+	path = external/cantera
+	url = https://github.com/Cantera/cantera
+	branch = 3.0

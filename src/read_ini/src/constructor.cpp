@@ -24,6 +24,8 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     grid = Gridread(q, BlSz, WorkDir + "/" + std::string(INI_SAMPLE), myRank, nRanks);
 
     // begin runtime read , fluid && compoent characteristics set
+    // // TODO: XFluids read
+    CanteraInterface ci;
     ReadSpecies();
     if (ReactSources)
         ReadReactions();
