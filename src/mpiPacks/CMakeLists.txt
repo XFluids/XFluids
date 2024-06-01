@@ -3,9 +3,6 @@ IF(USE_MPI)
 
 	IF("${mpiPacks}" STREQUAL "mpiPacks-NOTFOUND")
 		add_library(mpiPacks "")
-		target_include_directories(mpiPacks
-			PUBLIC
-			${CMAKE_SOURCE_DIR}/src/include)
 		target_sources(mpiPacks
 			PRIVATE
 			mpiPacks.cpp

@@ -9,7 +9,6 @@ find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
-    target_include_directories(readini PUBLIC ${CMAKE_SOURCE_DIR}/src/include)
 
     # #add libs
     target_link_libraries(readini

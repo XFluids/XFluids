@@ -18,10 +18,10 @@
 // =======================================================
 // //    Global Precision settings
 #ifdef USE_DOUBLE
-using real_t = double; // #define real_t double;
+#define real_t double // #define real_t double;
 #define _DF(a) a
 #else
-using real_t = float; // #define real_t float;
+#define real_t float // #define real_t float;
 #define _DF(a) a##f
 #endif //  USE_DOUBLE
 

@@ -9,7 +9,6 @@
 #include "options.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
-#include "cantera/cantera_interface.h"
 #include "src/ndassign/ndassign.h"
 #include "src/outformat/outformat.h"
 // // external header

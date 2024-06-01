@@ -47,6 +47,9 @@ ELSE()
 	string(REGEX REPLACE "/lib/libcantera_shared.so" "/" CANTERA_ROOT "${cantera}")
 	message(STATUS "Find cantera libs located: ${CANTERA_ROOT}")
 ENDIF()
+include_directories(
+	"${CANTERA_ROOT}/include"
+	"${CANTERA_ROOT}/include/cantera/ext")
 
 # // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")

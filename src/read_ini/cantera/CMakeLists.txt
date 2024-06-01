@@ -1,6 +1,6 @@
-include_directories("${CANTERA_ROOT}/include")
-find_library(cantera_interface NAMES libcantera_interface.a HINTS "${LIBRARY_OUTPUT_PATH}")
+include_directories("${CMAKE_SOURCE_DIR}/src/solver_Ini")
 
+find_library(cantera_interface NAMES libcantera_interface.a HINTS "${LIBRARY_OUTPUT_PATH}")
 IF("${cantera_interface}" STREQUAL "cantera_interface-NOTFOUND")
 	add_library(cantera_interface "")
 	target_sources(cantera_interface

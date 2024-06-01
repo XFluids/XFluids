@@ -3,8 +3,6 @@ find_library(outFmt NAMES liboutFmt.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${outFmt}" STREQUAL "outFmt-NOTFOUND")
     add_library(outFmt "")
-    target_include_directories(outFmt PUBLIC ${CMAKE_SOURCE_DIR}/src/include)
-
     IF(BOOST_CXX)
         target_compile_options(outFmt PUBLIC -DUSE_CXX_BOOST=1)
     ENDIF(BOOST_CXX)

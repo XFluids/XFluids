@@ -1,5 +1,6 @@
 #include "../setupini.h"
 #include "wheels/fworkdir.hpp"
+#include "../cantera/cantera_interface.h"
 
 // =======================================================
 // // // struct Setup Member function definitions

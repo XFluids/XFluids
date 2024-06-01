@@ -1,3 +1,7 @@
+include_directories(BEFORE
+  "${CMAKE_SOURCE_DIR}/src"
+  "${CMAKE_SOURCE_DIR}/src/include")
+
 # # add external submodule
 add_subdirectory(timer)
 add_subdirectory(utils)
@@ -22,10 +26,7 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   add_subdirectory(solver_GetDt)
   add_subdirectory(solver_Reaction)
   add_subdirectory(solver_Reconstruction)
-  target_include_directories(${INIT_SAMPLE}
-    PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/include
-  )
+
   target_link_libraries(${INIT_SAMPLE}
     PUBLIC
     timer
@@ -63,10 +64,6 @@ ENDIF()
 
 # # add main implementation
 add_executable(${PROJECT_NAME} "main.cpp")
-target_include_directories(${PROJECT_NAME}
-  PUBLIC
-  ${CMAKE_SOURCE_DIR}/src/include
-)
 
 IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
   add_sycl_to_target(TARGET ${PROJECT_NAME})

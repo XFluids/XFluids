@@ -5,7 +5,6 @@ find_library(readini_cos NAMES libreadini_cos.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
 IF("${readini_cos}" STREQUAL "readini_cos-NOTFOUND")
     add_library(readini_cos "")
-    target_include_directories(readini_cos PUBLIC ${CMAKE_SOURCE_DIR}/src/include)
     IF(BOOST_CXX)
         target_compile_options(readini_cos PUBLIC -DUSE_CXX_BOOST=1)
     ENDIF(BOOST_CXX)
