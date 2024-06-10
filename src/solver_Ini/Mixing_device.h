@@ -68,6 +68,24 @@ SYCL_DEVICE inline real_t get_CopCp(Thermal thermal, const real_t *yi, const rea
 }
 
 /**
+ * @brief Compute the Cv of the mixture at given point unit:J/kg/K
+ */
+SYCL_DEVICE inline real_t get_CopCv(Thermal thermal, const real_t *yi, const real_t T)
+{
+	real_t _CopCv = _DF(0.0);
+	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
+		_CopCv += yi[ii] * HeatCapacity(thermal.Hia, T, thermal.Ri[ii], ii);
+
+	real_t _W = _DF(0.0);
+	for (size_t ii = 0; ii < NUM_SPECIES; ii++)
+		_W += yi[ii] * thermal._Wi[ii]; // Wi
+
+	_CopCv -= Ru * _W;
+
+	return _CopCv;
+}
+
+/**
  * @brief calculate W of the mixture at given point
  */
 SYCL_DEVICE inline real_t get_CopW(Thermal thermal, const real_t *yi)
@@ -84,16 +102,10 @@ SYCL_DEVICE inline real_t get_CopW(Thermal thermal, const real_t *yi)
 SYCL_DEVICE inline real_t get_CopGamma(Thermal thermal, const real_t *yi, const real_t T)
 {
 	real_t Cp = get_CopCp(thermal, yi, T);
-	real_t CopW = get_CopW(thermal, yi);
-	real_t _CopGamma = Cp / (Cp - Ru / CopW);
-	if (_CopGamma > _DF(1.0))
-	{
-		return _CopGamma;
-	}
-	else
-	{
-		return -1;
-	}
+	real_t Cv = get_CopCv(thermal, yi, T);
+	real_t _CopGamma = Cp / Cv;
+
+	return _CopGamma;
 }
 
 /**
@@ -125,6 +137,20 @@ SYCL_DEVICE inline real_t get_Coph(Thermal thermal, const real_t *yi, const real
 		h += hi * yi[i];
 	}
 	return h;
+}
+
+/**
+ * @brief calculate ei of Mixture at given point	unit:J/kg/K
+ */
+SYCL_DEVICE inline real_t get_Cope(Thermal thermal, const real_t *yi, const real_t T)
+{
+	real_t e = _DF(0.0);
+	for (size_t i = 0; i < NUM_SPECIES; i++)
+	{
+		real_t ei = get_Internale(thermal.Hia, thermal.Hib, T, thermal.Ri[i], i);
+		e += ei * yi[i];
+	}
+	return e;
 }
 
 /**

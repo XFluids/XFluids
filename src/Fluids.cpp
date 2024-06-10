@@ -96,9 +96,6 @@ Fluid::Fluid(Setup &setup) : Fs(setup), q(setup.q), rank(0), nranks(1), SBIOutIt
 	nranks = Fs.mpiTrans->nProcs;
 #endif
 
-	if (ReactSources && ODETest_json)
-		ZeroDimensionalFreelyFlame();
-
 	// Creat Counts file
 	AllCountsHeader();
 }
@@ -994,12 +991,6 @@ bool Fluid::EstimateFluidNAN(sycl::queue &q, int flag)
 	}
 
 	return false;
-}
-
-void Fluid::ZeroDimensionalFreelyFlame()
-{
-	if (0 == rank)
-		ZeroDimensionalFreelyFlameBlock(Fs);
 }
 
 void Fluid::ODESolver(sycl::queue &q, real_t Time)

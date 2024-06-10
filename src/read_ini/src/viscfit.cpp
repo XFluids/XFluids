@@ -458,10 +458,10 @@ real_t Setup::viscosity(real_t *specie, const real_t T)
  */
 real_t Setup::thermal_conductivities(real_t *specie, const real_t T, const real_t PP)
 {
-    real_t Cv_trans = 1.5 * universal_gas_const * 1.0e3, Cv_rot, Cv_vib;
+    real_t Cv_trans = 1.5 * universal_gas_const, Cv_rot, Cv_vib;
     int id = int(specie[SID]);
     real_t Cpi = HeatCapacity(h_thermal.Hia, T, h_thermal.Ri[id], id);
-    real_t Cv = Cpi * specie[Wi] * 1.0e3 - universal_gas_const * 1.0e3; // unit:J/(kmol.K)
+    real_t Cv = Cpi * specie[Wi] * 1.0e3 - universal_gas_const; // unit:J/(kmol.K)
     switch (int(specie[geo]))
     {
     case 0:
@@ -472,24 +472,24 @@ real_t Setup::thermal_conductivities(real_t *specie, const real_t T, const real_
     }
     case 1:
     {
-        Cv_rot = 1.0 * universal_gas_const * 1.0e3; // unit:J/(kmol*K)
-        Cv_vib = Cv - 2.5 * universal_gas_const * 1.0e3;
+        Cv_rot = 1.0 * universal_gas_const; // unit:J/(kmol*K)
+        Cv_vib = Cv - 2.5 * universal_gas_const;
         break;
     }
     case 2:
     {
-        Cv_rot = 1.5 * universal_gas_const * 1.0e3;
-        Cv_vib = Cv - 3.0 * universal_gas_const * 1.0e3;
+        Cv_rot = 1.5 * universal_gas_const;
+        Cv_vib = Cv - 3.0 * universal_gas_const;
         break;
     }
     }
-    real_t rho = PP * specie[Wi] / T / universal_gas_const * 1.0e-3; // unit:g/cm3 equation5-32
+    real_t rho = PP * specie[Wi] / T / universal_gas_const;          // unit:g/cm3 equation5-32
     real_t Dkk = Dkj(specie, specie, T, PP);                         // unit:cm*cm/s
     real_t visc = viscosity(specie, T);                              // unit: Pa.s=kg/(m.s)
     real_t f_trans, f_rot, f_vib = rho * Dkk / (visc * 10.0);        // unit:1
 
     real_t Zrot = specie[Zrot_298] * ZrotFunc(specie[epsilon_kB] / 298.0) / ZrotFunc(specie[epsilon_kB] / T); // unit:1
-    real_t Aa = 2.5 - f_vib, Bb = Zrot + 2.0 * (5.0 * Cv_rot / 3.0 / (universal_gas_const * 1.0e3) + f_vib) / pi;
+    real_t Aa = 2.5 - f_vib, Bb = Zrot + 2.0 * (5.0 * Cv_rot / 3.0 / (universal_gas_const) + f_vib) / pi;
 
     f_trans = 2.5 * (1.0 - 2.0 * Cv_rot * Aa / pi / Cv_trans / Bb);
     f_rot = f_vib * (1.0 + 2.0 * Aa / pi / Bb);

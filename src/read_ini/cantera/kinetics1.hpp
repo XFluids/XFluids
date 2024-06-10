@@ -11,26 +11,28 @@
 
 // This file is redistributed form Cantera sample. See License.txt in the top-level directory of XFluids and Lixcense of cantera at XFluids/external/cantera or
 // at https://cantera.org/license.txt for license and copyright information.
+#pragma once
 
+#include "global_setup.h"
 #include "example_utils.h"
 
-int kinetics1(int np, void *p)
+float kinetics1core(std::string Type, Cantera::Reactor &r, ZdCrtl &zl, int np, void *p)
 {
-     //     std::cout << "Constant-pressure ignition of a "
-     //          << "hydrogen/oxygen/nitrogen"
-     //             " mixture \nbeginning at T = 1001 K and P = 1 atm."
-     //          << std::endl;
+     std::cout << "\n"
+               << Type << " 0D ignition of a mixture\nbeginning at T = "
+               << zl.T << " K and P = " << zl.P;
 
+     std::string file = "H2_AR.yaml";
      // create an ideal gas mixture that corresponds to OH submech from GRI-Mech 3.0
-     auto sol = Cantera::newSolution("h2o2.yaml", "ohmech", "none");
+     auto sol = Cantera::newSolution(file, "gas", "none");
      auto gas = sol->thermo();
 
      // set the state
-     gas->setState_TPX(1001.0, Cantera::OneAtm, "H2:2.0, O2:1.0, N2:4.0");
+     gas->setState_TPX(zl.T, zl.P, "H2:2.0, O2:1.0, AR:7.0");
      int nsp = gas->nSpecies();
 
      // create a reactor
-     Cantera::IdealGasConstPressureReactor r;
+     // Cantera::IdealGasConstPressureReactor r;
 
      // 'insert' the gas into the reactor and environment.  Note
      // that it is ok to insert the same gas object into multiple
@@ -39,8 +41,8 @@ int kinetics1(int np, void *p)
      // quantities needed.
      r.insert(sol);
 
-     double dt = 1.e-5; // interval at which output is written
-     int nsteps = 100;  // number of intervals
+     double dt = zl.dt;      // 1.e-5; // interval at which output is written
+     int nsteps = zl.nsteps; // number of intervals
 
      // create a 2D array to hold the output variables,
      // and store the values for the initial state
@@ -64,21 +66,33 @@ int kinetics1(int np, void *p)
      clock_t t1 = clock(); // save end time
 
      // make a CSV output file
-     writeCsv("kin1.csv", *sol->thermo(), states);
+     std::string outfile = Type + "-kin1(" + file + ").csv";
+     writeCsv(outfile, *sol->thermo(), states);
 
      // print final temperature and timing data
      double tmm = 1.0 * (t1 - t0) / CLOCKS_PER_SEC;
-     std::cout << " Tfinal = " << r.temperature() << std::endl;
-     std::cout << " time = " << tmm << std::endl;
-     std::cout << " number of residual function evaluations = "
-               << sim.integrator().nEvals() << std::endl;
-     std::cout << " time per evaluation = " << tmm / sim.integrator().nEvals()
-               << std::endl
-               << std::endl;
-     std::cout << "Output files:" << std::endl
-               << "  kin1.csv    (Excel CSV file)" << std::endl;
+     std::cout << ", Tfinal = " << r.temperature() << std::endl;
+     // std::cout << " time = " << tmm << std::endl;
+     // std::cout << " number of residual function evaluations = "
+     //           << sim.integrator().nEvals() << std::endl;
+     // std::cout << " time per evaluation = " << tmm / sim.integrator().nEvals() << std::endl;
+     std::cout << "Output files:" << outfile << " Excel CSV file" << std::endl;
 
-     return 0;
+     return r.temperature();
+}
+
+float kinetics1Cp(ZdCrtl &zl, int np, void *p)
+{
+     Cantera::IdealGasConstPressureReactor r;
+
+     return kinetics1core("Cantera::IdealGasConstPressureReactor", r, zl, np, p);
+}
+
+float kinetics1Cv(ZdCrtl &zl, int np, void *p)
+{
+     Cantera::IdealGasReactor r;
+
+     return kinetics1core("Cantera::IdealGasConstVolumeReactor", r, zl, np, p);
 }
 
 // int main()

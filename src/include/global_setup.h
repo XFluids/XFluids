@@ -10,8 +10,9 @@
 #include "Eigen_global_definition.h"
 #endif
 
-#include "global_undef.h"
+#include "compile_sycl.h"
 #include "global_marco.h"
+#include "global_undef.h"
 
 #define MAX_SPECIES NUM_SPECIES
 
@@ -28,21 +29,32 @@
 #define Interface_line _DF(0.01)
 // =======================================================
 // //    Global __device__ constant
+const int SPCH_Sz = 9; // number of characteristic of compoent,species_cahra[NUM_SPECIES*SPCH_Sz]
+const int order_polynominal_fitted = 4;
+
 const real_t _OT = (_DF(1.0) / _DF(3.0));
 const real_t _sxtn = _DF(1.0) / _DF(16.0);
 const real_t _twfr = _DF(1.0) / _DF(24.0);
 const real_t _twle = _DF(1.0) / _DF(12.0);
-const int order_polynominal_fitted = 4;
-const int SPCH_Sz = 9;									  // number of characteristic of compoent,species_cahra[NUM_SPECIES*SPCH_Sz]
+
+//! Sqrt(2)
+const real_t Sqrt2 = 1.41421356237309504880;
 const real_t pi = _DF(3.1415926535897932384626433832795); // M_PI;
-const real_t Ru = _DF(8.314510);						  // Ru
-const real_t universal_gas_const = _DF(8.314510);		  // J/(K mol), "R0", p V = n R0 T
-const real_t p_atm = _DF(1.01325e5);					  // unit: Pa = kg m^-1 s^-2
-const real_t Tref = _DF(1.0);							  // reference T
 // =======================================================
 //    viscosity constant
 const real_t kB = _DF(1.3806549 * 1.0e-16); // Boltzmann constant,unit:erg/K=10e-7 J/K
 const real_t NA = _DF(6.02214129 * 1.0e23); // Avogadro constant
+
+//! Avogadro's Number @f$ N_{\mathrm{A}} @f$ [number/kmol]
+const real_t Avogadro = _DF(6.02214076e26);
+//! Boltzmann constant @f$ k @f$ [J/K]
+const real_t Boltzmann = _DF(1.380649e-23);
+
+const real_t universal_gas_const = Avogadro * Boltzmann; // J/(K mol)/K, "R0", p V = n R0 T
+const real_t Ru = universal_gas_const * _DF(1.0E-3);	 // J/mol/K
+
+const real_t p_atm = _DF(1.01325e5); // unit: Pa = kg m^-1 s^-2
+const real_t Tref = _DF(1.0);		 // reference T
 
 // constexpr real_t Gamma = 1.4; // 1.666667;
 // // for flux Reconstruction order
@@ -292,4 +304,19 @@ struct IniShape
 	// IniShape(){};
 	// ~IniShape(){};
 	// IniShape(sycl::queue &q, size_t num_box, size_t num_bubble);
+};
+
+struct ZdCrtl
+{
+	double dt;
+	int nsteps;
+	double P, T;
+
+	ZdCrtl()
+	{
+		dt = 1.0E-5;
+		nsteps = 100;
+		P = 101325.0, T = 1001.0;
+	};
+	ZdCrtl(double Dt, int NSteps, double Pre, double Tmp) : dt(Dt), nsteps(NSteps), T(Tmp), P(Pre){};
 };

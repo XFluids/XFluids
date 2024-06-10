@@ -1,28 +1,6 @@
 #pragma once
 
 // =======================================================
-// //    Global sycL_reduction
-#if defined(DEFINED_ONEAPI)
-#define sycl_plus_op(T) sycl::plus<>()
-#define sycl_max_op(T) sycl::maximum<>()
-#define sycl_min_op(T) sycl::minimum<>()
-
-#define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<>())
-#define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<>())
-#define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<>())
-
-#elif defined(DEFINED_OPENSYCL)
-#define sycl_plus_op(T) sycl::plus<T>()
-#define sycl_max_op(T) sycl::maximum<T>()
-#define sycl_min_op(T) sycl::minimum<T>()
-
-#define sycl_reduction_plus(argus) sycl::reduction(&(argus), sycl::plus<real_t>())
-#define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<real_t>())
-#define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<real_t>())
-#endif
-// =======================================================
-
-// =======================================================
 // //    sycL_Kernel attribute
 #if defined(DEFINED_ONEAPI)
 #define SYCL_KERNEL SYCL_EXTERNAL
@@ -104,6 +82,12 @@ using vendorFuncAttributes = cudaFuncAttributes;
 #define SYCL_DEVICE __host__ __device__
 #define _VENDOR_KERNEL_LB_(A, B) __global__ __launch_bounds__(A, B)
 #endif
+
+#else
+
+#define SYCL_KERNEL
+#define SYCL_DEVICE
+#define _VENDOR_KERNEL_LB_(A, B)
 
 #endif
 // =======================================================

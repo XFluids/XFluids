@@ -1,5 +1,5 @@
-add_subdirectory(src)
 add_subdirectory(cantera)
+add_subdirectory(src)
 add_subdirectory(inishape)
 add_subdirectory(settings)
 add_subdirectory(strsplit)
@@ -28,7 +28,6 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         readgrid
         settings
         strsplit
-        cantera_interface
     )
 
     IF(BOOST_CXX)

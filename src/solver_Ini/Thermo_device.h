@@ -102,7 +102,7 @@ SYCL_DEVICE inline real_t get_Enthalpy_JANAF(real_t *Hia, real_t *Hib, const rea
 }
 
 /**
- * @brief calculate Hi of every compoent at given point	unit:J/kg/K // get_hi
+ * @brief calculate hi of every compoent at given point	unit:J/kg/K // get_hi
  */
 SYCL_DEVICE inline real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
 {
@@ -114,6 +114,16 @@ SYCL_DEVICE inline real_t get_Enthalpy(real_t *Hia, real_t *Hib, const real_t T0
 #endif
 
 	return hi;
+}
+
+/**
+ * @brief calculate ei of every compoent at given point	unit:J/kg/K // get_hi
+ */
+SYCL_DEVICE inline real_t get_Internale(real_t *Hia, real_t *Hib, const real_t T0, const real_t Ri, const int n)
+{
+	real_t ei = (get_Enthalpy(Hia, Hib, T0, _DF(1.0), n) - T0) * Ri;
+
+	return ei;
 }
 
 /**
