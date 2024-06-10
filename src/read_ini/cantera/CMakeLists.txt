@@ -19,3 +19,27 @@ ENDIF()
 target_link_libraries(cantera_interface 
 	INTERFACE 
 		${cantera})
+
+find_library(xthermal NAMES libxthermal.a HINTS "${LIBRARY_OUTPUT_PATH}")
+IF("${xthermal}" STREQUAL "xthermal-NOTFOUND")
+	add_library(xthermal "")
+	target_sources(xthermal
+		PUBLIC
+		${CMAKE_CURRENT_SOURCE_DIR}/XThermal.h
+		PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/XThermal.cpp
+	)
+
+	IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+		add_sycl_to_target(TARGET xthermal)
+	ENDIF()
+
+ELSE()
+	message(STATUS "${xthermal} is located at ${LIBRARY_OUTPUT_PATH}")
+	add_library(xthermal STATIC IMPORTED GLOBAL)
+	set_property(TARGET xthermal
+		PROPERTY IMPORTED_LOCATION ${xthermal})
+ENDIF()
+target_link_libraries(cantera_interface 
+	INTERFACE 
+		xthermal)
