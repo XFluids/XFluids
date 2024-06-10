@@ -16,7 +16,7 @@ private:
 	// mass, volume, density, tempreature, pressure, mean molecular weight, enthalpy, internal Energy of the mixture (kg kmol-1).
 	real_t m_mass, m_vol, m_dens, m_tmp, m_p, m_mmw, m_enthalpy, m_inEnergy;
 	// mole fraction, mole concentration of each species
-	std::vector<real_t> m_ym, m_cm, m_xm;
+	std::vector<real_t> m_ym, m_xm;
 
 	void *cvode_mem = nullptr;
 	// m_y[k] = mass fraction of species k whose summation = 1.

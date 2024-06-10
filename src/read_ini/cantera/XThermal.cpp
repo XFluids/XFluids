@@ -1,5 +1,6 @@
 #include "XThermal.h"
 #include "Mixing_device.h"
+#include "../../solver_Reaction/ProductionRates.h"
 
 /**
  * @brief get_Gibson
@@ -23,6 +24,16 @@ real_t CopR(const real_t *_Wi, const real_t *yi)
 real_t MoleEnthalpy(Thermal thermal, const real_t T, const int i)
 {
 	real_t temp = get_Enthalpy(thermal.Hia, thermal.Hib, T, universal_gas_const, i);
+
+	return temp;
+}
+
+/**
+ * @brief calculate Hi of each species at given point    unit:J/mol/K
+ */
+real_t Enthalpy(Thermal thermal, const real_t T, const int i)
+{
+	real_t temp = get_Enthalpy(thermal.Hia, thermal.Hib, T, thermal.Ri[i], i);
 
 	return temp;
 }
@@ -59,4 +70,31 @@ real_t CopHeatCapacity(Thermal thermal, const real_t *yi, const real_t T)
 		_CopCp += yi[ii] * HeatCapacity(thermal, T, ii);
 
 	return _CopCp;
+}
+
+/**
+ * @brief Compute the production rate of constant pressure model
+ */
+void evalcpWrapper(Thermal *tm, Reaction *rn, real_t *y, real_t *ydot, const real_t m_dens, const real_t m_p)
+{
+
+	ydot[0] = 0; // dT/dt
+	evalcp<NUM_SPECIES, NUM_REA>(tm, rn, y, ydot, m_dens, m_p);
+}
+
+/**
+ * @brief Compute the production rate of constant volume model
+ */
+void evalcvWrapper(Thermal *tm, Reaction *rn, real_t *y, real_t *ydot, const real_t m_dens, const real_t m_p)
+{
+	ydot[0] = 0; // dT/dt
+	evalcv<NUM_SPECIES, NUM_REA>(tm, rn, y, ydot, m_dens, m_p);
+}
+
+/**
+ * @brief Compute the production rate
+ */
+void evalcoreWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *yidot, const real_t m_dens, const real_t m_p, const real_t m_tmp)
+{
+	evalcore<NUM_SPECIES, NUM_REA>(tm, rn, yi, yidot, m_dens, m_p, m_tmp);
 }

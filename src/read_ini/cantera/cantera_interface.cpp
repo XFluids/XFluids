@@ -75,7 +75,7 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 	// Both tempreature and mass are invoked in cvode solving processing.
 	m_nspecies = NSpecies, m_neq = NSpecies + 2, m_nv = m_neq;
 	// Ini mole fraction vector.
-	m_ym.resize(NSpecies), m_cm.resize(NSpecies), m_xm.resize(NSpecies);
+	m_ym.resize(NSpecies), m_xm.resize(NSpecies);
 
 	// Ini states
 	m_y = N_VNew_Serial(m_neq);
@@ -231,121 +231,83 @@ void CanteraInterface::updatestates(real_t *y)
 	m_inEnergy = m_enthalpy - CopR(tm->_Wi, y1) * m_tmp;
 }
 
-static real_t refP = 101325.0;
-
 void CanteraInterface::eval(real_t t, real_t *y, real_t *ydot)
 {
 	m_t = t;
 	updatestates(y);
 
-	// get Kf Kb
-	real_t Gibbs[NUM_SPECIES], DeltaGibbs[NUM_REA], m_dn[NUM_REA];
-	real_t Kf[NUM_REA], Kb[NUM_REA], Kck[NUM_REA], _Kck[NUM_REA];
-	for (size_t n = 0; n < NUM_SPECIES; n++)
-		Gibbs[n] = (std::log(m_p / refP) - Gibson(*tm, m_tmp, n)) * (universal_gas_const * m_tmp); // TODO: this is m_grt of cantera;
-	real_t logStandConc = std::log(m_p * 1.0E-3 / (Ru * m_tmp));
-	for (size_t m = 0; m < NUM_REA; m++)
-	{
-		real_t A = rn->Rargus[m * 6 + 0], B = rn->Rargus[m * 6 + 1], E = rn->Rargus[m * 6 + 2];
-		Kf[m] = A * std::exp(B * log(m_tmp) - E * _DF(4.184) / Ru / m_tmp) * 1.0E-3, Kck[m] = _DF(0.0);
-		m_dn[m] = _DF(0.0), DeltaGibbs[m] = _DF(0.0);
-		int *Nu_dm_ = rn->Nu_d_ + m * NUM_SPECIES;
-		for (size_t n = 0; n < NUM_SPECIES; n++)
-		{
-			DeltaGibbs[m] += Nu_dm_[n] * Gibbs[n];
-			m_dn[m] += Nu_dm_[n];
-		}
-		// Kck[m] = exp(Kck[m]);
-		// Kck[m] *= pow(p_atm / Ru / m_tmp * _DF(1e-6), Nu_sum);
-		_Kck[m] = std::min(exp(DeltaGibbs[m] / (universal_gas_const * m_tmp) - m_dn[m] * logStandConc), 1.0E+40);
-		// _Kck[m] = _DF(1.0) / Kck[m];
-		Kb[m] = Kf[m] * _Kck[m];
-	}
-	// get yidot(production date of species), namely ydot[2] to ydot[end]
 	ydot[0] = 0, ydot[1] = 0;
-	real_t *yi = y + 2, *yidot = ydot + 2, tb[NUM_REA], RPf[NUM_REA], RPb[NUM_REA], RPnet[NUM_REA];
-	// get mole concentrations from mass fraction
-	Cantera::scale(m_ym.begin(), m_ym.end(), m_cm.begin(), m_dens * 1.0E-3);
-	real_t ctot = m_dens / m_mmw * 1.0E-3; // mole density of mixture
+	real_t *yi = y + 2, *yidot = ydot + 2;
 
-	for (int react_id = 0; react_id < NUM_REA; react_id++)
-	{
-		// third-body collision effect
-		tb[react_id] = _DF(0.0);
-		if (1 == rn->third_ind[react_id])
-		{
-			for (int it = 0; it < NUM_SPECIES; it++)
-				tb[react_id] += rn->React_ThirdCoef[react_id * NUM_SPECIES + it] * m_cm[it];
-		}
-		else
-			tb[react_id] = _DF(1.0);
+	evalcpWrapper(tm, rn, y + 1, ydot + 1, m_dens, m_p);
 
-		RPf[react_id] = Kf[react_id] * tb[react_id]; // forward
-		int *nu_f = rn->Nu_f_ + react_id * NUM_SPECIES;
-		RPb[react_id] = RPf[react_id] * _Kck[react_id]; // backward
-		int *nu_b = rn->Nu_b_ + react_id * NUM_SPECIES;
-		for (int it = 0; it < NUM_SPECIES; it++) // forward
-			RPf[react_id] *= std::pow(m_cm[it], nu_f[it]);
-		for (int it = 0; it < NUM_SPECIES; it++) // backward
-			RPb[react_id] *= std::pow(m_cm[it], nu_b[it]);
+	// evalcoreWrapper(tm, rn, yi, yidot, m_dens, m_p, m_tmp);
 
-		RPnet[react_id] = RPf[react_id] - RPb[react_id];
-	}
+	// // get Kf Kb
+	// const int _NR = NUM_REA, _NS = NUM_SPECIES;
+	// real_t Kf[_NR], _Kck[_NR];
+	// real_t logStandConc = std::log(m_p / (universal_gas_const * m_tmp));
+	// for (size_t m = 0; m < _NR; m++)
+	// {
+	// 	real_t DeltaGibbs = _DF(0.0);
+	// 	real_t A = rn->Rargus[m * 6 + 0], B = rn->Rargus[m * 6 + 1], E = rn->Rargus[m * 6 + 2];
+	// 	Kf[m] = A * std::exp(B * log(m_tmp) - E * _DF(4.184) / Ru / m_tmp);
+	// 	int *Nu_dm_ = rn->Nu_d_ + m * _NS, m_dn = _DF(0.0);
+	// 	for (size_t n = 0; n < _NS; n++)
+	// 	{
+	// 		DeltaGibbs += Nu_dm_[n] * (std::log(m_p / _DF(101325.0)) - Gibson(*tm, m_tmp, n));
+	// 		m_dn += Nu_dm_[n];
+	// 	}
+	// 	_Kck[m] = std::min(exp(DeltaGibbs - m_dn * logStandConc), _DF(1.0E+40));
+	// }
+	// // get yidot(production date of species), namely ydot[2] to ydot[end]
+	// real_t m_cm[_NS];
+	// // get mole concentrations from mass fraction
+	// for (size_t n = 0; n < _NS; n++)
+	// 	m_cm[n] = yi[n] * tm->_Wi[n] * m_dens * _DF(1.0E-3);
 
-	// // get omega dot (production rate in the form of mole) units: mole*cm^-s*s^-1
-	for (int n = 0; n < NUM_SPECIES; n++)
-		yidot[n] = 0;
-	for (int react_id = 0; react_id < NUM_REA; react_id++)
-	{
-		int *nu_d = rn->Nu_d_ + react_id * NUM_SPECIES;
-		for (int n = 0; n < NUM_SPECIES; n++)
-			yidot[n] += nu_d[n] * RPnet[react_id]; // // get omega dot
-	}
+	// for (int react_id = 0; react_id < _NR; react_id++)
+	// {
+	// 	// third-body collision effect
+	// 	real_t tb = _DF(0.0);
+	// 	if (1 == rn->third_ind[react_id])
+	// 	{
+	// 		for (int it = 0; it < _NS; it++)
+	// 			tb += rn->React_ThirdCoef[react_id * _NS + it] * m_cm[it];
+	// 	}
+	// 	else
+	// 		tb = _DF(1.0);
 
-	for (int n = 0; n < NUM_SPECIES; n++)
-	{
-		ydot[1] -= m_vol * yidot[n] * MoleEnthalpy(*tm, m_tmp, n);
-		yidot[n] *= tm->Wi[n] * 1.0E3 * m_vol / m_mass; // production rate in the form of mass;
-	} // ydot[1] = mass * c_p * dT/dt while the loop ends, we need get dT/dt
+	// 	Kf[react_id] *= tb; // forward
+	// 	int *nu_f = rn->Nu_f_ + react_id * _NS;
+	// 	_Kck[react_id] *= Kf[react_id]; // backward
+	// 	int *nu_b = rn->Nu_b_ + react_id * _NS;
+	// 	for (int it = 0; it < _NS; it++)					// forward
+	// 		Kf[react_id] *= std::pow(m_cm[it], nu_f[it]);	// ropf
+	// 	for (int it = 0; it < _NS; it++)					// backward
+	// 		_Kck[react_id] *= std::pow(m_cm[it], nu_b[it]); // ropb
 
-	// get ydot
-	ydot[0] = 0;
-	ydot[1] /= (m_mass * CopHeatCapacity(*tm, y + 2, m_tmp));
+	// 	Kf[react_id] -= _Kck[react_id];
+	// }
+
+	// // // get omega dot (production rate in the form of mole) units: mole*cm^-s*s^-1
+	// for (int n = 0; n < _NS; n++)
+	// 	yidot[n] = _DF(.0);
+	// for (int react_id = 0; react_id < _NR; react_id++)
+	// {
+	// 	int *nu_d = rn->Nu_d_ + react_id * _NS;
+	// 	for (int n = 0; n < _NS; n++)
+	// 		yidot[n] += nu_d[n] * Kf[react_id]; // // get omega dot
+	// }
+
+	// // production rate in the form of mass;
+	// for (int n = 0; n < NUM_SPECIES; n++)
+	// {
+	// 	yidot[n] *= tm->Wi[n] / m_dens;
+	// 	ydot[1] -= yidot[n] * Enthalpy(*tm, m_tmp, n);
+	// } // ydot[1] = mass * c_p * dT/dt while the loop ends, we need get dT/dt
+	// // get ydot
+	// ydot[1] /= CopHeatCapacity(*tm, y + 2, m_tmp);
+
 	Cantera::checkFinite("ydot", (double *)ydot, m_nv);
 }
-
-// for (int n = 0; n < NUM_SPECIES; n++)
-// {
-// 	yidot[n] = 0;
-// 	for (int iter = 0; iter < rn->rns[n]; iter++)
-// 	{
-// 		int react_id = rn->reaction_list[n][iter];
-// 		// third-body collision effect
-// 		real_t tb = _DF(0.0);
-// 		if (1 == rn->third_ind[react_id])
-// 		{
-// 			for (int it = 0; it < NUM_SPECIES; it++)
-// 				tb += rn->React_ThirdCoef[react_id * NUM_SPECIES + it] * m_cm[it];
-// 		}
-// 		else
-// 			tb = _DF(1.0);
-// 		real_t RPf = Kf[react_id], RPb = Kb[react_id];
-// 		// forward
-// 		for (int it = 0; it < rn->rts[react_id]; it++)
-// 		{
-// 			int specie_id = rn->reactant_list[react_id][it];
-// 			int nu_f = rn->Nu_f_[react_id * NUM_SPECIES + specie_id];
-// 			RPf *= std::pow(m_cm[specie_id], nu_f);
-// 		}
-// 		// backward
-// 		for (int it = 0; it < rn->pls[react_id]; it++)
-// 		{
-// 			int specie_id = rn->product_list[react_id][it];
-// 			int nu_b = rn->Nu_b_[react_id * NUM_SPECIES + specie_id];
-// 			RPb *= std::pow(m_cm[specie_id], nu_b);
-// 		}
-// 		yidot[n] += rn->Nu_d_[react_id * NUM_SPECIES + n] * tb * (RPf - RPb); // get omega dot (production rate in the form of mole)
-// 	}
-// 	ydot[1] -= m_vol * yidot[n] * MoleEnthalpy(*tm, m_tmp, n);
-// 	yidot[n] *= tm->Wi[n] * 1.0E3 / m_mass; // production rate in the form of mass;
-// } // ydot[1] = mass * c_p * dT/dt while the loop ends, we need get dT/dt
