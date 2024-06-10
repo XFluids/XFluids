@@ -26,10 +26,11 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
 
     // begin runtime read , fluid && compoent characteristics set
     // // TODO: XFluids read
-    CanteraInterface ci;
     ReadSpecies();
     if (ReactSources)
         ReadReactions();
+
+    CanteraInterface ci(&h_thermal, &h_react, NUM_SPECIES);
     // end runtime read
 
     // read && caculate coffes for visicity

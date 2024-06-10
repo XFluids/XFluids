@@ -25,11 +25,18 @@
 
 - Actually, C=E/R, in which E as activation energy, R as gas constant(8.314J/mol/K, 1.987cal/mol/K, 82.05cm^3*atm/mol/K);
 
-#### Third body coffcients(3bs)
+#### Three-body(3B) and three-body coffcients(3Bs)
 
-  - 3bs of specific species are given by reaction model
-  - 3bs of species is set as 1.0 by default according to:
+  - 3Bs of specific species are given by reaction model
+  - 3Bs is by default set as 1.0 for "M" according to cantera and following reference:
       Ref4.Temperature and Third-Body Dependence of the Rate Constant for the Reaction O+O_2+M->O_3+M
+      Ref: class Cantera::ThirdBody::default_efficiency 
+  - not only "M" but also a species named "O2" as a example, exist in both reactants and products, act as the 3B:
+      3Bs of "O2" is set to 1, and other species ia set to 0;
+      Ref: Cantera::Reaction::setEquation(const string& equation, const Kinetics* kin){} to find the species
+           Cantera::ThirdBody::setName(const string& third_body){} to set the 3Bs
+
+
 
 ### Transport model
 
