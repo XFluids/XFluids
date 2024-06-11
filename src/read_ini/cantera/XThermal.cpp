@@ -73,6 +73,14 @@ real_t CopHeatCapacity(Thermal thermal, const real_t *yi, const real_t T)
 }
 
 /**
+ * @brief Compute the production rate
+ */
+void evalcoreWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *yidot, const real_t m_dens, const real_t m_p, const real_t m_tmp)
+{
+	evalcore<NUM_SPECIES, NUM_REA>(tm, rn, yi, yidot, m_dens, m_p, m_tmp);
+}
+
+/**
  * @brief Compute the production rate of constant pressure model
  */
 void evalcpWrapper(Thermal *tm, Reaction *rn, real_t *y, real_t *ydot, const real_t m_dens, const real_t m_p)
@@ -94,7 +102,38 @@ void evalcvWrapper(Thermal *tm, Reaction *rn, real_t *y, real_t *ydot, const rea
 /**
  * @brief Compute the production rate
  */
-void evalcoreWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *yidot, const real_t m_dens, const real_t m_p, const real_t m_tmp)
+void evalcoreWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real_t *p, const real_t m_dens, const real_t m_p, const real_t m_tmp)
 {
-	evalcore<NUM_SPECIES, NUM_REA>(tm, rn, yi, yidot, m_dens, m_p, m_tmp);
+	evalcore<NUM_SPECIES, NUM_REA>(tm, rn, yi, q, p, m_dens, m_p, m_tmp);
+}
+
+/**
+ * @brief Compute the production rate of constant pressure model
+ */
+real_t evalcpWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real_t *p, const real_t m_dens, const real_t m_tmp, const real_t m_p)
+{
+
+	real_t dTdt = evalcp<NUM_SPECIES, NUM_REA>(tm, rn, yi, q, p, m_dens, m_tmp, m_p);
+
+	return dTdt;
+}
+
+/**
+ * @brief Compute the production rate of constant volume model
+ */
+real_t evalcvWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real_t *p, const real_t m_dens, const real_t m_tmp, const real_t m_p)
+{
+
+	real_t dTdt = evalcv<NUM_SPECIES, NUM_REA>(tm, rn, yi, q, p, m_dens, m_tmp, m_p);
+
+	return dTdt;
+}
+
+/**
+ * @brief Compute the production rate of constant volume model
+ */
+void Chemq2Wrapper(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p)
+{
+
+	Chemeq2<NUM_SPECIES, NUM_REA>(tm, rn, y + 1, dtg, y[0], rho, m_p);
 }

@@ -44,10 +44,16 @@ public:
 	void CVodeSolver();
 	void IniCVode();
 	void IntegrateCVode(real_t tout);
-	void eval(real_t t, real_t *y, real_t *ydot);
+	void evalCp(real_t t, real_t *y, real_t *ydot);
+	void evalCv(real_t t, real_t *y, real_t *ydot);
 
-	void updatestates(real_t *y);
+	void ChemQ2Solver();
+
+	void updatestatesCp(real_t *y);
+	void updatestatesCv(real_t *y);
 	void setState_TP(real_t const tem, real_t const pre);
+	void setState_TD(real_t const tem, real_t const dens);
 	real_t setDensity(real_t const den);
+	real_t setPressure(real_t const pre);
 	real_t setTemperature(real_t const tem);
 };

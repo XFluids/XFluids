@@ -38,6 +38,11 @@ extern real_t CopEnthalpy(Thermal thermal, const real_t *yi, const real_t T);
 extern real_t CopHeatCapacity(Thermal thermal, const real_t *yi, const real_t T);
 
 /**
+ * @brief Compute the production rate
+ */
+extern void evalcoreWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *yidot, const real_t m_dens, const real_t m_p, const real_t m_tmp);
+
+/**
  * @brief Compute the production rate of constant pressure model
  */
 extern void evalcpWrapper(Thermal *tm, Reaction *rn, real_t *y, real_t *ydot, const real_t m_dens, const real_t m_p);
@@ -50,4 +55,19 @@ extern void evalcvWrapper(Thermal *tm, Reaction *rn, real_t *y, real_t *ydot, co
 /**
  * @brief Compute the production rate
  */
-extern void evalcoreWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *yidot, const real_t m_dens, const real_t m_p, const real_t m_tmp);
+extern void evalcoreWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real_t *p, const real_t m_dens, const real_t m_p, const real_t m_tmp);
+
+/**
+ * @brief Compute the production rate of constant pressure model
+ */
+extern real_t evalcpWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real_t *p, const real_t m_dens, const real_t m_tmp, const real_t m_p);
+
+/**
+ * @brief Compute the production rate of constant volume model
+ */
+extern real_t evalcvWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real_t *p, const real_t m_dens, const real_t m_tmp, const real_t m_p);
+
+/**
+ * @brief Compute the production rate of constant volume model
+ */
+void Chemq2Wrapper(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p);

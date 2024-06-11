@@ -59,7 +59,8 @@ static void checkError(long flag, const std::string &ctMethod,
 static int cvodes_rhs(realtype t, N_Vector y, N_Vector ydot, void *user_data)
 {
 	CanteraInterface *f = (CanteraInterface *)user_data;
-	f->eval(t, (real_t *)NV_DATA_S(y), (real_t *)NV_DATA_S(ydot));
+	// f->evalCp(t, (real_t *)NV_DATA_S(y), (real_t *)NV_DATA_S(ydot)); // NOTE: constant pressure model
+	f->evalCv(t, (real_t *)NV_DATA_S(y), (real_t *)NV_DATA_S(ydot)); // NOTE: constant volume model
 
 	return 0;
 }
@@ -87,32 +88,68 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 		m_yi[i + 2] = yi[i];
 	m_vol = 1, m_mass = m_p / (m_tmp * CopR(tm->_Wi, yi)) * m_vol, m_yi[0] = m_mass, m_yi[1] = m_tmp;
 
-	updatestates((real_t *)NV_DATA_S(m_y));
+	updatestatesCp((real_t *)NV_DATA_S(m_y));
 
 	// Processing CVode solver
 	CVodeSolver();
+
+	// ReIni Thermal and Reaction objects.
+	tm = Tm, rn = Rn, m_p = Zl.P, m_tmp = Zl.T;
+	m_t = 0, m_tInteg = m_t;
+	for (size_t i = 0; i < m_nspecies; i++)
+		m_yi[i + 2] = yi[i];
+	m_vol = 1, m_mass = m_p / (m_tmp * CopR(tm->_Wi, yi)) * m_vol, m_yi[0] = m_mass, m_yi[1] = m_tmp;
+
+	updatestatesCp((real_t *)NV_DATA_S(m_y));
+
+	// Processing ChemQ2 solver
+	ChemQ2Solver();
 }
 
 void CanteraInterface::CVodeSolver()
 {
 	IniCVode(); // Ini
-	std::cout << "time (s),Temperature (K),Density (kg/m3),Pressure (Pa)" << std::endl;
+	std::cout << "\ntime (s),Temperature (K),Density (kg/m3),Pressure (Pa)" << std::endl;
 	for (size_t i = 0; i <= zl.nsteps; i++)
 	{
 		IntegrateCVode(i * zl.dt);
 
-		std::cout << m_t << ", ";
+		std::cout << m_t << " ";
 		// for (size_t j = 1; j < m_neq; j++)
-		// 	std::cout << NV_Ith_S(m_y, j) << ", ";
-		std::cout << NV_Ith_S(m_y, 1) << ", ";
-		std::cout << NV_Ith_S(m_y, 0) / m_vol << ", ";
-		std::cout << m_p << ", ";
+		// 	std::cout << NV_Ith_S(m_y, j) << " ";
+		std::cout << NV_Ith_S(m_y, 1) << " ";
+		std::cout << NV_Ith_S(m_y, 0) / m_vol << " ";
+		std::cout << m_p << " ";
 		for (size_t j = 0; j < m_xm.size() - 1; j++)
-			std::cout << m_xm[j] << ", ";
+			std::cout << m_xm[j] << " ";
 		std::cout << m_xm[m_xm.size() - 1];
 		std::cout << std::endl;
 	}
-	updatestates((real_t *)NV_DATA_S(m_y));
+}
+
+// NOTE: set to constant volume model now, model types in Chemq2 defined by updatestatesCp/Cv function and evalcp/cv in Chemq2Wrapper
+void CanteraInterface::ChemQ2Solver()
+{
+	real_t *y = (real_t *)NV_DATA_S(m_y);
+	std::cout << "\ntime (s),Temperature (K),Density (kg/m3),Pressure (Pa)" << std::endl;
+	for (size_t i = 0; i <= zl.nsteps; i++)
+	{
+		m_t = i * zl.dt;
+		updatestatesCv(y);
+
+		std::cout << m_t << " ";
+		// for (size_t j = 1; j < m_neq; j++)
+		// 	std::cout << NV_Ith_S(m_y, j) << " ";
+		std::cout << *(y + 1) << " ";
+		std::cout << *(y + 0) / m_vol << " ";
+		std::cout << m_p << " ";
+		for (size_t j = 0; j < m_xm.size() - 1; j++)
+			std::cout << m_xm[j] << " ";
+		std::cout << m_xm[m_xm.size() - 1];
+		std::cout << std::endl;
+
+		Chemq2Wrapper(tm, rn, y + 1, zl.dt, m_dens, m_p);
+	}
 }
 
 void CanteraInterface::IniCVode()
@@ -185,6 +222,17 @@ void CanteraInterface::IntegrateCVode(real_t tout)
 	m_t = tout;
 }
 
+real_t CanteraInterface::setPressure(real_t const pre)
+{
+	if (pre > 0)
+		m_p = pre;
+	else
+		throw Cantera::CanteraError("Phase::setTemperature",
+									"temperature must be positive. T = {}", pre);
+
+	return pre;
+}
+
 real_t CanteraInterface::setTemperature(real_t const tem)
 {
 	if (tem > 0)
@@ -213,7 +261,13 @@ void CanteraInterface::setState_TP(real_t const tem, real_t const pre)
 	setDensity(pre * m_mmw / (m_tmp * Ru));
 }
 
-void CanteraInterface::updatestates(real_t *y)
+void CanteraInterface::setState_TD(real_t const tem, real_t const dens)
+{
+	setTemperature(tem);
+	setPressure(dens / m_mmw * (m_tmp * Ru));
+}
+
+void CanteraInterface::updatestatesCp(real_t *y)
 {
 	Cantera::checkFinite("y", (double *)y, m_nv);
 	// The components of y are [0] the total mass, [1] the temperature,
@@ -231,83 +285,59 @@ void CanteraInterface::updatestates(real_t *y)
 	m_inEnergy = m_enthalpy - CopR(tm->_Wi, y1) * m_tmp;
 }
 
-void CanteraInterface::eval(real_t t, real_t *y, real_t *ydot)
+void CanteraInterface::updatestatesCv(real_t *y)
+{
+	Cantera::checkFinite("y", (double *)y, m_nv);
+	// The components of y are [0] the total mass, [1] the temperature,
+	// [2...K+2) are the mass fractions of each species, and [K+2...] are the
+	// coverages of surface species on each wall.
+	m_mass = y[0];
+	const real_t *y1 = static_cast<const real_t *>(y + 2);
+	std::transform(y + 2, y + m_neq, tm->_Wi, m_ym.begin(), std::multiplies<real_t>());
+	m_mmw = 1.0 / std::accumulate(m_ym.begin(), m_ym.end(), 0.0);
+	Cantera::scale(m_ym.begin(), m_ym.end(), m_xm.begin(), m_mmw); // mole fraction
+
+	setState_TD(y[1], m_dens);
+	m_enthalpy = CopEnthalpy(*tm, y1, m_tmp);
+	m_inEnergy = m_enthalpy - CopR(tm->_Wi, y1) * m_tmp;
+}
+
+void CanteraInterface::evalCp(real_t t, real_t *y, real_t *ydot)
 {
 	m_t = t;
-	updatestates(y);
+	updatestatesCp(y);
 
 	ydot[0] = 0, ydot[1] = 0;
 	real_t *yi = y + 2, *yidot = ydot + 2;
 
+	// const int _NR = NUM_REA, _NS = NUM_SPECIES;
+	// real_t q[_NR], p[_NR];
+	// ydot[1] = evalcpWrapper(tm, rn, yi, q, p, m_dens, m_tmp, m_p);
+	// for (size_t i = 0; i < _NR; i++)
+	// 	yidot[i] = q[i] - p[i];
+
+	// evalcpWrapper(tm, rn, y + 1, ydot + 1, m_dens, m_p);
 	evalcpWrapper(tm, rn, y + 1, ydot + 1, m_dens, m_p);
 
-	// evalcoreWrapper(tm, rn, yi, yidot, m_dens, m_p, m_tmp);
+	Cantera::checkFinite("ydot", (double *)ydot, m_nv);
+}
 
-	// // get Kf Kb
+void CanteraInterface::evalCv(real_t t, real_t *y, real_t *ydot)
+{
+	m_t = t;
+	updatestatesCv(y);
+
+	ydot[0] = 0, ydot[1] = 0;
+	real_t *yi = y + 2, *yidot = ydot + 2;
+
 	// const int _NR = NUM_REA, _NS = NUM_SPECIES;
-	// real_t Kf[_NR], _Kck[_NR];
-	// real_t logStandConc = std::log(m_p / (universal_gas_const * m_tmp));
-	// for (size_t m = 0; m < _NR; m++)
-	// {
-	// 	real_t DeltaGibbs = _DF(0.0);
-	// 	real_t A = rn->Rargus[m * 6 + 0], B = rn->Rargus[m * 6 + 1], E = rn->Rargus[m * 6 + 2];
-	// 	Kf[m] = A * std::exp(B * log(m_tmp) - E * _DF(4.184) / Ru / m_tmp);
-	// 	int *Nu_dm_ = rn->Nu_d_ + m * _NS, m_dn = _DF(0.0);
-	// 	for (size_t n = 0; n < _NS; n++)
-	// 	{
-	// 		DeltaGibbs += Nu_dm_[n] * (std::log(m_p / _DF(101325.0)) - Gibson(*tm, m_tmp, n));
-	// 		m_dn += Nu_dm_[n];
-	// 	}
-	// 	_Kck[m] = std::min(exp(DeltaGibbs - m_dn * logStandConc), _DF(1.0E+40));
-	// }
-	// // get yidot(production date of species), namely ydot[2] to ydot[end]
-	// real_t m_cm[_NS];
-	// // get mole concentrations from mass fraction
-	// for (size_t n = 0; n < _NS; n++)
-	// 	m_cm[n] = yi[n] * tm->_Wi[n] * m_dens * _DF(1.0E-3);
+	// real_t q[_NR], p[_NR];
+	// ydot[1] = evalcpWrapper(tm, rn, yi, q, p, m_dens, m_tmp, m_p);
+	// for (size_t i = 0; i < _NR; i++)
+	// 	yidot[i] = q[i] - p[i];
 
-	// for (int react_id = 0; react_id < _NR; react_id++)
-	// {
-	// 	// third-body collision effect
-	// 	real_t tb = _DF(0.0);
-	// 	if (1 == rn->third_ind[react_id])
-	// 	{
-	// 		for (int it = 0; it < _NS; it++)
-	// 			tb += rn->React_ThirdCoef[react_id * _NS + it] * m_cm[it];
-	// 	}
-	// 	else
-	// 		tb = _DF(1.0);
-
-	// 	Kf[react_id] *= tb; // forward
-	// 	int *nu_f = rn->Nu_f_ + react_id * _NS;
-	// 	_Kck[react_id] *= Kf[react_id]; // backward
-	// 	int *nu_b = rn->Nu_b_ + react_id * _NS;
-	// 	for (int it = 0; it < _NS; it++)					// forward
-	// 		Kf[react_id] *= std::pow(m_cm[it], nu_f[it]);	// ropf
-	// 	for (int it = 0; it < _NS; it++)					// backward
-	// 		_Kck[react_id] *= std::pow(m_cm[it], nu_b[it]); // ropb
-
-	// 	Kf[react_id] -= _Kck[react_id];
-	// }
-
-	// // // get omega dot (production rate in the form of mole) units: mole*cm^-s*s^-1
-	// for (int n = 0; n < _NS; n++)
-	// 	yidot[n] = _DF(.0);
-	// for (int react_id = 0; react_id < _NR; react_id++)
-	// {
-	// 	int *nu_d = rn->Nu_d_ + react_id * _NS;
-	// 	for (int n = 0; n < _NS; n++)
-	// 		yidot[n] += nu_d[n] * Kf[react_id]; // // get omega dot
-	// }
-
-	// // production rate in the form of mass;
-	// for (int n = 0; n < NUM_SPECIES; n++)
-	// {
-	// 	yidot[n] *= tm->Wi[n] / m_dens;
-	// 	ydot[1] -= yidot[n] * Enthalpy(*tm, m_tmp, n);
-	// } // ydot[1] = mass * c_p * dT/dt while the loop ends, we need get dT/dt
-	// // get ydot
-	// ydot[1] /= CopHeatCapacity(*tm, y + 2, m_tmp);
+	// evalcpWrapper(tm, rn, y + 1, ydot + 1, m_dens, m_p);
+	evalcvWrapper(tm, rn, y + 1, ydot + 1, m_dens, m_p);
 
 	Cantera::checkFinite("ydot", (double *)ydot, m_nv);
 }
