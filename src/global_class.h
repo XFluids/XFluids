@@ -51,7 +51,6 @@ public:
     void GetTheta(sycl::queue &q);
     void AllCountsPush(sycl::queue &q, const size_t Iter, const real_t time);
     // ChemQ2 or CVODE-of-Sundials in this function
-    void ZeroDimensionalFreelyFlame();
     void ODESolver(sycl::queue &q, real_t Time);
 };
 

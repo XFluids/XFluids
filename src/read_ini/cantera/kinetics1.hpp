@@ -16,12 +16,11 @@
 #include "global_setup.h"
 #include "example_utils.h"
 
-int kinetics1(ZdCrtl &zl, int np, void *p)
+float kinetics1core(std::string Type, Cantera::Reactor &r, ZdCrtl &zl, int np, void *p)
 {
-     std::cout << "\nConstant-pressure ignition of a "
-               << "hydrogen/oxygen/nitrogen mixture\n"
-                  "beginning at T = "
-               << zl.T << " K and P = " << zl.P << ".";
+     std::cout << "\n"
+               << Type << " 0D ignition of a mixture\nbeginning at T = "
+               << zl.T << " K and P = " << zl.P;
 
      std::string file = "H2_AR.yaml";
      // create an ideal gas mixture that corresponds to OH submech from GRI-Mech 3.0
@@ -33,7 +32,7 @@ int kinetics1(ZdCrtl &zl, int np, void *p)
      int nsp = gas->nSpecies();
 
      // create a reactor
-     Cantera::IdealGasConstPressureReactor r;
+     // Cantera::IdealGasConstPressureReactor r;
 
      // 'insert' the gas into the reactor and environment.  Note
      // that it is ok to insert the same gas object into multiple
@@ -67,21 +66,33 @@ int kinetics1(ZdCrtl &zl, int np, void *p)
      clock_t t1 = clock(); // save end time
 
      // make a CSV output file
-     std::string outfile = "kin1(" + file + ").csv";
+     std::string outfile = Type + "-kin1(" + file + ").csv";
      writeCsv(outfile, *sol->thermo(), states);
 
      // print final temperature and timing data
      double tmm = 1.0 * (t1 - t0) / CLOCKS_PER_SEC;
-     std::cout << std::endl
-               << " Tfinal = " << r.temperature() << std::endl;
-     std::cout << " time = " << tmm << std::endl;
-     std::cout << " number of residual function evaluations = "
-               << sim.integrator().nEvals() << std::endl;
-     std::cout << " time per evaluation = " << tmm / sim.integrator().nEvals()
-               << std::endl
-               << "Output files:" << outfile << " Excel CSV file" << std::endl;
+     std::cout << ", Tfinal = " << r.temperature() << std::endl;
+     // std::cout << " time = " << tmm << std::endl;
+     // std::cout << " number of residual function evaluations = "
+     //           << sim.integrator().nEvals() << std::endl;
+     // std::cout << " time per evaluation = " << tmm / sim.integrator().nEvals() << std::endl;
+     std::cout << "Output files:" << outfile << " Excel CSV file" << std::endl;
 
-     return 0;
+     return r.temperature();
+}
+
+float kinetics1Cp(ZdCrtl &zl, int np, void *p)
+{
+     Cantera::IdealGasConstPressureReactor r;
+
+     return kinetics1core("Cantera::IdealGasConstPressureReactor", r, zl, np, p);
+}
+
+float kinetics1Cv(ZdCrtl &zl, int np, void *p)
+{
+     Cantera::IdealGasReactor r;
+
+     return kinetics1core("Cantera::IdealGasConstVolumeReactor", r, zl, np, p);
 }
 
 // int main()

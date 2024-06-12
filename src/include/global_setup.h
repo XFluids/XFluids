@@ -10,8 +10,9 @@
 #include "Eigen_global_definition.h"
 #endif
 
-#include "global_undef.h"
+#include "compile_sycl.h"
 #include "global_marco.h"
+#include "global_undef.h"
 
 #define MAX_SPECIES NUM_SPECIES
 
@@ -315,7 +316,7 @@ struct ZdCrtl
 	{
 		dt = 1.0E-5;
 		nsteps = 100;
-		P = 2.0 * 101325.0, T = 2000.0;
+		P = 101325.0, T = 1001.0;
 	};
 	ZdCrtl(double Dt, int NSteps, double Pre, double Tmp) : dt(Dt), nsteps(NSteps), T(Tmp), P(Pre){};
 };
