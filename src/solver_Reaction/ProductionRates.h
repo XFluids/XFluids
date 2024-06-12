@@ -211,7 +211,7 @@ SYCL_DEVICE real_t evalcv(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real
 	{
 		q[n] *= tm->Wi[n] * _dens;
 		p[n] *= tm->Wi[n] * _dens;
-		dTdt -= (q[n] - p[n]) * get_Enthalpy(tm->Hia, tm->Hib, m_tmp, tm->Ri[n], n);
+		dTdt -= (q[n] - p[n]) * get_Internale(tm->Hia, tm->Hib, m_tmp, tm->Ri[n], n);
 	} // dTdt = mass * c_v * dT/dt while the loop ends, we need get dT/dt
 	// get ydot
 	dTdt /= get_CopCv(*tm, yi, m_tmp);
@@ -222,7 +222,7 @@ SYCL_DEVICE real_t evalcv(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real
 /**
  * @brief sign for one argus
  */
-SYCL_DEVICE real_t xfrsign(const real_t a)
+inline SYCL_DEVICE real_t xfrsign(const real_t a)
 {
 	if (a >= _DF(.0))
 		return _DF(1.0);
@@ -233,19 +233,34 @@ SYCL_DEVICE real_t xfrsign(const real_t a)
 /**
  * @brief sign for two argus
  */
-SYCL_DEVICE real_t xfrsign(const real_t a, const real_t b)
+inline SYCL_DEVICE real_t xfrsign(const real_t a, const real_t b)
 {
 	return xfrsign(b) * sycl::fabs(a);
 }
 
-/**
- * @brief Chemeq2: q represents the production rate , d represents the los rate , di = pi*yi in RefP408 eq(2)
- * @ref   A Quasi-Steady-State Solver for the Stiff Ordinary Differential Equations of Reaction Kinetics
- * @param dtg: duration of time integral
- */
 // // neomorph of Ref.eq(39) for rtaui=1/r in eq(39)
 #define Alpha(rtaui) (_DF(180.0) + rtaui * (_DF(60.0) + rtaui * (_DF(11.0) + rtaui))) / (_DF(360.0) + rtaui * (_DF(60.0) + rtaui * (_DF(12.0) + rtaui)));
-
+/**
+ * @brief Chemeq2: q represents the production rate , d represents the los rate , di = pi*yi in RefP408 eq(2)
+ * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least
+ * three corrector iterations are performed. For most problems, the stability check is not needed, and eliminating
+ * the calculations and logic associated with the check enhances performance.
+ * @ref   A Quasi-Steady-State Solver for the Stiff Ordinary Differential Equations of Reaction Kinetics
+ * @param dtg: duration of time integral
+ * @param itermax: iterations of correction
+ * @param ymin: minimum concentration allowed for species i, too much low ymin decrease performance
+ * 	*NOTE: initializing time intergation control
+ * @param dto: original dt for a integration step
+ * @param tfd: round-off parameter used to determine when integration is complete
+ * @param epsmin: to calculate initial time step of q2 integral, intializa into _DF(1e-04).
+ * @param scrtch: to calculate initial time step of q2 integral, intializa into _DF(1e-25).
+ * @param sqreps: 5.0*sycl::sqrt(epsmin), parameter used to calculate initial timestep
+ * @param dtmin: minimum dt for each step, automatically relax convergence restrictions while dt<=dtmin*dto for a step .
+ * 	*NOTE: epsion contrl
+ * @param eps: error epslion, intializa into _DF(1e-10).
+ * @param epsmax: if this previous step not converged, higher for low accuracy and higher performace.
+ * @param epscl: 1.0/epsmin, intermediate variable used to avoid repeated divisions, higher epscl leading to higher accuracy and lower performace.
+ */
 template <int _NS = 1, int _NR>
 SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, real_t &TT, const real_t rho, const real_t m_p)
 {
@@ -253,24 +268,6 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 	real_t ymin = _DF(1.0e-20), dtmin = _DF(1.0e-7);
 	real_t eps, epsmin = _DF(1.0e-4), scrtch = _DF(1e-25);
 	real_t tfd = _DF(1.0) + _DF(1.0e-10), sqreps = _DF(0.05), epsmax = _DF(1.0), epscl = _DF(1.0e4);
-	/**
-	 * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least
-	 * three corrector iterations are performed. For most problems, the stability check is not needed, and eliminating
-	 * the calculations and logic associated with the check enhances performance.
-	 * @param itermax: iterations of correction
-	 * @param ymin: minimum concentration allowed for species i, too much low ymin decrease performance
-	 * 	*NOTE: initializing time intergation control
-	 * @param dto: original dt for a integration step
-	 * @param tfd: round-off parameter used to determine when integration is complete
-	 * @param epsmin: to calculate initial time step of q2 integral, intializa into _DF(1e-04).
-	 * @param scrtch: to calculate initial time step of q2 integral, intializa into _DF(1e-25).
-	 * @param sqreps: 5.0*sycl::sqrt(epsmin), parameter used to calculate initial timestep
-	 * @param dtmin: minimum dt for each step, automatically relax convergence restrictions while dt<=dtmin*dto for a step .
-	 * 	*NOTE: epsion contrl
-	 * @param eps: error epslion, intializa into _DF(1e-10).
-	 * @param epsmax: if this previous step not converged, higher for low accuracy and higher performace.
-	 * @param epscl: 1.0/epsmin, intermediate variable used to avoid repeated divisions, higher epscl leading to higher accuracy and lower performace.
-	 */
 
 	real_t ys[_NS], y1[_NS];
 	real_t rtau[_NS], scrarray[_NS];						 //  \delta y based input y_i value for calculate predicted value y_i^p
@@ -291,8 +288,7 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 
 	//=========================================================
 	// // initial p and d before predicting
-	real_t dTdt = _DF(0.0);
-	dTdt = evalcv<_NS, _NR>(tm, rn, y, q, d, rho, TTn, m_p);
+	real_t dTdt = evalcv<_NS, _NR>(tm, rn, y, q, d, rho, TTn, m_p);
 	gcount++;
 	// // to initilize the first 'dt'
 	for (int i = 0; i < _NS; i++)
@@ -300,7 +296,6 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 		const real_t ascr = sycl::fabs(q[i]);
 		const real_t scr2 = xfrsign(_DF(1.0) / y[i], _DF(0.1) * epsmin * ascr - d[i]);
 		const real_t scr1 = scr2 * d[i];
-
 		// // // If the species is already at the minimum, disregard destruction when calculating step size
 		scrtch = sycl::max(-sycl::fabs(ascr - d[i]) * scr2, sycl::max(scr1, scrtch));
 	}
@@ -318,6 +313,7 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 			ys[i] = y[i];				// y before prediction
 			qs[i] = q[i], ds[i] = d[i]; // q and d before prediction
 		}
+		dTdt = evalcv<_NS, _NR>(tm, rn, y, q, d, rho, TTn, m_p);
 
 		// a beginning of prediction
 	apredictor:
@@ -328,12 +324,15 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 			real_t alpha = Alpha(rtau[i]);
 			scrarray[i] = dt * (qs[i] - ds[i]) / (_DF(1.0) + alpha * rtau[i]); // \delta y
 		}
-		// // // begin correction while loop
+
+		/** begin correction while loop
+		 * Iteration for correction, one prediction and itermax correction
+		 * if itermax > 1, need add dt recalculator based Ref.eq(48),
+		 * or even more restrict requirement Ref.eq(47) for each iter
+		 */
 		// iter = 1;
 		// while (iter <= itermax)
 		{
-			// Iteration for correction, one prediction and itermax correction
-			// if itermax > 1, need add dt recalculator based Ref.eq(48), or even more restrict requirement Ref.eq(47) for each iter
 			gcount++;
 
 			for (int i = 0; i < _NS; i++)
@@ -349,14 +348,13 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 			}
 
 			// // get predicted q^p , d^p based predictd y
-			dTdt = evalcv<_NS, _NR>(tm, rn, y, q, d, rho, TTs, m_p);
+			evalcv<_NS, _NR>(tm, rn, y, q, d, rho, TTs, m_p);
 
 			for (int i = 0; i < _NS; i++)
 			{
 				const real_t rtaub = _DF(0.5) * (rtau[i] + dt * d[i] / y[i]); // p*dt
 				const real_t alpha = Alpha(rtaub);
 				const real_t qt = (_DF(1.0) - alpha) * qs[i] + alpha * q[i]; // q
-				// real_t pb = rtaub / dt;
 				scrarray[i] = (qt * dt - rtaub * ys[i]) / (_DF(1.0) + alpha * rtaub);
 				// y[i] = sycl::max(ys[i] + scrarray[i], ymin); // correctied y
 			}
@@ -405,8 +403,10 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 		// // // Rebegin the step if  this previous step not converged
 		if (eps > epsmax)
 		{
-			dt = sycl::min(dt, _DF(0.34) * dto); // add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
+			// add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
+			dt = sycl::min(dt, _DF(0.34) * dto);
 			rcount++;
+			// while dt is too small, releax the convergent criterion
 			if (dt <= dtmin)
 				epsmax *= _DF(10.0);
 			// dto = dt / dto;
@@ -418,7 +418,6 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 		// // A valid time step has done
 		epsmax = _DF(1.0);
 		TTn = TTs + dTdt * dto; // new T
-		dTdt = evalcv<_NS, _NR>(tm, rn, y, q, d, rho, TTn, m_p);
 		gcount++;
 	}
 }

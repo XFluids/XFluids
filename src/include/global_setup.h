@@ -10,8 +10,9 @@
 #include "Eigen_global_definition.h"
 #endif
 
-#include "global_undef.h"
+#include "compile_sycl.h"
 #include "global_marco.h"
+#include "global_undef.h"
 
 #define MAX_SPECIES NUM_SPECIES
 

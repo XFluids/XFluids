@@ -103,13 +103,13 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 	updatestatesCp((real_t *)NV_DATA_S(m_y));
 
 	// Processing ChemQ2 solver
-	ChemQ2Solver();
+	ChemQ2Solver(); // if (ReactSources && ODETest_json)
 }
 
 void CanteraInterface::CVodeSolver()
 {
 	IniCVode(); // Ini
-	std::cout << "\ntime (s),Temperature (K),Density (kg/m3),Pressure (Pa)" << std::endl;
+	std::cout << "\nzone t='XFluids-CVode'" << std::endl;
 	for (size_t i = 0; i <= zl.nsteps; i++)
 	{
 		IntegrateCVode(i * zl.dt);
@@ -131,7 +131,7 @@ void CanteraInterface::CVodeSolver()
 void CanteraInterface::ChemQ2Solver()
 {
 	real_t *y = (real_t *)NV_DATA_S(m_y);
-	std::cout << "\ntime (s),Temperature (K),Density (kg/m3),Pressure (Pa)" << std::endl;
+	std::cout << "\nzone t='XFluids-ChemQ2'" << std::endl;
 	for (size_t i = 0; i <= zl.nsteps; i++)
 	{
 		m_t = i * zl.dt;

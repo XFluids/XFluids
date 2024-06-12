@@ -66,10 +66,3 @@
 #ifndef RPath
 #define RPath "./"
 #endif
-
-#ifndef SYCL_KERNEL
-#define SYCL_KERNEL
-#endif
-#ifndef SYCL_DEVICE
-#define SYCL_DEVICE
-#endif

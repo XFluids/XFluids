@@ -1,6 +1,5 @@
 #pragma once
 
-#include "cantera/zerodim.h"
 #include "../../include/global_setup.h"
 #include "cantera/ext/cvodes/cvodes.h"
 #include "cantera/ext/cvodes/cvodes_direct.h"
