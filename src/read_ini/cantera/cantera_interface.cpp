@@ -69,7 +69,8 @@ ZdCrtl CanteraInterface::zl = ZdCrtl();
 
 CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpecies, ZdCrtl Zl)
 {
-	kinetics1(zl, 0, 0);
+	CpTfinal = kinetics1Cp(zl, 0, 0);
+	CpTfinal = kinetics1Cv(zl, 0, 0);
 
 	// Ini Thermal and Reaction objects.
 	tm = Tm, rn = Rn, m_p = Zl.P, m_tmp = Zl.T;
@@ -91,7 +92,7 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 	updatestatesCp((real_t *)NV_DATA_S(m_y));
 
 	// Processing CVode solver
-	CVodeSolver();
+	CpTfinalXFCVode = CVodeSolver();
 
 	// ReIni Thermal and Reaction objects.
 	tm = Tm, rn = Rn, m_p = Zl.P, m_tmp = Zl.T;
@@ -103,13 +104,19 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 	updatestatesCp((real_t *)NV_DATA_S(m_y));
 
 	// Processing ChemQ2 solver
-	ChemQ2Solver(); // if (ReactSources && ODETest_json)
+	CpTfinalXFQ2 = ChemQ2Solver(); // if (ReactSources && ODETest_json)
+
+	if (std::abs(CpTfinalXFCVode / CpTfinal - 1.0) > 0.001)
+	{
+		std::cout << "XFluids-CVode 0D-" << Type << " solving failed !" << std::endl;
+		abort();
+	}
 }
 
-void CanteraInterface::CVodeSolver()
+float CanteraInterface::CVodeSolver()
 {
 	IniCVode(); // Ini
-	std::cout << "\nzone t='XFluids-CVode'" << std::endl;
+	std::cout << "\nzone t='XFluids-CVode-" << Type << "'" << std::endl;
 	for (size_t i = 0; i <= zl.nsteps; i++)
 	{
 		IntegrateCVode(i * zl.dt);
@@ -125,13 +132,15 @@ void CanteraInterface::CVodeSolver()
 		std::cout << m_xm[m_xm.size() - 1];
 		std::cout << std::endl;
 	}
+
+	return NV_Ith_S(m_y, 1);
 }
 
 // NOTE: set to constant volume model now, model types in Chemq2 defined by updatestatesCp/Cv function and evalcp/cv in Chemq2Wrapper
-void CanteraInterface::ChemQ2Solver()
+float CanteraInterface::ChemQ2Solver()
 {
 	real_t *y = (real_t *)NV_DATA_S(m_y);
-	std::cout << "\nzone t='XFluids-ChemQ2'" << std::endl;
+	std::cout << "\nzone t='XFluids-ChemQ2" << Type << "'" << std::endl;
 	for (size_t i = 0; i <= zl.nsteps; i++)
 	{
 		m_t = i * zl.dt;
@@ -148,8 +157,13 @@ void CanteraInterface::ChemQ2Solver()
 		std::cout << m_xm[m_xm.size() - 1];
 		std::cout << std::endl;
 
-		Chemq2Wrapper(tm, rn, y + 1, zl.dt, m_dens, m_p);
+		// // NOTE: In this version, temperature is not as a solution element of vector y, and the test is corresponding to the CVode
+		// Chemq2WrapperCv0(tm, rn, y + 1, zl.dt, m_dens, m_p);
+		// NOTE: In this version, temperature is solved as a solution element of vector y like CVode does
+		Chemq2WrapperCv1(tm, rn, y + 1, zl.dt, m_dens, m_p);
 	}
+
+	return *(y + 1);
 }
 
 void CanteraInterface::IniCVode()

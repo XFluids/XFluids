@@ -5,7 +5,8 @@
 #include "../read_ini/setupini.h"
 
 template <int _NS = 1, int _NR>
-extern SYCL_KERNEL void ChemeODEQ2SolverKernel(int i, int j, int k, MeshSize bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *p, const real_t dt)
+extern SYCL_KERNEL void ChemeODEQ2SolverKernel0(int i, int j, int k, MeshSize bl, Thermal thermal, Reaction react,
+												real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *p, const real_t dt)
 {
 	MARCO_DOMAIN();
 	if (i >= Xmax - bl.Bwidth_X)
@@ -17,26 +18,66 @@ extern SYCL_KERNEL void ChemeODEQ2SolverKernel(int i, int j, int k, MeshSize bl,
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-	real_t *yi = &(y[_NS * id]);
-	Chemeq2<_NS, _NR>(&thermal, &react, yi, dt, T[id], rho[id], p[id]);
-	// update partial density according to C0
-	for (int n = 0; n < NUM_COP; n++)
-	{
-		UI[Emax * id + n + 5] = yi[n] * rho[id];
-	}
+	real_t _yi[_NS], *yi = &(y[_NS * id]), TT = T[id];
+	for (int n = 0; n < _NS; n++)
+		_yi[n] = yi[n];
+	Chemeq2<_NS, _NR>(&thermal, &react, _yi, dt, TT, rho[id], p[id]);
+
+	// update partial density according to output of ChemQ2
+	T[id] = TT;
+	real_t *_U = &(UI[Emax * id + 5]);
+	for (int n = 0; n < _NS - 1; n++)
+		_U[n] = _yi[n] * rho[id];
+}
+
+template <int _NS = 1, int _NR>
+extern SYCL_KERNEL void ChemeODEQ2SolverKernel1(int i, int j, int k, MeshSize bl, Thermal thermal, Reaction react,
+												real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *p, const real_t dt)
+{
+	MARCO_DOMAIN();
+	if (i >= Xmax - bl.Bwidth_X)
+		return;
+	if (j >= Ymax - bl.Bwidth_Y)
+		return;
+	if (k >= Zmax - bl.Bwidth_Z)
+		return;
+
+	int id = Xmax * Ymax * k + Xmax * j + i;
+
+	real_t _y[_NS + 1] = {T[id]}, *yi = &(y[_NS * id]), *_yi = _y + 1;
+	for (int n = 0; n < _NS; n++)
+		_yi[n] = yi[n];
+	Chemeq2<_NS, _NR>(&thermal, &react, _y, dt, rho[id], p[id]);
+
+	// update partial density according to output of ChemQ2
+	T[id] = _y[0];
+	real_t *_U = &(UI[Emax * id + 5]);
+	for (int n = 0; n < _NS - 1; n++)
+		_U[n] = _yi[n] * rho[id];
 }
 
 #if __VENDOR_SUBMIT__
 
 template <int _NS = 1, int _NR>
 _VENDOR_KERNEL_LB_(__LBMt, 1)
-void ChemeODEQ2SolverKernelVendorWrapper(MeshSize bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *p, const real_t dt)
+void ChemeODEQ2SolverKernelVendorWrapper0(MeshSize bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *p, const real_t dt)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x + bl.Bwidth_X;
 	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y;
 	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z;
 
-	ChemeODEQ2SolverKernel<_NS, _NR>(i, j, k, bl, thermal, react, UI, y, rho, T, p, dt);
+	ChemeODEQ2SolverKernel0<_NS, _NR>(i, j, k, bl, thermal, react, UI, y, rho, T, p, dt);
+}
+
+template <int _NS = 1, int _NR>
+_VENDOR_KERNEL_LB_(__LBMt, 1)
+void ChemeODEQ2SolverKernelVendorWrapper1(MeshSize bl, Thermal thermal, Reaction react, real_t *UI, real_t *y, real_t *rho, real_t *T, real_t *p, const real_t dt)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x + bl.Bwidth_X;
+	int j = blockIdx.y * blockDim.y + threadIdx.y + bl.Bwidth_Y;
+	int k = blockIdx.z * blockDim.z + threadIdx.z + bl.Bwidth_Z;
+
+	ChemeODEQ2SolverKernel1<_NS, _NR>(i, j, k, bl, thermal, react, UI, y, rho, T, p, dt);
 }
 
 #endif

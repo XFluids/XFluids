@@ -10,6 +10,7 @@
 class CanteraInterface
 {
 private:
+	std::string Type = "ConstVolume";
 	// number of species and solving parameters(=number of species+tempreature+mass).
 	sunindextype m_nspecies, m_neq, m_nv;
 	// mass, volume, density, tempreature, pressure, mean molecular weight, enthalpy, internal Energy of the mixture (kg kmol-1).
@@ -30,6 +31,8 @@ private:
 	SUNMatrix m_linsol_matrix = nullptr;
 	SUNLinearSolver m_linsol = nullptr;
 
+	float CpTfinal, CvTfinal, CpTfinalXFCVode, CvTfinalXFCVode, CpTfinalXFQ2, CvTfinalXFQ2;
+
 public:
 	Thermal *tm;
 	Reaction *rn;
@@ -40,13 +43,13 @@ public:
 	~CanteraInterface(){};
 	CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpecies, ZdCrtl Zl = zl);
 
-	void CVodeSolver();
+	float CVodeSolver();
 	void IniCVode();
 	void IntegrateCVode(real_t tout);
 	void evalCp(real_t t, real_t *y, real_t *ydot);
 	void evalCv(real_t t, real_t *y, real_t *ydot);
 
-	void ChemQ2Solver();
+	float ChemQ2Solver();
 
 	void updatestatesCp(real_t *y);
 	void updatestatesCv(real_t *y);

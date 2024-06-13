@@ -20,7 +20,7 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 #if __VENDOR_SUBMIT__
 	CheckGPUErrors(vendorSetDevice(Fs.DeviceSelect[2]));
 	static bool dummy = (GetKernelAttributes((const void *)ChemeODEQ2SolverKernelVendorWrapper, "ChemeODEQ2SolverKernelVendorWrapper"), true); // call only once
-	ChemeODEQ2SolverKernelVendorWrapper<NUM_SPECIES, NUM_REA><<<temk.global_gd(global_ndrange), temk.local_blk>>>(ms, thermal, react, UI, fdata.y, rho, T, fdata.p, dt);
+	ChemeODEQ2SolverKernelVendorWrapper1<NUM_SPECIES, NUM_REA><<<temk.global_gd(global_ndrange), temk.local_blk>>>(ms, thermal, react, UI, fdata.y, rho, T, fdata.p, dt);
 	CheckGPUErrors(vendorDeviceSynchronize());
 #else
 	q.submit([&](sycl::handler &h) {																					//
@@ -28,7 +28,7 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 			 int i = index.get_global_id(0) + ms.Bwidth_X;
 			 int j = index.get_global_id(1) + ms.Bwidth_Y;
 			 int k = index.get_global_id(2) + ms.Bwidth_Z;
-			 ChemeODEQ2SolverKernel<NUM_SPECIES, NUM_REA>(i, j, k, ms, thermal, react, UI, fdata.y, rho, T, fdata.p, dt);
+			 ChemeODEQ2SolverKernel1<NUM_SPECIES, NUM_REA>(i, j, k, ms, thermal, react, UI, fdata.y, rho, T, fdata.p, dt);
 		 });
 	 })
 		.wait();

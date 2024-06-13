@@ -68,6 +68,13 @@ extern real_t evalcpWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, re
 extern real_t evalcvWrapper(Thermal *tm, Reaction *rn, real_t *yi, real_t *q, real_t *p, const real_t m_dens, const real_t m_tmp, const real_t m_p);
 
 /**
+ * @brief NOTE: In this version, temperature is not as a solution element of vector y, and the test is corresponding to the CVode
  * @brief Compute the production rate of constant volume model
  */
-void Chemq2Wrapper(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p);
+void Chemq2WrapperCv0(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p);
+
+/**
+ * @brief NOTE: In this version, temperature is solved as a solution element of vector y like CVode does
+ * @brief Compute the production rate of constant volume model
+ */
+void Chemq2WrapperCv1(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p);
