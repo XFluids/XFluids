@@ -70,7 +70,7 @@ ZdCrtl CanteraInterface::zl = ZdCrtl();
 CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpecies, ZdCrtl Zl)
 {
 	CpTfinal = kinetics1Cp(zl, 0, 0);
-	CpTfinal = kinetics1Cv(zl, 0, 0);
+	CvTfinal = kinetics1Cv(zl, 0, 0);
 
 	// Ini Thermal and Reaction objects.
 	tm = Tm, rn = Rn, m_p = Zl.P, m_tmp = Zl.T;
@@ -92,7 +92,7 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 	updatestatesCp((real_t *)NV_DATA_S(m_y));
 
 	// Processing CVode solver
-	CpTfinalXFCVode = CVodeSolver();
+	CvTfinalXFCVode = CVodeSolver();
 
 	// ReIni Thermal and Reaction objects.
 	tm = Tm, rn = Rn, m_p = Zl.P, m_tmp = Zl.T;
@@ -104,9 +104,9 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 	updatestatesCp((real_t *)NV_DATA_S(m_y));
 
 	// Processing ChemQ2 solver
-	CpTfinalXFQ2 = ChemQ2Solver(); // if (ReactSources && ODETest_json)
+	CvTfinalXFQ2 = ChemQ2Solver(); // if (ReactSources && ODETest_json)
 
-	if (std::abs(CpTfinalXFCVode / CpTfinal - 1.0) > 0.001)
+	if (std::abs(CvTfinalXFCVode / CvTfinal - 1.0) > 0.001)
 	{
 		std::cout << "XFluids-CVode 0D-" << Type << " solving failed !" << std::endl;
 		abort();

@@ -18,16 +18,20 @@ extern SYCL_KERNEL void ChemeODEQ2SolverKernel0(int i, int j, int k, MeshSize bl
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-	real_t _yi[_NS], *yi = &(y[_NS * id]), TT = T[id];
+	real_t _yi[_NS], *yi = &(y[_NS * id]), TT = T[id], _rho = rho[id];
 	for (int n = 0; n < _NS; n++)
 		_yi[n] = yi[n];
-	Chemeq2<_NS, _NR>(&thermal, &react, _yi, dt, TT, rho[id], p[id]);
+
+	real_t e0 = get_Cope(thermal, _yi, TT);
+	Chemeq2<_NS, _NR>(&thermal, &react, _yi, dt, TT, _rho, p[id]);
 
 	// update partial density according to output of ChemQ2
-	T[id] = TT;
 	real_t *_U = &(UI[Emax * id + 5]);
+	real_t e1 = get_Cope(thermal, _yi, TT);
+
 	for (int n = 0; n < _NS - 1; n++)
-		_U[n] = _yi[n] * rho[id];
+		_U[n] = _yi[n] * _rho;
+	T[id] = TT, *(--_U) += (e1 - e0) * _rho;
 }
 
 template <int _NS = 1, int _NR>
@@ -44,16 +48,19 @@ extern SYCL_KERNEL void ChemeODEQ2SolverKernel1(int i, int j, int k, MeshSize bl
 
 	int id = Xmax * Ymax * k + Xmax * j + i;
 
-	real_t _y[_NS + 1] = {T[id]}, *yi = &(y[_NS * id]), *_yi = _y + 1;
+	real_t _y[_NS + 1] = {T[id]}, *yi = &(y[_NS * id]), *_yi = _y + 1, _rho = rho[id];
 	for (int n = 0; n < _NS; n++)
 		_yi[n] = yi[n];
-	Chemeq2<_NS, _NR>(&thermal, &react, _y, dt, rho[id], p[id]);
+	real_t e0 = get_Cope(thermal, _yi, _y[0]);
+	Chemeq2<_NS, _NR>(&thermal, &react, _y, dt, _rho, p[id]);
 
 	// update partial density according to output of ChemQ2
-	T[id] = _y[0];
 	real_t *_U = &(UI[Emax * id + 5]);
+	real_t e1 = get_Cope(thermal, _yi, _y[0]);
+
 	for (int n = 0; n < _NS - 1; n++)
-		_U[n] = _yi[n] * rho[id];
+		_U[n] = _yi[n] * _rho;
+	T[id] = _y[0], *(--_U) += (e1 - e0) * _rho;
 }
 
 #if __VENDOR_SUBMIT__

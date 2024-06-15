@@ -140,6 +140,20 @@ SYCL_DEVICE inline real_t get_Coph(Thermal thermal, const real_t *yi, const real
 }
 
 /**
+ * @brief calculate ei of Mixture at given point	unit:J/kg/K
+ */
+SYCL_DEVICE inline real_t get_Cope(Thermal thermal, const real_t *yi, const real_t T)
+{
+	real_t e = _DF(0.0);
+	for (size_t i = 0; i < NUM_SPECIES; i++)
+	{
+		real_t ei = get_Internale(thermal.Hia, thermal.Hib, T, thermal.Ri[i], i);
+		e += ei * yi[i];
+	}
+	return e;
+}
+
+/**
  *@brief sub_function_Steps of update T
  */
 SYCL_DEVICE inline void sub_FuncT(real_t &func_T, real_t &dfunc_T, Thermal thermal, const real_t *yi, const real_t e, const real_t T)
