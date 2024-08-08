@@ -90,8 +90,22 @@ IF(Visc)
   ENDIF(Visc_Diffu)
 ENDIF(Visc)
 
-# MPI libs
+# =======================================================
+# #### add external libs
+# =======================================================
+include_directories(BEFORE
+	${CMAKE_SOURCE_DIR}/external)
+
+## MPI libs
 IF(USE_MPI)
   include(init_mpi)
-  add_subdirectory(mpiUtils)
+  add_subdirectory(external/mpiUtils)
 ENDIF() # sources
+## timer libs
+add_subdirectory(external/timer)
+## strsplit libs
+add_subdirectory(external/strsplit)
+## ndassign libs
+add_subdirectory(external/ndassign)
+## kernel attribute libs
+add_subdirectory(external/kattribute)

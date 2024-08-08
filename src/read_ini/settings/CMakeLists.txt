@@ -6,6 +6,6 @@ target_sources(settings
 	${CMAKE_CURRENT_SOURCE_DIR}/read_json.cpp
 )
 
-IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+IF(SYCL_COMPILE_SYSTEM STREQUAL "ACPP")
 	add_sycl_to_target(TARGET settings)
 ENDIF()

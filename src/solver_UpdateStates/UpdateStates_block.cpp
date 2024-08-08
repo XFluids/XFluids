@@ -1,8 +1,8 @@
-#include "../timer/timer.h"
+#include "timer/timer.h"
 #include "Update_kernels.hpp"
 #include "Estimate_kernels.hpp"
 #include "UpdateStates_block.h"
-#include "../utils/atttribute/attribute.h"
+#include "kattribute/attribute.h"
 
 std::pair<bool, std::vector<float>> UpdateFluidStateFlux(sycl::queue &q, Setup Ss, Thermal thermal, real_t *UI,
 														 FlowData &fdata, real_t *FluxF, real_t *FluxG, real_t *FluxH,

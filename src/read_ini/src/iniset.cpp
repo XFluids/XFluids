@@ -216,7 +216,7 @@ void Setup::ReWrite()
     std::vector<int> devapa = apa.match<int>("-dev");
     if (!std::empty(devapa))
         DeviceSelect = devapa;
-#if defined(DEFINED_OPENSYCL)
+#if defined(__ACPP__)
     DeviceSelect[2] += myRank % DeviceSelect[0];
 #else  // for oneAPI
     DeviceSelect[1] += myRank % DeviceSelect[0];

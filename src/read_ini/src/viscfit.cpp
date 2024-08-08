@@ -1,5 +1,5 @@
 #include "../setupini.h"
-#include "wheels/mixture.hpp"
+#include "../mixture.hpp"
 #include "../../solver_Ini/Mixing_device.h"
 #include "../../solver_Reconstruction/viscosity/Visc_device.h"
 
@@ -205,7 +205,7 @@ void Setup::VisCoeffsAccuracyTest(real_t Tmin, real_t Tmax)
 {
     size_t reso = std::max(200, BlSz.X_inner);
     // // out Thermal
-    std::string file_name = OutputDir + "/viscosity-thermal.dat";
+    std::string file_name = OutputDir + "/viscosity-thermal-contrast.dat";
     std::ofstream theo(file_name);
     theo << "variables= Temperature(K)";
     for (size_t k = 0; k < species_name.size(); k++)
@@ -223,6 +223,7 @@ void Setup::VisCoeffsAccuracyTest(real_t Tmin, real_t Tmax)
         theo << "," << species_name[k] << "_S_NASA";
         theo << "," << species_name[k] << "_S_JANAF";
     }
+    theo << "\n";
     for (size_t i = 1; i <= reso; i++)
     {
         real_t Tpoint = Tmin + (i / real_t(reso)) * (Tmax - Tmin);

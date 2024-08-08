@@ -1,7 +1,7 @@
 IF(USE_MPI)
-	find_library(mpiPacks NAMES libmpiPacks.a HINTS "${LIBRARY_OUTPUT_PATH}")
+	# find_library(mpiPacks NAMES libmpiPacks.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
-	IF("${mpiPacks}" STREQUAL "mpiPacks-NOTFOUND")
+	# IF("${mpiPacks}" STREQUAL "mpiPacks-NOTFOUND")
 		add_library(mpiPacks "")
 		target_sources(mpiPacks
 			PRIVATE
@@ -13,17 +13,18 @@ IF(USE_MPI)
 			mpiUtils
 		)
 
-		IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+		IF(SYCL_COMPILE_SYSTEM STREQUAL "ACPP")
 			add_sycl_to_target(TARGET mpiPacks)
 		ENDIF()
-	ELSE()
-		message(STATUS "${mpiPacks} is located at ${LIBRARY_OUTPUT_PATH}")
-		add_library(mpiPacks STATIC IMPORTED GLOBAL)
-		set_property(TARGET mpiPacks
-			PROPERTY IMPORTED_LOCATION ${mpiPacks})
-		target_link_libraries(mpiPacks
-			INTERFACE
-			mpiUtils
-		)
-	ENDIF()
+	
+	# ELSE()
+	# 	message(STATUS "${mpiPacks} is located at ${LIBRARY_OUTPUT_PATH}")
+	# 	add_library(mpiPacks STATIC IMPORTED GLOBAL)
+	# 	set_property(TARGET mpiPacks
+	# 		PROPERTY IMPORTED_LOCATION ${mpiPacks})
+	# 	target_link_libraries(mpiPacks
+	# 		INTERFACE
+	# 		mpiUtils
+	# 	)
+	# ENDIF()
 ENDIF()

@@ -1,15 +1,9 @@
 #pragma once
 
 #include <unistd.h>
-#include "../../../include/global_setup.h"
 
-#if USE_CXX_BOOST
 #include <boost/filesystem.hpp>
 namespace fsm = boost::filesystem;
-#else
-#include <filesystem>
-namespace fsm = std::filesystem;
-#endif // end USE_CXX_BOOST
 
 // =======================================================
 // // // set work dir

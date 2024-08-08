@@ -1,7 +1,7 @@
 #pragma once
 
 // program headers
-#include "utils/diskinfo.hpp"
+#include "diskinfo.hpp"
 #include "read_ini/setupini.h"
 #include "include/global_setup.h"
 

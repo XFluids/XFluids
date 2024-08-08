@@ -1,13 +1,13 @@
 add_subdirectory(cantera)
-add_subdirectory(src)
 add_subdirectory(inishape)
 add_subdirectory(settings)
-add_subdirectory(strsplit)
+add_subdirectory(outformat)
+add_subdirectory(src)
 
-# # add readini lib
-find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
+# # # add readini lib
+# find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")
 
-IF("${readini}" STREQUAL "readini-NOTFOUND")
+# IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
 
     # #add libs
@@ -37,37 +37,38 @@ IF("${readini}" STREQUAL "readini-NOTFOUND")
         )
     ENDIF(BOOST_CXX)
 
-    IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+    IF(SYCL_COMPILE_SYSTEM STREQUAL "ACPP")
         add_sycl_to_target(TARGET readini)
     ENDIF()
-ELSE()
-    message(STATUS "${readini} is located at ${LIBRARY_OUTPUT_PATH}")
-    add_library(readini STATIC IMPORTED GLOBAL)
-    set_property(TARGET readini
-        PROPERTY IMPORTED_LOCATION ${readini})
-    target_link_libraries(readini
-        INTERFACE
-        outFmt
-        readini_cos
-        readini_set
-        readini_rea
-        readini_visc
-        readini_them
-        readini_copy
-        readini_print
-    )
-    target_link_libraries(readini
-        INTERFACE
-        inishape
-        readgrid
-        settings
-        strsplit
-    )
 
-    IF(BOOST_CXX)
-        target_link_libraries(readini
-            INTERFACE
-            ${boost_filesystem}
-        )
-    ENDIF(BOOST_CXX)
-ENDIF()
+# ELSE()
+#     message(STATUS "${readini} is located at ${LIBRARY_OUTPUT_PATH}")
+#     add_library(readini STATIC IMPORTED GLOBAL)
+#     set_property(TARGET readini
+#         PROPERTY IMPORTED_LOCATION ${readini})
+#     target_link_libraries(readini
+#         INTERFACE
+#         outFmt
+#         readini_cos
+#         readini_set
+#         readini_rea
+#         readini_visc
+#         readini_them
+#         readini_copy
+#         readini_print
+#     )
+#     target_link_libraries(readini
+#         INTERFACE
+#         inishape
+#         readgrid
+#         settings
+#         strsplit
+#     )
+
+#     IF(BOOST_CXX)
+#         target_link_libraries(readini
+#             INTERFACE
+#             ${boost_filesystem}
+#         )
+#     ENDIF(BOOST_CXX)
+# ENDIF()

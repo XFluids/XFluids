@@ -30,7 +30,7 @@ extern void InitialStatesKernel(int i, int j, int k, Block bl, IniShape ini, Mat
     v[id] = _DF(0.0);
     w[id] = _DF(0.0);
 
-    // // 1D multicomponent insert shock tube
+    // // 1D multicomponent inert shock tube
     if (x < ini.blast_center_x) // 0.05) // ini.blast_center_x) // (i > 3)
     {
         T[id] = ini.blast_T_in;

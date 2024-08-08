@@ -1,5 +1,5 @@
 #include "../setupini.h"
-#include "wheels/fworkdir.hpp"
+#include "fworkdir.hpp"
 #include "../cantera/cantera_interface.h"
 
 // =======================================================

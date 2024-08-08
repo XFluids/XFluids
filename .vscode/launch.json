@@ -10,7 +10,7 @@
             "args": ["/home/ljl/Apps/anaconda3", "Debug"]
         },
         {
-            "name": "OpenSYCL C++: Launch & Run",
+            "name": "AdaptiveCpp C++: Launch & Run",
             "type": "lldb",
             "request": "launch",
             "preLaunchTask": "",
@@ -25,7 +25,7 @@
             ],
         },
         {
-            "name": "OpenSYCL MPI: Attach",
+            "name": "AdaptiveCpp MPI: Attach",
             "type": "lldb",
             "request": "attach",
             "pid": "${command:pickMyProcess}" // use ${command:pickProcess} to pick other users' processes

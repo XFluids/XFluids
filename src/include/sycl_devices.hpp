@@ -16,7 +16,7 @@ using namespace sycl;
 #define sycl_reduction_max(argus) sycl::reduction(&(argus), sycl::maximum<>())
 #define sycl_reduction_min(argus) sycl::reduction(&(argus), sycl::minimum<>())
 
-#elif defined(DEFINED_OPENSYCL)
+#elif defined(__ACPP__)
 #define sycl_plus_op(T) sycl::plus<T>()
 #define sycl_max_op(T) sycl::maximum<T>()
 #define sycl_min_op(T) sycl::minimum<T>()

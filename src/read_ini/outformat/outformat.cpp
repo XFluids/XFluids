@@ -1,5 +1,5 @@
 #include "outformat.h"
-#include "../../strsplit/strsplit.h"
+#include "strsplit/strsplit.h"
 
 /**
  * @brief

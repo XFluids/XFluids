@@ -3,19 +3,18 @@
 // // global header
 #include "../include/global_setup.h"
 // //  use middleware
-#include "../include/middle.hpp"
-#include "../include/compile_sycl.h"
+#include "middle.hpp"
 // // internal header
 #include "options.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
-#include "src/ndassign/ndassign.h"
-#include "src/outformat/outformat.h"
+#include "ndassign/ndassign.h"
+#include "outformat/outformat.h"
 // // external header
 #ifdef USE_MPI
-#include "../mpiPacks/mpiPacks.h"
+#include "mpiPacks/mpiPacks.h"
 #endif
-#include "../read_grid/readgrid.h"
+#include "read_grid/readgrid.h"
 
 struct Setup
 {

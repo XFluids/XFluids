@@ -1,5 +1,14 @@
 #pragma once
 
+#if defined(__ACPP_ENABLE_CUDA_TARGET__)
+#include <cuda_runtime.h>
+#endif
+
+#if defined(__ACPP_ENABLE_HIP_TARGET__)
+// #define __HIP_PLATFORM_AMD__
+#include <hip/hip_runtime.h>
+#endif
+
 // =======================================================
 // //    sycL_Kernel attribute
 #if defined(DEFINED_ONEAPI)
@@ -7,7 +16,7 @@
 #define SYCL_DEVICE
 #define __LBMt 256
 
-#elif defined(DEFINED_OPENSYCL)
+#elif defined(__ACPP__)
 // // OpenSYCL HIP Target
 #ifdef __HIPSYCL_ENABLE_HIP_TARGET__
 #define __LBMt 256 // <=256 for HIP

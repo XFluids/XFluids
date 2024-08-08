@@ -9,7 +9,7 @@
 - H2O-N2_25_reaction for chemeq2 validation, see NEW QUASI-STEADY-STATE AND PARTIAL-EQUILIBRIUM M ETHODS FOR INTEGRATING CHEMICALLY REACTING SYSTEMS
 - RSBI_18/19REA modified from H2O_18/19_reaction are Reaction model for reacting shock-bubble interaction(RSBI) as Ref4.Three-dimensional reacting shock–bubble interaction:
   - replace AR with Xe, third-body of Xe coeffs are the same as AR
-  - add N2 as the tenth insert gas species
+  - add N2 as the tenth inert gas species
 
 #### Arrhenius Law form
 
