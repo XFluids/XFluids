@@ -1,8 +1,8 @@
 add_subdirectory(cantera)
-add_subdirectory(src)
 add_subdirectory(inishape)
 add_subdirectory(settings)
-add_subdirectory(strsplit)
+add_subdirectory(outformat)
+add_subdirectory(src)
 
 # # add readini lib
 find_library(readini NAMES libreadini.a HINTS "${LIBRARY_OUTPUT_PATH}")

@@ -18,9 +18,9 @@ IF("${libmpiUtils}" STREQUAL "libmpiUtils-NOTFOUND")
     ${CMAKE_CURRENT_SOURCE_DIR}/MpiCommCart.h
   )
 
-  IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
-    add_sycl_to_target(TARGET mpiUtils)
-  ENDIF()
+  # IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
+  #   add_sycl_to_target(TARGET mpiUtils)
+  # ENDIF()
 
   target_link_libraries(mpiUtils
     PUBLIC

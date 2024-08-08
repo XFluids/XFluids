@@ -6,9 +6,6 @@ IF("${attribute}" STREQUAL "attribute-NOTFOUND")
 		STATIC
 		${CMAKE_CURRENT_SOURCE_DIR}/attribute.cpp
 	)
-	IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
-		add_sycl_to_target(TARGET attribute)
-	ENDIF()
 
 ELSE()
 	message(STATUS "${attribute} is located at ${LIBRARY_OUTPUT_PATH}")

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include "../../include/global_setup.h"
 
 struct Assign
 {
@@ -10,7 +9,7 @@ struct Assign
 	sycl::range<3> local_nd;
 
 	Assign();
-	~Assign(){};
+	~Assign() {};
 	Assign(sycl::range<3> lnd, std::string T = "undefined block");
 	Assign(size_t x, size_t y, size_t z, std::string T = "undefined block");
 	sycl::range<3> global_nd(sycl::range<3> gnd);

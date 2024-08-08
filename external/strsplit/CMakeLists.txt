@@ -9,10 +9,6 @@ IF("${strsplit}" STREQUAL "strsplit-NOTFOUND")
 		${CMAKE_CURRENT_SOURCE_DIR}/strsplit.cpp
 	)
 
-	IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
-		add_sycl_to_target(TARGET strsplit)
-	ENDIF()
-
 ELSE()
 	message(STATUS "${strsplit} is located at ${LIBRARY_OUTPUT_PATH}")
 	add_library(strsplit STATIC IMPORTED GLOBAL)

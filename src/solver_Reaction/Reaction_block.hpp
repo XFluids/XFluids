@@ -1,5 +1,5 @@
 #include "Reaction_kernels.hpp"
-#include "../utils/atttribute/attribute.h"
+#include "kattribute/attribute.h"
 
 void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdata, real_t *UI, Reaction react, const real_t dt)
 {

@@ -1,5 +1,3 @@
-add_subdirectory(ndassign)
-add_subdirectory(outformat)
 # # constructor
 find_library(readini_cos NAMES libreadini_cos.a HINTS "${LIBRARY_OUTPUT_PATH}")
 

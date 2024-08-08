@@ -7,9 +7,6 @@ IF("${timer}" STREQUAL "timer-NOTFOUND")
 		timer.cpp
 	)
 
-	IF(SYCL_COMPILE_SYSTEM STREQUAL "OpenSYCL")
-		add_sycl_to_target(TARGET timer)
-	ENDIF()
 ELSE()
 	message(STATUS "${timer} is located at ${LIBRARY_OUTPUT_PATH}")
 	add_library(timer STATIC IMPORTED GLOBAL)

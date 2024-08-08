@@ -3,11 +3,9 @@ include_directories(BEFORE
   "${CMAKE_SOURCE_DIR}/src/include")
 
 # # add external submodule
-add_subdirectory(timer)
-add_subdirectory(utils)
+add_subdirectory(mpiPacks)
 add_subdirectory(read_grid)
 add_subdirectory(read_ini)
-add_subdirectory(mpiPacks)
 add_subdirectory(solver_Ini)
 add_subdirectory(solver_BCs)
 add_subdirectory(solver_UpdateStates)
@@ -30,7 +28,7 @@ IF("${${INIT_SAMPLE}}" STREQUAL "${INIT_SAMPLE}-NOTFOUND")
   target_link_libraries(${INIT_SAMPLE}
     PUBLIC
     timer
-    utils
+    attribute
     solver_Ini
     solver_BCs
     solver_Update

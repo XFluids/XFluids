@@ -1,8 +1,9 @@
 #pragma once
 
+#include "middle.hpp"
+#include "global_setup.h"
 #include "mpiUtils/MpiCommCart.h"
-#include "../include/global_setup.h"
-#include "../include/middle.hpp"
+
 using namespace mpiUtils;
 
 typedef struct
@@ -52,8 +53,8 @@ struct MpiTrans
 	MpiData *d_mpiData, *h_mpiData;
 #endif // end EXPLICIT_ALLOC
 
-	MpiTrans(){};
-	~MpiTrans(){};
+	MpiTrans() {};
+	~MpiTrans() {};
 	MpiTrans(Block &bl, BConditions const Boundarys[6]);
 	long double AllocMemory(middle::device_t &q, Block &bl, const int N); // might not need to allocate mem as in XFLUIDS
 	void MpiTransBuf(middle::device_t &q, Direction Dir);
