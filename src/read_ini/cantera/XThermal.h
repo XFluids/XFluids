@@ -78,3 +78,4 @@ void Chemq2WrapperCv0(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, co
  * @brief Compute the production rate of constant volume model
  */
 void Chemq2WrapperCv1(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p);
+void Chemq2WrapperCp1(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p);
