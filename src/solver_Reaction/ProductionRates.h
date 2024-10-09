@@ -636,3 +636,162 @@ SYCL_DEVICE void Chemeq2(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg,
 		gcount++;
 	}
 }
+
+/**
+ * @brief NOTE: In this version, temperature is solved as a solution element of vector y like CVode does
+ * @brief Chemeq2Cp: q represents the production rate , d represents the los rate , di = pi*yi in RefP408 eq(2)
+ * @brief The accuracy-based timestep calculation can be augmented with a stability-based check when at least
+ * three corrector iterations are performed. For most problems, the stability check is not needed, and eliminating
+ * the calculations and logic associated with the check enhances performance, and this Chemq2Cp is for constant pressure model.
+ */
+template <int _NS = 1, int _NR>
+SYCL_DEVICE void Chemeq2Cp(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p)
+{
+	int itermax = 1;
+	const int _NL = _NS + 1;
+	real_t ymin = _DF(1.0e-20), dtmin = _DF(1.0e-7);
+	real_t eps, epsmin = _DF(1.0e-4), scrtch = _DF(1e-25);
+	real_t tfd = _DF(1.0) + _DF(1.0e-10), sqreps = _DF(0.05), epsmax = _DF(1.0), epscl = _DF(1.0e4);
+
+	real_t ys[_NL], y1[_NL];
+	real_t rtau[_NL], scrarray[_NL];		 //  \delta y based input y_i value for calculate predicted value y_i^p
+	real_t qs[_NL], ds[_NL], q[_NL], d[_NL]; // production and loss rate
+
+	int gcount = 0, rcount = 0, iter;
+	real_t dt = _DF(0.0);	  // timestep of this flag1 step
+	real_t ts, tn = _DF(0.0); // t-t^0, current value of the independent variable relative to the start of the global timestep
+
+	// // // Initialize and limit y to the minimum value and save the initial yi inputs into y0
+	real_t sumy = _DF(0.0);
+	for (int i = 1; i < _NL; i++)
+		y[i] = sycl::max(y[i], ymin), sumy += y[i];
+	sumy = _DF(1.0) / sumy;
+	for (int i = 1; i < _NL; i++)
+		y[i] *= sumy;
+
+	//=========================================================
+	// // initial p and d before predicting
+	evalcp<_NS, _NR>(tm, rn, y, q, d, rho, m_p);
+	gcount++;
+	// // to initilize the first 'dt'
+	for (int i = 0; i < _NL; i++)
+	{
+		const real_t ascr = sycl::fabs(q[i]);
+		const real_t scr2 = xfrsign(_DF(1.0) / y[i], _DF(0.1) * epsmin * ascr - d[i]);
+		const real_t scr1 = scr2 * d[i];
+		// // // If the species is already at the minimum, disregard destruction when calculating step size
+		scrtch = sycl::max(-sycl::fabs(ascr - d[i]) * scr2, sycl::max(scr1, scrtch));
+	}
+	dt = sycl::min(sqreps / scrtch, dtg);
+	dtmin *= dt;
+
+	while (1)
+	{
+		int num_iter = 0;
+		// // Independent variable at the start of the chemical timestep
+		ts = tn;
+		for (int i = 0; i < _NL; i++)
+		{
+			// // store the 0-subscript state using s
+			ys[i] = y[i];				// y before prediction
+			qs[i] = q[i], ds[i] = d[i]; // q and d before prediction
+		}
+
+		// a beginning of prediction
+	apredictor:
+		num_iter++;
+		for (int i = 0; i < _NL; i++)
+		{
+			rtau[i] = dt * ds[i] / ys[i]; // 1/r in Ref.eq(39)
+			real_t alpha = Alpha(rtau[i]);
+			scrarray[i] = dt * (qs[i] - ds[i]) / (_DF(1.0) + alpha * rtau[i]); // \delta y
+		}
+
+		/** begin correction while loop
+		 * Iteration for correction, one prediction and itermax correction
+		 * if itermax > 1, need add dt recalculator based Ref.eq(48),
+		 * or even more restrict requirement Ref.eq(47) for each iter
+		 */
+		// iter = 1;
+		// while (iter <= itermax)
+		{
+			gcount++;
+
+			for (int i = 0; i < _NL; i++)
+			{
+				y[i] = sycl::max(ys[i] + scrarray[i], ymin); // predicted y, results stored by y1
+			}
+
+			// if (1 == iter)
+			{
+				tn = ts + dt;
+				for (int i = 0; i < _NL; i++)
+					y1[i] = y[i]; // predicted y results stored by y1
+			}
+
+			// // get predicted q^p , d^p based predictd y
+			evalcp<_NS, _NR>(tm, rn, y, q, d, rho, m_p);
+
+			for (int i = 0; i < _NL; i++)
+			{
+				const real_t rtaub = _DF(0.5) * (rtau[i] + dt * d[i] / y[i]); // p*dt
+				const real_t alpha = Alpha(rtaub);
+				const real_t qt = (_DF(1.0) - alpha) * qs[i] + alpha * q[i]; // q
+				scrarray[i] = (qt * dt - rtaub * ys[i]) / (_DF(1.0) + alpha * rtaub);
+				// y[i] = sycl::max(ys[i] + scrarray[i], ymin); // correctied y
+			}
+			// iter++;
+		} // // // end correction while loop
+
+		// // Calculate new f, check for convergence, and limit decreasing functions
+		// // NOTE: The order of operations in this loop is important
+		eps = _DF(1e-10);
+		for (int i = 0; i < _NL; i++)
+		{
+			const real_t scr2 = sycl::max(ys[i] + scrarray[i], _DF(0.0));
+			real_t scr1 = sycl::fabs(scr2 - y1[i]);
+			y[i] = sycl::max(scr2, ymin); // new y
+
+			if ((_DF(0.25) * (ys[i] + y[i])) > ymin)
+			{
+				scr1 = scr1 / y[i];
+				eps = sycl::max(_DF(0.5) * (scr1 + sycl::min(sycl::fabs(q[i] - d[i]) / (q[i] + d[i] + _DF(1.0e-30)), scr1)), eps);
+			}
+		}
+
+		// // Check for convergence
+		// // // The following section is used for the stability check
+		eps = eps * epscl;
+		if (eps < epsmax)
+		{
+			if (dtg <= (tn * tfd))
+				return; // end of the reaction source solving.
+		}
+		else
+		{
+			tn = ts;
+		}
+		// get new dt
+		real_t dto = dt;
+		real_t rteps = _DF(0.5) * (eps + _DF(1.0));
+		rteps = _DF(0.5) * (rteps + eps / rteps);
+		rteps = _DF(0.5) * (rteps + eps / rteps);
+		dt = sycl::min(dt * (_DF(1.) / rteps + _DF(0.005)), tfd * (dtg - tn)); // new dt
+
+		// // // Rebegin the step if  this previous step not converged
+		if (eps > epsmax)
+		{
+			// add this operator to reduce dt while this flag2 step isn't convergent, avoid death loop
+			dt = sycl::min(dt, _DF(0.34) * dto);
+			rcount++;
+			// while dt is too small, releax the convergent criterion
+			if (dt <= dtmin)
+				epsmax *= _DF(10.0);
+			goto apredictor;
+		}
+
+		// // A valid time step has done
+		epsmax = _DF(1.0);
+		gcount++;
+	}
+}

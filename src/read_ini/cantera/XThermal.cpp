@@ -148,3 +148,13 @@ void Chemq2WrapperCv1(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, co
 
 	Chemeq2<NUM_SPECIES, NUM_REA>(tm, rn, y, dtg, rho, m_p);
 }
+
+/**
+ * @brief NOTE: In this version, temperature is solved as a solution element of vector y like CVode does
+ * @brief Compute the production rate of constant volume model
+ */
+void Chemq2WrapperCp1(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p)
+{
+
+	Chemeq2Cp<NUM_SPECIES, NUM_REA>(tm, rn, y, dtg, rho, m_p);
+}
