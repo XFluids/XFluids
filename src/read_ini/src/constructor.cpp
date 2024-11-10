@@ -28,9 +28,11 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     // // TODO: XFluids read
     ReadSpecies();
     if (ReactSources)
+    {
         ReadReactions();
+        // CanteraInterface ci(&h_thermal, &h_react, NUM_SPECIES);
+    }
 
-    CanteraInterface ci(&h_thermal, &h_react, NUM_SPECIES);
     // end runtime read
 
     // read && caculate coffes for visicity

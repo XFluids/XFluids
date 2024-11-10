@@ -38,7 +38,7 @@ external/install/*
 /output*
 *.csv
 *.yaml
-log
+*.log
 
 # Hiden files
 ~$*

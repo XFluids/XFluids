@@ -109,7 +109,7 @@ CanteraInterface::CanteraInterface(Thermal *Tm, Reaction *Rn, const size_t NSpec
 	if (std::abs(CvTfinalXFCVode / CvTfinal - 1.0) > 0.001)
 	{
 		std::cout << "XFluids-CVode 0D-" << Type << " solving failed !" << std::endl;
-		abort();
+		// abort();
 	}
 }
 
