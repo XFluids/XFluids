@@ -56,8 +56,6 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 #if USE_MPI
 
-	std::chrono::high_resolution_clock::time_point start_time_x = std::chrono::high_resolution_clock::now();
-
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
 							  {
@@ -70,6 +68,8 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 								  FluidMpiCopyKernelX(i1, j, k, bl, ptr_TransBufSend_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BorToBuf); // X_MAX
 							  }); })
 		.wait();
+
+	std::chrono::high_resolution_clock::time_point start_time_x = std::chrono::high_resolution_clock::now();
 
 	Trans.MpiTransBuf(q, XDIR);
 
@@ -110,8 +110,6 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 #if USE_MPI
 
-	std::chrono::high_resolution_clock::time_point start_time_y = std::chrono::high_resolution_clock::now();
-
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
 							  {
@@ -124,6 +122,8 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 								  FluidMpiCopyKernelY(i, j1, k, bl, ptr_TransBufSend_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BorToBuf); // X_MAX
 							  }); })
 		.wait();
+
+	std::chrono::high_resolution_clock::time_point start_time_y = std::chrono::high_resolution_clock::now();
 
 	Trans.MpiTransBuf(q, YDIR);
 
@@ -165,8 +165,6 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 #if USE_MPI
 
-	std::chrono::high_resolution_clock::time_point start_time_z = std::chrono::high_resolution_clock::now();
-
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
@@ -180,6 +178,8 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 					   FluidMpiCopyKernelZ(i, j, k1, bl, ptr_TransBufSend_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BorToBuf); // X_MAX
 				   }); })
 		.wait();
+
+	std::chrono::high_resolution_clock::time_point start_time_z = std::chrono::high_resolution_clock::now();
 
 	Trans.MpiTransBuf(q, ZDIR);
 

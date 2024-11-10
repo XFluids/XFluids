@@ -157,6 +157,11 @@ void Setup::ReWrite()
             nStepmax = Inner_size[3];
     }
 
+    // // rewrite Bwidth_X, Bwidth_Y, Bwidth_Z
+    std::vector<int> Bwidth_size = apa.match<int>("-gcs");
+    if (!std::empty(Bwidth_size))
+        BlSz.Bwidth_X = Bwidth_size[0], BlSz.Bwidth_Y = Bwidth_size[1], BlSz.Bwidth_Z = Bwidth_size[2];
+
     // // rewrite domain size
     std::vector<real_t> Domain_size = apa.match<real_t>("-domain");
     if (!std::empty(Domain_size))
