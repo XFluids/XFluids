@@ -55,67 +55,69 @@ void OutFmt::Initialize_P(std::vector<std::string> sp, FlowData &data,
 void OutFmt::Initialize_V(Block &Bl, std::vector<std::string> sp, FlowData &h_data,
 						  std::vector<std::string> v, bool error, const int NUM, const int ID)
 {
-	if (!std::empty(v))
-		_V = v;
+	// if (!std::empty(v))
+	_V = v;
 
-	if (!std::empty(_V))
+	bool add_var = std::empty(_V); // add all vars if _V is empty
+	// if (!std::empty(_V))
 	{
 		// Init var names
 		out_vars.clear();
-		for (size_t ii = 0; ii < _V.size(); ii++)
+		for (size_t ii = 0; add_var || ii < _V.size(); ii++)
 		{
 			if (Bl.DimX)
 			{
-				if (0 == _V[ii].compare("axis"))
+				if (add_var || 0 == _V[ii].compare("axis"))
 					out_vars.push_back(OutVar("axis_x", 0));
-				if (0 == _V[ii].compare("u"))
+				if (add_var || 0 == _V[ii].compare("u"))
 					out_vars.push_back(OutVar("velocity_u", h_data.u));
 			}
 			if (Bl.DimY)
 			{
-				if (0 == _V[ii].compare("axis"))
+				if (add_var || 0 == _V[ii].compare("axis"))
 					out_vars.push_back(OutVar("axis_y", 1));
-				if (0 == _V[ii].compare("v"))
+				if (add_var || 0 == _V[ii].compare("v"))
 					out_vars.push_back(OutVar("velocity_v", h_data.v));
 			}
 			if (Bl.DimZ)
 			{
-				if (0 == _V[ii].compare("axis"))
+				if (add_var || 0 == _V[ii].compare("axis"))
 					out_vars.push_back(OutVar("axis_z", 2));
-				if (0 == _V[ii].compare("w"))
+				if (add_var || 0 == _V[ii].compare("w"))
 					out_vars.push_back(OutVar("velocity_w", h_data.w));
 			}
-			if (0 == _V[ii].compare("rho"))
+			if (add_var || 0 == _V[ii].compare("rho"))
 				out_vars.push_back(OutVar("rho", h_data.rho));
-			if ((0 == _V[ii].compare("p")) || (0 == _V[ii].compare("P")))
+			if (add_var || (0 == _V[ii].compare("p")) || (0 == _V[ii].compare("P")))
 				out_vars.push_back(OutVar("p", h_data.p));
-			if (0 == _V[ii].compare("T"))
+			if (add_var || 0 == _V[ii].compare("T"))
 				out_vars.push_back(OutVar("T", h_data.T));
-			if (0 == _V[ii].compare("e"))
+			if (add_var || 0 == _V[ii].compare("e"))
 				out_vars.push_back(OutVar("e", h_data.e));
-			if (0 == _V[ii].compare("c"))
+			if (add_var || 0 == _V[ii].compare("c"))
 				out_vars.push_back(OutVar("c", h_data.c));
-			if (0 == _V[ii].compare("Gamma"))
+			if (add_var || 0 == _V[ii].compare("Gamma"))
 				out_vars.push_back(OutVar("g", h_data.gamma));
-			if (0 == _V[ii].compare("vorticity") && Visc)
+			if ((add_var || 0 == _V[ii].compare("vorticity")) && Visc)
 			{
 				out_vars.push_back(OutVar("vorticity", h_data.vx));
-				if ((0 == _V[ii].compare("vorticity_x")) && (Bl.DimY) && (Bl.DimZ))
+				if (add_var || (0 == _V[ii].compare("vorticity_x")) && (Bl.DimY) && (Bl.DimZ))
 					out_vars.push_back(OutVar("vorticity_x", h_data.vxs[0]));
-				if ((0 == _V[ii].compare("vorticity_y")) && (Bl.DimX) && (Bl.DimZ))
+				if (add_var || (0 == _V[ii].compare("vorticity_y")) && (Bl.DimX) && (Bl.DimZ))
 					out_vars.push_back(OutVar("vorticity_y", h_data.vxs[1]));
-				if ((0 == _V[ii].compare("vorticity_z")) && (Bl.DimX) && (Bl.DimY))
+				if (add_var || (0 == _V[ii].compare("vorticity_z")) && (Bl.DimX) && (Bl.DimY))
 					out_vars.push_back(OutVar("vorticity_z", h_data.vxs[2]));
 			}
 
 #ifdef COP
-			if (_V[ii].find("yi[") != std::string::npos)
+			if (add_var || _V[ii].find("yi[") != std::string::npos)
 				for (size_t nn = 0; nn < sp.size(); nn++)
 				{
-					if ((0 == _V[ii].compare("yi[" + sp[nn] + "]")) || (0 == _V[ii].compare("yi[all]")))
-						out_vars.push_back(OutVar("y" + std::to_string(nn) + "[" + sp[nn] + "]", h_data.y, sp.size(), nn));
+					if (add_var || (0 == _V[ii].compare("yi[" + sp[nn] + "]")) || (0 == _V[ii].compare("yi[all]")))
+						out_vars.push_back(OutVar("y" + std::to_string(nn+1) + "[" + sp[nn] + "]", h_data.y, sp.size(), nn));
 				}
 #endif // COP
+		add_var = false;
 		}
 	}
 }
