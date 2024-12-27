@@ -5,9 +5,9 @@ BOOST_SRC=$WKDIR/external/boost_1_83_0
 BOOST_BUILD=$BOOST_SRC
 BOOST_INSTALL=${1:-$WKDIR/external/install/boost}
 echo "-- Sh from" $SCRIPTS_PATH, "Working DIR:" $WKDIR
-echo "-- External BOOST SRC:" $BOOST_SRC
-echo "-- External BOOST BUILD:" $BOOST_BUILD
-echo "-- External BOOST INSTALL:" $BOOST_INSTALL
+echo "-- Internal BOOST SRC:" $BOOST_SRC
+echo "-- Internal BOOST BUILD:" $BOOST_BUILD
+echo "-- Internal BOOST INSTALL:" $BOOST_INSTALL
 cd $WKDIR/external && wget -N https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.bz2
 mkdir -p $BOOST_INSTALL
 echo "-- Extract BOOST to:" $BOOST_SRC

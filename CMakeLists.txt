@@ -5,7 +5,7 @@ PROJECT(XFLUIDS LANGUAGES CXX)
 # ####  1. oneAPI: Intel oneAPI compiling system  2. ACPP: OpenSYCL syclcc compiling system
 set(SYCL_COMPILE_SYSTEM "ACPP") # # oneAPI or OpenSYCL compile system,
 set(SelectDv "generic") # which platform: generic(for sscp), host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
-set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
+set(ARCH "1100") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
 option(USE_MPI "if enable mpi" OFF)
@@ -13,7 +13,7 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 
 # // == RUN settings =======================================
 option(ASYNC_SUBMIT "if use asynchronous submmission" OFF)
-option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" OFF)
+option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" ON)
 
 # // == Functionality option ===============================
 # # // // == Ini sample selection ===========================

@@ -10,7 +10,7 @@ Assign::Assign(size_t x, size_t y, size_t z, std::string T) : local_nd(sycl::ran
 {
 	time = 0;
 	strcpy(tag, T.c_str());
-#if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
+#if defined(__ACPP_ENABLE_HIP_TARGET__) || (__ACPP_ENABLE_CUDA_TARGET__)
 	local_blk = local_block();
 #endif
 }
@@ -51,7 +51,7 @@ Assign Assign::Time(float t)
 	return *this;
 }
 
-#if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
+#if defined(__ACPP_ENABLE_HIP_TARGET__) || (__ACPP_ENABLE_CUDA_TARGET__)
 dim3 Assign::local_block()
 {
 	return local_block(this->local_nd);

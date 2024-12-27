@@ -58,7 +58,7 @@ The following gpus have been tested:
 
     - install Linux system packages: cmake, scons
     - install [Conda](https://repo.anaconda.com/archive/) or [Conda mirror soure for Chinese users](https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/) basic environment, at least version 23.9.0
-### 1.3. One of the following two SYCL implementations:
+### 1.2. One of the following two SYCL implementations:
   NOTE: SYCL implementation of AdaptiveCpp is strongly recommended for XFluids, and the support of Intel oneAPI will be deprecated.
 - #### [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)(known as OpenSYCL/hipSYCL) based on [LLVM &gt;= 14.0](https://apt.llvm.org/)
   - ##### An internal AdaptiveCpp can be compiled to SSCP or SSMP(see AdaptiveCpp offical documentation), it is resolved by XFluids automatilly but set "COMPILER_PATH" manually
@@ -76,12 +76,12 @@ The following gpus have been tested:
       ````bash
       export COMPILER_PATH=/path/to/rocm-release # for hip  SSMP AdaptiveCpp compilation
       ````
-  - ##### If a system installed AdaptiveCpp is used, please set cmake option "AdaptiveCpp_DIR" or export system environment variables $AdaptiveCpp_DIR.
+  - ##### If a system installed AdaptiveCpp is used, please set cmake option "ACPP_PATH" or export system environment variables $ACPP_PATH.
     ````cmake
-    cmake -DAdaptiveCpp_DIR=/path/to/AdaptiveCpp ..
+    cmake -DACPP_PATH=/path/to/AdaptiveCpp ..
     ````
     ````bash
-    export AdaptiveCpp_DIR=/path/to/AdaptiveCpp && \
+    export ACPP_PATH=/path/to/AdaptiveCpp && \
     cmake ..
     ````
 

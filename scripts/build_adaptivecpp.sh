@@ -5,7 +5,7 @@
 # $3 is where the compiler like LLVM, ROCm or CUDA located
 # $4 is the target backend for compiling the AdaptiveCpp
 # $5 is the target architecture for compiling the AdaptiveCpp
-# This bash is compatible with AdaptiveCpp v24.06.0
+# This bash is compatible with AdaptiveCpp v24.10.0
 ##################################################################
 
 ## settings
@@ -43,19 +43,18 @@ fi
 ## info
 echo ""
 echo "-- Begin building AdaptiveCpp"
-echo "-- External AdaptiveCpp BUILD TYPE:" $4
-echo "-- External AdaptiveCpp SRC:" $ACPP_SRC
-echo "-- External AdaptiveCpp BUILD DIR:" $ACPP_BUILD
-echo "-- External AdaptiveCpp INSTALL PREFIX:" $ACPP_INSTALL
+echo "-- Internal AdaptiveCpp BUILD TYPE:" $4
+echo "-- Internal AdaptiveCpp SRC:" $ACPP_SRC
+echo "-- Internal AdaptiveCpp BUILD DIR:" $ACPP_BUILD
+echo "-- Internal AdaptiveCpp INSTALL PREFIX:" $ACPP_INSTALL
 
 ## build
 cd $ACPP_BUILD 
-if make -j4 install >> $ACPP_INSTALL/../build_adaptivecpp_$4.log; then
+if make -j4 install >> $ACPP_INSTALL/../build_adaptivecpp_$4.log 2>&1; then
   echo "-- End building AdaptiveCpp"
 else
   echo "-- Error while Building AdaptiveCpp"
   exit 1
 fi
-#2>&1
 echo "-- AdaptiveCpp buliding info written into:" $INSTALL_DIR/build_adaptivecpp.log
 echo ""

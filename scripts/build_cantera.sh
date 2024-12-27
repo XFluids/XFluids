@@ -8,9 +8,9 @@ CANTERA_INSTALL=$WKDIR/external/install/cantera/$2
 rm -rf $CANTERA_BUILD $CANTERA_INSTALL $CANTERA_SRC/.sconf_temp $CANTERA_SRC/.sconsign.dblite
 mkdir -p $CANTERA_INSTALL
 echo "-- Sh from" $SCRIPTS_PATH, "Working DIR:" $WKDIR
-echo "-- External cantera SRC:" $CANTERA_SRC
-echo "-- External cantera BUILD:" $CANTERA_BUILD
-echo "-- External cantera INSTALL:" $CANTERA_INSTALL
+echo "-- Internal cantera SRC:" $CANTERA_SRC
+echo "-- Internal cantera BUILD:" $CANTERA_BUILD
+echo "-- Internal cantera INSTALL:" $CANTERA_INSTALL
 source $1/bin/activate base		# initial conda basic python environment
 rm -rf $CANTERA_SRC/cantera.conf && cp -rf $SCRIPTS_PATH/cantera_$2.conf $CANTERA_SRC/cantera.conf
 cd $CANTERA_SRC && scons build prefix="$CANTERA_INSTALL" > $WKDIR/external/install/build_cantera_$2.log

@@ -18,7 +18,7 @@
 
 #elif defined(__ACPP__)
 // // OpenSYCL HIP Target
-#ifdef __HIPSYCL_ENABLE_HIP_TARGET__
+#ifdef __ACPP_ENABLE_HIP_TARGET__
 #define __LBMt 256 // <=256 for HIP
 using vendorError_t = hipError_t;
 using vendorDeviceProp = hipDeviceProp_t;
@@ -49,7 +49,7 @@ using vendorFuncAttributes = hipFuncAttributes;
 	while (0)
 
 // // OpenSYCL CUDA Target
-#elif defined(__HIPSYCL_ENABLE_CUDA_TARGET__)
+#elif defined(__ACPP_ENABLE_CUDA_TARGET__)
 #define __LBMt 256 // <=256 for HIP
 using vendorError_t = cudaError_t;
 using vendorDeviceProp = cudaDeviceProp;
@@ -86,7 +86,7 @@ using vendorFuncAttributes = cudaFuncAttributes;
 
 #endif
 
-#if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
+#if defined(__ACPP_ENABLE_HIP_TARGET__) || (__ACPP_ENABLE_CUDA_TARGET__)
 #define SYCL_KERNEL __host__ __device__
 #define SYCL_DEVICE __host__ __device__
 #define _VENDOR_KERNEL_LB_(A, B) __global__ __launch_bounds__(A, B)

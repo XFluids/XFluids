@@ -17,7 +17,7 @@ struct Assign
 	sycl::range<3> global_nd(sycl::range<3> gnd, sycl::range<3> lnd);
 	sycl::range<3> global_nd(size_t x, size_t y, size_t z, sycl::range<3> lnd);
 	Assign Time(float t);
-#if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
+#if defined(__ACPP_ENABLE_HIP_TARGET__) || (__ACPP_ENABLE_CUDA_TARGET__)
 	dim3 local_blk;
 	dim3 local_block();
 	dim3 local_block(sycl::range<3> lnd);

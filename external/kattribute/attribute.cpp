@@ -1,6 +1,6 @@
 #include "attribute.h"
 
-#if defined(__HIPSYCL_ENABLE_HIP_TARGET__) || (__HIPSYCL_ENABLE_CUDA_TARGET__)
+#if defined(__ACPP_ENABLE_HIP_TARGET__) || (__ACPP_ENABLE_CUDA_TARGET__)
 void GetKernelAttributes(const void *Func_ptr, std::string Func_name)
 {
 #ifdef USE_MPI
