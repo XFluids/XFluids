@@ -1,4 +1,5 @@
 #include <map>
+#include <cmath>
 #include <iomanip>
 #include <fstream>
 #include <iostream>
@@ -173,9 +174,9 @@ void Gridread::FaceAreaI()
                 //                             << fArea_I[vector_num*id_ori+1] << ", "
                 //                             << fArea_I[vector_num*id_ori+2] << "\n";
 
-                fArea_I[vector_num * id_ori + 3] = sqrt(fArea_I[vector_num * id_ori + 0] * fArea_I[vector_num * id_ori + 0] + fArea_I[vector_num * id_ori + 1] * fArea_I[vector_num * id_ori + 1] + fArea_I[vector_num * id_ori + 2] * fArea_I[vector_num * id_ori + 2]);
-                // ----------------------------------sqrt test pass-------------------------------------
-                // cout << "sqrt: " << fArea_I[vector_num*id_ori+3] << "\n";
+                fArea_I[vector_num * id_ori + 3] = std::sqrt(fArea_I[vector_num * id_ori + 0] * fArea_I[vector_num * id_ori + 0] + fArea_I[vector_num * id_ori + 1] * fArea_I[vector_num * id_ori + 1] + fArea_I[vector_num * id_ori + 2] * fArea_I[vector_num * id_ori + 2]);
+                // ----------------------------------std::sqrt test pass-------------------------------------
+                // cout << "std::sqrt: " << fArea_I[vector_num*id_ori+3] << "\n";
 
                 fArea_I[vector_num * id_ori + 0] = fArea_I[vector_num * id_ori + 0] / fArea_I[vector_num * id_ori + 3];
                 fArea_I[vector_num * id_ori + 1] = fArea_I[vector_num * id_ori + 1] / fArea_I[vector_num * id_ori + 3];
@@ -219,7 +220,7 @@ void Gridread::FaceAreaJ()
                 fArea_J[vector_num * id_ori + 1] = (-1.0) * (xbd[0] * xac[2] - xbd[2] * xac[0]) / 2.0;
                 fArea_J[vector_num * id_ori + 2] = (xbd[0] * xac[1] - xbd[1] * xac[0]) / 2.0;
 
-                fArea_J[vector_num * id_ori + 3] = sqrt(fArea_J[vector_num * id_ori + 0] * fArea_J[vector_num * id_ori + 0] + fArea_J[vector_num * id_ori + 1] * fArea_J[vector_num * id_ori + 1] + fArea_J[vector_num * id_ori + 2] * fArea_J[vector_num * id_ori + 2]);
+                fArea_J[vector_num * id_ori + 3] = std::sqrt(fArea_J[vector_num * id_ori + 0] * fArea_J[vector_num * id_ori + 0] + fArea_J[vector_num * id_ori + 1] * fArea_J[vector_num * id_ori + 1] + fArea_J[vector_num * id_ori + 2] * fArea_J[vector_num * id_ori + 2]);
 
                 fArea_J[vector_num * id_ori + 0] = fArea_J[vector_num * id_ori + 0] / fArea_J[vector_num * id_ori + 3];
                 fArea_J[vector_num * id_ori + 1] = fArea_J[vector_num * id_ori + 1] / fArea_J[vector_num * id_ori + 3];
@@ -263,7 +264,7 @@ void Gridread::FaceAreaK()
                 fArea_K[vector_num * id_ori + 1] = (-1.0) * (xbd[0] * xac[2] - xbd[2] * xac[0]) / 2.0;
                 fArea_K[vector_num * id_ori + 2] = (xbd[0] * xac[1] - xbd[1] * xac[0]) / 2.0;
 
-                fArea_K[vector_num * id_ori + 3] = sqrt(fArea_K[vector_num * id_ori + 0] * fArea_K[vector_num * id_ori + 0] + fArea_K[vector_num * id_ori + 1] * fArea_K[vector_num * id_ori + 1] + fArea_K[vector_num * id_ori + 2] * fArea_K[vector_num * id_ori + 2]);
+                fArea_K[vector_num * id_ori + 3] = std::sqrt(fArea_K[vector_num * id_ori + 0] * fArea_K[vector_num * id_ori + 0] + fArea_K[vector_num * id_ori + 1] * fArea_K[vector_num * id_ori + 1] + fArea_K[vector_num * id_ori + 2] * fArea_K[vector_num * id_ori + 2]);
 
                 fArea_K[vector_num * id_ori + 0] = fArea_K[vector_num * id_ori + 0] / fArea_K[vector_num * id_ori + 3];
                 fArea_K[vector_num * id_ori + 1] = fArea_K[vector_num * id_ori + 1] / fArea_K[vector_num * id_ori + 3];
