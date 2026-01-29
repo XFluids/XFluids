@@ -44,7 +44,7 @@ SYCL_DEVICE inline real_t weno5old_BODY(const real_t v1, const real_t v2, const 
 #ifdef USE_DOUBLE
 	// // for double precision
 	a1 = _DF(0.1) * s2 * s2 * s3 * s3;
-	a2 = _DF(0.2) * s1 * s1 * s3 * s3;
+	a2 = _DF(0.6) * s1 * s1 * s3 * s3;
 	a3 = _DF(0.3) * s1 * s1 * s2 * s2;
 
 	real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
@@ -54,7 +54,7 @@ SYCL_DEVICE inline real_t weno5old_BODY(const real_t v1, const real_t v2, const 
 
 	// // // for float precision
 	double Da1 = 0.1 * s2 * s2 * s3 * s3;
-	double Da2 = 0.2 * s1 * s1 * s3 * s3;
+	double Da2 = 0.6 * s1 * s1 * s3 * s3;
 	double Da3 = 0.3 * s1 * s1 * s2 * s2;
 
 	double tw1 = 1.0 / (Da1 + Da2 + Da3);
