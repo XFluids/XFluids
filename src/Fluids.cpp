@@ -272,7 +272,8 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 	double this_msize = _DF(0.0);
 	int bytes = Fs.bytes, cellbytes = Fs.cellbytes;
 	int Kbytes = (Fs.bytes >> 10), Kcellbytes = (Fs.cellbytes >> 10);
-	// 主机内存
+
+	// 主机内存 (保持不变，Host内存通常由OS负责，初始化需求较低，且速度慢不宜memset)
 	{
 		h_U = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		h_U1 = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
@@ -292,12 +293,23 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		if (0 == rank)
 			std::cout << "Host memory malloced(primitive variables): " << MemMbSize << " MB/" << MemMbSize / 1024.0 << " GB" << std::endl;
 	}
-	// 设备内存
+
+	// 设备内存 (添加 memset 0)
 	{
 		d_U = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_U1 = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_LU = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		Ubak = static_cast<real_t *>(sycl::malloc_shared(cellbytes, q)); // shared memory may inside device
+
+		// =============================================================
+		// [FIX] Initialize critical conservative variables to ZERO
+		// 防止 CPU 读取未初始化的垃圾数据导致 NaN
+		q.memset(d_U, 0, cellbytes);
+		q.memset(d_U1, 0, cellbytes);
+		q.memset(d_LU, 0, cellbytes);
+		q.memset(Ubak, 0, cellbytes);
+		// =============================================================
+
 		MemMbSize = double(Kcellbytes >> 10) * 4.0;
 		if (0 == rank)
 			std::cout << "Device memory malloced(conservative variables, checking_point file): " << MemMbSize << " MB, "
@@ -325,6 +337,12 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_fstate.gamma = static_cast<real_t *>(sycl::malloc_device(bytes, q));
 		d_fstate.y = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
 		d_fstate.hi = static_cast<real_t *>(sycl::malloc_device(bytes * NUM_SPECIES, q));
+		
+		// [Optional] 如果有些内核依赖原始变量为0，可以取消注释
+		// q.memset(d_fstate.rho, 0, bytes);
+		// q.memset(d_fstate.p, 0, bytes);
+		// ...
+
 		this_msize = double(Kbytes >> 10) * (12.0 + NUM_SPECIES * 2.0), MemMbSize += this_msize;
 		if (0 == rank)
 			std::cout << "Device memory malloced(primitive variables): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
@@ -377,17 +395,39 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		d_wallFluxF = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_wallFluxG = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
 		d_wallFluxH = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+		
+		// =============================================================
+		// [FIX] Initialize Fluxes to ZERO
+		// 通量如果包含垃圾数据，会在边界重构时导致问题
+		q.memset(d_FluxF, 0, cellbytes);
+		q.memset(d_FluxG, 0, cellbytes);
+		q.memset(d_FluxH, 0, cellbytes);
+		q.memset(d_wallFluxF, 0, cellbytes);
+		q.memset(d_wallFluxG, 0, cellbytes);
+		q.memset(d_wallFluxH, 0, cellbytes);
+		// =============================================================
+
 		this_msize = double(Kcellbytes >> 10) * 6.0, MemMbSize += this_msize;
 		if (0 == rank)
 			std::cout << "Device memory malloced(Fluxes): " << this_msize << " MB/" << this_msize / 1024.0 << " GB, "
 					  << "cumulative memory: " << MemMbSize << "MB, " << MemMbSize / 1024.0 << "GB." << std::endl;
 	}
 
+	// 强制同步一次，确保内存清零完成
+	q.wait();
+
 	// shared memory
 	uvw_c_max = static_cast<real_t *>(sycl::malloc_shared(6 * sizeof(real_t), q));
 	eigen_block_x = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
 	eigen_block_y = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
 	eigen_block_z = static_cast<real_t *>(sycl::malloc_shared(Emax * sizeof(real_t), q));
+	
+	// 初始化 eigen_block 也是一个好习惯，防止 max reduction 出错
+	q.memset(uvw_c_max, 0, 6 * sizeof(real_t));
+	q.memset(eigen_block_x, 0, Emax * sizeof(real_t));
+	q.memset(eigen_block_y, 0, Emax * sizeof(real_t));
+	q.memset(eigen_block_z, 0, Emax * sizeof(real_t));
+
 	if (OutOverTime)
 	{
 		// calculate Tmax, YiH2O2max, YiHO2max
@@ -424,6 +464,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		h_fstate.preFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		h_fstate.pstFwx = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		d_fstate.preFwx = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+		q.memset(d_fstate.preFwx, 0, cellbytes); // FIX
 	}
 	if (Fs.BlSz.DimY)
 	{
@@ -439,6 +480,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		h_fstate.preFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		h_fstate.pstFwy = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		d_fstate.preFwy = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+		q.memset(d_fstate.preFwy, 0, cellbytes); // FIX
 	}
 	if (Fs.BlSz.DimZ)
 	{
@@ -454,6 +496,7 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 		h_fstate.preFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		h_fstate.pstFwz = static_cast<real_t *>(sycl::malloc_host(cellbytes, q));
 		d_fstate.preFwz = static_cast<real_t *>(sycl::malloc_device(cellbytes, q));
+		q.memset(d_fstate.preFwz, 0, cellbytes); // FIX
 	}
 	MemMbSize += ((double(cellbytes) / 1024.0)) / 1024.0 * double((Fs.BlSz.DimX + Fs.BlSz.DimY + Fs.BlSz.DimZ));
 	// MemMbSize += ((double(bytes) / 1024.0)) / 1024.0 * double((Fs.BlSz.DimX + Fs.BlSz.DimY + Fs.BlSz.DimZ) * (NUM_COP + 3));
@@ -534,6 +577,9 @@ void Fluid::AllocateFluidMemory(sycl::queue &q)
 #endif
 		std::cout << "Device Memory Total Usage: " << MemMbSize << " MB/" << MemMbSize / 1024.0 << " GB.\n";
 	}
+	
+	// 最后再同步一次，确保所有内存都分配好了且关键部分已清零
+	q.wait();
 }
 
 void Fluid::InitialU(sycl::queue &q)
