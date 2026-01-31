@@ -897,6 +897,7 @@ void Fluid::GetTheta(sycl::queue &q)
 real_t Fluid::GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime)
 {
 	real_t dt_ref = GetDt(q, Fs.BlSz, Fs.d_thermal, d_fstate, uvw_c_max);
+    // real_t dt_ref = _DF(0.005);
 #ifdef USE_MPI
 	real_t lambda_x0, lambda_y0, lambda_z0, miu_max, rho_min;
 	Fs.mpiTrans->communicator->allReduce(&(uvw_c_max[0]), &lambda_x0, 1, Fs.mpiTrans->data_type, mpiUtils::MpiComm::MAX);

@@ -6,9 +6,9 @@
 
 #include <fstream>
 // call cantera interface without marco: SYCL_DEVICE_ONLY
-#include "cantera/zerodim.h"
-#include "cantera/base/Array.h"
-#include "cantera/numerics/Integrator.h"
+// #include "cantera/zerodim.h"
+// #include "cantera/base/Array.h"
+// #include "cantera/numerics/Integrator.h"
 
 // Save the temperature, density, pressure, and mole fractions at one
 // time
@@ -38,34 +38,34 @@ void saveSoln(double time, const G &gas, A &soln)
     }
 }
 
-void writeCsv(const std::string &fname, const Cantera::ThermoPhase &gas,
-              const Cantera::Array2D &data)
-{
-    std::ofstream s(fname);
-    // Write labels
-    s << "time (s),Temperature (K),Density (kg/m3),Pressure (Pa),";
+// void writeCsv(const std::string &fname, const Cantera::ThermoPhase &gas,
+//               const Cantera::Array2D &data)
+// {
+//     std::ofstream s(fname);
+//     // Write labels
+//     s << "time (s),Temperature (K),Density (kg/m3),Pressure (Pa),";
 
-    for (size_t k = 0; k < gas.nSpecies(); k++)
-    {
-        s << gas.speciesName(k);
-        if (k != gas.nSpecies() - 1)
-        {
-            s << ",";
-        }
-    }
-    s << std::endl;
-    for (size_t i = 0; i < data.nColumns(); i++)
-    {
-        for (size_t j = 0; j < data.nRows(); j++)
-        {
-            s << data(j, i);
-            if (j != data.nRows() - 1)
-            {
-                s << ",";
-            }
-        }
-        s << std::endl;
-    }
-}
+//     for (size_t k = 0; k < gas.nSpecies(); k++)
+//     {
+//         s << gas.speciesName(k);
+//         if (k != gas.nSpecies() - 1)
+//         {
+//             s << ",";
+//         }
+//     }
+//     s << std::endl;
+//     for (size_t i = 0; i < data.nColumns(); i++)
+//     {
+//         for (size_t j = 0; j < data.nRows(); j++)
+//         {
+//             s << data(j, i);
+//             if (j != data.nRows() - 1)
+//             {
+//                 s << ",";
+//             }
+//         }
+//         s << std::endl;
+//     }
+// }
 
 #endif

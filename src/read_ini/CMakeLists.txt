@@ -10,7 +10,7 @@ add_subdirectory(src)
 # IF("${readini}" STREQUAL "readini-NOTFOUND")
     add_library(readini "")
 
-    # #add libs
+    #add libs
     target_link_libraries(readini
         PUBLIC
         outFmt

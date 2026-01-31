@@ -94,8 +94,10 @@ void ChemeODEQ2Solver(sycl::queue &q, Setup &Fs, Thermal thermal, FlowData &fdat
 
 // 		Temp = T;
 // 		real_t Kf[NUM_REA], Kb[NUM_REA];
-// 		Chemeq2(0, Ss.h_thermal, Kf, Kb, Ss.h_react.React_ThirdCoef, Ss.h_react.Rargus, Ss.h_react.Nu_b_, Ss.h_react.Nu_f_, Ss.h_react.Nu_d_, Ss.h_react.third_ind,
-// 				Ss.h_react.reaction_list, Ss.h_react.reactant_list, Ss.h_react.product_list, Ss.h_react.rns, Ss.h_react.rts, Ss.h_react.pls, yi, dt, T, rho, e);
+
+// // SYCL_DEVICE void Chemeq2Cp(Thermal *tm, Reaction *rn, real_t *y, const real_t dtg, const real_t rho, const real_t m_p)
+
+// 		Chemeq2Cp(Ss.h_thermal, Ss.h_react, yi, dt, rho, e);
 // 		run_time += dt;
 
 // 		// real_t yn2b_ = _DF(1.0) / (_DF(1.0) - yi[NUM_SPECIES - 1]);

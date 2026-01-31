@@ -1754,6 +1754,163 @@ void XFLUIDS::Output_plt(int rank, OutString &osr, bool error)
 	out.close();
 }
 
+// // plt, ref.Euler_SYCL
+// template <typename T>
+// void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString &osr)
+// {
+//     OutSize CPT = VTI;
+
+//     std::string file_name = OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() +
+// 								"." + osr.timeFormat.str() + "_" + osr.rankFormat.str() + ".plt";
+
+// 	std::ofstream out(file_name);
+//     // out << std::setw(6) << std::setprecision(40);
+// 	//defining header for tecplot(plot software)
+// 	out<<"title='View'"<<"\n";
+// 	int LEN = 0;
+// 	if (Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ==1){
+// 	    LEN = 2;
+// 	    out<<"variables=x, u, p, rho"<<"\n";
+//     }
+// 	else if (Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ==2){
+//         LEN = 2;
+//         out<<"variables=x, y, u, v, p, rho"<<"\n";
+//     }
+//     else if (Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ==3){
+//         LEN = 2;
+//         out<<"variables=x, y, z, u, v, w, p, rho"<<"\n";
+//     }	
+// 	out<<"zone t='filed', i="<<Ss.BlSz.X_inner+Ss.BlSz.DimX<<", j="<<Ss.BlSz.Y_inner+Ss.BlSz.DimY<<", k="<<Ss.BlSz.Z_inner+Ss.BlSz.DimZ<<"  DATAPACKING=BLOCK, VARLOCATION=([";
+// 	int pos_s = Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ+1;
+// 	out<<pos_s<<"-";
+// 	out<<2*pos_s -1 + LEN-1<<"]=CELLCENTERED) SOLUTIONTIME="<<osr.timeFormat.str()<<"\n";
+
+// 	int ii = Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X + Ss.BlSz.DimX - 1;
+// 	int jj = Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y + Ss.BlSz.DimY - 1;
+// 	int kk = Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z + Ss.BlSz.DimZ - 1;
+
+//     // out << std::scientific << std::setprecision(16);
+
+// 	if (Ss.BlSz.DimX){
+//         for(int k=Ss.BlSz.Bwidth_Z; k<=kk; k++){
+//             for(int j=Ss.BlSz.Bwidth_Y; j<=jj; j++){
+//                 for(int i=Ss.BlSz.Bwidth_X; i<=ii; i++)
+//                 {
+//                     out<<(i-Ss.BlSz.Bwidth_X)*Ss.BlSz.dx<<" ";
+//                 }
+//                 out<<"\n";
+//             }
+//         }
+//     }
+
+// 	if (Ss.BlSz.DimY){
+// 	    for(int k=Ss.BlSz.Bwidth_Z; k<=kk; k++){
+// 	    	for(int j=Ss.BlSz.Bwidth_Y; j<=jj; j++){
+// 	    		for(int i=Ss.BlSz.Bwidth_X; i<=ii; i++)
+// 	    		{
+// 	    			out<<(j-Ss.BlSz.Bwidth_Y)*Ss.BlSz.dy<<" ";
+// 	    		}
+// 	    		out<<"\n";
+// 	    	}
+// 	    }
+//     }
+
+// 	if (Ss.BlSz.DimZ){
+//         for(int k=Ss.BlSz.Bwidth_Z; k<=kk; k++){
+//             for(int j=Ss.BlSz.Bwidth_Y; j<=jj; j++){
+//                 for(int i=Ss.BlSz.Bwidth_X; i<=ii; i++)
+//                 {
+//                     out<<(k-Ss.BlSz.Bwidth_Z)*Ss.BlSz.dz<<" ";
+//                 }
+//                 out<<"\n";
+//             }
+//         }
+//     }
+
+// 	if (Ss.BlSz.DimX){
+// 		//u
+// 		for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+//             for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+//                 for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+//                 {
+//                     int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+//                     // if(levelset->h_phi[id]>= 0.0)
+//                         out<<fluids[0]->h_fstate.u[id]<<" ";
+//                     // else
+//                     // 	out<<fluids[1]->h_fstate.u[id]<<" ";
+//                 }
+//                 out<<"\n";
+//             }
+//         }
+//     }
+
+// 	if (Ss.BlSz.DimY){
+// 	    //v
+// 	    for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 	    	for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 	    		for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 	    		{
+// 	    			int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 	    			// if(levelset->h_phi[id]>= 0.0)
+// 	    				out<<fluids[0]->h_fstate.v[id]<<" ";
+// 	    			// else
+// 	    			// 	out<<fluids[1]->h_fstate.v[id]<<" ";
+// 	    		}
+// 	    		out<<"\n";
+// 	    	}
+// 	    }
+//     }
+// 	if (Ss.BlSz.DimZ){
+// 		//w
+// 		for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 			for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 				for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 				{
+// 				int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 				// if(levelset->h_phi[id]>= 0.0)
+// 					out<<fluids[0]->h_fstate.w[id]<<" ";
+// 				// else
+// 				// 	out<<fluids[1]->h_fstate.w[id]<<" ";
+// 			    }
+// 			    out<<"\n";
+// 		    }
+// 	    }
+//     }
+
+// 	//P
+// 	for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 		for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 			for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 			{
+// 				int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 				// if(levelset->h_phi[id]>= 0.0)
+// 					out<<fluids[0]->h_fstate.p[id]<<" ";
+// 				// else
+// 				// 	out<<fluids[1]->h_fstate.p[id]<<" ";
+// 			}
+// 			out<<"\n";
+// 		}
+// 	}
+
+// 	// rho
+// 	for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 		for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 			for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 			{
+// 				int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 				// if(levelset->h_phi[id]>= 0.0)
+// 					out<<fluids[0]->h_fstate.rho[id]<<" ";
+// 				// else
+// 				// 	out<<fluids[1]->h_fstate.rho[id]<<" ";
+// 			}
+// 			out<<"\n";
+// 		}
+// 	}
+
+//     out.close();
+// }
+
+// XFLUIDS_ori
 template <typename T>
 void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString &osr)
 {
@@ -1796,7 +1953,7 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 			out << ", <i>w</i>[m/s]";
 		out << ", <i><greek>g</greek></i>[-], <i>T</i>[K], <i>e</i>[J]";
 		if (Visc && (Ss.BlSz.DimS > 1))
-			out << ", |<i><greek>w</greek></i>|[s<sup>-1</sup>]"
+			out << ", <i><greek>w</greek></i>|[s<sup>-1</sup>]"
 				<< ", <i><greek>w</greek></i><sub>x</sub>[s<sup>-1</sup>]"
 				<< ", <i><greek>w</greek></i><sub>y</sub>[s<sup>-1</sup>]"
 				<< ", <i><greek>w</greek></i><sub>z</sub>[s<sup>-1</sup>]";

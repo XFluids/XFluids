@@ -1,3 +1,0 @@
-default=exclude
-compiler=latest
-tbb=latest

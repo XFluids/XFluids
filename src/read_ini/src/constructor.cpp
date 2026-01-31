@@ -1,6 +1,6 @@
 #include "../setupini.h"
 #include "fworkdir.hpp"
-#include "../cantera/cantera_interface.h"
+// #include "../cantera/cantera_interface.h"
 
 // =======================================================
 // // // struct Setup Member function definitions
@@ -31,7 +31,7 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     {
         ReadReactions();
         // if (0 == myRank)
-        //     CanteraInterface ci(&h_thermal, &h_react, NUM_SPECIES);
+            // CanteraInterface ci(&h_thermal, &h_react, NUM_SPECIES);
     }
 
     // end runtime read

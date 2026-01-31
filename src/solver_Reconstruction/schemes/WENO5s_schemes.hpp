@@ -49,7 +49,8 @@ SYCL_DEVICE inline real_t weno5old_BODY(const real_t v1, const real_t v2, const 
 
 	real_t tw1 = _DF(1.0) / (a1 + a2 + a3);
 	a1 = a1 * tw1, a2 = a2 * tw1, a3 = a3 * tw1;
-
+    // printf("a1+a2+a3 = %f\n", a1+a2+a3);
+    // sycl::ext::oneapi::experimental::printf("a1+a2+a3 = %f\n", a1+a2+a3);
 #else
 
 	// // // for float precision
@@ -59,6 +60,7 @@ SYCL_DEVICE inline real_t weno5old_BODY(const real_t v1, const real_t v2, const 
 
 	double tw1 = 1.0 / (Da1 + Da2 + Da3);
 	a1 = Da1 * tw1, a2 = Da2 * tw1, a3 = Da3 * tw1;
+
 #endif
 
 	s1 = a1 * (dtwo * v1 - _DF(7.0) * v2 + _DF(11.0) * v3);

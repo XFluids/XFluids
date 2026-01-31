@@ -3,9 +3,9 @@ PROJECT(XFLUIDS LANGUAGES CXX)
 
 # // == Compile system =====================================
 # ####  1. oneAPI: Intel oneAPI compiling system  2. ACPP: OpenSYCL syclcc compiling system
-set(SYCL_COMPILE_SYSTEM "ACPP") # # oneAPI or OpenSYCL compile system,
-set(SelectDv "generic") # which platform: generic(for sscp), host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
-set(ARCH "1100") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
+set(SYCL_COMPILE_SYSTEM "oneAPI") # # oneAPI or OpenSYCL compile system,
+set(SelectDv "cuda") # which platform: generic(for sscp), host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
+set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
 option(USE_MPI "if enable mpi" OFF)
@@ -13,7 +13,7 @@ option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC
 
 # // == RUN settings =======================================
 option(ASYNC_SUBMIT "if use asynchronous submmission" OFF)
-option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" ON)
+option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" OFF)
 
 # // == Functionality option ===============================
 # # // // == Ini sample selection ===========================
@@ -33,14 +33,15 @@ option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" ON)
 # #	NO-COP
 # # 1d-mc-insert-shock-tube		# # 1d-mc-diffusion 			# # 1d-mc-diffusion-reverse
 # # 2d-under-expanded-jet		# # Insert-SBI 					# # Insert-SBI-without-fuel
+# # 2d-euler-vortex
 # # // // // == reacting MIXURE_MODEL settings ==============================
 # # Reaction/Insert-Air			# # Reaction/Inert_H2+N2
 # # Reaction/2H+O2=H+HO2		# # Reaction/N2_dissociation
 # # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
 # # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
 # # Reaction/RSBI-18REA			# # Reaction/RSBI-19REA			# # modified for RSBI samples
-set(INIT_SAMPLE "1d-reactive-st") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "Reaction/H2O_18_reaction") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+set(INIT_SAMPLE "2d-euler-vortex") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "NO-COP") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)
@@ -52,8 +53,8 @@ set(ARTIFICIAL_VISC_TYPE "GLF") # ROE for Roe_type, LLF for local Lax-Friedrichs
 
 # # // // == Viscosity Term =================================
 option(Visc "if add physic viscidity flux" OFF)
-option(Visc_Heat "if add heat transfer term" ON)
-option(Visc_Diffu "if add mass diffusion term" ON) # depends on COP=ON
+option(Visc_Heat "if add heat transfer term" OFF)
+option(Visc_Diffu "if add mass diffusion term" OFF) # depends on COP=ON
 set(VISCOSITY_ORDER "Fourth") # Fourth, Second order viscosity discretization method, 2rd-order used both in FDM and FVM, 4th only used in FDM.
 
 # // == CMake modules ======================================

@@ -3,6 +3,50 @@
 #include "global_setup.h"
 #include "../read_ini/setupini.h"
 
+// ref.Euler_SYCL
+// real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t *uvw_c_max)
+// {
+// 	real_t *rho = fdata.rho;
+// 	real_t *c = fdata.c;
+// 	real_t *u = fdata.u;
+// 	real_t *v = fdata.v;
+// 	real_t *w = fdata.w;
+
+// 	auto local_ndrange = range<1>(bl.BlockSize);	// size of workgroup
+// 	auto global_ndrange = range<1>(bl.Xmax*bl.Ymax*bl.Zmax);
+    
+// 	for(int n=0; n<6; n++)
+// 		uvw_c_max[n] = _DF(0.0);
+
+//     q.submit([&](sycl::handler& h) {
+//       	// define reduction objects for sum, min, max reduction
+// 		// auto reduction_sum = reduction(sum, sycl::plus<>());
+//     	auto reduction_max_x = reduction(&(uvw_c_max[0]), sycl::maximum<>());
+// 		auto reduction_max_y = reduction(&(uvw_c_max[1]), sycl::maximum<>());
+// 		auto reduction_max_z = reduction(&(uvw_c_max[2]), sycl::maximum<>());
+      
+// 		h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, reduction_max_y, reduction_max_z, 
+// 	  	[=](nd_item<1> index, auto& temp_max_x, auto& temp_max_y, auto& temp_max_z)
+// 		{
+//         	auto id = index.get_global_id();
+// 			// if(id < Xmax*Ymax*Zmax)
+//         	temp_max_x.combine(u[id]+c[id]);
+//         	temp_max_y.combine(v[id]+c[id]);
+// 			temp_max_z.combine(w[id]+c[id]);
+//       	});
+//     }).wait();
+
+// 	float dtref = 0.0;
+// 	if(bl.DimX)
+// 		dtref += uvw_c_max[0]/bl.dx;
+//     if(bl.DimY)
+// 		dtref += uvw_c_max[1]/bl.dy;
+// 	if(bl.DimZ)
+// 		dtref += uvw_c_max[2]/bl.dz;
+
+//     return (bl.CFLnumber/dtref);
+// }
+
 real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t *uvw_c_max)
 {
 	real_t *c = fdata.c;
@@ -11,6 +55,9 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 	real_t *yi = fdata.y;
+
+    real_t *p = fdata.p;
+    real_t *rho = fdata.rho;
 
 	int meshSize = bl.Xmax * bl.Ymax * bl.Zmax;
 	auto local_ndrange = range<1>(bl.BlockSize); // size of workgroup
@@ -32,7 +79,8 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 			auto reduction_max_x = sycl_reduction_max(uvw_c_max[0]);
 			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_x, [=](nd_item<1> index, auto &temp_max_x) { //
 				auto id = index.get_global_id();
-				temp_max_x.combine(sycl::fabs(u[id]) + c[id]);
+                real_t c_local = sycl::sqrt(_DF(1.4) * p[id] / rho[id]);
+				temp_max_x.combine(sycl::fabs(u[id]) + c_local);
 			});
 		});
 	}
@@ -43,7 +91,8 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 			auto reduction_max_y = sycl_reduction_max(uvw_c_max[1]);																	//
 			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_y, [=](nd_item<1> index, auto &temp_max_y) { //
 				auto id = index.get_global_id();
-				temp_max_y.combine(sycl::fabs(v[id]) + c[id]);
+                real_t c_local = sycl::sqrt(_DF(1.4) * p[id] / rho[id]);
+				temp_max_y.combine(sycl::fabs(v[id]) + c_local);
 			});
 		});
 	}
@@ -54,7 +103,8 @@ real_t GetDt(sycl::queue &q, Block bl, Thermal &thermal, FlowData &fdata, real_t
 			auto reduction_max_z = sycl_reduction_max(uvw_c_max[2]);																	//
 			h.parallel_for(sycl::nd_range<1>(global_ndrange, local_ndrange), reduction_max_z, [=](nd_item<1> index, auto &temp_max_z) { //
 				auto id = index.get_global_id();
-				temp_max_z.combine(sycl::fabs(w[id]) + c[id]);
+                real_t c_local = sycl::sqrt(_DF(1.4) * p[id] / rho[id]);
+				temp_max_z.combine(sycl::fabs(w[id]) + c_local);
 			});
 		});
 	}

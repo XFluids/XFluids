@@ -98,6 +98,17 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-layer")
 # // =======================================================
 # #### 2d sample
 # // =======================================================
+# actually EulerVortex case
+ELSEIF(INIT_SAMPLE STREQUAL "2d-euler-vortex")
+    set(COP "OFF")
+    set(Visc "OFF")
+    set(Visc_Heat "OFF")
+    set(Visc_Diffu "OFF")
+    set(COP_CHEME "OFF")
+    set(POSITIVITY_PRESERVING "OFF")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-EulerVortex")
+    set(INI_FILE "settings/2d-euler-vortex.json")
+
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shocks") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(COP "OFF")
     set(Visc "OFF")
