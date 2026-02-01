@@ -4,8 +4,8 @@
         "blockSize_y": 8,
         "blockSize_z": 8,
         "DtBlockSize": 8,
-        "nStepMax": 100000000,
-        "nOutMax": 100,
+        "nStepMax": 20,
+        "nOutMax": 100000,
         "OutInterval": 1000000,
         "OutBoundary": 0,
         "CFLnumber": 0.6,
@@ -34,8 +34,8 @@
             0.0
         ],
         "Resolution": [
-            256,
-            256,
+            2560,
+            2560,
             0
         ],
         "Boundarys": [

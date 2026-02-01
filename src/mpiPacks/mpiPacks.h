@@ -71,3 +71,25 @@ struct MpiTrans
 	void allReduce(void *input, void *result, int inputCount, int type, int op, MPI_Comm group_comm);
 	void GroupallReduce(void *input, void *result, int inputCount, int type, int op, int *group_ranks, bool bocast = false);
 };
+
+// // 打印某个进程组中进程在MPI_COMM_WORLD中的进程号
+// void printf_ranknumber_in_world(MPI_Group group, MPI_Group world_group)
+// {
+// 	int size;
+// 	int *rank1;
+// 	int *rank2;
+// 	MPI_Group_size(group, &size);
+// 	rank1 = (int *)malloc(size * sizeof(int));
+// 	rank2 = (int *)malloc(size * sizeof(int));
+// 	for (int i = 0; i < size; i++)
+// 	{
+// 		rank1[i] = i;
+// 	}
+// 	MPI_Group_translate_ranks(group, size, rank1, world_group, rank2);
+// 	for (int j = 0; j < size; j++)
+// 	{
+// 		printf("%d,", rank2[j]);
+// 	}
+// 	printf("\n");
+// 	MPI_Group_free(&group);
+// }

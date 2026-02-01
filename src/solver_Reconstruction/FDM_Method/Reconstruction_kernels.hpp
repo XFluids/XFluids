@@ -22,8 +22,12 @@ extern SYCL_KERNEL void ReconstructFluxX(int i, int j, int k, real_t const dl, M
 
 	// preparing some interval value for roe average
 	MARCO_ROE();
-	MARCO_GETC2();
-	MARCO_ERROR_OUT();
+	real_t _yi[NUM_SPECIES] = {_DF(1.0)}, b3 = _DF(0.0), z[] = {_DF(0.0)};                                         
+	real_t Gamma0 = NCOP_Gamma;                                                                                    
+	real_t c2 = Gamma0 * _P / _rho; /*(_H - _DF(0.5) * (_u * _u + _v * _v + _w * _w)); // out from RoeAverage_x */ 
+	real_t b1 = (Gamma0 - _DF(1.0)) / c2;
+    // MARCO_GETC2();
+	// MARCO_ERROR_OUT();
 
 //     // construct the right value & the left value scalar equations by characteristic reduction
 //     // at i+1/2 in x direction

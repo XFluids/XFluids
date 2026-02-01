@@ -25,8 +25,17 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
 
     int id = Xmax * Ymax * k + Xmax * j + i;
     real_t dx = bl.dx, dy = bl.dy, dz = bl.dz;
-    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+
+#ifdef HYBRID_CALC
+    real_t idx_global = (real_t)(j - Bwidth_Y + bl.GlobalOffset_Y);
+    real_t y = bl.DimY ? idx_global * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+#else
     real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
+#endif // END HYBRID_CALC
+
+
+    real_t x = bl.DimX ? (i - Bwidth_X + bl.myMpiPos_x * (Xmax - Bwidth_X - Bwidth_X)) * dx + _DF(0.5) * dx + bl.Domain_xmin : _DF(0.0);
+    // real_t y = bl.DimY ? (j - Bwidth_Y + bl.myMpiPos_y * (Ymax - Bwidth_Y - Bwidth_Y)) * dy + _DF(0.5) * dy + bl.Domain_ymin : _DF(0.0);
     real_t z = bl.DimZ ? (k - Bwidth_Z + bl.myMpiPos_z * (Zmax - Bwidth_Z - Bwidth_Z)) * dz + _DF(0.5) * dz + bl.Domain_zmin : _DF(0.0);
 
     real_t beta = _DF(5.0);

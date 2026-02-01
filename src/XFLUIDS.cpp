@@ -24,6 +24,9 @@ XFLUIDS::XFLUIDS(Setup &setup) : Ss(setup), dt(_DF(0.0)), Iteration(0), rank(0),
 	if (Ss.BlSz.DimX)
 		outputPrefix = "X" + outputPrefix;
 
+	// initial runtime_check_all;
+	runtime_boundary = 0.0f, runtime_updatestates = 0.0f, runtime_getdt = 0.0f;
+	runtime_computelu = 0.0f, runtime_updateu = 0.0f, runtime_estimatenan = 0.0f, runtime_rea = 0.0f;
 	MPI_trans_time = 0.0, MPI_BCs_time = 0.0, duration = 0.0f, duration_backup = 0.0f;
 	for (int n = 0; n < NumFluid; n++)
 	{
@@ -104,6 +107,8 @@ XFLUIDS::~XFLUIDS()
 
 void XFLUIDS::Evolution(sycl::queue &q)
 {
+	real_t flow_runtime = 0;
+
 	int OutNum = 1, TimeLoop = 0, error_out = 0, RcalOut = 0;
 	bool TimeLoopOut = false, Stepstop = false, timer_create = true;
 	// timer beginning point definition
@@ -177,8 +182,9 @@ void XFLUIDS::Evolution(sycl::queue &q)
 				OutNum++;
 				TimeLoopOut = false;
 				// if (Iteration > 0)	// solution checkingpoint file output
-				Output(q, OutAtThis.Reinitialize(physicalTime, std::to_string(Iteration)));
-			}
+				// 	Output_Ubak(rank, Iteration, physicalTime, duration, true);
+                Output(q, OutAtThis.Reinitialize(physicalTime, std::to_string(Iteration)));
+            }
 			if ((RcalOut % RcalInterval == 0) && Iteration > Setup::adv_nd.size())
 				Output_Ubak(rank, Iteration, physicalTime, duration);
 			RcalOut++;
@@ -285,8 +291,17 @@ void XFLUIDS::Evolution(sycl::queue &q)
 			// // if stop based error captured
 			if (error_out)
 				goto flag_ernd;
-
-            { // // if stop based nStepmax
+			else
+			{ // // timer of this step
+				duration = OutThisTime(start_time) + duration_backup;
+				if (rank == 0)
+				{
+					std::cout << "           runtime: " << std::setw(10) << duration;
+					time_t timestamp_s = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+					std::cout << ", at: " << std::string(ctime(&timestamp_s));
+				}
+			}
+			{ // // if stop based nStepmax
 				Stepstop = Ss.nStepmax <= Iteration ? true : false;
 				if (Stepstop)
 					goto flag_end;
@@ -305,9 +320,100 @@ flag_ernd:
 #ifdef USE_MPI
 	Ss.mpiTrans->communicator->synchronize();
 #endif
+	// // Timer ended at this point.
+	duration = OutThisTime(start_time) + duration_backup;
 	// // The last step Output,
-	Output(q, Ss.OutTimeStamps.back().Reinitialize(physicalTime, std::to_string(Iteration)));
-	EndProcess();
+    Output(q, Ss.OutTimeStamps.back().Reinitialize(physicalTime, std::to_string(Iteration)));
+
+#ifdef HYBRID_CALC
+	Hybrid_endProcess();
+#else
+    EndProcess();
+#endif
+}
+
+void XFLUIDS::Hybrid_endProcess()
+{
+    // --- 0. 安全检查 (Safety Checks) ---
+    // 确保 vector 大小符合预期，防止越界访问
+    if (LU_rt.size() < 23) {
+        if (rank == 0) std::cerr << "[Error] LU_rt size is insufficient (" << LU_rt.size() << " < 23).\n";
+        return;
+    }
+    if (UD_rt.size() < 4) {
+        if (rank == 0) std::cerr << "[Error] UD_rt size is insufficient (" << UD_rt.size() << " < 4).\n";
+        return;
+    }
+
+    float t_updateU = (UU_rt.empty()) ? 0.0f : UU_rt[0];
+
+    // --- 1. 数据提取 (Data Extraction) ---
+
+    // [Part 1] ComputeLU (GetLU)
+    // 对应 GetLU 中的 timer_LU push_back 顺序
+    // Index 3:  runtime_eigen (Local Eigen Total)
+    // Index 11: runtime_flux  (Reconstruction Total)
+    // Index 22: runtime_updatelu (UpdateLU Kernel)
+    float t_eigen     = LU_rt[3];
+    float t_flux      = LU_rt[11];
+    float t_updateLU  = LU_rt[22];
+    
+    float t_total_LU  = t_eigen + t_flux + t_updateLU;
+
+    // [Part 2] UpdateStates
+    // 对应 UpdateFluidStateFlux 中的 timer_UD push_back 顺序
+    // Index 2: mpitime_rhoyi_kernel  (Updaterhoyi)
+    // Index 3: mpitime_states_kernel (UpdateFuidStatesKernel)
+    float t_rhoyi     = UD_rt[2];
+    float t_states    = UD_rt[3];
+
+    float t_total_UD  = t_rhoyi + t_states;
+
+    // [Part 3] UpdateU
+    // 对应 UpdateURK3rd 中的 timer_U push_back (只有一个元素)
+    // t_updateU 已经在上面提取
+
+    // [Part 5] 总计 (Grand Total)
+    // 这是所有核心 Kernel 纯计算时间 + 纯通信时间之和
+    float t_grand_total = t_total_LU + t_total_UD + t_updateU;
+
+    // --- 2. 格式化输出 (Formatted Output) ---
+
+#ifdef USE_MPI
+    Ss.mpiTrans->communicator->synchronize(); // 保证按 Rank 顺序打印
+    for (int r = 0; r < nranks; r++)
+    {
+        if (rank == r)
+        {
+#endif
+            std::cout << "\n<================ [Hybrid] Rank " << std::setw(3) << rank << " Kernel Timing ================>\n";
+            std::cout << std::fixed << std::setprecision(6);
+
+            // --- 1. ComputeLU Breakdown ---
+            std::cout << "1. GetLU (ComputeLU)          : " << std::setw(10) << t_total_LU << " s\n";
+            std::cout << "   |-- LocalEigen             : " << std::setw(10) << t_eigen << " s\n";
+            std::cout << "   |-- Reconstruct            : " << std::setw(10) << t_flux  << " s\n";
+            std::cout << "   |-- UpdateLU               : " << std::setw(10) << t_updateLU << " s\n";
+
+            // --- 2. UpdateStates Breakdown ---
+            std::cout << "2. UpdateStates               : " << std::setw(10) << t_total_UD << " s\n";
+            std::cout << "   |-- Updaterhoyi            : " << std::setw(10) << t_rhoyi << " s\n";
+            std::cout << "   |-- UpdateStatesKernel     : " << std::setw(10) << t_states << " s\n";
+
+            // --- 3. UpdateU Breakdown ---
+            std::cout << "3. UpdateU                    : " << std::setw(10) << t_updateU << " s\n";
+            std::cout << "   |-- UpdateURK3rdKernel     : " << std::setw(10) << t_updateU << " s\n";
+
+            // --- 4. Summary ---
+            std::cout << "4. Total                      : " << std::setw(10) << t_grand_total << " s\n";
+            std::cout << "------------------------------------------------------\n";
+            std::cout << std::flush;
+
+#ifdef USE_MPI
+        }
+        Ss.mpiTrans->communicator->synchronize();
+    }
+#endif
 }
 
 void XFLUIDS::EndProcess()
@@ -339,6 +445,7 @@ void XFLUIDS::EndProcess()
 #else
 	std::cout << "<--------------------------------------------------->\n";
 #endif // end USE_MPI
+		std::cout << SelectDv << " runtime(s)   :  " << std::setw(8) << std::setprecision(6) << duration / float(nranks) << std::endl;
 #ifdef USE_MPI
 		std::cout << "Device Memory Usage(GB)   :  " << fluids[0]->MemMbSize / 1024.0 << std::endl;
 		std::cout << "MPI trans Memory Size(GB) :  " << fluids[0]->MPIMbSize / 1024.0 << std::endl;
@@ -359,18 +466,84 @@ void XFLUIDS::EndProcess()
 #endif
 	{
 		// std::cout << "Times of error patched: " << error_times_patched << std::endl;
-        float runtime_total = 0.f;
+		float runtime_check_sum = runtime_boundary + runtime_updatestates + runtime_getdt;
+		runtime_check_sum += runtime_computelu + runtime_updateu + runtime_estimatenan + runtime_rea;
+		float runtime_LU_sync_sum = 0.0f, runtime_LU_async_sum = 0.0f;
 		for (size_t i = 0; i < LU_rt.size(); i++)
 		{
 #if __SYNC_TIMER_
 			if (!(3 == i || 7 == i || 11 == i || 15 == i || 21 == i))
-				runtime_total += LU_rt[i];
+				runtime_LU_sync_sum += LU_rt[i];
+			if (3 == i || 7 == i || 11 == i || 15 == i || 16 == i || 17 == i || 21 == i || 22 == i)
+				runtime_LU_async_sum += LU_rt[i];
 #else
 			if (3 == i || 7 == i || 11 == i || 15 == i || 16 == i || 17 == i || 21 == i || 22 == i)
-				runtime_total += LU_rt[i];
+				runtime_LU_sync_sum += LU_rt[i];
 #endif
 		}
-        std::cout << "runtime: " << runtime_total << "\n";
+		float _runtime_check_sum = 100.f / runtime_check_sum, _runtime_LU_check_sum = 100.f / runtime_LU_sync_sum;
+
+		float runtime_UD_sum = 0.0f;
+		for (size_t i = 0; i < UD_rt.size(); i++)
+			runtime_UD_sum += UD_rt[i];
+		float _runtime_UD_sum = 100.f / runtime_UD_sum;
+		// TODO: in RUNTIME CHECK, MPI need to be contain; Then write RUNTIME CHECK of UpdateStates;
+		// RUNTIME CHECK BEGIN
+		std::cout << "<--------------------------------------------------->"
+				  << "\n"
+				  << "DETAILED RUNTIME,Time(seconds),Time Percent(%)"
+				  << "\n"
+				  << "runtime of DoBCs,               " << runtime_boundary << "," << runtime_boundary * _runtime_check_sum << "\n"
+				  << "runtime of GetDt,               " << runtime_getdt << "," << runtime_getdt * _runtime_check_sum << "\n"
+				  << "runtime of GetLU,               " << runtime_computelu << "," << runtime_computelu * _runtime_check_sum << "\n"
+				  << "runtime of UpdateU,             " << runtime_updateu << "," << runtime_updateu * _runtime_check_sum << "\n"
+				  << "runtime of UpdateState,         " << runtime_updatestates << "," << runtime_updatestates * _runtime_check_sum << "\n"
+				  << "runtime of EstimateNAN,         " << runtime_estimatenan << "," << runtime_estimatenan * _runtime_check_sum << "\n"
+				  << "runtime of ReactionIntegral,    " << runtime_rea << "," << runtime_rea * _runtime_check_sum << "\n"
+				  << "runtime check SUMMATION>>>>,    " << runtime_check_sum << "\n"
+				  << "<--------------------------------------------------->"
+				  << "\n"
+				  << "DETAILED RUNTIME of UpdateStates,Time(seconds),Time Percent(%)"
+				  << "\n"
+				  << "runtime of Estimate Yi,                  " << UD_rt[0] << "," << UD_rt[0] * _runtime_UD_sum << "\n"
+				  << "runtime of Get rho and Yi,               " << UD_rt[2] << "," << UD_rt[2] * _runtime_UD_sum << "\n"
+				  << "runtime of Estimate Primitive,           " << UD_rt[1] << "," << UD_rt[1] * _runtime_UD_sum << "\n"
+				  << "runtime of Get States and Fluxes,        " << UD_rt[3] << "," << UD_rt[3] * _runtime_UD_sum << "\n"
+				  << "runtime check Update SUMMATION>>>>,      " << runtime_UD_sum << "\n"
+				  << "<--------------------------------------------------->"
+				  << "\n"
+				  << "DETAILED RUNTIME of GetLU,Time(seconds),Time Percent(%)"
+				  << "\n"
+#if __SYNC_TIMER_
+				  << "runtime of SyncGetLocalEigenX,           " << LU_rt[0] << "," << LU_rt[0] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetLocalEigenY,           " << LU_rt[1] << "," << LU_rt[1] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetLocalEigenZ,           " << LU_rt[2] << "," << LU_rt[2] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetGlobalEigenX,          " << LU_rt[4] << "," << LU_rt[4] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetGlobalEigenY,          " << LU_rt[5] << "," << LU_rt[5] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetGlocalEigenZ,          " << LU_rt[6] << "," << LU_rt[6] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncReconstructWallFluxX,     " << LU_rt[8] << "," << LU_rt[8] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncReconstructWallFluxY,     " << LU_rt[9] << "," << LU_rt[9] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncReconstructWallFluxZ,     " << LU_rt[10] << "," << LU_rt[10] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncPositivityPreservingX,    " << LU_rt[12] << "," << LU_rt[12] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncPositivityPreservingY,    " << LU_rt[13] << "," << LU_rt[13] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncPositivityPreservingZ,    " << LU_rt[14] << "," << LU_rt[14] * _runtime_LU_check_sum << "\n"
+#else
+				  << "runtime of AsyncGetLocalEigen>>,         " << LU_rt[3] << "," << LU_rt[3] * _runtime_LU_check_sum << "\n"
+				  << "runtime of AsyncGetGlocalEigen>>,        " << LU_rt[7] << "," << LU_rt[7] * _runtime_LU_check_sum << "\n"
+				  << "runtime of AsyncReconstructWallFlux>>,   " << LU_rt[11] << "," << LU_rt[11] * _runtime_LU_check_sum << "\n"
+				  << "runtime of AsyncPositivityPreserving>>,  " << LU_rt[15] << "," << LU_rt[15] * _runtime_LU_check_sum << "\n"
+#endif
+				  << "runtime of GetVelocityDerivatives,       " << LU_rt[16] << "," << LU_rt[16] * _runtime_LU_check_sum << "\n"
+				  << "runtime of GetViscousCoefficients,       " << LU_rt[17] << "," << LU_rt[17] * _runtime_LU_check_sum << "\n"
+#if __SYNC_TIMER_
+				  << "runtime of SyncGetViscousWallFluxX,      " << LU_rt[18] << "," << LU_rt[18] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetViscousWallFluxY,      " << LU_rt[19] << "," << LU_rt[19] * _runtime_LU_check_sum << "\n"
+				  << "runtime of SyncGetViscousWallFluxZ,      " << LU_rt[20] << "," << LU_rt[20] * _runtime_LU_check_sum << "\n"
+#else
+				  << "runtime of AsyncGetViscousWallFlux>>,    " << LU_rt[21] << "," << LU_rt[21] * _runtime_LU_check_sum << "\n"
+#endif
+				  << "runtime of CalculateLU,RHS)FromFluxes,   " << LU_rt[22] << "," << LU_rt[22] * _runtime_LU_check_sum << "\n"
+				  << "runtime check GetLU,RHS) SUMMATION>>>>,  " << runtime_LU_sync_sum << "\n";
 	}
 }
 
@@ -554,8 +727,25 @@ void XFLUIDS::ComputeLU(sycl::queue &q, int flag)
 
 void XFLUIDS::UpdateU(sycl::queue &q, int flag)
 {
-	for (int n = 0; n < NumFluid; n++)
-		fluids[n]->UpdateFluidURK3(q, flag, dt);
+	// for (int n = 0; n < NumFluid; n++)
+	// 	fluids[n]->UpdateFluidURK3(q, flag, dt);
+
+    for (int n = 0; n < NumFluid; n++){
+        std::vector<float> temp_u_rt = fluids[n]->UpdateFluidURK3(q, flag, dt);
+
+        if (n == 0){
+            static bool is_initialized = false;
+            if (!is_initialized){
+                UU_rt.resize(temp_u_rt.size());
+                std::fill(UU_rt.begin(), UU_rt.end(), 0.0f);
+                is_initialized = true;
+            }
+        }
+
+        for (size_t i = 0; i < UU_rt.size(); i++){
+            UU_rt[i] += temp_u_rt[i];
+        }
+    }
 }
 
 void XFLUIDS::BoundaryCondition(sycl::queue &q, int flag)
@@ -580,16 +770,16 @@ bool XFLUIDS::UpdateStates(sycl::queue &q, int flag, const real_t Time, const in
 				UD_rt[i] += temp_pair.second[i];
 	}
 
-	{
-		std::string Stepstr = std::to_string(Step);
-		if (error_t)
-			Output(q, OutAtThis.Reinitialize(Time, "PErs_" + Stepstr + RkStep), 1);
-#ifdef USE_MPI
-		error_t = Ss.mpiTrans->BocastTrue(error_t);
-#endif // end USE_MPI
-		if (error_t)
-			Output(q, OutAtThis.Reinitialize(Time, "PErr_" + Stepstr + RkStep), 2);
-	}
+// 	{
+// 		std::string Stepstr = std::to_string(Step);
+// 		if (error_t)
+// 			Output(q, OutAtThis.Reinitialize(Time, "PErs_" + Stepstr + RkStep), 1);
+// #ifdef USE_MPI
+// 		error_t = Ss.mpiTrans->BocastTrue(error_t);
+// #endif // end USE_MPI
+// 		if (error_t)
+// 			Output(q, OutAtThis.Reinitialize(Time, "PErr_" + Stepstr + RkStep), 2);
+// 	}
 
 	return error_t; // all rank == 1 or 0
 }
@@ -1031,23 +1221,25 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, size_t error)
 	{
 		// Init error var names
 		std::vector<OutVar> error_vars = Output_variables(fluids[0]->h_fstate, Ss.species_name, error);
-		if (OutVTI)
-			Output_vti(error_vars, osr, error);
-		if (OutDAT)
-			Output_cplt(ctrl.out_vars, ctrl.pos, osr);
-
-		if (rank == 0)
-			std::cout << "Errors Captured solution";
+		#ifndef HYBRID_CALC
+            if (OutVTI)
+                Output_vti(error_vars, osr, error);
+            if (OutDAT)
+                Output_cplt(ctrl.out_vars, ctrl.pos, osr);
+            if (rank == 0)
+                std::cout << "Errors Captured solution";
+        #endif //HYBRID_CALC
 	}
 	else if (ctrl.CPOut)
 	{
-		if (OutDAT)
-			Output_cplt(ctrl.out_vars, ctrl.pos, osr);
-		if (OutVTI)
-			Output_cvti(ctrl.out_vars, ctrl.pos, osr);
-
-		if (rank == 0)
-			std::cout << "Compress Dimensions solution";
+        #ifndef HYBRID_CALC
+            if (OutDAT)
+                Output_cplt(ctrl.out_vars, ctrl.pos, osr);
+            if (OutVTI)
+                Output_cvti(ctrl.out_vars, ctrl.pos, osr);
+            if (rank == 0)
+                std::cout << "Compress Dimensions solution";
+        #endif //HYBRID_CALC
 	}
 	else if (ctrl.SPOut)
 	{
@@ -1059,13 +1251,14 @@ void XFLUIDS::Output(sycl::queue &q, OutFmt ctrl, size_t error)
 	}
 	else
 	{
-		if (OutDAT)
-			Output_cplt(ctrl.out_vars, ctrl.pos, osr);
-		if (OutVTI)
-			Output_svti(ctrl.out_vars, ctrl.cri_list, osr);
-
-		if (rank == 0)
-			std::cout << "Common Domain solution";
+        #ifndef HYBRID_CALC
+            if (OutDAT)
+                Output_cplt(ctrl.out_vars, ctrl.pos, osr);
+            if (OutVTI)
+                Output_svti(ctrl.out_vars, ctrl.cri_list, osr);
+            if (rank == 0)
+                std::cout << "Common Domain solution";
+        #endif //HYBRID_CALC
 	}
 	if (rank == 0)
 		std::cout << " has been done at Step = " << ctrl.inter << ", Time = " << ctrl.time << std::endl;
@@ -1672,6 +1865,163 @@ void XFLUIDS::Output_plt(int rank, OutString &osr, bool error)
 	out.close();
 }
 
+// plt, ref.Euler_SYCL
+// template <typename T>
+// void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString &osr)
+// {
+//     OutSize CPT = VTI;
+
+//     std::string file_name = OutputDir + "/CPLT_" + outputPrefix + "_Step_Time_" + osr.stepFormat.str() +
+// 								"." + osr.timeFormat.str() + "_" + osr.rankFormat.str() + ".plt";
+
+// 	std::ofstream out(file_name);
+//     // out << std::setw(6) << std::setprecision(40);
+// 	//defining header for tecplot(plot software)
+// 	out<<"title='View'"<<"\n";
+// 	int LEN = 0;
+// 	if (Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ==1){
+// 	    LEN = 2;
+// 	    out<<"variables=x, u, p, rho"<<"\n";
+//     }
+// 	else if (Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ==2){
+//         LEN = 2;
+//         out<<"variables=x, y, u, v, p, rho"<<"\n";
+//     }
+//     else if (Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ==3){
+//         LEN = 2;
+//         out<<"variables=x, y, z, u, v, w, p, rho"<<"\n";
+//     }	
+// 	out<<"zone t='filed', i="<<Ss.BlSz.X_inner+Ss.BlSz.DimX<<", j="<<Ss.BlSz.Y_inner+Ss.BlSz.DimY<<", k="<<Ss.BlSz.Z_inner+Ss.BlSz.DimZ<<"  DATAPACKING=BLOCK, VARLOCATION=([";
+// 	int pos_s = Ss.BlSz.DimX+Ss.BlSz.DimY+Ss.BlSz.DimZ+1;
+// 	out<<pos_s<<"-";
+// 	out<<2*pos_s -1 + LEN-1<<"]=CELLCENTERED) SOLUTIONTIME="<<osr.timeFormat.str()<<"\n";
+
+// 	int ii = Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X + Ss.BlSz.DimX - 1;
+// 	int jj = Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y + Ss.BlSz.DimY - 1;
+// 	int kk = Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z + Ss.BlSz.DimZ - 1;
+
+//     // out << std::scientific << std::setprecision(16);
+
+// 	if (Ss.BlSz.DimX){
+//         for(int k=Ss.BlSz.Bwidth_Z; k<=kk; k++){
+//             for(int j=Ss.BlSz.Bwidth_Y; j<=jj; j++){
+//                 for(int i=Ss.BlSz.Bwidth_X; i<=ii; i++)
+//                 {
+//                     out<<(i-Ss.BlSz.Bwidth_X)*Ss.BlSz.dx<<" ";
+//                 }
+//                 out<<"\n";
+//             }
+//         }
+//     }
+
+// 	if (Ss.BlSz.DimY){
+// 	    for(int k=Ss.BlSz.Bwidth_Z; k<=kk; k++){
+// 	    	for(int j=Ss.BlSz.Bwidth_Y; j<=jj; j++){
+// 	    		for(int i=Ss.BlSz.Bwidth_X; i<=ii; i++)
+// 	    		{
+// 	    			out<<(j-Ss.BlSz.Bwidth_Y)*Ss.BlSz.dy<<" ";
+// 	    		}
+// 	    		out<<"\n";
+// 	    	}
+// 	    }
+//     }
+
+// 	if (Ss.BlSz.DimZ){
+//         for(int k=Ss.BlSz.Bwidth_Z; k<=kk; k++){
+//             for(int j=Ss.BlSz.Bwidth_Y; j<=jj; j++){
+//                 for(int i=Ss.BlSz.Bwidth_X; i<=ii; i++)
+//                 {
+//                     out<<(k-Ss.BlSz.Bwidth_Z)*Ss.BlSz.dz<<" ";
+//                 }
+//                 out<<"\n";
+//             }
+//         }
+//     }
+
+// 	if (Ss.BlSz.DimX){
+// 		//u
+// 		for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+//             for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+//                 for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+//                 {
+//                     int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+//                     // if(levelset->h_phi[id]>= 0.0)
+//                         out<<fluids[0]->h_fstate.u[id]<<" ";
+//                     // else
+//                     // 	out<<fluids[1]->h_fstate.u[id]<<" ";
+//                 }
+//                 out<<"\n";
+//             }
+//         }
+//     }
+
+// 	if (Ss.BlSz.DimY){
+// 	    //v
+// 	    for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 	    	for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 	    		for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 	    		{
+// 	    			int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 	    			// if(levelset->h_phi[id]>= 0.0)
+// 	    				out<<fluids[0]->h_fstate.v[id]<<" ";
+// 	    			// else
+// 	    			// 	out<<fluids[1]->h_fstate.v[id]<<" ";
+// 	    		}
+// 	    		out<<"\n";
+// 	    	}
+// 	    }
+//     }
+// 	if (Ss.BlSz.DimZ){
+// 		//w
+// 		for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 			for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 				for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 				{
+// 				int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 				// if(levelset->h_phi[id]>= 0.0)
+// 					out<<fluids[0]->h_fstate.w[id]<<" ";
+// 				// else
+// 				// 	out<<fluids[1]->h_fstate.w[id]<<" ";
+// 			    }
+// 			    out<<"\n";
+// 		    }
+// 	    }
+//     }
+
+// 	//P
+// 	for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 		for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 			for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 			{
+// 				int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 				// if(levelset->h_phi[id]>= 0.0)
+// 					out<<fluids[0]->h_fstate.p[id]<<" ";
+// 				// else
+// 				// 	out<<fluids[1]->h_fstate.p[id]<<" ";
+// 			}
+// 			out<<"\n";
+// 		}
+// 	}
+
+// 	// rho
+// 	for(int k=Ss.BlSz.Bwidth_Z; k<Ss.BlSz.Zmax-Ss.BlSz.Bwidth_Z; k++){
+// 		for(int j=Ss.BlSz.Bwidth_Y; j<Ss.BlSz.Ymax-Ss.BlSz.Bwidth_Y; j++){
+// 			for(int i=Ss.BlSz.Bwidth_X; i<Ss.BlSz.Xmax-Ss.BlSz.Bwidth_X; i++)
+// 			{
+// 				int id = Ss.BlSz.Xmax*Ss.BlSz.Ymax*k + Ss.BlSz.Xmax*j + i;
+// 				// if(levelset->h_phi[id]>= 0.0)
+// 					out<<fluids[0]->h_fstate.rho[id]<<" ";
+// 				// else
+// 				// 	out<<fluids[1]->h_fstate.rho[id]<<" ";
+// 			}
+// 			out<<"\n";
+// 		}
+// 	}
+
+//     out.close();
+// }
+
+// XFLUIDS_ori
 template <typename T>
 void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString &osr)
 {
@@ -1685,8 +2035,16 @@ void XFLUIDS::Output_cplt(std::vector<OutVar> &varout, OutSlice &pos, OutString 
 	real_t temx = _DF(0.5) * Ss.BlSz.dx + Ss.BlSz.Domain_xmin;
 	real_t temy = _DF(0.5) * Ss.BlSz.dy + Ss.BlSz.Domain_ymin;
 	real_t temz = _DF(0.5) * Ss.BlSz.dz + Ss.BlSz.Domain_zmin;
-	real_t posx = -Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner);
-	real_t posy = -Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner);
+
+    real_t posy;
+#ifdef HYBRID_CALC
+    posy = -Ss.BlSz.Bwidth_Y + Ss.BlSz.GlobalOffset_Y;
+#else
+    // 原版逻辑：均匀分解假设
+	posy = -Ss.BlSz.Bwidth_Y + Ss.BlSz.myMpiPos_y * (Ss.BlSz.Y_inner);
+#endif 
+
+    real_t posx = -Ss.BlSz.Bwidth_X + Ss.BlSz.myMpiPos_x * (Ss.BlSz.X_inner);
 	real_t posz = -Ss.BlSz.Bwidth_Z + Ss.BlSz.myMpiPos_z * (Ss.BlSz.Z_inner);
 #ifdef USE_MPI
 	GetCPT_OutRanks(OutRanks, CPT, pos);

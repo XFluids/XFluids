@@ -2,7 +2,10 @@
 
 #include "Update_device.hpp"
 
-extern void Updaterhoyi(int i, int j, int k, MeshSize bl, real_t *UI, real_t *rho, real_t *_y)
+extern SYCL_KERNEL void UpdateFuidStatesSPKernel(int i, int j, int k, MeshSize bl, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+												 real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *H, real_t const gamma);
+
+extern inline void Updaterhoyi(int i, int j, int k, MeshSize bl, real_t *UI, real_t *rho, real_t *_y)
 {
 	if (i >= bl.Xmax)
 		return;
@@ -17,7 +20,7 @@ extern void Updaterhoyi(int i, int j, int k, MeshSize bl, real_t *UI, real_t *rh
 	Getrhoyi(U, rho[id], yi);
 }
 
-extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, MeshSize bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
+extern SYCL_KERNEL inline void UpdateFuidStatesKernel(int i, int j, int k, MeshSize bl, Thermal thermal, real_t *UI, real_t *FluxF, real_t *FluxG, real_t *FluxH,
 											   real_t *rho, real_t *p, real_t *u, real_t *v, real_t *w, real_t *c, real_t *gamma, real_t *e, real_t *H,
 											   real_t *T, real_t *_y, real_t *Ri, real_t *Cp)
 {
@@ -39,7 +42,24 @@ extern SYCL_KERNEL void UpdateFuidStatesKernel(int i, int j, int k, MeshSize bl,
 	real_t *Fy = &(FluxG[Emax * id]);
 	real_t *Fz = &(FluxH[Emax * id]);
 
-	GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
+	// GetPhysFlux(U, yi, Fx, Fy, Fz, rho[id], u[id], v[id], w[id], p[id], H[id], c[id]);
+	Fx[0] = U[1];
+	Fx[1] = U[1] * u[id] + p[id];
+	Fx[2] = U[1] * v[id];
+	Fx[3] = U[1] * w[id];
+	Fx[4] = (U[4] + p[id]) * u[id];
+
+	Fy[0] = U[2];
+	Fy[1] = U[2] * u[id];
+	Fy[2] = U[2] * v[id] + p[id];
+	Fy[3] = U[2] * w[id];
+	Fy[4] = (U[4] + p[id]) * v[id];
+
+	Fz[0] = U[3];
+	Fz[1] = U[3] * u[id];
+	Fz[2] = U[3] * v[id];
+	Fz[3] = U[3] * w[id] + p[id];
+	Fz[4] = (U[4] + p[id]) * w[id];
 
 	// // real_t de_fx[Emax], de_fy[Emax], de_fz[Emax];
 	// // get_Array(FluxF, de_fx, Emax, id);
@@ -61,7 +81,7 @@ void UpdateFuidStatesKernelVendorWrapper(MeshSize bl, Thermal thermal, real_t *U
 }
 #endif
 
-extern void UpdateURK3rdKernel(int i, int j, int k, MeshSize bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
+extern inline void UpdateURK3rdKernel(int i, int j, int k, MeshSize bl, real_t *U, real_t *U1, real_t *LU, real_t const dt, int flag)
 {
 	MARCO_DOMAIN();
 	if (i >= bl.Xmax)

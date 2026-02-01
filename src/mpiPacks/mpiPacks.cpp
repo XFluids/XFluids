@@ -2,7 +2,12 @@
 
 MpiTrans::MpiTrans(Block &bl, BConditions const Boundarys[6])
 {
-	mx = bl.mx, my = bl.my, mz = bl.mz;
+    // std::cout << "DEBUG: MpiTrans Init - mx=" << bl.mx 
+    //         << ", my=" << bl.my 
+    //         << ", mz=" << bl.mz 
+    //         << ", nRanks=" << MpiComm::world().getNProc() << std::endl;
+    
+    mx = bl.mx, my = bl.my, mz = bl.mz;
 	// runtime determination if we are using float ou double (for MPI communication)
 	data_type = typeid(1.0).name() == typeid(_DF(1.0)).name() ? mpiUtils::MpiComm::DOUBLE : mpiUtils::MpiComm::FLOAT;
 	// check that parameters are consistent
@@ -72,6 +77,10 @@ MpiTrans::MpiTrans(Block &bl, BConditions const Boundarys[6])
 	}
 	// block in mpiPacks
 	mbl = bl;
+
+    // std::cout << "[MPI DEBUG] Rank " << myRank 
+    //           << " Neighbors: X_MIN=" << neighborsRank[X_MIN]
+    //           << ", X_MAX=" << neighborsRank[X_MAX] << std::endl;
 } // MpiTrans::MpiTrans
 // =======================================================
 // =======================================================

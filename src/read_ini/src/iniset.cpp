@@ -283,6 +283,70 @@ void Setup::ReWrite()
             OutTimeStamps.push_back(this_time);
         }
     }
+
+    this->HybridReWrite(myRank);
+}
+
+void Setup::HybridReWrite(int rank){
+    #ifdef HYBRID_CALC
+        #ifndef TEST_CASE
+            std::cerr << "Error: HYBRID_CALC mode need to define TEST_CASE macro!" << std::endl;
+            return;
+        #endif
+
+        if(TEST_CASE==3){
+            BlSz.mx = 1;
+            BlSz.my = 2;
+            BlSz.mz = 1;
+        }
+        
+        switch(TEST_CASE){
+            case 3: // 3080(rank0) + 9 9950X(rank1)
+                if(rank == 0){
+                    BlSz.Y_inner = 1760;
+                    BlSz.GlobalOffset_Y = 0;
+                }
+                else{
+                    BlSz.Y_inner = 800;
+                    BlSz.GlobalOffset_Y = 1760;
+                }
+                break;
+            default: break;
+        }
+
+        // 1. 运行 init (注意：此时它打印的 dx 是错误的，忽略控制台输出)
+        this->init();
+
+        // 2. [修复] 手动修正 dx
+        real_t global_domain_len_y = 10.0;
+        real_t global_resolution_y = 2560.0;
+
+        BlSz.dy = global_domain_len_y / global_resolution_y;
+        BlSz._dy = _DF(1.0) / BlSz.dy;
+
+        // 3. [修复] Domain_length 应该保持全局一致
+        // 不要用 dx * mx * X_inner 反推，直接给全局长度
+        if(BlSz.DimY) BlSz.Domain_length = global_domain_len_y;
+
+        // 4. 更新 dl
+        BlSz.dl = std::min(BlSz.dx, BlSz.dy);
+        if(BlSz.DimZ) BlSz.dl = std::min(BlSz.dl, BlSz.dz);
+        BlSz._dl = _DF(1.0) / BlSz.dl;
+
+        // 5. [核心修复] 填充 adv_nd
+        this->adv_nd.clear();
+        this->adv_nd.resize(1);
+        
+        // 必须压入一个 Assign 对象，否则 Solver 没法启动 Kernel
+        // 使用当前 BlockSize 配置创建一个默认的 Assign
+        sycl::range<3> default_range(BlSz.dim_block_z, BlSz.dim_block_y, BlSz.dim_block_x);
+        this->adv_nd[0].push_back(Assign(default_range));
+
+        // std::cout << "  [Hybrid] Rank " << rank 
+        //           << ": Corrected dx=" << BlSz.dx 
+        //           << ", Domain_L=" << BlSz.Domain_length 
+        //           << ", adv_nd initialized." << std::endl;
+    #endif
 }
 
 // =======================================================
@@ -312,8 +376,19 @@ void Setup::init()
     BlSz.Domain_ymax = BlSz.Domain_ymin + BlSz.Domain_width;
     BlSz.Domain_zmax = BlSz.Domain_zmin + BlSz.Domain_height;
 
+    #ifdef HYBRID_CALC
+        real_t global_domain_len_y = 10.0;
+        real_t global_resolution_y = 2560.0;
+
+        if(BlSz.DimX){
+            BlSz.dy = global_domain_len_y / global_resolution_y;
+        }
+
+    #else
+        BlSz.dy = BlSz.DimY ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
+    #endif
+    
     BlSz.dx = BlSz.DimX ? BlSz.Domain_length / real_t(BlSz.mx * BlSz.X_inner) : _DF(1.0);
-    BlSz.dy = BlSz.DimY ? BlSz.Domain_width / real_t(BlSz.my * BlSz.Y_inner) : _DF(1.0);
     BlSz.dz = BlSz.DimZ ? BlSz.Domain_height / real_t(BlSz.mz * BlSz.Z_inner) : _DF(1.0);
 
     // // maximum number of total cells
@@ -328,6 +403,7 @@ void Setup::init()
         BlSz.dl = std::min(BlSz.dl, BlSz.dy);
     if (BlSz.DimZ)
         BlSz.dl = std::min(BlSz.dl, BlSz.dz);
+
 
     BlSz.offx = (_DF(0.5) - BlSz.Bwidth_X + BlSz.myMpiPos_x * BlSz.X_inner) * BlSz.dx + BlSz.Domain_xmin;
     BlSz.offy = (_DF(0.5) - BlSz.Bwidth_Y + BlSz.myMpiPos_y * BlSz.Y_inner) * BlSz.dy + BlSz.Domain_ymin;

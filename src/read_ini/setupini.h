@@ -55,6 +55,7 @@ public:
 	Setup(int argc, char **argv, int rank = 0, int nranks = 1);
 	void ReadIni();
 	void ReWrite();
+    void HybridReWrite(int rank);
 	void init();
 	void print(); // only print once when is_print = false
 	void CpyToGPU();

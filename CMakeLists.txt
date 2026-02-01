@@ -4,7 +4,7 @@ PROJECT(XFLUIDS LANGUAGES CXX)
 # // == Compile system =====================================
 # ####  1. oneAPI: Intel oneAPI compiling system  2. ACPP: OpenSYCL syclcc compiling system
 set(SYCL_COMPILE_SYSTEM "oneAPI") # # oneAPI or OpenSYCL compile system,
-set(SelectDv "cuda") # which platform: generic(for sscp), host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
+set(SelectDv "host") # which platform: generic(for sscp), host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
 set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
@@ -12,8 +12,10 @@ option(USE_MPI "if enable mpi" OFF)
 option(AWARE_MPI "if enable aware-mpi" OFF) # only be valid while EXPLICIT_ALLOC is set "ON"
 
 # // == RUN settings =======================================
-option(ASYNC_SUBMIT "if use asynchronous submmission" OFF)
+option(ASYNC_SUBMIT "if use asynchronous submmission" ON)
 option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" OFF)
+option(USE_REVERSE_NDRANGE "Use Z-Y-X reversed nd_range for GPU memory coalescing" ON)
+option(USE_MPI_TIMER "if use MPI_Wtime() to time kernel execution" ON)
 
 # // == Functionality option ===============================
 # # // // == Ini sample selection ===========================
@@ -33,15 +35,14 @@ option(VENDOR_SUBMIT "if use CUDA or HIP original parallel submmision" OFF)
 # #	NO-COP
 # # 1d-mc-insert-shock-tube		# # 1d-mc-diffusion 			# # 1d-mc-diffusion-reverse
 # # 2d-under-expanded-jet		# # Insert-SBI 					# # Insert-SBI-without-fuel
-# # 2d-euler-vortex
 # # // // // == reacting MIXURE_MODEL settings ==============================
 # # Reaction/Insert-Air			# # Reaction/Inert_H2+N2
 # # Reaction/2H+O2=H+HO2		# # Reaction/N2_dissociation
 # # Reaction/H2O_18_reaction	# # Reaction/H2O_19_reaction	# # Reaction/H2O_23_reaction
 # # Reaction/H2O-N2_8_reaction	# # Reaction/H2O-N2_19_reaction	# # Reaction/H2O-N2_21_reaction
 # # Reaction/RSBI-18REA			# # Reaction/RSBI-19REA			# # modified for RSBI samples
-set(INIT_SAMPLE "1d-insert-st") # set INIT_SAMPLE for Initializing settings
-set(MIXTURE_MODEL "1d-mc-insert-shock-tube") # location of species_list.dat read in project listed under ./runtime.dat/ folder
+set(INIT_SAMPLE "2d-EulerVortex") # set INIT_SAMPLE for Initializing settings
+set(MIXTURE_MODEL "NO-COP") # location of species_list.dat read in project listed under ./runtime.dat/ folder
 
 # # // // == Convention Term ================================
 option(USE_DOUBLE "if double" ON)

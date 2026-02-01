@@ -2,9 +2,9 @@ set(THERMAL "NASA") # NASA or JANAF Thermal Fit
 set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
 # # OROC: calculate one row and column once in registers "for" loop(eigen_lr[Emax])
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
-option(COP "if enable compoent" ON)
+option(COP "if enable compoent" OFF)
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # ON: allocate device buffer and transfer. OFF: allocate struct ptr on host
-option(ESTIM_NAN "estimate if primitive variable(rho,yi,P,T) is nan or <0 or inf." ON)
+option(ESTIM_NAN "estimate if primitive variable(rho,yi,P,T) is nan or <0 or inf." OFF)
 option(ERROR_OUT "if out intermediate variables for Flux ((b1,b3,zi)[convention],Di[visc],...)." OFF)
 option(ERROR_PATCH_PRI "if patch primitive varibales using Roe average method, destruct physic fluid flow." OFF)
 

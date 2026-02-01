@@ -5,6 +5,7 @@ ENDIF()
 # // =======================================================
 # #### about external libs: boost
 SET(EXTERNAL_BOOST_ROOT ${CMAKE_SOURCE_DIR}/external/install/boost)
+#SET(EXTERNAL_CANTERA_ROOT ${CMAKE_SOURCE_DIR}/external/install/cantera)
 # // =======================================================
 IF(NOT BOOST_ROOT)
 	set(BOOST_ROOT "$ENV{BOOST_ROOT}")
@@ -28,6 +29,51 @@ ENDIF()
 	set(BOOST_CXX "ON") # use external boost
 	
 # // =======================================================
+# Modified by gpi:
+# Force the script to use the CANTERA_ROOT logic by pre-setting the result to NOTFOUND
+#set(cantera "cantera-NOTFOUND" CACHE FILEPATH "Force cantera lookup to use CANTERA_ROOT")
+# find_library(cantera NAMES libcantera.so) # <-- Disabled
+#IF(("${cantera}" STREQUAL "cantera-NOTFOUND"))
+#	IF(NOT CANTERA_ROOT)
+#		set(CANTERA_ROOT "$ENV{CANTERA_ROOT}")
+#	ENDIF()
+#	find_library(cantera NAMES libcantera_shared.so HINTS "${CANTERA_ROOT}/lib" "${EXTERNAL_CANTERA_ROOT}/${CMAKE_BUILD_TYPE}/lib")
+#	IF(("${cantera}" STREQUAL "cantera-NOTFOUND"))
+#		set(CONDA_PATH "$ENV{CONDA_PREFIX}")
+#		IF(NOT CONDA_PATH)
+#			message(FATAL_ERROR "Compiling Package \"cantera\" error without conda environment, please activate conda environment")
+#		ENDIF()
+#		message(STATUS "build cantera libs located: ${CANTERA_ROOT}")
+#		EXECUTE_PROCESS(COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/build_cantera.sh ${CONDA_PATH} ${CMAKE_BUILD_TYPE})
+#		set(CANTERA_ROOT ${EXTERNAL_CANTERA_ROOT}/${CMAKE_BUILD_TYPE})
+#		message(STATUS "build cantera libs located: ${CANTERA_ROOT}")
+#		find_library(cantera NAMES libcantera_shared.so HINTS "${CANTERA_ROOT}/lib")
+#		set(SUNDIALS_FOUND ON)
+#	ENDIF()
+#ELSE()
+#	set(CANTERA_ROOT "/usr")
+#	find_package(SUNDIALS)
+# remove 	find_package(fmt)
+#ENDIF()
+# add 	find_package(fmt)
+#find_package(fmt)
+
+#include_directories(
+#	"${CANTERA_ROOT}/include"
+#	"${CANTERA_ROOT}/include/cantera/ext")
+# string(REGEX REPLACE "/lib/libcantera_shared.so" "/" CANTERA_ROOT "${cantera}")
+#message(STATUS "Find cantera headers located: ${CANTERA_ROOT}/include/cantera")
+#message(STATUS "Find cantera libs: ${cantera}")
+#if(SUNDIALS_FOUND)
+#	message(STATUS "Find Package \"sundials\": ${SUNDIALS_DIR}")
+#else()
+#	message(WARNING "May occur errors without sundials against with cantera")
+#endif()
+#if(fmt_FOUND)
+#	message(STATUS "Find Package \"fmt\": ${SUNDIALS_DIR}")
+#else()
+#	message(WARNING "May occur errors without fmt against with cantera")
+#endif()
 
 # // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "ACPP")
@@ -96,18 +142,42 @@ ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
     set(BOOST_CXX "OFF") # use boost c++ library or std internal library
 	set(CMAKE_CXX_COMPILER "clang++") #clang++ # for Intel oneAPI compiling system
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-
-    # delete warnings about VLA extension and disable fmt locale support
-    add_compile_options(-Wno-vla-cxx-extension)
     add_compile_options(-DFMT_LOCALE=0)
     
-    message(STATUS "oneAPI: Disabling fmt's locale support to avoid libstdc++ conflicts.")
+    if(USE_REVERSE_NDRANGE)
+        add_compile_definitions(__REVERSE_NDRANGE__)
+        message(STATUS "Build with Reverse nd_range (Z-Y-X) enabled.")
+    else()
+        message(STATUS "Build with Standard nd_range (X-Y-Z) enabled.")
+    endif()
 
-  	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
-		set(SelectDv "host")
-	ENDIF()
+    if(USE_MPI_TIMER)
+        add_compile_definitions(USE_MPI_TIMER)
+        message(STATUS "Build with MPI Timer enabled.")
+    else()
+        message(STATUS "Build with Chrono Timer enabled.")
+    endif()
 
-	include(oneAPIdevSelect/init_${SelectDv})
+    IF(ENABLE_HYBRID)
+        add_compile_options(-DHYBRID_CALC)
+        add_compile_options(-DUSE_MPI)
+        # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=nvptx64-nvidia-cuda,spir64")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl-targets=nvidia_gpu_sm_86,x86_64")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-cuda-version")
+
+        # delete warnings about VLA extension and disable fmt locale support
+        add_compile_options(-Wno-vla-extension)
+
+        if(NOT TEST_CASE STREQUAL "0")
+            add_compile_options(-DTEST_CASE=${TEST_CASE})
+        endif()
+    ELSE()
+  	    IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
+	    	set(SelectDv "host")
+	    ENDIF()
+
+        include(oneAPIdevSelect/init_${SelectDv})
+    ENDIF()
 ENDIF()
 
 # // =======================================================

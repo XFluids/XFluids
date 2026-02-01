@@ -1,5 +1,8 @@
 #include "../setupini.h"
 #include "fworkdir.hpp"
+#include "dpc_common.hpp"
+
+// #include "../cantera/cantera_interface.h"
 
 // =======================================================
 // // // struct Setup Member function definitions
@@ -17,7 +20,25 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
 #endif         // USE_MPI
     ReWrite(); // rewrite parameters using appended options
     // // sycl::queue construction
-    q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[1]].get_devices()[DeviceSelect[2]]);
+
+    #ifdef HYBRID_CALC
+        switch(TEST_CASE){
+            case 1: // 9 9950X
+                q = sycl::queue(sycl::platform::get_platforms()[1].get_devices()[0], dpc_common::exception_handler);
+                break;
+            case 2: // 3080
+                q = sycl::queue(sycl::platform::get_platforms()[2].get_devices()[0], dpc_common::exception_handler);
+                break;
+            case 3: // 3080(rank0) + 9 9950X(rank1)
+                if(myRank == 0) q = sycl::queue(sycl::platform::get_platforms()[2].get_devices()[0], dpc_common::exception_handler);
+                else q = sycl::queue(sycl::platform::get_platforms()[1].get_devices()[0], dpc_common::exception_handler);
+                break;
+            default: break;
+        }
+    #else
+        q = sycl::queue(sycl::platform::get_platforms()[DeviceSelect[1]].get_devices()[DeviceSelect[2]]);
+    #endif
+    
     // // get Work directory
     WorkDir = getWorkDir(std::string(argv[0]), "XFLUIDS");
     // // NOTE: read_grid
@@ -29,6 +50,8 @@ Setup::Setup(int argc, char **argv, int rank, int nranks) : myRank(rank), nRanks
     if (ReactSources)
     {
         ReadReactions();
+        // if (0 == myRank)
+            // CanteraInterface ci(&h_thermal, &h_react, NUM_SPECIES);
     }
 
     // end runtime read

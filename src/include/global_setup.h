@@ -186,6 +186,10 @@ typedef struct
 	real_t Domain_xmin, Domain_ymin, Domain_zmin;
 	real_t Domain_xmax, Domain_ymax, Domain_zmax;
 	real_t Domain_length, Domain_width, Domain_height;
+    //--for-hybrid-computation---------------
+    #ifdef HYBRID_CALC
+        int GlobalOffset_Y;
+    #endif
 	//--for-Discretization-------------------
 	real_t dx, dy, dz, dl, _dx, _dy, _dz, _dl, CFLnumber;
 	//--for-Mpi: mx means number of ranks in x direction, myMpiPos_x means location of this rank in x-dir ranks(from 0 to mx-1)

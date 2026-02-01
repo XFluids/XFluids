@@ -4,6 +4,7 @@
 # IF("${solver_Update}" STREQUAL "solver_Update-NOTFOUND")
 	add_library(solver_Update
 		STATIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/Update_kernels.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/UpdateStates_block.cpp
 	)
 	IF(SYCL_COMPILE_SYSTEM STREQUAL "ACPP")

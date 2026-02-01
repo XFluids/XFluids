@@ -2,7 +2,7 @@
 
 #include "../read_ini/setupini.h"
 
-extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool *error_org, bool *error_nan, real_t *UI, real_t *rho, real_t *y)
+extern inline void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool *error_org, bool *error_nan, real_t *UI, real_t *rho, real_t *y)
 {
 	int Xmax = bl.Xmax;
 	int Ymax = bl.Ymax;
@@ -101,7 +101,7 @@ extern void EstimateYiKernel(int i, int j, int k, Block bl, int *error_pos, bool
 	//     SumPts += 1;
 }
 
-extern void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2, real_t *UI, real_t *rho,
+extern inline void EstimatePrimitiveVarKernel(int i, int j, int k, Block bl, Thermal thermal, int *error_pos, bool *error1, bool *error2, real_t *UI, real_t *rho,
 									   real_t *u, real_t *v, real_t *w, real_t *p, real_t *T, real_t *y, real_t *H, real_t *e, real_t *gamma, real_t *c)
 { // numPte: number of Vars need be posoitive; numVars: length of *Vars(numbers of all Vars need to be estimed).
 	int Xmax = bl.Xmax;

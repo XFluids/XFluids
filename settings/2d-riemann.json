@@ -4,7 +4,7 @@
 		"blockSize_y": 8,
 		"blockSize_z": 8,
 		"DtBlockSize": 8,
-		"nStepMax": 100000,
+		"nStepMax": 20,
 		"nOutMax": 100,
 		"CFLnumber": 0.4,
 		"OutBoundary": 0,
@@ -30,8 +30,8 @@
 	"sources": {},
 	"mesh": {
 		"Resolution": [
-			400,
-			400,
+			4096,
+			4096,
 			0
 		],
 		"Boundarys": [

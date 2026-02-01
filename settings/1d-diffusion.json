@@ -4,18 +4,15 @@
         "blockSize_y": 8,
         "blockSize_z": 8,
         "DtBlockSize": 8,
-        "nStepMax": 100000000,
-        "nOutMax": 100,
+        "nStepMax": 20000,
+        "nOutMax": 100000,
         "OutInterval": 1000000,
         "OutBoundary": 0,
-        "CFLnumber": 0.5,
+        "CFLnumber": 0.6,
         "OutTimeStamps": [
-            "0.05: {-C=X,0.0,0.0;-V=rho,P,T}",
-            "0.10: {-C=X,0.0,0.0;-V=rho,P,T}",
-            "0.20: {-C=X,0.0,0.0;-V=rho,P,T}",
-            "0.30: {-C=X,0.0,0.0;-V=rho,P,T}",
-            "0.40: {-C=X,0.0,0.0;-V=rho,P,T}",
-            "0.50: {-C=X,0.0,0.0;-V=rho,P,T}"
+            "2.5: {-C=X,Y,0.0;-V=rho,P,T}",
+            "5.0: {-C=X,Y,0.0;-V=rho,P,T}",
+            "10.0: {-C=X,Y,0.0;-V=rho,P,T}"
         ]
     },
     "mpi": {
@@ -32,13 +29,13 @@
     "sources": {},
     "mesh": {
         "DOMAIN_Size": [
-            0.05,
-            0.05,
-            0.05
+            10.0,
+            10.0,
+            0.0
         ],
         "Resolution": [
-            200,
-            0,
+            2560,
+            2560,
             0
         ],
         "Boundarys": [

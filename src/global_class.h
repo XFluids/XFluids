@@ -42,7 +42,8 @@ public:
     void AllocateFluidMemory(sycl::queue &q);
     bool EstimateFluidNAN(sycl::queue &q, int flag);
     std::vector<float> ComputeFluidLU(sycl::queue &q, int flag);
-    void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
+    // void UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
+    std::vector<float> UpdateFluidURK3(sycl::queue &q, int flag, real_t const dt);
     void BoundaryCondition(sycl::queue &q, BConditions BCs[6], int flag);
     real_t GetFluidDt(sycl::queue &q, const int Iter, const real_t physicalTime);
     std::pair<bool, std::vector<float>> UpdateFluidStates(sycl::queue &q, int flag);
@@ -79,7 +80,7 @@ public:
      * runtime_transport, runtime_viscxyz
      * runtime_updatelu
      */
-    std::vector<float> LU_rt, UD_rt;
+    std::vector<float> LU_rt, UD_rt, UU_rt;
 
     XFLUIDS(Setup &setup);
     virtual ~XFLUIDS();
@@ -93,6 +94,7 @@ public:
     bool EstimateNAN(sycl::queue &q, const real_t Time, const int Step, const int rank, const int flag);
     void Output_Ubak(const int rank, const int Step, const real_t Time, const float Time_consumption, bool solution = false);
     // Solvers
+    void Hybrid_endProcess();
     void EndProcess();
     void Evolution(sycl::queue &q);
     void InitialCondition(sycl::queue &q);

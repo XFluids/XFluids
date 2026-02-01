@@ -4,7 +4,7 @@
 		"blockSize_y": 4,
 		"blockSize_z": 4,
 		"DtBlockSize": 4,
-		"nStepMax": 10000,
+		"nStepMax": 10000000,
 		"nOutMax": 100,
 		"OutVTI": 1,
 		"CFLnumber": 0.4,
@@ -37,7 +37,7 @@
 			0.1
 		],
 		"Resolution": [
-			400,
+			512,
 			0,
 			0
 		],

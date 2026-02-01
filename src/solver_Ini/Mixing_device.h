@@ -188,6 +188,44 @@ SYCL_DEVICE inline real_t get_T(Thermal thermal, const real_t *yi, const real_t 
 		T = T - df;
 		if (sycl::fabs(df) <= tol)
 			break;
+		// if (i == 100)
+		// {
+		// 	// TODO printf("Temperature: Newton_Ramphson iteration failured, try Bisection Metho...d\n");
+		// 	sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
+		// 	f_mid = func_T;
+		// 	sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
+		// 	f = func_T;
+		// 	if (f * f_mid > 0.0)
+		// 	{
+		// 		// printf("root must be bracketed in rtbis \n");
+		// 	}
+		// 	if (f < 0.0)
+		// 	{
+		// 		rt_bis = T_dBdr;
+		// 		df = T_uBdr - T_dBdr;
+		// 	}
+		// 	else
+		// 	{
+		// 		rt_bis = T_uBdr;
+		// 		df = T_dBdr - T_uBdr;
+		// 	}
+		// 	for (int j = 1; j <= 150; j++)
+		// 	{
+		// 		df = 0.5 * df;
+		// 		T = rt_bis + df;
+		// 		sub_FuncT(func_T, dfunc_T, thermal, yi, e, T);
+		// 		f_mid = func_T;
+		// 		if (f_mid <= 0.0)
+		// 			rt_bis = T;
+		// 		if (sycl::abs(df) <= x_eps || f_mid == 0.0)
+		// 			break;
+		// 		if (j == 100)
+		// 		{
+		// 			// printf("Temperature: Bisect also failured \n");
+		// 		}
+		// 	}
+		// 	break;
+		//}
 	}
 	return T;
 }

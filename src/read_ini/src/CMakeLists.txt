@@ -22,6 +22,9 @@
 #     set_property(TARGET readini_cos
 #         PROPERTY IMPORTED_LOCATION ${readini_cos})
 # ENDIF()
+# target_link_libraries(readini_cos
+    # PUBLIC
+        # cantera_interface)
 
 # # # add readini_copy lib
 # find_library(readini_copy NAMES libreadini_copy.a HINTS "${LIBRARY_OUTPUT_PATH}")

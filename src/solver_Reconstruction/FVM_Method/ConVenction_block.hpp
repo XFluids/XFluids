@@ -21,6 +21,12 @@ void GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs[6], Thermal t
 	real_t *w = fdata.w;
 	real_t *T = fdata.T;
 
+    // int cellbytes = setup.cellbytes;
+    // // for CPU error
+	// q.memset(FluxFw, 0, cellbytes).wait();
+	// q.memset(FluxGw, 0, cellbytes).wait();
+	// q.memset(FluxHw, 0, cellbytes).wait();
+
 	auto local_ndrange = range<3>(bl.dim_block_x, bl.dim_block_y, bl.dim_block_z);
 	auto global_ndrange_max = range<3>(bl.Xmax, bl.Ymax, bl.Zmax);
 

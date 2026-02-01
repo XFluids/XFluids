@@ -30,8 +30,23 @@
 int main(int argc, char *argv[])
 {
 #ifdef USE_MPI // Create MPI session if MPI enabled
-	MPI_Init(&argc, &argv);
+	// std::cout << "running MPI_Init()" << std::endl;
+    MPI_Init(&argc, &argv);
 #endif // USE_MPI
+
+#ifdef __REVERSE_NDRANGE__
+    std::cout << "Running with REVERSED nd_range (Z-Y-X) for better GPU memory coalescing." << std::endl;
+#endif
+
+#ifdef USE_MPI_TIMER
+    std::cout << "Running with MPI_Wtime() for kernel execution timing." << std::endl;
+#endif
+
+#if __SYNC_TIMER_
+    std::cout << "__SYNC_TIMER_ == 1" << std::endl;
+#else
+    std::cout << "__SYNC_TIMER_ == 0" << std::endl;
+#endif
 
 	// // Setup Initialize
 	Setup setup(argc, argv);

@@ -29,7 +29,7 @@ extern void GetLocalEigen(int i, int j, int k, MeshSize bl, real_t AA, real_t BB
 #elif SCHEME_ORDER == 7
 	for (size_t ii = 0; ii < Emax; ii++)
 		eigen_local[Emax * id + ii] = _DF(0.0);
-#endif // end FLUX_method
+#endif // end SCHEME_ORDER
 
 	// real_t de_fw[Emax];
 	// get_Array(eigen_local, de_fw, Emax, id);

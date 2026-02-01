@@ -177,6 +177,7 @@ if [ -f "\$ONEAPI_SETVARS" ]; then source "\$ONEAPI_SETVARS" --include-intel-llv
 export BOOST_ROOT="$DIR_BOOST"
 export LD_LIBRARY_PATH="\$BOOST_ROOT/lib:\$LD_LIBRARY_PATH"
 export CPLUS_INCLUDE_PATH="\$BOOST_ROOT/include:\$CPLUS_INCLUDE_PATH"
+export MPI_PATH="$DIR_ONEAPI/mpi/2021.14"
 echo -e "\033[0;32m>>> [Env] XFLUIDS oneAPI environment loaded.\033[0m"
 EOF
 chmod +x "$SETVARS_FILE"
