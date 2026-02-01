@@ -251,7 +251,7 @@ Hybrid mode requires manual CMake configuration to enable the `ENABLE_HYBRID` ma
 source XFLUIDS_oneAPI_setvars.sh
 
 # Create Build Directory
-mkdir build_hybrid && cd build_hybrid
+mkdir build && cd build
 
 # Manual Compilation (Modify BOOST_ROOT according to your actual path)
 cmake .. \

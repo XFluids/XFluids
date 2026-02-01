@@ -268,7 +268,7 @@ Hybrid 模式需要通过 CMake 手动开启 `ENABLE_HYBRID` 宏。
 source XFLUIDS_oneAPI_setvars.sh
 
 # 建立构建目录
-mkdir build_hybrid && cd build_hybrid
+mkdir build && cd build
 
 # 手动编译 (需根据实际路径修改 BOOST_ROOT)
 cmake .. \
