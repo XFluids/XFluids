@@ -21,7 +21,7 @@ INSTALL_DIR="$EXTERNAL_DIR/install"
 LOG_DIR="$EXTERNAL_DIR/logs"
 
 # URLs
-URL_BASE="https://github.com/GPI03248/XFLUIDS_GPI/releases/download/deps_oneAPI"
+URL_BASE="https://github.com/XFluids/XFluids/releases/download/deps_oneAPI"
 URL_BOOST="$URL_BASE/boost-1.83.0.tar.xz"
 URL_PART_00="$URL_BASE/oneAPI_installer_part_00"
 URL_PART_01="$URL_BASE/oneAPI_installer_part_01"

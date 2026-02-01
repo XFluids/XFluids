@@ -5,10 +5,11 @@ XFluids is a parallelized SYstem-wide Compute Language (SYCL) C++ solver for lar
 main developers:
 
 - Jinlong Li (ljl66623@mail.nwpu.edu.cn)
+- Renfei Zhang (zrf@mail.nwpu.edu.cn)
 - Shucheng Pan (shucheng.pan@nwpu.edu.cn)
 
 other contributors: 
-- Yixuan Lian, Renfei Zhang
+- Yixuan Lian
 
 ## References
 If you use XFluids for academic aplications, please cite our paper: 
@@ -26,39 +27,19 @@ Jinlong Li, Shucheng Pan (2024). XFluids: A unified cross-architecture heterogen
 - ongoing work: sharp-interface method, curvilinear mesh, turbulence models ...
 
 ## Supported GPUs
-The following gpus have been tested:
+The following GPUs have been tested:
 - NVIDIA
   - Data center GPU: A100, P100
-  - Gaming GPS: RTX 4090, RTX 3090/3080/3070/3060TI, T600, RTX 1080
+  - Gaming GPUs: RTX 4090, RTX 3090/3080/3070/3060TI, T600, RTX 1080
 - AMD
   - Data center GPU: MI50
-  - Gaming GPS: RX 7900XTX, RX 6800XT, Pro VII
+  - Gaming GPUs: RX 7900XTX, RX 6800XT, Pro VII
 - Intel
-  - Gaming GPS: ARC A770/A380
+  - Gaming GPUs: ARC A770/A380, ARC B580
   - Integrated GPUs: UHD P630, UHD 750
 
 ## 1. Manually installed Dependencies
-### 1.1. PPA cantera packages (3.1.0 now) is supported 
-  ````bash
-  sudo apt install software-properties-common -y
-  sudo apt-add-repository ppa:cantera-team/cantera -y
-  sudo apt install libcantera-dev libcantera3.1 -y
-  ````
-  - ##### If you have another install cantera, please set "CANTERA_ROOT"
-
-    ````bash
-    export CANTERA_ROOT=/path/to/cantera
-    ````
-
-  - ##### If you want compile cantera form source, please clone canter repository to "./external/cantera" and resolve some dependencies
-
-    ````bash
-    cd ./external && git clone --recurse-submodules https://github.com/Cantera/cantera
-    ````    
-
-    - install Linux system packages: cmake, scons
-    - install [Conda](https://repo.anaconda.com/archive/) or [Conda mirror soure for Chinese users](https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/) basic environment, at least version 23.9.0
-### 1.2. One of the following two SYCL implementations:
+### 1.1. One of the following two SYCL implementations:
   NOTE: SYCL implementation of AdaptiveCpp is strongly recommended for XFluids, and the support of Intel oneAPI will be deprecated.
 - #### [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)(known as OpenSYCL/hipSYCL) based on [LLVM &gt;= 14.0](https://apt.llvm.org/)
   - ##### An internal AdaptiveCpp can be compiled to SSCP or SSMP(see AdaptiveCpp offical documentation), it is resolved by XFluids automatilly but set "COMPILER_PATH" manually

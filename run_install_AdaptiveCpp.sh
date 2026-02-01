@@ -22,7 +22,7 @@ INSTALL_DIR="$EXTERNAL_DIR/install"
 LOG_DIR="$EXTERNAL_DIR/logs"
 
 # URLs
-URL_BASE="https://github.com/GPI03248/XFLUIDS_GPI/releases/download/deps_AdaptiveCpp"
+URL_BASE="https://github.com/XFluids/XFluids/releases/download/deps_AdaptiveCpp"
 URL_ACPP_SRC="$URL_BASE/AdaptiveCpp_source.tar.gz"
 URL_BOOST="$URL_BASE/boost-1.83.0.tar.xz"
 URL_CONDA="$URL_BASE/Miniconda3-latest-Linux-x86_64.sh"
