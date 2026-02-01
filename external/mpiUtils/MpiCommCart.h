@@ -65,11 +65,46 @@ namespace mpiUtils
 
   // =======================================================
   // =======================================================
-  inline void
-  MpiCommCart::getCoords(int rank, int maxdims, int coords[]) const
-  {
-    errCheck(MPI_Cart_coords(comm_, rank, maxdims, coords), "MPI_Cart_coords");
-  }
+//   inline void
+//   MpiCommCart::getCoords(int rank, int maxdims, int coords[]) const
+//   {
+//     errCheck(MPI_Cart_coords(comm_, rank, maxdims, coords), "MPI_Cart_coords");
+//   }
+
+// ===============fix for Intel MPI crash=======================
+inline void
+MpiCommCart::getCoords(int rank, int maxdims, int coords[]) const
+    {
+    // errCheck(MPI_Cart_coords(comm_, rank, maxdims, coords), "MPI_Cart_coords");
+
+    // Manual calculation to support Intel MPI's dimension reduction behavior
+    // Logic: Rank = z * (mx*my) + y * (mx) + x
+
+    // Temporarily store 3D coords
+    int c[3] = {0, 0, 0};
+    int r = rank;
+    int stride_z = mx_ * my_;
+
+    // Calculate Z
+    c[2] = r / stride_z;
+    r = r % stride_z;
+
+    // Calculate Y
+    c[1] = r / mx_;
+
+    // Calculate X
+    c[0] = r % mx_;
+
+    // Copy to output array based on requested dimensions
+    for (int i = 0; i < maxdims && i < 3; ++i) {
+        coords[i] = c[i];
+    }
+    // Zero out remaining if requested > 3
+    for (int i = 3; i < maxdims; ++i) {
+        coords[i] = 0;
+    }
+    }
+
 
   // =======================================================
   // =======================================================

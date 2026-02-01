@@ -9,3 +9,9 @@ float OutThisTime(std::chrono::high_resolution_clock::time_point start_time)
 	}
 	return duration;
 }
+
+#ifdef USE_MPI
+    float OutThisTime(double start_time){
+        return (MPI_Wtime() - start_time);
+    }
+#endif // USE_MPI
