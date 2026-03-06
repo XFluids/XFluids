@@ -1,5 +1,9 @@
 if(NOT ROCM_PATH)
-    set(ROCM_PATH "/opt/rocm" CACHE STRING "for passing location of rocm" FORCE)
+    if(DEFINED ENV{ROCM_PATH})
+        set(ROCM_PATH "$ENV{ROCM_PATH}")
+    else()
+        set(ROCM_PATH "/opt/rocm" CACHE STRING "..." FORCE)
+    endif()
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --rocm-path=${ROCM_PATH}")

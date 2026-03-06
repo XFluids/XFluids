@@ -1,4 +1,24 @@
-# XFluids: A unified cross-architecture heterogeneous reacting flows simulation solver
+<p align="center">
+    <a href="https://github.com/XFluids/XFluids">
+        <img src="https://github.com/user-attachments/assets/29c0f7a6-1412-4cbe-9181-299349695014" width="200">
+    </a>
+    <br>
+    <a href="https://github.com/XFluids/XFluids/pulls">
+        <img src="https://img.shields.io/badge/contributions-welcome-red.svg?color=rgb(48%2C%20185%2C%20237)">
+    </a>    
+    <a href="https://github.com/XFluids/XFluids/blob/master/LICENSE">
+        <img src="https://img.shields.io/github/license/XFluids/XFluids?logo=GitHub&color=rgb(255%2C%20232%2C%2054)">
+    </a>    
+    <a href="https://github.com/XFluids/XFluids/blob/main/docs/User_Manual_EN.md">
+        <img src="https://img.shields.io/badge/User_Manual-EN-rgb(241%2C%20155%2C%2068)">
+    </a>  
+    <a href="https://github.com/XFluids/XFluids/blob/main/docs/User_Manual_CN.md">
+        <img src="https://img.shields.io/badge/用户使用手册-CN-rgb(241%2C%20155%2C%2068)">
+    </a>  
+    <a href="https://doi.org/10.1016/j.cpc.2026.110095">
+        <img src="https://img.shields.io/badge/DOI-10.1016%2Fj.cpc.2026.110095-black?color=rgb(232%2C%2093%2C%2050)">
+    </a> 
+</p>
 
 XFluids is a parallelized SYstem-wide Compute Language (SYCL) C++ solver for large-scale high-resolution simulations of compressible multi-component reacting flows. It is developed by [Prof. Shucheng Pan&#39;s](https://teacher.nwpu.edu.cn/span.html) group at the School of Aeronautics, Northwestern Polytechincal University.
 
@@ -12,15 +32,12 @@ other contributors:
 - Yixuan Lian
 
 ## References
-If you use XFluids for academic aplications, please cite our paper: 
-
-Jinlong Li, Shucheng Pan (2024). XFluids: A unified cross-architecture heterogeneous reacting flows simulation solver and its applications for multi-component shock-bubble interactions. arXiv:2403.05910. 
-(https://arxiv.org/abs/2403.05910)
-
+If you use XFluids for academic aplications, please cite our paper.(https://doi.org/10.1016/j.cpc.2026.110095)
 
 ## Features
 - Support CPU, GPU (integrated & discrete), and FPGA without porting the code
 - General for multi-vendor devices (Intel/NVIDIA/AMD/Hygon ... )
+- Hybrid calculate (CPU + GPU)
 - High portability, productivity, and performace
 - GPU-aware MPI
 - Highly optimized kernels & device functions for multicomponent flows and chemical reaction 
@@ -29,14 +46,14 @@ Jinlong Li, Shucheng Pan (2024). XFluids: A unified cross-architecture heterogen
 ## Supported GPUs
 The following GPUs have been tested:
 - NVIDIA
-  - Data center GPU: A100, P100
+  - Data center GPU: A100, P100, PRO6000
   - Gaming GPUs: RTX 4090, RTX 3090/3080/3070/3060TI, T600, RTX 1080
 - AMD
-  - Data center GPU: MI50
-  - Gaming GPUs: RX 7900XTX, RX 6800XT, Pro VII
+  - Data center GPU: MI50, MI100
+  - Gaming GPUs: RX 7900XTX, RX 6800XT, RX 6700XT, Pro VII
 - Intel
   - Gaming GPUs: ARC A770/A380, ARC B580
-  - Integrated GPUs: UHD P630, UHD 750
+  - Integrated GPUs: UHD P630, UHD 750, UHD 770
 
 ## 1. Manually installed Dependencies
 ### 1.1. One of the following two SYCL implementations:
@@ -66,42 +83,53 @@ The following GPUs have been tested:
     cmake ..
     ````
 
-- #### [Intel oneAPI &gt;= 2023.0.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline), and [codeplay plugins](https://codeplay.com/solutions/oneapi) are needed for targeting NVIDIA and AMD backends
+- #### [Intel oneAPI < 2025.3.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline), and [codeplay plugins](https://codeplay.com/solutions/oneapi) are needed for targeting NVIDIA and AMD backends
+  - The [**deps_oneAPI**](https://github.com/XFluids/XFluids/releases/tag/deps_oneAPI) release in this repository provides the oneAPI base toolkit (2025.0.0) and corresponding Codeplay plugins. Other versions should be prepared by the user.
+    
   - ##### activate environment for oneAPI appended codeplay sultion libs
+    
     ````bash
-    source ./scripts/oneAPI/oneapi_base.sh
+    source /path/to/oneAPI/setvars --include-intel-llvm
     ````
+  
+- #### [Intel oneAPI >= 2025.3.0](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&distributions=offline), and [Intel Unified Runtime](https://github.com/intel/llvm/releases/tag/v6.3.0/sycl_linux.tar.gz) are needed for targeting NVIDIA and AMD backends
+  
+  - After installing the oneAPI base toolkit 25.3.1, download and extract the Intel Unified Runtime v6.3.0.
+    
+  - **Note on environment loading order**: It is critical to source the oneAPI 25.3.1 variables first, followed by the Unified Runtime environment. Otherwise, runtime errors may occur, and valid CUDA/ROCm devices may not be detected.
+    
+      ```bash
+      source /path/to/oneAPI_25.3.1/setvars.sh
+      
+      export CPATH=/path/to/UR/include:$CPATH
+      export PATH=/path/to/UR/bin:$PATH
+      export LD_LIBRARY_PATH=/path/to/UR/lib:$LD_LIBRARY_PATH
+      ```
 
 ## 2. Select target device in SYCL project
-### 2.1. Device discovery
-### 2.1.1 AdaptiveCpp device discovery: exec "acpp-info" in cmd for device counting
-  ```cmd
-  $ acpp-info
-  =================Backend information===================
-  Loaded backend 0(platform_id): OpenMP
-    Found device: hipSYCL OpenMP host device
-  Loaded backend 1(platform_id): CUDA
-    Found device: NVIDIA GeForce RTX 3070
-    Found device: NVIDIA GeForce RTX 3070
-  =================Device information===================
-  ***************** Devices for backend OpenMP *****************
-  Device 0(device_id)
-  ***************** Devices for backend CUDA *****************
-  Device 0(device_id)
-  ***************** Devices for backend CUDA *****************
-  Device 1(device_id)
-  ```
+### 2.1 Test Platform
 
-### 2.1.2. Intel oneAPI device discovery: exec "sycl-ls" in cmd for device counting
-  ```cmd
-  $ sycl-ls
-  [opencl:acc(platform_id:0):0(device_id)] Intel(R) FPGA Emulation Platform for OpenCL(TM), Intel(R) FPGA Emulation Device 1.2
-  [opencl:cpu(platform_id:1):1(device_id)] Intel(R) OpenCL, AMD Ryzen 7 5800X 8-Core Processor 3.0
-  [ext_oneapi_cuda:gpu(platform_id:2):0(device_id)] NVIDIA CUDA BACKEND, NVIDIA T600 0.0 [CUDA 11.5]
-  [ext_oneapi_cuda:gpu(platform_id:2):1(device_id)] NVIDIA CUDA BACKEND, NVIDIA T600 0.0 [CUDA 11.5]
-  ```
+Our test platform consists of an Intel i7-13700K, NVIDIA RTX 3070, AMD RX 6700XT, and Intel Arc B580.
+<p align="center">
+  <img src="./docs/Figs/Devices.jpg" width="45%" />
+  <img src="./docs/Figs/setting_graphics.png" width="45%" />
+</p>
 
-### 2.2. Queue construction: set integer platform_id and device_id("DeviceSelect" in json file or option: -dev)
+### 2.2. Device discovery
+
+### 2.2.1 AdaptiveCpp device discovery: exec "acpp-info" in cmd for device counting
+The failure of the AdaptiveCpp implementation to recognize AMD devices is due to the ROCm backend support not being enabled during the AdaptiveCpp installation.
+<p align="center">
+  <img src="./docs/Figs/acpp-info-devices.png" width="80%" />
+</p>
+
+### 2.2.2. Intel oneAPI device discovery: exec "sycl-ls" in cmd for device counting
+As shown in the figure, the oneAPI implementation path on our test platform can simultaneously detect the Intel CPU, Intel integrated GPU (iGPU), and discrete GPUs (dGPU) from Intel, NVIDIA, and AMD.
+<p align="center">
+  <img src="./docs/Figs/sycl-ls_devices.png" width="100%" />
+</p>
+
+### 2.3. Queue construction: set integer platform_id and device_id("DeviceSelect" in json file or option: -dev)
 NOTE: platform_id and device_id are revealed in [2.1-Device-discovery]("2.1. Device discovery")
   ````C++
   auto device = sycl::platform::get_platforms()[platform_id].get_devices()[device_id];
